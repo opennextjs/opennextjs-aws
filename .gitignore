@@ -114,8 +114,8 @@ dist
 /coverage
 
 # next.js
-/.next/
-/out/
+docs/.next/
+docs/out/
 
 # production
 /build
