@@ -1,26 +1,88 @@
-html,
-body {
-  padding: 0;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
-    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+:root {
+  --max-width: 600px;
+
+  --spacing-unit: 2rem;
+  --paragraph-spacing: 1.5rem;
+
+  --line-height: 1.725;
+
+  --footer-height: 4rem;
+  --footer-margin: 5rem;
+
+  --font-code: 'Consolas', monospace;
+
+  --color-base-white: 0, 0%;
+  --color-base-black: 160, 82%;
+  --color-base-green: 162, 78%;
+
+  --color-white: var(--color-base-white), 100%;
+  --color-black: var(--color-base-black), 2%;
+  --color-green: var(--color-base-green), 42%;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+:root {
+  --theme-bg: hsla(var(--color-white), 1);
+  --theme-code-bg: hsla(var(--color-base-white), 96%, 1);
+  --theme-text: hsla(var(--color-black), 0.7);
+  --theme-text-light: hsla(var(--color-black), 0.55);
+  --theme-text-lighter: hsla(var(--color-black), 0.4);
+  --theme-accent: hsla(var(--color-green), 1);
 
-* {
-  box-sizing: border-box;
+  --theme-divider: hsla(var(--color-black), 0.11);
 }
 
 @media (prefers-color-scheme: dark) {
+  :root {
+    --theme-bg: hsla(var(--color-black), 1);
+    --theme-code-bg: hsla(var(--color-white), 0.15);
+    --theme-text: hsla(var(--color-white), 1);
+    --theme-text-light: hsla(var(--color-white), 0.75);
+    --theme-text-lighter: hsla(var(--color-white), 0.4);
+    --theme-accent: hsla(var(--color-green), 1);
+
+    --theme-divider: hsla(var(--color-white), 0.3);
+  }
+
   html {
     color-scheme: dark;
   }
   body {
-    color: white;
-    background: black;
+    background: var(--theme-bg);
   }
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--theme-text);
+}
+
+pre, code {
+  font-family: var(--font-code);
+}
+
+a {
+  color: var(--theme-accent);
+  text-decoration: none;
+}
+
+p {
+  margin: 0 0 var(--paragraph-spacing);
+  line-height: var(--line-height);
+}
+ul, ol {
+  margin: 0 0 var(--paragraph-spacing);
+}
+
+p code {
+  margin: 0 0.1rem;
+  background: var(--theme-code-bg);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.2rem;
+}
+
+* {
+  box-sizing: border-box;
 }

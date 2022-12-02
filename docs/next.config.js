@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 
-const isGithubActions = process.env.GITHUB_ACTIONS || false
+let basePath = undefined
+let assetPrefix = undefined
 
-let assetPrefix = ''
-let basePath = '/'
+/** Deploys as a directory through GitHub Actions **/
+const isGithubActions = process.env.GITHUB_ACTIONS || false
 
 if (isGithubActions) {
   // trim off `<owner>/`
@@ -12,6 +13,7 @@ if (isGithubActions) {
   assetPrefix = `/${repo}/`
   basePath = `/${repo}`
 }
+/** End GitHub Actions case **/
 
 const nextConfig = {
   images: {
