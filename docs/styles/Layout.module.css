@@ -1,6 +1,11 @@
 .container {
   padding: 0 2rem;
 }
+@media only screen and (max-width: 600px) {
+  .container {
+    padding: 0 1rem;
+  }
+}
 
 .main {
   margin: 0 auto;
@@ -29,4 +34,9 @@
 }
 .footer a:not(:first-child) {
   margin-left: 1.3rem;
+}
+@media only screen and (max-width: 600px) {
+  .footer a:not(:first-child) {
+    margin-left: 0.5rem;
+  }
 }
