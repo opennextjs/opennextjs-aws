@@ -10,6 +10,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
         <meta key="description" name="description" content={SITE.description} />
         <link rel="icon" href="/open-next/favicon.svg" />
+        <meta property="og:image" content="/open-next/share.png" />
       </Head>
       <main className={styles.main}>{children}</main>
       <footer className={styles.footer}>
