@@ -9,7 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <title key="title">{SITE.title}</title>
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
         <meta key="description" name="description" content={SITE.description} />
-        <link rel="icon" href="/favicon.svg" />
+        <link rel="icon" href="/open-next/favicon.svg" />
       </Head>
       <main className={styles.main}>{children}</main>
       <footer className={styles.footer}>
