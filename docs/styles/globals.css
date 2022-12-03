@@ -40,7 +40,7 @@
     --theme-text-lighter: hsla(var(--color-white), 0.4);
     --theme-accent: hsla(var(--color-green), 1);
 
-    --theme-divider: hsla(var(--color-white), 0.3);
+    --theme-divider: hsla(var(--color-white), 0.2);
   }
 
   html {
