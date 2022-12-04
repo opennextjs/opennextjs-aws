@@ -10,12 +10,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
         <meta key="description" name="description" content={SITE.description} />
         <link
-          href="favicon-light.png"
+          href="/favicon-light.png"
           rel="icon"
           media="(prefers-color-scheme: light)"
         />
         <link
-          href="favicon-dark.png"
+          href="/favicon-dark.png"
           rel="icon"
           media="(prefers-color-scheme: dark)"
         />
