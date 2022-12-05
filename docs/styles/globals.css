@@ -23,6 +23,7 @@
 :root {
   --theme-bg: hsla(var(--color-white), 1);
   --theme-code-bg: hsla(var(--color-base-white), 96%, 1);
+  --theme-logo: hsla(0, 0%, 0%, 1);
   --theme-text: hsla(var(--color-black), 0.7);
   --theme-text-light: hsla(var(--color-black), 0.55);
   --theme-text-lighter: hsla(var(--color-black), 0.4);
@@ -35,6 +36,7 @@
   :root {
     --theme-bg: hsla(var(--color-black), 1);
     --theme-code-bg: hsla(var(--color-white), 0.15);
+    --theme-logo: hsla(var(--color-white), 1);
     --theme-text: hsla(var(--color-white), 1);
     --theme-text-light: hsla(var(--color-white), 0.75);
     --theme-text-lighter: hsla(var(--color-white), 0.4);
