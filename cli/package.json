@@ -1,0 +1,33 @@
+{
+  "name": "open-next",
+  "version": "0.0.0-20221205225535",
+  "description": "",
+  "homepage": "https://open-next.js.org",
+  "type": "module",
+  "main": "src/build",
+  "bin": {
+    "open-next": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "release": "./.changeset/release",
+    "release-snapshot": "./.changeset/snapshot"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@changesets/changelog-github": "^0.4.4",
+    "@changesets/cli": "^2.22.0",
+    "@tsconfig/node16": "^1.0.3",
+    "@vercel/build-utils": "^5.7.0",
+    "@vercel/next": "^3.3.2",
+    "esbuild": "^0.15.18",
+    "yargs": "^17.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.10",
+    "typescript": "^4.9.3"
+  }
+}

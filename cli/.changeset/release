@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+
+pnpm build
+cp package.json dist/package.json
+sed -i.bak -e '2,5d' dist/package.json
+pnpm changeset publish
+
