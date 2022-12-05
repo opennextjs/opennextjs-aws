@@ -189,7 +189,7 @@ export default function Home() {
               construct for this. You can look at the{" "}
               <a href="https://github.com/serverless-stack/sst/blob/master/packages/resources/src/NextjsSite.ts">
                 source of the SST construct
-              </a>
+              </a>{" "}
               to see what infrastructure you need. We'll document this in detail
               soon.
             </p>
