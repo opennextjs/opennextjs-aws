@@ -1,9 +1,11 @@
 import fs from "fs";
+import url from "url";
 import path from "path";
 import { buildSync } from "esbuild";
 // @ts-ignore @vercel/next does not provide types
 import { build as nextBuild } from "@vercel/next";
 
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
 const outputDir = ".open-next";
 
@@ -53,13 +55,13 @@ function createServerBundle() {
   );
   const result = buildSync({
     entryPoints: [
-      path.resolve(__dirname, "../assets/server-handler.js")
+      path.resolve(__dirname, "../assets/server-handler.cjs")
     ],
     bundle: true,
     target: "node16",
     platform: "node",
     external: ["next", "aws-sdk"],
-    outfile: path.join(outputPath, "index.js"),
+    outfile: path.join(outputPath, "index.cjs"),
     format: "cjs",
   });
 
@@ -77,7 +79,7 @@ function createMiddlewareBundle(src: string) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Create the middleware code
-  const buildTempPath = path.join(outputDir, ".middleware-function");
+  const buildTempPath = path.resolve(__dirname, "../.middleware-build");
   fs.mkdirSync(buildTempPath, { recursive: true });
   fs.writeFileSync(path.join(buildTempPath, "middleware.js"), src);
   fs.copyFileSync(
@@ -96,19 +98,13 @@ function createMiddlewareBundle(src: string) {
     bundle: true,
     write: true,
     allowOverwrite: true,
-    outfile: path.join(outputPath, "index.js"),
+    outfile: path.join(outputPath, "index.mjs"),
   });
 
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(`There was a problem bundling the middleware handler.`);
   }
-
-  // Create package.json
-  fs.writeFileSync(
-    path.join(outputPath, "package.json"),
-    `{"type":"module"}`
-  );
 }
 
 function createAssets() {
@@ -122,7 +118,7 @@ function createAssets() {
   // Copy over:
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
-  // - public/*       => _next/*
+  // - public/*       => *
   fs.copyFileSync(
     path.join(appPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID")
@@ -134,7 +130,7 @@ function createAssets() {
   );
   fs.cpSync(
     path.join(appPath, "public"),
-    path.join(outputPath, "_next"),
+    outputPath,
     { recursive: true }
   );
 }

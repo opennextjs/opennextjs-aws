@@ -1,0 +1,5 @@
+---
+"open-next": patch
+---
+
+Sync
