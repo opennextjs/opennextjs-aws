@@ -166,16 +166,13 @@ export default function Home() {
         <ol>
           <li>
             <p>
-              Run <code>next build</code> to generate the <code>.next</code>{" "}
+              Run <code>open-next build</code> to generate the <code>.open-next</code>{" "}
               directory.
             </p>
-          </li>
-          <li>
             <p>
-              Run <code>open-next</code>. This'll in turn generate the an{" "}
-              <code>.open-next</code> directory. This directory contains a zip
+              This directory contains a zip
               file of your app that'll run in a Lambda function, a zip file
-              that'll run the image optimization Lambda, and a zip file
+              that'll run the middleware Lambda@Edge function, and a zip fileectory
               containing your static assets that'll go to S3.
             </p>
           </li>
@@ -196,7 +193,7 @@ export default function Home() {
           </li>
           <li>
             <p>
-              Finally, upload the generated assets in step 2 to the
+              Finally, upload the generated assets in step 1 to the
               infrastructure you created.
             </p>
           </li>

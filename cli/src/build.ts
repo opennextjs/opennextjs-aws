@@ -55,7 +55,7 @@ function createServerBundle() {
   );
   const result = buildSync({
     entryPoints: [
-      path.resolve(__dirname, "../assets/server-handler.cjs")
+      path.resolve(__dirname, "../assets/server-adapter.cjs")
     ],
     bundle: true,
     target: "node16",
@@ -83,14 +83,14 @@ function createMiddlewareBundle(src: string) {
   fs.mkdirSync(buildTempPath, { recursive: true });
   fs.writeFileSync(path.join(buildTempPath, "middleware.js"), src);
   fs.copyFileSync(
-    path.join(__dirname, "../assets/middleware-handler.js"),
-    path.join(buildTempPath, "middleware-handler.js")
+    path.join(__dirname, "../assets/middleware-adapter.js"),
+    path.join(buildTempPath, "middleware-adapter.js")
   );
 
   // Create a directory that we will use to create the bundled version
   // of the "core server build" along with our custom Lamba server handler.
   const result = buildSync({
-    entryPoints: [path.join(buildTempPath, "middleware-handler.js")],
+    entryPoints: [path.join(buildTempPath, "middleware-adapter.js")],
     target: "esnext",
     format: "esm",
     platform: "node",
