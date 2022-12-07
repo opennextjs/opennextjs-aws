@@ -21,21 +21,26 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 ## Quick start
 
-Naviate to your Next.js app
+1. Naviate to your Next.js app
 
 ```bash
 cd my-next-app
 ```
 
-Ensure the [`standalone` output](https://nextjs.org/docs/advanced-features/output-file-tracing#automatically-copying-traced-files) is enabled in your `next.config.js`:
+2. Ensure [standalone output](https://nextjs.org/docs/advanced-features/output-file-tracing#automatically-copying-traced-files) is enabled in your `next.config.js`:
 
-```ts
-module.exports = {
-  output: "standalone",
-};
+```diff
+/** @type {import('next').NextConfig} */
+const nextConfig = {
++ output: "standalone"
+  reactStrictMode: true,
+  swcMinify: true,
+}
+
+module.exports = nextConfig
 ```
 
-Build app
+3. Build app
 
 ```bash
 npx open-next build
