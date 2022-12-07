@@ -1,9 +1,14 @@
 <p align="center">
+  <a href="https://open-next.js.org">
+    <img alt="OpenNext" src="docs/public/logo.svg" width="300" />
+  </a>
+</p>
+<p align="center">
   <a href="https://sst.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/983865673656705025?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/open-next"><img alt="npm" src="https://img.shields.io/npm/v/open-next.svg?style=flat-square" /></a>
 </p>
 
-# OpenNext
+---
 
 OpenNext takes the Next.js build output and converts it into a package that can be deployed to any functions as a service platform.
 
@@ -23,38 +28,38 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 1. Naviate to your Next.js app
 
-```bash
-cd my-next-app
-```
+   ```bash
+   cd my-next-app
+   ```
 
 2. Ensure [standalone output](https://nextjs.org/docs/advanced-features/output-file-tracing#automatically-copying-traced-files) is enabled in your `next.config.js`:
 
-```diff
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-+ output: "standalone"
-  reactStrictMode: true,
-  swcMinify: true,
-}
+   ```diff
+   /** @type {import('next').NextConfig} */
+   const nextConfig = {
+   + output: "standalone"
+     reactStrictMode: true,
+     swcMinify: true,
+   }
 
-module.exports = nextConfig
-```
+   module.exports = nextConfig
+   ```
 
 3. Build app
 
-```bash
-npx open-next build
-```
+   ```bash
+   npx open-next build
+   ```
 
-This will generate an `.open-next` directory with the following bundles:
+   This will generate an `.open-next` directory with the following bundles:
 
-```bash
-my-next-app/
-  .open-next/
-    assets/                -> Static assets to upload to an S3 Bucket
-    server-function/       -> Handler code for server Lambda Function
-    middleware-function/   -> Handler code for middleware Lambda@Edge Function
-```
+   ```bash
+   my-next-app/
+     .open-next/
+       assets/                -> Static assets to upload to an S3 Bucket
+       server-function/       -> Handler code for server Lambda Function
+       middleware-function/   -> Handler code for middleware Lambda@Edge Function
+   ```
 
 ## Recommeded infrastructure
 
@@ -119,3 +124,7 @@ Create a PR and add a new page to the benchmark app in `example` with the issue.
 Vercel deploys the middleware code to edge functions, which gets invoked before the request reaches the CDN. This way, static pages can be cached. On request, middleware gets called, and then the CDK can send back cached response.
 
 OpenNext is designed to adopt the same setup as Vercel. And building using `@vercel/next` allows us to separate the middleware code from the server code.
+
+---
+
+Maintained by [SST](https://sst.dev), join our community: [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)

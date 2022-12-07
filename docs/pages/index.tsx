@@ -22,8 +22,8 @@ export default function Home() {
           that can be deployed to any functions as a service platform.
         </p>
         <p>
-          It supports all Next.js 13 features including, SSG, ISR, SSR, Image
-          Optimization, and Middleware.
+          The goal is to support all Next.js 13 features including, SSG, ISR,
+          SSR, Image Optimization, and Middleware.
         </p>
       </section>
 
@@ -53,8 +53,8 @@ export default function Home() {
         </p>
         <p>
           Next.js, unlike Remix or Astro, doesn't have a way to self-host using
-          serverless. You can only run it in a Docker container. Containers are
-          expensive and need to be scaled.
+          serverless. You can run it as a Node application. This however doesn't
+          work the same way as it does on Vercel.
         </p>
       </section>
 
@@ -166,14 +166,14 @@ export default function Home() {
         <ol>
           <li>
             <p>
-              Run <code>open-next build</code> to generate the <code>.open-next</code>{" "}
-              directory.
+              Run <code>open-next build</code> to generate the{" "}
+              <code>.open-next</code> directory.
             </p>
             <p>
-              This directory contains a zip
-              file of your app that'll run in a Lambda function, a zip file
-              that'll run the middleware Lambda@Edge function, and a zip fileectory
-              containing your static assets that'll go to S3.
+              This directory contains a zip file of your app that'll run in a
+              Lambda function, a zip file that'll run the middleware Lambda@Edge
+              function, and a zip fileectory containing your static assets
+              that'll go to S3.
             </p>
           </li>
           <li>
