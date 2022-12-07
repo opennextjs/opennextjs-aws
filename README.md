@@ -11,13 +11,13 @@ OpenNext takes the Next.js build output and converts it into a package that can 
 
 OpenNext aims to support all Next.js 13 features. Some features are work in progress. Please open a [new issue](/issues/new) to let us know!
 
-[x] API routes
-[x] Dynamic routes
-[x] Static site generation (SSG)
-[x] Server-side rendering (SSR)
-[x] Incremental static regeneration (ISR)
-[] Image optimization (work in progress)
-[] Middleware (work in progress)
+- [x] API routes
+- [x] Dynamic routes
+- [x] Static site generation (SSG)
+- [x] Server-side rendering (SSR)
+- [x] Incremental static regeneration (ISR)
+- [ ] Image optimization (work in progress)
+- [ ] Middleware (work in progress)
 
 ## Quick start
 
@@ -25,6 +25,14 @@ Naviate to your Next.js app
 
 ```bash
 cd my-next-app
+```
+
+Ensure the [`standalone` output](https://nextjs.org/docs/advanced-features/output-file-tracing#automatically-copying-traced-files) is enabled in your `next.config.js`:
+
+```ts
+module.exports = {
+  output: "standalone",
+};
 ```
 
 Build app
@@ -87,15 +95,15 @@ Then `open-next` transforms `@vercel/next`'s build output into a format that can
 
 In the `example` folder, you can find a benchmark Next.js app. Here is a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
 
-## Opening an issue
-
-Create a PR and add a new page to the benchmark app in `example` with the issue.
-
-### Debugging
+## Debugging
 
 You can find the server log in the AWS CloudWatch console of the **region you deployed to**.
 
 You can find the middleware log in the AWS CloudWatch console of the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are in London, it's likely you will find the logs in `eu-west-2`.
+
+## Opening an issue
+
+Create a PR and add a new page to the benchmark app in `example` with the issue.
 
 ## FAQ
 
