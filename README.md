@@ -68,7 +68,7 @@ OpenNext does not create the underlying infrastructure. You can create the infra
 This is the recommended setup.
 
 <p align="center">
-  <img alt="Architecture" src="/readme/architecture.png" width="800" />
+  <img alt="Architecture" src="docs/public/architecture.png" width="800" />
 </p>
 
 A few AWS resources need to be created:
