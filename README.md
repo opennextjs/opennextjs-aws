@@ -45,7 +45,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
    module.exports = nextConfig
    ```
 
-3. Build app
+3. Build the app
 
    ```bash
    npx open-next build
@@ -71,7 +71,7 @@ This is the recommended setup.
   <img alt="Architecture" src="/readme/architecture.png" width="800" />
 </p>
 
-A few AWS resources are created:
+A few AWS resources need to be created:
 
 - An S3 bucket to host static assets from `.open-next/assets`.
 - A Lambda function handling server and API requests.
@@ -81,7 +81,7 @@ A few AWS resources are created:
 
 ## How does OpenNext work?
 
-When you call `npx open-next build`, behind the scene OpenNext builds your Next.js app using the `@vercel/next` package. This package does 2 things:
+When you call `npx open-next build`, behind the scenes OpenNext builds your Next.js app using the `@vercel/next` package. This package does 2 things:
 
 - It calls `next build` with the [`minimalMode`](https://github.com/vercel/next.js/discussions/29801) flag. This flag disables running middleware in the server code.
 
@@ -89,7 +89,7 @@ When you call `npx open-next build`, behind the scene OpenNext builds your Next.
 
 Then `open-next` transforms `@vercel/next`'s build output into a format that can be deployed to AWS. The following steps are performed:
 
-1. Creates a `.open-next` directory in user's Next.js app.
+1. Creates a `.open-next` directory in the user's Next.js app.
 
 1. Bundles the middleware handler with the [middleware adapter](/cli/assets/middleware-adapter.js). And outputs the handler file into `.open-next/middleware-function`.
 
@@ -103,7 +103,7 @@ Then `open-next` transforms `@vercel/next`'s build output into a format that can
 
 ## Example
 
-In the `example` folder, you can find a benchmark Next.js app. Here is a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
+In the `example` folder, you can find a benchmark Next.js app. Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
 
 ## Debugging
 
@@ -119,12 +119,12 @@ Create a PR and add a new page to the benchmark app in `example` with the issue.
 
 #### Why use the `@vercel/next` package for building the Next.js app?
 
-`next build` generates a server function that runs middleware. With this setup, if you use middleware for static pages, these pages cannot be cached. If cached, CDN (CloudFront) will send back cached response without calling the origin (server Lambda function). To ensure the middleware is invoked on every request, caching is always disabled.
+The `next build` command generates a server function that runs the middleware. With this setup, if you use middleware for static pages, these pages cannot be cached. If cached, CDN (CloudFront) will send back the cached response without calling the origin (server Lambda function). To ensure the middleware is invoked on every request, caching is always disabled.
 
-Vercel deploys the middleware code to edge functions, which gets invoked before the request reaches the CDN. This way, static pages can be cached. On request, middleware gets called, and then the CDK can send back cached response.
+Vercel deploys the middleware code to edge functions, which gets invoked before the request reaches the CDN. This way, static pages can be cached. On request, the middleware gets called, and then the CDN can send back the cached response.
 
 OpenNext is designed to adopt the same setup as Vercel. And building using `@vercel/next` allows us to separate the middleware code from the server code.
 
 ---
 
-Maintained by [SST](https://sst.dev), join our community: [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
+Maintained by [SST](https://sst.dev). Join our community: [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
