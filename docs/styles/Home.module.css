@@ -55,7 +55,7 @@
   padding: 0 2rem;
 }
 .cta a {
-  padding: 1rem 2rem;
+  padding: 0.9rem 2.1rem;
   background-color: var(--theme-primary-button-bg);
   color: var(--theme-bg);
   border-radius: 7px;
@@ -69,7 +69,7 @@
   box-shadow: 0 6px 20px var(--theme-primary-button-shadow-hover);
 }
 .cta a:last-child {
-  margin-left: 1.65rem;
+  margin-left: 1.5rem;
   background-color: var(--theme-secondary-button-bg);
   color: var(--theme-text-light);
   box-shadow: 0 4px 14px 0 var(--theme-secondary-button-shadow);
