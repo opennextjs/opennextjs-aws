@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://open-next.js.org">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/public/logo-dark.png">
+      <source media="(prefers-color-scheme: dark)" srcset="docs/public/logo-dark.svg">
       <img alt="OpenNext" src="docs/public/logo-light.svg" width="300" />
     </picture>
   </a>
