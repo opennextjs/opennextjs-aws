@@ -29,6 +29,13 @@
   --theme-text-lighter: hsla(var(--color-black), 0.4);
   --theme-accent: hsla(var(--color-green), 1);
 
+  --theme-primary-button-bg: var(--theme-accent);
+  --theme-secondary-button-bg: var(--theme-bg);
+  --theme-primary-button-shadow: hsla(var(--color-green), 0.3);
+  --theme-primary-button-shadow-hover: hsla(var(--color-green), 0.5);
+  --theme-secondary-button-shadow: hsla(var(--color-black), 0.1);
+  --theme-secondary-button-shadow-hover: hsla(var(--color-black), 0.16);
+
   --theme-divider: hsla(var(--color-black), 0.11);
 }
 
@@ -41,6 +48,13 @@
     --theme-text-light: hsla(var(--color-white), 0.75);
     --theme-text-lighter: hsla(var(--color-white), 0.4);
     --theme-accent: hsla(var(--color-green), 1);
+
+    --theme-primary-button-bg: var(--theme-accent);
+    --theme-secondary-button-bg: var(--theme-code-bg);
+    --theme-primary-button-shadow: hsla(var(--color-green), 0.3);
+    --theme-primary-button-shadow-hover: hsla(var(--color-green), 0.5);
+    --theme-secondary-button-shadow: hsla(var(--color-white), 0.1);
+    --theme-secondary-button-shadow-hover: hsla(var(--color-white), 0.16);
 
     --theme-divider: hsla(var(--color-white), 0.2);
   }
