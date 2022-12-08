@@ -1,6 +1,9 @@
 <p align="center">
   <a href="https://open-next.js.org">
-    <img alt="OpenNext" src="docs/public/logo.svg" width="300" />
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".docs/public/logo-dark.png">
+      <img alt="OpenNext" src="docs/public/logo-light.svg" width="300" />
+    </picture>
   </a>
 </p>
 <p align="center">
