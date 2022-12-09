@@ -25,6 +25,11 @@
   max-width: 500px;
   border-top: 1px solid var(--theme-divider);
 }
+@media only screen and (max-width: 480px) {
+  .divider {
+    margin: 3.5rem auto;
+  }
+}
 
 .description {
   margin: 0.5rem 0 0;
@@ -43,6 +48,50 @@
 
 .about p:last-child {
   margin-bottom: 0;
+}
+
+.cta {
+  margin-top: calc(var(--spacing-unit) * 1.25);
+  padding: 0 2rem;
+}
+.cta a {
+  padding: 0.9rem 2.1rem;
+  background-color: var(--theme-primary-button-bg);
+  color: var(--theme-bg);
+  border-radius: 7px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  box-shadow: 0 4px 14px var(--theme-primary-button-shadow);
+  text-align: center;
+  transition: box-shadow 0.2s ease;
+}
+.cta a:hover {
+  box-shadow: 0 6px 20px var(--theme-primary-button-shadow-hover);
+}
+.cta a:last-child {
+  margin-left: 1.5rem;
+  background-color: var(--theme-secondary-button-bg);
+  color: var(--theme-text-light);
+  box-shadow: 0 4px 14px 0 var(--theme-secondary-button-shadow);
+}
+.cta a:last-child:hover {
+  box-shadow: 0 6px 20px 0 var(--theme-secondary-button-shadow-hover);
+}
+@media only screen and (max-width: 480px) {
+  .cta {
+    padding: 0;
+    margin-top: var(--spacing-unit);
+    width: 100%;
+  }
+  .cta a {
+    padding: 1.125rem 0;
+    display: block;
+    width: 100%;
+  }
+  .cta a:last-child {
+    margin-top: 1rem;
+    margin-left: 0;
+  }
 }
 
 .tech {

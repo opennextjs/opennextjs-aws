@@ -14,6 +14,11 @@ export default function Home() {
 
       <h2 className={styles.description}>{SITE.description}</h2>
 
+      <section className={styles.cta}>
+        <a href={SITE.github}>Star us on GitHub</a>
+        <a href={`${SITE.github}/blob/main/README.md`}>View README</a>
+      </section>
+
       <div className={styles.divider}></div>
 
       <section className={styles.about}>
@@ -22,8 +27,8 @@ export default function Home() {
           that can be deployed to any functions as a service platform.
         </p>
         <p>
-          It supports all Next.js 13 features including, SSG, ISR, SSR, Image
-          Optimization, and Middleware.
+          The goal is to support all Next.js 13 features including, SSG, ISR,
+          SSR, Image Optimization, and Middleware.
         </p>
       </section>
 
@@ -53,8 +58,8 @@ export default function Home() {
         </p>
         <p>
           Next.js, unlike Remix or Astro, doesn't have a way to self-host using
-          serverless. You can only run it in a Docker container. Containers are
-          expensive and need to be scaled.
+          serverless. You can run it as a Node application. This however doesn't
+          work the same way as it does on Vercel.
         </p>
       </section>
 
@@ -99,6 +104,10 @@ export default function Home() {
         <p>
           The goal of OpenNext is to create an open source, framework agnostic,
           serverless adapter for Next.js.
+        </p>
+        <p>
+          OpenNext is currently built for AWS but we plan to support any
+          functions as a service platform.
         </p>
         <p>
           We need your help keeping it up to date and feature complete. Make
@@ -166,14 +175,14 @@ export default function Home() {
         <ol>
           <li>
             <p>
-              Run <code>open-next build</code> to generate the <code>.open-next</code>{" "}
-              directory.
+              Run <code>open-next build</code> to generate the{" "}
+              <code>.open-next</code> directory.
             </p>
             <p>
-              This directory contains a zip
-              file of your app that'll run in a Lambda function, a zip file
-              that'll run the middleware Lambda@Edge function, and a zip fileectory
-              containing your static assets that'll go to S3.
+              This directory contains a zip file of your app that'll run in a
+              Lambda function, a zip file that'll run the middleware Lambda@Edge
+              function, and a zip fileectory containing your static assets
+              that'll go to S3.
             </p>
           </li>
           <li>

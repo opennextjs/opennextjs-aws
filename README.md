@@ -1,9 +1,17 @@
 <p align="center">
+  <a href="https://open-next.js.org">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/public/logo-dark.svg">
+      <img alt="OpenNext" src="docs/public/logo-light.svg" width="300" />
+    </picture>
+  </a>
+</p>
+<p align="center">
   <a href="https://sst.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/983865673656705025?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/open-next"><img alt="npm" src="https://img.shields.io/npm/v/open-next.svg?style=flat-square" /></a>
 </p>
 
-# OpenNext
+---
 
 OpenNext takes the Next.js build output and converts it into a package that can be deployed to any functions as a service platform.
 
@@ -23,38 +31,38 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 1. Naviate to your Next.js app
 
-```bash
-cd my-next-app
-```
+   ```bash
+   cd my-next-app
+   ```
 
 2. Ensure [standalone output](https://nextjs.org/docs/advanced-features/output-file-tracing#automatically-copying-traced-files) is enabled in your `next.config.js`:
 
-```diff
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-+ output: "standalone"
-  reactStrictMode: true,
-  swcMinify: true,
-}
+   ```diff
+   /** @type {import('next').NextConfig} */
+   const nextConfig = {
+   + output: "standalone"
+     reactStrictMode: true,
+     swcMinify: true,
+   }
 
-module.exports = nextConfig
-```
+   module.exports = nextConfig
+   ```
 
-3. Build app
+3. Build the app
 
-```bash
-npx open-next build
-```
+   ```bash
+   npx open-next build
+   ```
 
-This will generate an `.open-next` directory with the following bundles:
+   This will generate an `.open-next` directory with the following bundles:
 
-```bash
-my-next-app/
-  .open-next/
-    assets/                -> Static assets to upload to an S3 Bucket
-    server-function/       -> Handler code for server Lambda Function
-    middleware-function/   -> Handler code for middleware Lambda@Edge Function
-```
+   ```bash
+   my-next-app/
+     .open-next/
+       assets/                -> Static assets to upload to an S3 Bucket
+       server-function/       -> Handler code for server Lambda Function
+       middleware-function/   -> Handler code for middleware Lambda@Edge Function
+   ```
 
 ## Recommeded infrastructure
 
@@ -63,10 +71,10 @@ OpenNext does not create the underlying infrastructure. You can create the infra
 This is the recommended setup.
 
 <p align="center">
-  <img alt="Architecture" src="/readme/architecture.png" width="800" />
+  <img alt="Architecture" src="docs/public/architecture.png" width="800" />
 </p>
 
-A few AWS resources are created:
+A few AWS resources need to be created:
 
 - An S3 bucket to host static assets from `.open-next/assets`.
 - A Lambda function handling server and API requests.
@@ -76,7 +84,7 @@ A few AWS resources are created:
 
 ## How does OpenNext work?
 
-When you call `npx open-next build`, behind the scene OpenNext builds your Next.js app using the `@vercel/next` package. This package does 2 things:
+When you call `npx open-next build`, behind the scenes OpenNext builds your Next.js app using the `@vercel/next` package. This package does 2 things:
 
 - It calls `next build` with the [`minimalMode`](https://github.com/vercel/next.js/discussions/29801) flag. This flag disables running middleware in the server code.
 
@@ -84,7 +92,7 @@ When you call `npx open-next build`, behind the scene OpenNext builds your Next.
 
 Then `open-next` transforms `@vercel/next`'s build output into a format that can be deployed to AWS. The following steps are performed:
 
-1. Creates a `.open-next` directory in user's Next.js app.
+1. Creates a `.open-next` directory in the user's Next.js app.
 
 1. Bundles the middleware handler with the [middleware adapter](/cli/assets/middleware-adapter.js). And outputs the handler file into `.open-next/middleware-function`.
 
@@ -98,7 +106,7 @@ Then `open-next` transforms `@vercel/next`'s build output into a format that can
 
 ## Example
 
-In the `example` folder, you can find a benchmark Next.js app. Here is a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
+In the `example` folder, you can find a benchmark Next.js app. Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
 
 ## Debugging
 
@@ -114,8 +122,12 @@ Create a PR and add a new page to the benchmark app in `example` with the issue.
 
 #### Why use the `@vercel/next` package for building the Next.js app?
 
-`next build` generates a server function that runs middleware. With this setup, if you use middleware for static pages, these pages cannot be cached. If cached, CDN (CloudFront) will send back cached response without calling the origin (server Lambda function). To ensure the middleware is invoked on every request, caching is always disabled.
+The `next build` command generates a server function that runs the middleware. With this setup, if you use middleware for static pages, these pages cannot be cached. If cached, CDN (CloudFront) will send back the cached response without calling the origin (server Lambda function). To ensure the middleware is invoked on every request, caching is always disabled.
 
-Vercel deploys the middleware code to edge functions, which gets invoked before the request reaches the CDN. This way, static pages can be cached. On request, middleware gets called, and then the CDK can send back cached response.
+Vercel deploys the middleware code to edge functions, which gets invoked before the request reaches the CDN. This way, static pages can be cached. On request, the middleware gets called, and then the CDN can send back the cached response.
 
 OpenNext is designed to adopt the same setup as Vercel. And building using `@vercel/next` allows us to separate the middleware code from the server code.
+
+---
+
+Maintained by [SST](https://sst.dev). Join our community: [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
