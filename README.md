@@ -106,7 +106,7 @@ Then `open-next` transforms `@vercel/next`'s build output into a format that can
 
 ## Example
 
-In the `example` folder, you can find a benchmark Next.js app. Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
+In the `example` folder, you can find a Next.js feature test app. Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct. It contains a handful of pages. Each page aims to test a single Next.js feature.
 
 ## Debugging
 
