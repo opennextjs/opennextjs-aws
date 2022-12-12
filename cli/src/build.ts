@@ -16,6 +16,9 @@ export async function build() {
     process.exit(1);
   }
 
+  // Equivalent to setting `target: 'standalone'` in next.config.js
+  process.env.NEXT_PRIVATE_STANDALONE = 'true';
+
   // Build app
   const ret = await nextBuild({
     files: [],
