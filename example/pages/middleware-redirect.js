@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <Layout>
       <article>
-        <h1 className={utilStyles.headingXl}>
+        <h1>
           Middleware - redirect
         </h1>
         <hr />

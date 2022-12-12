@@ -35,7 +35,7 @@ export default function Post({ data, time }) {
         </p>
         <p>
           <b>Test 2:</b>
-          This string 👉 "{data.title}" should be "First post"
+          This string 👉 "{data && data.title}" should be "First post"
         </p>
         <p>
           <b>Test 3:</b>
