@@ -11,10 +11,10 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-  defaults:
-    run:
-      shell: bash
-      working-directory: cli
+    defaults:
+      run:
+        shell: bash
+        working-directory: cli
     steps:
       - name: Checkout Repo
         # https://github.com/actions/checkout
