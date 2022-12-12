@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "watch": "tsc -w",
+    "dev": "tsc -w",
     "release": "./.changeset/release",
     "release-snapshot": "./.changeset/snapshot"
   },
