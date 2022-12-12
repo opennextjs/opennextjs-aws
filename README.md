@@ -38,7 +38,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 2. Build the app
 
    ```bash
-   npx open-next build
+   npx open-next@latest build
    ```
 
    This will generate an `.open-next` directory with the following bundles:
