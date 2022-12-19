@@ -111,6 +111,12 @@ export const handler = async (event) => {
   console.log(event)
   console.log(event.rawPath)
 
+  // WORKAROUND (AWS): pass middleware headers to server
+  const middlewareRequestHeaders = JSON.parse(
+    event.headers["x-op-middleware-request-headers"] || "{}"
+  );
+  event.headers = { ...event.headers, ...middlewareRequestHeaders };
+
   const response = await server(event);
 
   // Handle cache response headers not set for HTML pages
@@ -118,6 +124,13 @@ export const handler = async (event) => {
   if (htmlPages.includes(event.rawPath) && !response.headers["cache-control"]) {
     response.headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
+
+  // WORKAROUND (AWS): pass middleware headers to server
+  const middlewareResponseHeaders = JSON.parse(
+    event.headers["x-op-middleware-response-headers"] || "{}"
+  );
+  response.headers = { ...response.headers, ...middlewareResponseHeaders };
+
   console.log({ after: response });
 
   return response;
