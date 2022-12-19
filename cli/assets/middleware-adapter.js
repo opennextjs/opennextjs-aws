@@ -8,31 +8,13 @@ Object.assign(globalThis, {
 });
 const index = await (() => import("./middleware.js"))();
 
-// TODO
-//console.log(self);
-//handler({
-//  Records: [
-//    {
-//      cf: {
-//        request: {
-//          uri: "https://sst.dev/_next/data/5fCVTp6Xr7VQpZ-m8Wxxq/middleware-redirect.json",
-//          method: "GET",
-//          headers: {
-//            host: [{ value: "sst.dev" }]
-//          },
-//          querystring: "",
-//        },
-//      }
-//    }
-//  ]
-//}).then((res) => console.log(JSON.stringify(res, null, 2)));
-
 export async function handler(event) {
   // Convert CloudFront request to Node request
   const request = event.Records[0].cf.request;
   const { uri, method, headers, querystring, body } = request;
   console.log(uri);
   console.log(request);
+  console.log(request.headers);
   const requestHeaders = new Headers();
   for (const [key, values] of Object.entries(headers)) {
     for (const { value } of values) {
@@ -59,112 +41,58 @@ export async function handler(event) {
     waitUntil: () => {},
   });
 
-  // Build headers
-  (response.headers.get("x-middleware-override-headers") || "")
-    .split(",")
-    .forEach(key => {
-      headers[key] = [{
-        key,
-        value: response.headers.get(`x-middleware-request-${key}`)
-      }];
-    });
-
+  // WORKAROUND (AWS): pass middleware headers to server
   if (response.headers.get("x-middleware-next") === "1") {
-    headers["x-wahaha"] = [{ key: "x-wahaha", value: "wahaha" }];
-    headers["wahaha"] = [{ key: "wahaha", value: "wahaha" }];
+    console.log("== getMiddlewareHeaders ==", response.headers);
+    headers["x-op-middleware-request-headers"] = [{
+      key: "x-op-middleware-request-headers",
+      value: getMiddlewareRequestHeaders(response),
+    }];
+    headers["x-op-middleware-response-headers"] = [{
+      key: "x-op-middleware-response-headers",
+      value: getMiddlewareResponseHeaders(response),
+    }];
     console.log("== conitnue to origin ==", request)
     return request;
   }
 
-  console.log("== do not hit origin ==", {
+  console.log("== do not hit origin ==", response, {
     status: response.status,
-    headers,
+    headers: httpHeadersToCfHeaders(response.headers),
   });
   return {
     status: response.status,
-    headers,
-  }
+    headers: httpHeadersToCfHeaders(response.headers),
+  };
 }
 
-/**
- * middleware-fetch
- * 
- * nextresponse [response] {
-  size: 0,
-  [symbol(body internals)]: {
-    body: null,
-    stream: null,
-    boundary: null,
-    disturbed: false,
-    error: null
-  },
-  [symbol(response internals)]: {
-    type: 'default',
-    url: undefined,
-    status: 200,
-    statustext: '',
-    headers: { 'x-middleware-next': '1' },
-    counter: undefined,
-    highwatermark: undefined
-  },
-  [Symbol(internal response)]: {
-    cookies: ResponseCookies { _parsed: Map(0) {}, _headers: [Object] },
-    url: undefined
-  }
+function getMiddlewareRequestHeaders(response) {
+  const headers = {};
+  (response.headers.get("x-middleware-override-headers") || "")
+    .split(",")
+    .forEach(key => {
+      headers[key] = response.headers.get(`x-middleware-request-${key}`)
+    });
+  console.log("== getMiddlewareRequestHeaders ==", headers);
+  return JSON.stringify(headers);
 }
- */
-/**
- * middleware-set-header
- * 
- * NextResponse [Response] {
-  size: 0,
-  [Symbol(Body internals)]: {
-    body: null,
-    stream: null,
-    boundary: null,
-    disturbed: false,
-    error: null
-  },
-  [Symbol(Response internals)]: {
-    type: 'default',
-    url: undefined,
-    status: 200,
-    statusText: '',
-    headers: {
-      'x-hello-from-middleware2': 'hello',
-      'x-middleware-next': '1',
-      'x-middleware-override-headers': 'x-hello-from-middleware1',
-      'x-middleware-request-x-hello-from-middleware1': 'hello'
-    },
-    counter: undefined,
-    highWaterMark: undefined
-  },
-  [Symbol(internal response)]: {
-    cookies: ResponseCookies { _parsed: Map(0) {}, _headers: [Object] },
-    url: undefined
-  }
+
+function getMiddlewareResponseHeaders(response) {
+  const headers = {};
+  response.headers.forEach((value, key) => {
+    if (!key.startsWith("x-middleware-")) {
+      headers[key] = value;
+    }
+  });
+  console.log("== getMiddlewareResponseHeaders ==", headers);
+  return JSON.stringify(headers);
 }
- */
-/**
- * middleware-redirect
- * 
- * Response {
-  size: 0,
-  [Symbol(Body internals)]: {
-    body: null,
-    stream: null,
-    boundary: null,
-    disturbed: false,
-    error: null
-  },
-  [Symbol(Response internals)]: {
-    type: 'default',
-    url: '',
-    status: 307,
-    statusText: '',
-    headers: { location: 'https://sst.dev/ssr' },
-    counter: undefined,
-    highWaterMark: undefined
-  }
+
+function httpHeadersToCfHeaders(httpHeaders) {
+  const headers = {};
+  httpHeaders.forEach((value, key) => {
+    headers[key] = [{ key, value }];
+  });
+  console.log("== responseHeadersToCloudFrontHeaders ==", headers);
+  return headers;
 }
- */

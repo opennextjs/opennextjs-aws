@@ -82,7 +82,7 @@ function createMiddlewareBundle(src: string) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Create the middleware code
-  const buildTempPath = path.resolve(__dirname, "../.middleware-build");
+  const buildTempPath = path.join(outputDir, "../.middleware-build");
   fs.mkdirSync(buildTempPath, { recursive: true });
   fs.writeFileSync(path.join(buildTempPath, "middleware.js"), src);
   fs.copyFileSync(
