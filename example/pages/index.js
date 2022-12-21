@@ -33,7 +33,8 @@ export default function Home({}) {
         <Link href={`/api-route`}>API Route</Link><br />
         <Link href={`/middleware-redirect`}>Middleware — redirect</Link><br />
         <Link href={`/middleware-set-header`}>Middleware — set header</Link><br />
-        <Link href={`/image-optimization`}>Image Optimization</Link><br />
+        <Link href={`/image-optimization-imported`}>Image Optimization — imported image</Link><br />
+        <Link href={`/image-optimization-remote`}>Image Optimization — remote image</Link><br />
         <Link href={`/image-html-tag`}>Image using html image tag</Link><br />
       </section>
     </Layout>
