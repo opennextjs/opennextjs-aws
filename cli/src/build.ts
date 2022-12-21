@@ -33,6 +33,7 @@ export async function build() {
 
   // Create server Lambda function bundle
   createServerBundle();
+  createImageOptimizationBundle();
   createMiddlewareBundle(ret.output.middleware.files["index.js"].data);
   createAssets();
 }
@@ -58,19 +59,83 @@ function createServerBundle() {
   );
   const result = buildSync({
     entryPoints: [
-      path.resolve(__dirname, "../assets/server-adapter.cjs")
+      path.resolve(__dirname, "../assets/server-adapter.js")
     ],
-    bundle: true,
-    target: "node16",
+    target: "esnext",
+    format: "esm",
     platform: "node",
-    external: ["next", "aws-sdk"],
-    outfile: path.join(outputPath, "index.cjs"),
-    format: "cjs",
+    external: ["next"],
+    bundle: true,
+    outfile: path.join(outputPath, "index.mjs"),
+    banner: {
+      js: [
+        "import { createRequire as topLevelCreateRequire } from 'module';",
+        "const require = topLevelCreateRequire(import.meta.url);",
+        "import url from 'url';",
+        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+      ].join(""),
+    },
   });
 
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(`There was a problem bundling the server handler.`);
+  }
+}
+
+function createImageOptimizationBundle() {
+  console.debug(`Bundling image optimization function...`);
+
+  // Create output folder
+  const outputPath = path.join(outputDir, "image-optimization-function");
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  // Copy over .next/required-server-files.json file
+  fs.mkdirSync(path.join(outputPath, ".next"));
+  fs.copyFileSync(
+    path.join(appPath, ".next/required-server-files.json"),
+    path.join(outputPath, ".next/required-server-files.json"),
+  );
+
+  fs.cpSync(
+    path.join(__dirname, "../assets/sharp-node-modules"),
+    path.join(outputPath, "node_modules"),
+    { recursive: true }
+  );
+
+  // Create the code
+  const buildTempPath = path.join(outputDir, ".image-optimization-build");
+  fs.mkdirSync(buildTempPath, { recursive: true });
+  fs.copyFileSync(
+    path.join(__dirname, "../assets/image-optimization-adapter.js"),
+    path.join(buildTempPath, "image-optimization-adapter.js")
+  );
+
+  // Create the Lambda handler inside the .next/standalone directory
+  const result = buildSync({
+    entryPoints: [path.join(buildTempPath, "image-optimization-adapter.js")],
+    target: "esnext",
+    format: "esm",
+    platform: "node",
+    external: ["sharp"],
+    metafile: true,
+    bundle: true,
+    write: true,
+    allowOverwrite: true,
+    outfile: path.join(outputPath, "index.mjs"),
+    banner: {
+      js: [
+        "import { createRequire as topLevelCreateRequire } from 'module';",
+        "const require = topLevelCreateRequire(import.meta.url);",
+        "import url from 'url';",
+        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+      ].join(""),
+    },
+  });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(`There was a problem bundling the image optimization handler.`);
   }
 }
 
@@ -82,7 +147,7 @@ function createMiddlewareBundle(src: string) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Create the middleware code
-  const buildTempPath = path.join(outputDir, "../.middleware-build");
+  const buildTempPath = path.join(outputDir, ".middleware-build");
   fs.mkdirSync(buildTempPath, { recursive: true });
   fs.writeFileSync(path.join(buildTempPath, "middleware.js"), src);
   fs.copyFileSync(
