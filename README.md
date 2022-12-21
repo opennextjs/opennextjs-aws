@@ -25,7 +25,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] Server-side rendering (SSR)
 - [x] Incremental static regeneration (ISR)
 - [x] Middleware
-- [ ] Image optimization (work in progress)
+- [x] Image optimization
 
 ## Quick start
 
