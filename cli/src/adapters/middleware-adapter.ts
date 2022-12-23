@@ -1,3 +1,8 @@
+import type {
+  CloudFrontRequestEvent,
+  CloudFrontRequestResult,
+  CloudFrontHeaders
+} from "aws-lambda"
 import { default as fetch, Headers, Request, Response } from "node-fetch";
 Object.assign(globalThis, {
   Request,
@@ -6,15 +11,17 @@ Object.assign(globalThis, {
   Headers,
   self: {}
 });
+// @ts-ignore
 const index = await (() => import("./middleware.js"))();
 
-export async function handler(event) {
-  // Convert CloudFront request to Node request
+export async function handler(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
   const request = event.Records[0].cf.request;
   const { uri, method, headers, querystring, body } = request;
   console.log(uri);
   console.log(request);
   console.log(request.headers);
+
+  // Convert CloudFront request to Node request
   const requestHeaders = new Headers();
   for (const [key, values] of Object.entries(headers)) {
     for (const { value } of values) {
@@ -38,12 +45,12 @@ export async function handler(event) {
 
   // Process request
   const response = await index.default(nodeRequest, {
-    waitUntil: () => {},
+    waitUntil: () => { },
   });
+  console.log("middleware response header", response.headers);
 
   // WORKAROUND (AWS): pass middleware headers to server
   if (response.headers.get("x-middleware-next") === "1") {
-    console.log("== getMiddlewareHeaders ==", response.headers);
     headers["x-op-middleware-request-headers"] = [{
       key: "x-op-middleware-request-headers",
       value: getMiddlewareRequestHeaders(response),
@@ -52,47 +59,42 @@ export async function handler(event) {
       key: "x-op-middleware-response-headers",
       value: getMiddlewareResponseHeaders(response),
     }];
-    console.log("== conitnue to origin ==", request)
     return request;
   }
 
-  console.log("== do not hit origin ==", response, {
-    status: response.status,
-    headers: httpHeadersToCfHeaders(response.headers),
-  });
   return {
     status: response.status,
     headers: httpHeadersToCfHeaders(response.headers),
   };
 }
 
-function getMiddlewareRequestHeaders(response) {
-  const headers = {};
+function getMiddlewareRequestHeaders(response: any) {
+  const headers: Record<string, string> = {};
   (response.headers.get("x-middleware-override-headers") || "")
     .split(",")
-    .forEach(key => {
+    .forEach((key: string) => {
       headers[key] = response.headers.get(`x-middleware-request-${key}`)
     });
-  console.log("== getMiddlewareRequestHeaders ==", headers);
+  console.log("getMiddlewareRequestHeaders", headers);
   return JSON.stringify(headers);
 }
 
-function getMiddlewareResponseHeaders(response) {
-  const headers = {};
-  response.headers.forEach((value, key) => {
+function getMiddlewareResponseHeaders(response: any) {
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value: string, key: string) => {
     if (!key.startsWith("x-middleware-")) {
       headers[key] = value;
     }
   });
-  console.log("== getMiddlewareResponseHeaders ==", headers);
+  console.log("getMiddlewareResponseHeaders", headers);
   return JSON.stringify(headers);
 }
 
-function httpHeadersToCfHeaders(httpHeaders) {
-  const headers = {};
-  httpHeaders.forEach((value, key) => {
+function httpHeadersToCfHeaders(httpHeaders: any) {
+  const headers: CloudFrontHeaders = {};
+  httpHeaders.forEach((value: string, key: string) => {
     headers[key] = [{ key, value }];
   });
-  console.log("== responseHeadersToCloudFrontHeaders ==", headers);
+  console.log("httpHeadersToCfHeaders", headers);
   return headers;
 }

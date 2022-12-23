@@ -21,7 +21,7 @@
     "@aws-sdk/client-s3": "^3.234.0",
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@tsconfig/node16": "^1.0.3",
+    "@tsconfig/node18": "^1.0.1",
     "@vercel/build-utils": "^5.7.0",
     "@vercel/next": "^3.3.2",
     "esbuild": "^0.15.18",
@@ -30,7 +30,8 @@
     "yargs": "^17.6.2"
   },
   "devDependencies": {
-    "@types/node": "^18.11.10",
+    "@types/aws-lambda": "^8.10.109",
+    "@types/node": "^18.11.17",
     "typescript": "^4.9.3"
   },
   "bugs": {
