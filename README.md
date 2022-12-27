@@ -13,6 +13,15 @@
 
 ---
 
+<p align="center">
+  <a href="https://open-next.js.org/">Website</a> |
+  <a href="#quick-start">Quick start</a> |
+  <a href="#recommended-infrastructure">Infrastructure</a> |
+  <a href="#example">Example</a> |
+  <a href="#contribute">Contribute</a> |
+  <a href="#faq">FAQ</a>
+</p>
+
 OpenNext takes the Next.js build output and converts it into a package that can be deployed to any functions as a service platform.
 
 ## Features
@@ -46,14 +55,29 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
    ```bash
    my-next-app/
      .open-next/
-       assets/                -> Static assets to upload to an S3 Bucket
-       server-function/       -> Handler code for server Lambda Function
-       middleware-function/   -> Handler code for middleware Lambda@Edge Function
+       assets/                        -> Static files to upload to an S3 Bucket
+       server-function/               -> Handler code for server Lambda Function
+       middleware-function/           -> Handler code for middleware Lambda@Edge Function
+       image-optimization-function/   -> Handler code for image optimization Lambda Function
    ```
 
-## Recommeded infrastructure
+   If your Next.js app does not use [middleware](https://nextjs.org/docs/advanced-features/middleware), `middleware-function` will not be generated.
 
-OpenNext does not create the underlying infrastructure. You can create the infrastructure for your app with your preferred tool — SST, CDK, Serverless Framework, Terraform, etc.
+## How does OpenNext work?
+
+When calling `open-next build`, OpenNext **builds the Next.js app** using the `@vercel/next` package. And then it **transforms the build output** to a format that can be deployed to AWS.
+
+#### Building Next.js app
+
+OpenNext imports the `@vercel/next` package to do the build. The package internally calls `next build` with the [`minimalMode`](https://github.com/vercel/next.js/discussions/29801) flag. This flag disables running middleware in the server code. Instead, it bundles the middleware code separately. This allows us to deploy middleware to edge locations. That is similar to how middleware is deployed on Vercel.
+
+#### Transforming build output
+
+Then the build output gets transformed into a format that can be deployed to AWS. Files in `assets/` are ready to be uploaded to AWS S3. And function code are wrapped inside Lambda handlers. They are ready to be deployed to AWS Lambda and Lambda@Edge.
+
+## Recommeded infrastructure on AWS
+
+OpenNext does not create the underlying infrastructure. You can create the infrastructure for your app with your preferred tool — SST, CDK, Terraform, Serverless Framework, etc.
 
 This is the recommended setup.
 
@@ -61,35 +85,97 @@ This is the recommended setup.
   <img alt="Architecture" src="docs/public/architecture.png" width="800" />
 </p>
 
-A few AWS resources need to be created:
+Let's dive into the recommended configuration for each AWS resource.
 
-- An S3 bucket to host static assets from `.open-next/assets`.
-- A Lambda function handling server and API requests.
-- A Lambda function handling image optimization requests.
-- A CloudFront distribution that routes incoming requests based on URL path.
-- And finally a Lambda@Edge function that runs the middleware before requests hit the CloudFront.
+#### S3 bucket
 
-## How does OpenNext work?
+Create an S3 bucket and upload the content in `.open-next/assets` to the root of the bucket. For example, `.open-next/assets/favicon.ico` would get uploaded to `/favicon.ico` off the bucket root.
 
-When you call `npx open-next build`, behind the scenes OpenNext builds your Next.js app using the `@vercel/next` package. This package does 2 things:
+There are two types of files in `.open-next/assets`:
 
-- It calls `next build` with the [`minimalMode`](https://github.com/vercel/next.js/discussions/29801) flag. This flag disables running middleware in the server code.
+**Hashed files**
 
-- Instead, it bundles the middleware separately. This allows us to deploy middleware to edge locations.
+These are files with a hash component in the file name. Hashed files are located inside `.open-next/assets/_next`, ie. `.open-next/assets/_next/static/css/0275f6d90e7ad339.css`. The hash values in the filenames are guaranteed to change when the content of the files change. So hashed files should be cached both at the CDN level and at the browser level. When uploading the hashed files to S3, the recommended cache control setting is
 
-Then `open-next` transforms `@vercel/next`'s build output into a format that can be deployed to AWS. The following steps are performed:
+```
+public,max-age=31536000,immutable
+```
 
-1. Creates a `.open-next` directory in the user's Next.js app.
+**Un-hashed files**
 
-1. Bundles the middleware handler with the [middleware adapter](/cli/assets/middleware-adapter.js). And outputs the handler file into `.open-next/middleware-function`.
+Other files inside `.open-next/assets` are copied over from your app's `public/` folder, ie. `.open-next/assets/favicon.ico`. The file name for un-hashed files can remain unchanged when the content change. Un-hashed files should be cached at the CDN level, but not at the browser level. And when the content of un-hashed files change, invalidate the CDN cache on deploy. When uploading the un-hashed files to S3, the recommended cache control setting is
 
-1. Bundles the server handler with the [server adapter](/cli/assets/server-adapter.cjs). And outputs the handler file into `.open-next/server-function`. Also copies over other server assets from `.next/standalone`.
+```
+public,max-age=0,s-maxage=31536000,must-revalidate
+```
 
-1. Bundles the static assets into `.open-next/assets` with the following content:
+#### Image optimization function
 
-- `public`
-- `.next/BUILD_ID`
-- `.next/static`
+Create a Lambda function with the code from `.open-next/image-optimization-function`.
+
+This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library is bundled with the function. And it is used to convert the image.
+
+Note that image optimization function responds with the `Cache-Control` header, and the image will be cached both at the CDN level and at the browser level.
+
+#### Server Lambda function
+
+Create a Lambda function with the code from `.open-next/server-function`.
+
+This function handles all the other types of requests from the Next.js app, including Server-side Rendering (SSR) requests and API requests. OpenNext builds the Next.js app in the **standalone** mode. The standalone mode generates a **NextServer** class that does the request handling. And the server function wraps around the NextServer.
+
+#### CloudFront distribution
+
+Create a CloudFront distribution, and dispatch requests to their cooresponding handlers (behaviors). The following behaviors are configured:
+
+| Behavior          | Requests            | Origin                                                                                                                                | Allowed Headers                                                                                                                                                                                                               |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                             |                                                                                                                                                                                                                               |
+| `/_next/image`    | Image optimization  | image optimization function                                                                                                           | `Accept`                                                                                                                                                                                                                      |
+| `/_next/data/*`   | data requests       | server function                                                                                                                       | `x-op-middleware-request-headers`<br />`x-op-middleware-response-headers`<br />`x-nextjs-data`<br />`x-middleware-prefetch`<br />[see why](#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific) |
+| `/api/*`          | API                 | server function                                                                                                                       |                                                                                                                                                                                                                               |
+| `/*`              | catch all           | server function<br />fallback to S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) | `x-op-middleware-request-headers`<br />`x-op-middleware-response-headers`<br />`x-nextjs-data`<br />`x-middleware-prefetch`<br />[see why](#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific) |
+
+#### Middleware Lambda@Edge function (optional)
+
+Create a Lambda function with the code from `.open-next/middleware-function`, and attach it to the `/_next/data/*` and `/*` behaviors as `viewer request` edge function. This allows the function to run your [Middleware](https://nextjs.org/docs/advanced-features/middleware) code before the request hits your server function, and also before cached content.
+
+Note that if middleware is not used in the Next.js app, the `middleware-function` will not be generated. In this case, you don't have to create the Lambda@Edge function, and configure it in the CloudFront distribution.
+
+## Limitations and workarounds
+
+#### WORKAROUND: `public/` static files served out by server function (AWS specific)
+
+Recall in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are staitc, and are uploaded to the S3 bucket. Ideally, requests to these files should be handled by the S3 bucket. For example:
+
+```
+https://my-nextjs-app.com/favicon.ico
+```
+
+This requires the CloudFront distribution to have the behavior `/favicon.ico`, and set the S3 bucket as the origin. However, CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions). It is not a scalable solution to create 1 behavior per file.
+
+To workaround the issue, requests to `public/` files are handled by the cache all behavior `/*`. The behavior sends the request to the server function first. And if the server fails to handle the request, it will fallback to the S3 bucket.
+
+This means on cache miss, the request will take slightly longer to process.
+
+#### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
+
+Recall in the [Server function](#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. `NextServer` does not seem to set the correct `Cache Control` headers.
+
+To workaround the issue, the server function checks if the request is to an HTML page. And it will set the `Cache Control` header:
+
+```
+public, max-age=0, s-maxage=31536000, must-revalidate
+```
+
+#### WORKAROUND: Pass headers from middleware function to server function (AWS specific)
+
+[Middleware](https://nextjs.org/docs/advanced-features/middleware) allows you to modify the request and response headers. This requires the middleware function to be able to pass custom headers defined in your Next.js app's middleware code to the server function.
+
+CloudFront lets your pass all headers to the server function. But by doing so, the `Host` header is also passed along to the server function. And API Gateway would reject the request. There is no way to configure CloudFront too pass **all but `Host` header**.
+
+To workaround the issue, the middleware function JSON encodes all request headers into the `x-op-middleware-request-headers` header. And all response headers into the `x-op-middleware-response-headers` header. The server function will then decodes the headers.
+
+Note that the `x-op-middleware-request-headers` and `x-op-middleware-response-headers` headers need to be added to CloudFront distribution's cache policy allowed list.
 
 ## Example
 
@@ -104,6 +190,31 @@ You can find the middleware log in the AWS CloudWatch console of the **region yo
 ## Opening an issue
 
 Create a PR and add a new page to the benchmark app in `example` with the issue.
+
+## Contribute
+
+To run `OpenNext` locally:
+
+1. Clone this repo
+1. Build `open-next`
+   ```bash
+   cd open-next
+   yarn build
+   ```
+1. Run `open-next` in watch mode
+   ```bash
+   yarn dev
+   ```
+1. Make `open-next` linkable from your Next.js app
+   ```bash
+   yarn link
+   ```
+1. Link `open-next` in your Next.js app
+   ```bash
+   cd path/to/my/nextjs/app
+   yarn link open-next
+   ```
+   Now you can make changes in `open-next`, and run `yarn open-next build` in your Next.js app to test the changes.
 
 ## FAQ
 

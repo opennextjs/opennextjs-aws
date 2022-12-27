@@ -70,7 +70,7 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
   // Invoke NextServer
   const response: APIGatewayProxyResultV2 = await server(event, context);
 
-  // Handle cache response headers not set for HTML pages
+  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages
   if (htmlPages.includes(event.rawPath) && !response.headers?.["cache-control"]) {
     response.headers!["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
