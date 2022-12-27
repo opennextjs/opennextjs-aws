@@ -16,7 +16,7 @@
 <p align="center">
   <a href="https://open-next.js.org/">Website</a> |
   <a href="#quick-start">Quick start</a> |
-  <a href="#recommended-infrastructure">Infrastructure</a> |
+  <a href="#recommeded-infrastructure-on-aws">Infrastructure</a> |
   <a href="#example">Example</a> |
   <a href="#contribute">Contribute</a> |
   <a href="#faq">FAQ</a>
