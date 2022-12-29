@@ -1,7 +1,15 @@
 import { useRouter } from "next/router";
 import Layout from "../components/layout";
 
-export default function Page() {
+export async function getServerSideProps(context) {
+  return {
+    props: {
+      qs: JSON.stringify(context.query),
+    },
+  };
+}
+
+export default function Page({ qs }) {
   return (
     <Layout>
       <article>
@@ -11,7 +19,7 @@ export default function Page() {
         <hr />
         <p>
           <b>Test 1:</b>
-          URL query contains country, city, and region: {JSON.stringify(useRouter().query)}
+          URL query contains country, city, and region: {qs}
         </p>
       </article>
     </Layout>
