@@ -27,8 +27,8 @@ export async function middleware(request) {
   }
   if (request.nextUrl.pathname === "/middleware-geolocation") {
     const { nextUrl: url, geo } = request
-    console.log("== request", request);
-    console.log("== geo", geo);
+    //console.log("== request", request);
+    //console.log("== geo", geo);
     const country = geo.country || "US"
     const city = geo.city || "San Francisco"
     const region = geo.region || "CA"
