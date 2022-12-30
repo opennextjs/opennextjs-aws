@@ -25,7 +25,6 @@
     "@vercel/build-utils": "^5.7.0",
     "@vercel/next": "^3.3.2",
     "esbuild": "^0.15.18",
-    "node-fetch": "^3.3.0",
     "serverless-http": "^3.1.0",
     "yargs": "^17.6.2"
   },
@@ -39,7 +38,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/serverless-stack/open-next.git",
-    "directory": "cli"
+    "url": "git+https://github.com/serverless-stack/open-next.git"
   }
 }

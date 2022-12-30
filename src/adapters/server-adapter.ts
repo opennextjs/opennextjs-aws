@@ -61,7 +61,7 @@ const server = slsHttp(
 export async function handler(event: APIGatewayProxyEventV2, context: Context): Promise<APIGatewayProxyResultV2> {
   console.log(event)
 
-  // WORKAROUND (AWS): pass middleware headers to server
+  // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   const middlewareRequestHeaders = JSON.parse(
     event.headers["x-op-middleware-request-headers"] || "{}"
   );
@@ -70,12 +70,12 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
   // Invoke NextServer
   const response: APIGatewayProxyResultV2 = await server(event, context);
 
-  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages
+  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
   if (htmlPages.includes(event.rawPath) && !response.headers?.["cache-control"]) {
     response.headers!["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
-  // WORKAROUND (AWS): pass middleware headers to server
+  // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   const middlewareResponseHeaders = JSON.parse(
     event.headers["x-op-middleware-response-headers"] || "{}"
   );

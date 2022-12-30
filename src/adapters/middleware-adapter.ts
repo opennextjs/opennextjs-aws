@@ -3,14 +3,7 @@ import type {
   CloudFrontRequestResult,
   CloudFrontHeaders
 } from "aws-lambda"
-import { default as fetch, Headers, Request, Response } from "node-fetch";
-Object.assign(globalThis, {
-  Request,
-  Response,
-  fetch,
-  Headers,
-  self: {}
-});
+
 // @ts-ignore
 const index = await (() => import("./middleware.js"))();
 
@@ -22,6 +15,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   console.log(request.headers);
 
   // Convert CloudFront request to Node request
+  // @ts-ignore Types has not been added for Node 18 native fetch API
   const requestHeaders = new Headers();
   for (const [key, values] of Object.entries(headers)) {
     for (const { value } of values) {
@@ -33,6 +27,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   const host = headers["host"][0].value;
   const qs = querystring.length > 0 ? `?${querystring}` : "";
   const url = new URL(`${uri}${qs}`, `https://${host}`);
+  // @ts-ignore Types has not been added for Node 18 native fetch API
   const nodeRequest = new Request(url.toString(), {
     method,
     headers: requestHeaders,
@@ -49,7 +44,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   });
   console.log("middleware response header", response.headers);
 
-  // WORKAROUND (AWS): pass middleware headers to server
+  // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   if (response.headers.get("x-middleware-next") === "1") {
     headers["x-op-middleware-request-headers"] = [{
       key: "x-op-middleware-request-headers",

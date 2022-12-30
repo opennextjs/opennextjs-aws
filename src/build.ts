@@ -20,6 +20,7 @@ export async function build() {
 
   // Generate deployable bundle
   printHeader("Generating OpenNext bundle");
+  printVersion();
   cleanupOutputDir();
   copyAdapterFiles();
   createServerBundle();
@@ -56,6 +57,12 @@ function printHeader(header: string) {
     `│ ${header} │`,
     "└" + "─".repeat(header.length + 2) + "┘",
   ].join("\n"));
+}
+
+function printVersion() {
+  const pathToPackageJson = path.join(__dirname, "../package.json");
+  const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
+  console.log(`Using v${pkg.version}`);
 }
 
 function cleanupOutputDir() {
@@ -198,6 +205,30 @@ function createMiddlewareBundle(buildOutput: any) {
     write: true,
     allowOverwrite: true,
     outfile: path.join(outputPath, "index.mjs"),
+    banner: {
+      js: [
+        // WORKAROUND: Add `Headers.getAll()` extension to the middleware function — https://github.com/serverless-stack/open-next#workaround-add-headersgetall-extension-to-the-middleware-function
+        "class Response extends globalThis.Response {",
+        "  constructor(body, init) {",
+        "    super(body, init);",
+        "    this.headers.getAll = (name) => {",
+        "      name = name.toLowerCase();",
+        "      if (name !== 'set-cookie') {",
+        "        throw new Error('Headers.getAll is only supported for Set-Cookie');",
+        "      }",
+        "      return [...this.headers.entries()]",
+        "        .filter(([key]) => key === name)",
+        "        .map(([, value]) => value);",
+        "    };",
+        "  }",
+        "}",
+        // Polyfill Response and self
+        "Object.assign(globalThis, {",
+        "  Response,",
+        "  self: {},",
+        "});",
+      ].join(""),
+    },
   });
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
