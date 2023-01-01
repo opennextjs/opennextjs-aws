@@ -1,6 +1,6 @@
 {
   "name": "open-next",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Open source Next.js serverless adapter",
   "homepage": "https://open-next.js.org",
   "type": "module",
@@ -24,7 +24,7 @@
     "@vercel/build-utils": "^5.7.0",
     "@vercel/next": "^3.3.2",
     "esbuild": "^0.15.18",
-    "node-fetch": "^3.3.0",
+    "serverless-http": "^3.1.0",
     "yargs": "^17.6.2"
   },
   "devDependencies": {
@@ -41,7 +41,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/serverless-stack/open-next.git",
-    "directory": "cli"
+    "url": "git+https://github.com/serverless-stack/open-next.git"
   }
 }

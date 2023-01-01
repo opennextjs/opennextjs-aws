@@ -139,6 +139,8 @@ Create a CloudFront distribution, and dispatch requests to their cooresponding h
 
 Create a Lambda function with the code from `.open-next/middleware-function`, and attach it to the `/_next/data/*` and `/*` behaviors as `viewer request` edge function. This allows the function to run your [Middleware](https://nextjs.org/docs/advanced-features/middleware) code before the request hits your server function, and also before cached content.
 
+The middleware function uses the Node.js 18 [global fetch API](https://nodejs.org/de/blog/announcements/v18-release-announce/#new-globally-available-browser-compatible-apis). It requires to run on Node.js 18 runtime. [See why Node.js 18 runtime is required.](#workaround-add-headersgetall-extension-to-the-middleware-function)
+
 Note that if middleware is not used in the Next.js app, the `middleware-function` will not be generated. In this case, you don't have to create the Lambda@Edge function, and configure it in the CloudFront distribution.
 
 ## Limitations and workarounds
@@ -176,6 +178,15 @@ CloudFront lets your pass all headers to the server function. But by doing so, t
 To workaround the issue, the middleware function JSON encodes all request headers into the `x-op-middleware-request-headers` header. And all response headers into the `x-op-middleware-response-headers` header. The server function will then decodes the headers.
 
 Note that the `x-op-middleware-request-headers` and `x-op-middleware-response-headers` headers need to be added to CloudFront distribution's cache policy allowed list.
+
+#### WORKAROUND: Add `Headers.getAll()` extension to the middleware function
+
+Vercel uses the `Headers.getAll()` function in the middleware code. This function is not part of the Node.js 18 [global fetch API](https://nodejs.org/de/blog/announcements/v18-release-announce/#new-globally-available-browser-compatible-apis). We have two options:
+
+1. Inject the `getAll()` function to the global fetch API.
+2. Use the [`node-fetch`](https://github.com/node-fetch/node-fetch) package to polyfill the fetch API.
+
+We decided to go with option 1. It does not require addition dependency. And it is likely that Vercel removes the usage of the `getAll()` function down the road.
 
 ## Example
 
