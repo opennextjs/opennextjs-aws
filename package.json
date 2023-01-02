@@ -1,6 +1,6 @@
 {
   "name": "open-next",
-  "version": "0.4.1",
+  "version": "0.0.1",
   "description": "Open source Next.js serverless adapter",
   "homepage": "https://open-next.js.org",
   "type": "module",
