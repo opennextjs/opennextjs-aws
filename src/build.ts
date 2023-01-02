@@ -1,14 +1,14 @@
 import fs from "node:fs";
 import url from "node:url";
 import path from "node:path";
-import { buildSync } from "esbuild";
+import { buildSync, BuildOptions } from "esbuild";
 // @ts-ignore @vercel/next does not provide types
 import { build as nextBuild } from "@vercel/next";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
 const outputDir = ".open-next";
-const buildDir = path.join(outputDir, ".build");
+const tempDir = path.join(outputDir, ".build");
 
 export async function build() {
   // Pre-build validation
@@ -21,8 +21,7 @@ export async function build() {
   // Generate deployable bundle
   printHeader("Generating OpenNext bundle");
   printVersion();
-  cleanupOutputDir();
-  copyAdapterFiles();
+  initOutputDir();
   createServerBundle();
   createImageOptimizationBundle();
   createMiddlewareBundle(buildOutput);
@@ -65,22 +64,15 @@ function printVersion() {
   console.log(`Using v${pkg.version}`);
 }
 
-function cleanupOutputDir() {
+function initOutputDir() {
   fs.rmSync(outputDir, { recursive: true, force: true });
+  fs.mkdirSync(tempDir, { recursive: true });
 }
 
 function isMiddlewareEnabled() {
   const filePath = path.join(appPath, ".next", "server", "middleware-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json).sortedMiddleware.length > 0;
-}
-
-function copyAdapterFiles() {
-  fs.cpSync(
-    path.join(__dirname, "adapters"),
-    path.join(buildDir),
-    { recursive: true }
-  );
 }
 
 function createServerBundle() {
@@ -91,10 +83,12 @@ function createServerBundle() {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy over standalone output files
+  // note: if user uses pnpm as the package manager, node_modules contain
+  //       symlinks. We don't want to resolve the symlinks when copying.
   fs.cpSync(
     path.join(appPath, ".next/standalone"),
     path.join(outputPath),
-    { recursive: true }
+    { recursive: true, verbatimSymlinks: true }
   );
 
   // Standalone output already has a Node server "server.js", remove it.
@@ -105,13 +99,12 @@ function createServerBundle() {
   );
 
   // Build Lambda code
-  const result = buildSync({
-    entryPoints: [path.join(buildDir, "server-adapter.js")],
-    target: "esnext",
-    format: "esm",
-    platform: "node",
+  // note: bundle in OpenNext package b/c the adatper relys on the
+  //       "serverless-http" package which is not a dependency in user's
+  //       Next.js app.
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
     external: ["next"],
-    bundle: true,
     outfile: path.join(outputPath, "index.mjs"),
     banner: {
       js: [
@@ -122,11 +115,6 @@ function createServerBundle() {
       ].join(""),
     },
   });
-
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling the server handler.`);
-  }
 }
 
 function createImageOptimizationBundle() {
@@ -136,16 +124,23 @@ function createImageOptimizationBundle() {
   const outputPath = path.join(outputDir, "image-optimization-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Build Lambda code
-  const result = buildSync({
-    entryPoints: [path.join(buildDir, "image-optimization-adapter.js")],
-    target: "esnext",
-    format: "esm",
-    platform: "node",
+  // Build Lambda code (1st pass)
+  // note: bundle in OpenNext package b/c the adatper relys on the
+  //       "@aws-sdk/client-s3" package which is not a dependency in user's
+  //       Next.js app.
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "image-optimization-adapter.js")],
+    external: ["sharp", "next"],
+    outfile: path.join(outputPath, "index.mjs"),
+  });
+
+  // Build Lambda code (2nd pass)
+  // note: bundle in user's Next.js app again b/c the adatper relys on the
+  //       "next" package. And the "next" package from user's app should
+  //       be used.
+  esbuildSync({
+    entryPoints: [path.join(outputPath, "index.mjs")],
     external: ["sharp"],
-    metafile: true,
-    bundle: true,
-    write: true,
     allowOverwrite: true,
     outfile: path.join(outputPath, "index.mjs"),
     banner: {
@@ -154,13 +149,9 @@ function createImageOptimizationBundle() {
         "const require = topLevelCreateRequire(import.meta.url);",
         "import url from 'url';",
         "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
-      ].join(""),
+      ].join("\n"),
     },
   });
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling the image optimization handler.`);
-  }
 
   // Copy over .next/required-server-files.json file
   fs.mkdirSync(path.join(outputPath, ".next"));
@@ -192,18 +183,15 @@ function createMiddlewareBundle(buildOutput: any) {
 
   // Save middleware code to file
   const src: string = buildOutput.output.middleware.files["index.js"].data;
-  fs.writeFileSync(path.join(buildDir, "middleware.js"), src);
+  fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
+  fs.copyFileSync(
+    path.join(__dirname, "adapters", "middleware-adapter.js"),
+    path.join(tempDir, "middleware-adapter.js"),
+  );
 
   // Build Lambda code
-  const result = buildSync({
-    entryPoints: [path.join(buildDir, "middleware-adapter.js")],
-    target: "esnext",
-    format: "esm",
-    platform: "node",
-    metafile: true,
-    bundle: true,
-    write: true,
-    allowOverwrite: true,
+  esbuildSync({
+    entryPoints: [path.join(tempDir, "middleware-adapter.js")],
     outfile: path.join(outputPath, "index.mjs"),
     banner: {
       js: [
@@ -230,10 +218,6 @@ function createMiddlewareBundle(buildOutput: any) {
       ].join(""),
     },
   });
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling the middleware handler.`);
-  }
 }
 
 function createAssets() {
@@ -262,4 +246,19 @@ function createAssets() {
     outputPath,
     { recursive: true }
   );
+}
+
+function esbuildSync(options: BuildOptions) {
+  const result = buildSync({
+    target: "esnext",
+    format: "esm",
+    platform: "node",
+    bundle: true,
+    ...options,
+  });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(`There was a problem bundling ${(options.entryPoints as string[])[0]}.`);
+  }
 }
