@@ -11,18 +11,22 @@ const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
 export async function build() {
+  printVersion();
+
   // Pre-build validation
+  printHeader("Validating Next.js app");
   checkRunningInsideNextjsApp();
+  setStandaloneBuildMode();
+  const monorepoRoot = findMonorepoRoot();
 
   // Build Next.js app
-  setStandaloneBuildMode();
-  const buildOutput = await buildNextjsApp();
+  printHeader("Building Next.js app");
+  const buildOutput = await buildNextjsApp(monorepoRoot);
 
   // Generate deployable bundle
-  printHeader("Generating OpenNext bundle");
-  printVersion();
+  printHeader("Generating bundle");
   initOutputDir();
-  createServerBundle();
+  createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
   createMiddlewareBundle(buildOutput);
   createAssets();
@@ -35,14 +39,35 @@ function checkRunningInsideNextjsApp() {
   }
 }
 
+function findMonorepoRoot() {
+  let currentPath = appPath;
+  while (currentPath !== "/") {
+    if (fs.existsSync(path.join(currentPath, "package-lock.json"))
+      || fs.existsSync(path.join(currentPath, "yarn.lock"))
+      || fs.existsSync(path.join(currentPath, "pnpm-lock.yaml"))) {
+      if (currentPath !== appPath) {
+        console.info("Monorepo root detected at", currentPath);
+      }
+      return currentPath;
+    }
+    currentPath = path.dirname(currentPath);
+  }
+
+  // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
+  //       not found in the app's directory or any of its parent directories.
+  //       We are going to assume that the app is not part of a monorepo.
+  return appPath;
+}
+
 function setStandaloneBuildMode() {
   // Equivalent to setting `target: 'standalone'` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
 }
 
-function buildNextjsApp() {
+function buildNextjsApp(monorepoRoot: string) {
   return nextBuild({
     files: [],
+    repoRootPath: monorepoRoot,
     workPath: appPath,
     entrypoint: "next.config.js",
     config: {},
@@ -51,7 +76,8 @@ function buildNextjsApp() {
 }
 
 function printHeader(header: string) {
-  console.log([
+  header = `OpenNext — ${header}`;
+  console.info([
     "┌" + "─".repeat(header.length + 2) + "┐",
     `│ ${header} │`,
     "└" + "─".repeat(header.length + 2) + "┘",
@@ -61,7 +87,7 @@ function printHeader(header: string) {
 function printVersion() {
   const pathToPackageJson = path.join(__dirname, "../package.json");
   const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
-  console.log(`Using v${pkg.version}`);
+  console.info(`Using v${pkg.version}`);
 }
 
 function initOutputDir() {
@@ -75,8 +101,8 @@ function isMiddlewareEnabled() {
   return JSON.parse(json).sortedMiddleware.length > 0;
 }
 
-function createServerBundle() {
-  console.debug(`Bundling server function...`);
+function createServerBundle(monorepoRoot: string) {
+  console.info(`Bundling server function...`);
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-function");
@@ -90,6 +116,20 @@ function createServerBundle() {
     path.join(outputPath),
     { recursive: true, verbatimSymlinks: true }
   );
+  // note: if user's app is inside a monorepo, standalone mode places
+  //       `node_modules` inside `.next/standalone`, and others inside
+  //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
+  //       We need to move them to the root of the output folder.
+  if (monorepoRoot) {
+    const packagePath = path.relative(monorepoRoot, appPath);
+    fs.readdirSync(path.join(outputPath, packagePath))
+      .forEach(file => {
+        fs.renameSync(
+          path.join(outputPath, packagePath, file),
+          path.join(outputPath, file)
+        );
+      });
+  }
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
@@ -118,7 +158,7 @@ function createServerBundle() {
 }
 
 function createImageOptimizationBundle() {
-  console.debug(`Bundling image optimization function...`);
+  console.info(`Bundling image optimization function...`);
 
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
@@ -170,10 +210,10 @@ function createImageOptimizationBundle() {
 
 function createMiddlewareBundle(buildOutput: any) {
   if (isMiddlewareEnabled()) {
-    console.debug(`Bundling middleware edge function...`);
+    console.info(`Bundling middleware edge function...`);
   }
   else {
-    console.debug(`Bundling middleware edge function... \x1b[36m%s\x1b[0m`, "skipped");
+    console.info(`Bundling middleware edge function... \x1b[36m%s\x1b[0m`, "skipped");
     return;
   }
 
@@ -221,7 +261,7 @@ function createMiddlewareBundle(buildOutput: any) {
 }
 
 function createAssets() {
-  console.debug(`Bundling assets...`);
+  console.info(`Bundling assets...`);
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
