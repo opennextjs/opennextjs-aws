@@ -63,6 +63,12 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
    If your Next.js app does not use [middleware](https://nextjs.org/docs/advanced-features/middleware), `middleware-function` will not be generated.
 
+3. Add `.open-next` to your `.gitignore` file
+   ```
+   # OpenNext
+   /.open-next/
+   ```
+
 ## How does OpenNext work?
 
 When calling `open-next build`, OpenNext **builds the Next.js app** using the `@vercel/next` package. And then it **transforms the build output** to a format that can be deployed to AWS.
@@ -111,7 +117,7 @@ public,max-age=0,s-maxage=31536000,must-revalidate
 
 #### Image optimization function
 
-Create a Lambda function with the code from `.open-next/image-optimization-function`.
+Create a Lambda function with the code from `.open-next/image-optimization-function`, and the handler is `index.mjs`.
 
 This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library is bundled with the function. And it is used to convert the image.
 
@@ -119,9 +125,47 @@ Note that image optimization function responds with the `Cache-Control` header, 
 
 #### Server Lambda function
 
-Create a Lambda function with the code from `.open-next/server-function`.
+Create a Lambda function with the code from `.open-next/server-function`, and the handler is `index.mjs`.
 
-This function handles all the other types of requests from the Next.js app, including Server-side Rendering (SSR) requests and API requests. OpenNext builds the Next.js app in the **standalone** mode. The standalone mode generates a **NextServer** class that does the request handling. And the server function wraps around the NextServer.
+This function handles all the other types of requests from the Next.js app, including Server-side Rendering (SSR) requests and API requests. OpenNext builds the Next.js app in the **standalone** mode. The standalone mode generates a `.next` folder containing the **NextServer** class that does the request handling. It also generates a `node_modules` folder with **all the dependencies** required to run the `NextServer`.
+
+```
+  .next/              -> NextServer
+  node_modules/       -> dependencies
+```
+
+The server function adapter wraps around `NextServer` and exports a handler function that supports the Lambda request and response. The `server-function` bundle looks like:
+
+```diff
+  .next/              -> NextServer
+  node_modules/       -> dependencies
++ index.mjs           -> server function adapter
+```
+
+**Monorepo**
+The build output looks slightly different when the Next.js app is part of a monorepo. Imagine the app sits inside `packages/web`, the build output looks like:
+
+```
+  packages/
+    web/
+      .next/          -> NextServer
+      node_modules/   -> dependencies from root node_modules (optional)
+  node_modules/       -> dependencies from package node_modules
+```
+
+In this case, the server function adapter needs to be created inside `packages/web` next to `.next/`. This is to ensure the adapter can import dependencies from both `node_modules` folders. We could set the Lambda handler to point to `packages/web/index.mjs`, but it is a bad practice to have the Lambda configuration coupled with the project structure. Instead, we will add a wrapper `index.mjs` at the `server-function` bundle root that re-exports the adapter.
+
+```diff
+  packages/
+    web/
+      .next/          -> NextServer
+      node_modules/   -> dependencies from root node_modules (optional)
++     index.mjs       -> server function adapter
+  node_modules/       -> dependencies from package node_modules
++ index.mjs           -> adapter wrapper
+```
+
+This ensure the Lambda handler remains at `index.mjs`.
 
 #### CloudFront distribution
 
@@ -137,7 +181,7 @@ Create a CloudFront distribution, and dispatch requests to their cooresponding h
 
 #### Middleware Lambda@Edge function (optional)
 
-Create a Lambda function with the code from `.open-next/middleware-function`, and attach it to the `/_next/data/*` and `/*` behaviors as `viewer request` edge function. This allows the function to run your [Middleware](https://nextjs.org/docs/advanced-features/middleware) code before the request hits your server function, and also before cached content.
+Create a Lambda function with the code from `.open-next/middleware-function`, and the handler is `index.mjs`. Attach it to the `/_next/data/*` and `/*` behaviors as `viewer request` edge function. This allows the function to run your [Middleware](https://nextjs.org/docs/advanced-features/middleware) code before the request hits your server function, and also before cached content.
 
 The middleware function uses the Node.js 18 [global fetch API](https://nodejs.org/de/blog/announcements/v18-release-announce/#new-globally-available-browser-compatible-apis). It requires to run on Node.js 18 runtime. [See why Node.js 18 runtime is required.](#workaround-add-headersgetall-extension-to-the-middleware-function)
 
@@ -168,6 +212,55 @@ To workaround the issue, the server function checks if the request is to an HTML
 ```
 public, max-age=0, s-maxage=31536000, must-revalidate
 ```
+
+#### WORKAROUND: Set `NextServer` working directory (AWS specific)
+
+Next.js recommends using `process.cwd()` instead of `__dirname` to get the app directory. Imagine you have a `posts` folder in your app with markdown files:
+
+```
+pages/
+posts/
+  my-post.md
+public/
+next.config.js
+package.json
+```
+
+And you can build the file path like this:
+
+```ts
+path.join(process.cwd(), "posts", "my-post.md");
+```
+
+Recall in the [Server function](#server-lambda-function) section. In a non-monorepo setup, the `server-function` bundle looks like:
+
+```
+.next/
+node_modules/
+posts/
+  my-post.md    <- path is "posts/my-post.md"
+index.mjs
+```
+
+And `path.join(process.cwd(), "posts", "my-post.md")` resolves to the correct path.
+
+However, when the user's app is inside a monorepo (ie. at `/packages/web`), the `server-function` bundle looks like:
+
+```
+packages/
+  web/
+    .next/
+    node_modules/
+    posts/
+      my-post.md    <- path is "packages/web/posts/my-post.md"
+    index.mjs
+node_modules/
+index.mjs
+```
+
+And `path.join(process.cwd(), "posts", "my-post.md")` cannot be resolved.
+
+To workaround the issue, we change the working directory for the server function to where `.next/` is located, ie. `packages/web`.
 
 #### WORKAROUND: Pass headers from middleware function to server function (AWS specific)
 
@@ -210,22 +303,22 @@ To run `OpenNext` locally:
 1. Build `open-next`
    ```bash
    cd open-next
-   yarn build
+   pnpm build
    ```
 1. Run `open-next` in watch mode
    ```bash
-   yarn dev
+   pnpm dev
    ```
 1. Make `open-next` linkable from your Next.js app
    ```bash
-   yarn link
+   pnpm link --global
    ```
 1. Link `open-next` in your Next.js app
    ```bash
    cd path/to/my/nextjs/app
-   yarn link open-next
+   pnpm link --global open-next
    ```
-   Now you can make changes in `open-next`, and run `yarn open-next build` in your Next.js app to test the changes.
+   Now you can make changes in `open-next`, and run `pnpm open-next build` in your Next.js app to test the changes.
 
 ## FAQ
 

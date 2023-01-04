@@ -11,6 +11,7 @@ import type {
 import NextServer from "next/dist/server/next-server.js";
 import { loadConfig } from "./util.js"
 
+setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
@@ -49,8 +50,6 @@ const server = slsHttp(
   {
     binary: true,
     provider: "aws",
-    // TODO: add support for basePath
-    //basePath: process.env.NEXTJS_LAMBDA_BASE_PATH,
   },
 );
 
@@ -90,6 +89,11 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
 // Helper functions //
 //////////////////////
 
+function setNextjsServerWorkingDirectory() {
+  // WORKAROUND: Set `NextServer` working directory (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-nextserver-working-directory-aws-specific
+  process.chdir(__dirname);
+}
+
 function loadHtmlPages() {
   const filePath = path.join(nextDir, "server", "pages-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
@@ -97,69 +101,3 @@ function loadHtmlPages() {
     .filter(([_, value]) => (value as string).endsWith(".html"))
     .map(([key]) => key);
 }
-
-//const createApigHandler = () => {
-//  const config = loadConfig();
-//  const requestHandler = new NextServer(config).getRequestHandler();
-//
-//  return async (event) => {
-//    const request = convertApigRequestToNext(event);
-//    const response = await requestHandler(request);
-//    return convertNextResponseToApig(response);
-//  };
-//};
-//
-//export const handler = createApigHandler();
-
-//function convertApigRequestToNext(event) {
-//  let host = event.headers["x-forwarded-host"] || event.headers.host;
-//  let search = event.rawQueryString.length ? `?${event.rawQueryString}` : "";
-//  let scheme = "https";
-//  let url = new URL(event.rawPath + search, `${scheme}://${host}`);
-//  let isFormData = event.headers["content-type"]?.includes(
-//    "multipart/form-data"
-//  );
-//
-//  // Build headers
-//  const headers = new Headers();
-//  for (let [header, value] of Object.entries(event.headers)) {
-//    if (value) {
-//      headers.append(header, value);
-//    }
-//  }
-//
-//  return new Request(url.href, {
-//    method: event.requestContext.http.method,
-//    headers,
-//    body:
-//      event.body && event.isBase64Encoded
-//        ? isFormData
-//          ? Buffer.from(event.body, "base64")
-//          : Buffer.from(event.body, "base64").toString()
-//        : event.body,
-//  });
-//}
-//
-//async function convertNextResponseToApig(response) {
-//  // Build cookies
-//  // note: AWS API Gateway will send back set-cookies outside of response headers.
-//  const cookies = [];
-//  for (let [key, values] of Object.entries(response.headers.raw())) {
-//    if (key.toLowerCase() === "set-cookie") {
-//      for (let value of values) {
-//        cookies.push(value);
-//      }
-//    }
-//  }
-//
-//  if (cookies.length) {
-//    response.headers.delete("Set-Cookie");
-//  }
-//
-//  return {
-//    statusCode: response.status,
-//    headers: Object.fromEntries(response.headers.entries()),
-//    cookies,
-//    body: await response.text(),
-//  };
-//}
