@@ -169,7 +169,7 @@ This ensure the Lambda handler remains at `index.mjs`.
 
 #### CloudFront distribution
 
-Create a CloudFront distribution, and dispatch requests to their cooresponding handlers (behaviors). The following behaviors are configured:
+Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
 
 | Behavior          | Requests            | Origin                                                                                                                                | Allowed Headers                                                                                                                                                                                                               |
 | ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -191,7 +191,7 @@ Note that if middleware is not used in the Next.js app, the `middleware-function
 
 #### WORKAROUND: `public/` static files served out by server function (AWS specific)
 
-Recall in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are staitc, and are uploaded to the S3 bucket. Ideally, requests to these files should be handled by the S3 bucket. For example:
+Recall in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are static, and are uploaded to the S3 bucket. Ideally, requests to these files should be handled by the S3 bucket. For example:
 
 ```
 https://my-nextjs-app.com/favicon.ico
@@ -199,7 +199,7 @@ https://my-nextjs-app.com/favicon.ico
 
 This requires the CloudFront distribution to have the behavior `/favicon.ico`, and set the S3 bucket as the origin. However, CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions). It is not a scalable solution to create 1 behavior per file.
 
-To workaround the issue, requests to `public/` files are handled by the cache all behavior `/*`. The behavior sends the request to the server function first. And if the server fails to handle the request, it will fallback to the S3 bucket.
+To work around the issue, requests to `public/` files are handled by the cache all behavior `/*`. The behavior sends the request to the server function first. And if the server fails to handle the request, it will fallback to the S3 bucket.
 
 This means on cache miss, the request will take slightly longer to process.
 
@@ -207,7 +207,7 @@ This means on cache miss, the request will take slightly longer to process.
 
 Recall in the [Server function](#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. `NextServer` does not seem to set the correct `Cache Control` headers.
 
-To workaround the issue, the server function checks if the request is to an HTML page. And it will set the `Cache Control` header:
+To work around the issue, the server function checks if the request is to an HTML page. And it will set the `Cache Control` header:
 
 ```
 public, max-age=0, s-maxage=31536000, must-revalidate
@@ -268,7 +268,7 @@ To workaround the issue, we change the working directory for the server function
 
 CloudFront lets your pass all headers to the server function. But by doing so, the `Host` header is also passed along to the server function. And API Gateway would reject the request. There is no way to configure CloudFront too pass **all but `Host` header**.
 
-To workaround the issue, the middleware function JSON encodes all request headers into the `x-op-middleware-request-headers` header. And all response headers into the `x-op-middleware-response-headers` header. The server function will then decodes the headers.
+To work around the issue, the middleware function JSON encodes all request headers into the `x-op-middleware-request-headers` header. And all response headers into the `x-op-middleware-response-headers` header. The server function will then decode the headers.
 
 Note that the `x-op-middleware-request-headers` and `x-op-middleware-response-headers` headers need to be added to CloudFront distribution's cache policy allowed list.
 
