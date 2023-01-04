@@ -11,10 +11,8 @@ const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
 export async function build() {
-  printVersion();
-
   // Pre-build validation
-  printHeader("Validating Next.js app");
+  printVersion();
   checkRunningInsideNextjsApp();
   setStandaloneBuildMode();
   const monorepoRoot = findMonorepoRoot();
@@ -46,7 +44,7 @@ function findMonorepoRoot() {
       || fs.existsSync(path.join(currentPath, "yarn.lock"))
       || fs.existsSync(path.join(currentPath, "pnpm-lock.yaml"))) {
       if (currentPath !== appPath) {
-        console.info("Monorepo root detected at", currentPath);
+        console.info("Monorepo detected at", currentPath);
       }
       return currentPath;
     }
@@ -78,9 +76,11 @@ function buildNextjsApp(monorepoRoot: string) {
 function printHeader(header: string) {
   header = `OpenNext — ${header}`;
   console.info([
+    "",
     "┌" + "─".repeat(header.length + 2) + "┐",
     `│ ${header} │`,
     "└" + "─".repeat(header.length + 2) + "┘",
+    "",
   ].join("\n"));
 }
 
@@ -116,25 +116,19 @@ function createServerBundle(monorepoRoot: string) {
     path.join(outputPath),
     { recursive: true, verbatimSymlinks: true }
   );
+
+  // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
   //       `node_modules` inside `.next/standalone`, and others inside
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
-  //       We need to move them to the root of the output folder.
-  if (monorepoRoot) {
-    const packagePath = path.relative(monorepoRoot, appPath);
-    fs.readdirSync(path.join(outputPath, packagePath))
-      .forEach(file => {
-        fs.renameSync(
-          path.join(outputPath, packagePath, file),
-          path.join(outputPath, file)
-        );
-      });
-  }
+  //       We need to output the handler file inside the package path.
+  const isMonorepo = monorepoRoot !== appPath;
+  const packagePath = path.relative(monorepoRoot, appPath);
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
   fs.rmSync(
-    path.join(outputPath, "server.js"),
+    path.join(outputPath, packagePath, "server.js"),
     { force: true }
   );
 
@@ -145,7 +139,7 @@ function createServerBundle(monorepoRoot: string) {
   esbuildSync({
     entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
     external: ["next"],
-    outfile: path.join(outputPath, "index.mjs"),
+    outfile: path.join(outputPath, packagePath, "index.mjs"),
     banner: {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
@@ -155,6 +149,16 @@ function createServerBundle(monorepoRoot: string) {
       ].join(""),
     },
   });
+  // note: in the monorepo case, the handler file is output to
+  //       `.next/standalone/package/path/index.mjs`, but we want
+  //       the Lambda function to be able to find the handler at
+  //       the root of the bundle. We will create a dummy `index.mjs`
+  //       that re-exports the real handler.
+  if (isMonorepo) {
+    fs.writeFileSync(path.join(outputPath, "index.mjs"), [
+      `export * from "./${packagePath}/index.mjs";`,
+    ].join(""))
+  };
 }
 
 function createImageOptimizationBundle() {
