@@ -1,4 +1,3 @@
-import { useRouter } from "next/router";
 import Layout from "../components/layout";
 
 export async function getServerSideProps(context) {
