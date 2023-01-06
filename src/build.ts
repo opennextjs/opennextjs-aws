@@ -101,10 +101,11 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function isMiddlewareEnabled() {
+function getMiddlewareName() {
+  // note: middleware can be at the root or inside "src"
   const filePath = path.join(appPath, ".next", "server", "middleware-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json).sortedMiddleware.length > 0;
+  return JSON.parse(json).middleware?.["/"]?.name;
 }
 
 function createServerBundle(monorepoRoot: string) {
@@ -219,7 +220,8 @@ function createImageOptimizationBundle() {
 }
 
 function createMiddlewareBundle(buildOutput: any) {
-  if (isMiddlewareEnabled()) {
+  const middlewareName = getMiddlewareName();
+  if (middlewareName) {
     console.info(`Bundling middleware edge function...`);
   }
   else {
@@ -232,7 +234,7 @@ function createMiddlewareBundle(buildOutput: any) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Save middleware code to file
-  const src: string = buildOutput.output.middleware.files["index.js"].data;
+  const src: string = buildOutput.output[middlewareName].files["index.js"].data;
   fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
   fs.copyFileSync(
     path.join(__dirname, "adapters", "middleware-adapter.js"),
