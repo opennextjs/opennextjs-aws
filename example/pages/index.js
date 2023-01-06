@@ -31,12 +31,14 @@ export default function Home({}) {
         <Link href={`/ssr-redirect`}>Server Side Rendering — redirect</Link><br />
         <Link href={`/ssr-not-found`}>Server Side Rendering — page not found</Link><br />
         <Link href={`/api-route`}>API Route</Link><br />
+        <Link href={`/middleware-rewrite`}>Middleware — rewrite</Link><br />
         <Link href={`/middleware-redirect`}>Middleware — redirect</Link><br />
         <Link href={`/middleware-set-header`}>Middleware — set header</Link><br />
         <Link href={`/middleware-geolocation`}>Middleware — geolocation</Link><br />
         <Link href={`/image-optimization-imported`}>Image Optimization — imported image</Link><br />
         <Link href={`/image-optimization-remote`}>Image Optimization — remote image</Link><br />
         <Link href={`/image-html-tag`}>Image using html image tag</Link><br />
+        <Link href={`/page-does-not-exist`}>404 Page not found</Link><br />
       </section>
     </Layout>
   );

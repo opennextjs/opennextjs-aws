@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
 export async function middleware(request) {
+  if (request.nextUrl.pathname === "/middleware-rewrite") {
+    const { nextUrl: url } = request
+    url.searchParams.set("rewritten", "true")
+    return NextResponse.rewrite(url);
+  }
   if (request.nextUrl.pathname === "/middleware-redirect") {
     return NextResponse.redirect(new URL("/middleware-redirect-destination", request.url));
   }
@@ -42,5 +47,11 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/middleware-redirect", "/middleware-set-header", "/middleware-fetch", "/middleware-geolocation"],
+  matcher: [
+    "/middleware-rewrite",
+    "/middleware-redirect",
+    "/middleware-set-header",
+    "/middleware-fetch",
+    "/middleware-geolocation",
+  ],
 }
