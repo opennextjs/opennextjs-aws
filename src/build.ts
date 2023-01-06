@@ -31,7 +31,10 @@ export async function build() {
 }
 
 function checkRunningInsideNextjsApp() {
-  if (!fs.existsSync(path.join(appPath, "next.config.js"))) {
+  const extension = ["js", "cjs", "mjs"].find((ext) =>
+    fs.existsSync(path.join(appPath, `next.config.${ext}`))
+  );
+  if (!extension) {
     console.error("Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.");
     process.exit(1);
   }
@@ -63,6 +66,9 @@ function setStandaloneBuildMode() {
 }
 
 function buildNextjsApp(monorepoRoot: string) {
+  // note: always pass in "next.config.js" as the entrypoint.
+  //       @vercel/next only accepts "next.config.js" as the
+  //       entrypoint. But it doesn't actually use the file.
   return nextBuild({
     files: [],
     repoRootPath: monorepoRoot,
