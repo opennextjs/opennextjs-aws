@@ -67,6 +67,7 @@ function getMiddlewareRequestHeaders(response: any) {
   const headers: Record<string, string> = {};
   (response.headers.get("x-middleware-override-headers") || "")
     .split(",")
+    .filter(v => v)
     .forEach((key: string) => {
       headers[key] = response.headers.get(`x-middleware-request-${key}`)
     });
