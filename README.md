@@ -38,7 +38,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 ## Quick start
 
-1. Naviate to your Next.js app
+1. Navigate to your Next.js app
 
    ```bash
    cd my-next-app
@@ -230,7 +230,7 @@ package.json
 You can build the file path like this:
 
 ```ts
-path.join(process.cwd(), "posts", "my-post.md");
+path.join(process.cwd(), 'posts', 'my-post.md');
 ```
 
 As mentioned in the [Server function](#server-lambda-function) section, in a non-monorepo setup, the `server-function` bundle looks like:
