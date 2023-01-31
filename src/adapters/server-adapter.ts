@@ -19,9 +19,7 @@ console.log({ nextDir });
 
 // Create a NextServer
 const requestHandler = new NextServer.default({
-  // Next.js compression should be disabled because of a bug in the bundled
-  // `compression` package — https://github.com/vercel/next.js/issues/11669
-  conf: { ...config, compress: false },
+  conf: config,
   customServer: false,
   dev: false,
   dir: __dirname,
