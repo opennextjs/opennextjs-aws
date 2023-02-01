@@ -38,7 +38,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 ## Quick start
 
-1. Naviate to your Next.js app
+1. Navigate to your Next.js app
 
    ```bash
    cd my-next-app
