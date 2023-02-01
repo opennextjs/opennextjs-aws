@@ -4,6 +4,8 @@ const spawn = require('child_process').spawnSync;
 
 const filesToCheck = '*.js';
 const FORMAT_START = process.env.FORMAT_START || 'main';
+const IS_WIN = process.platform === 'win32';
+const ESLINT_PATH = IS_WIN ? 'node_modules\\.bin\\eslint.cmd' : 'node_modules/.bin/eslint';
 
 function main (args) {
   let fix = false;
@@ -44,9 +46,15 @@ function main (args) {
   if (fix) {
     options.push('--fix');
   }
-  const result = spawn('node_modules/.bin/eslint', [...options], {
+
+  const result = spawn(ESLINT_PATH, [...options], {
     encoding: 'utf-8'
   });
+
+  if (result.error && result.error.errno === 'ENOENT') {
+    console.error('Eslint not found! Eslint is supposed to be found at ', ESLINT_PATH);
+    return 2;
+  }
 
   if (result.status === 1) {
     console.error('Eslint error:', result.stdout);

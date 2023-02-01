@@ -117,9 +117,9 @@ public,max-age=0,s-maxage=31536000,must-revalidate
 
 #### Image optimization function
 
-Create a Lambda function using the code in the `.open-next/image-optimization-function` folder, with the handler `index.mjs`.
+Create a Lambda function using the code in the `.open-next/image-optimization-function` folder, with the handler `index.mjs`. Ensure that the **arm64** architecture is used.
 
-This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library, which is bundled with the function, is used to convert the image.
+This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library, which is bundled with the function, is used to convert the image. The library is compiled against the `arm64` architecture and is intended to run on AWS Lamba Arm/Graviton2 architecture. [Learn about the better cost-performance offered by AWS Graviton2 processors.](https://aws.amazon.com/blogs/aws/aws-lambda-functions-powered-by-aws-graviton2-processor-run-your-functions-on-arm-and-get-up-to-34-better-price-performance/)
 
 Note that the image optimization function responds with the `Cache-Control` header, so the image will be cached both at the CDN level and at the browser level.
 

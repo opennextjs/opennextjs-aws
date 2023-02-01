@@ -701,24 +701,6 @@ class PipelineWorker : public Napi::AsyncWorker {
         image = sharp::Tint(image, baton->tintA, baton->tintB);
       }
 
-      // Extract an image channel (aka vips band)
-      if (baton->extractChannel > -1) {
-        if (baton->extractChannel >= image.bands()) {
-          if (baton->extractChannel == 3 && sharp::HasAlpha(image)) {
-            baton->extractChannel = image.bands() - 1;
-          } else {
-            (baton->err).append("Cannot extract channel from image. Too few channels in image.");
-            return Error();
-          }
-        }
-        VipsInterpretation const interpretation = sharp::Is16Bit(image.interpretation())
-          ? VIPS_INTERPRETATION_GREY16
-          : VIPS_INTERPRETATION_B_W;
-        image = image
-          .extract_band(baton->extractChannel)
-          .copy(VImage::option()->set("interpretation", interpretation));
-      }
-
       // Remove alpha channel, if any
       if (baton->removeAlpha) {
         image = sharp::RemoveAlpha(image);
@@ -742,6 +724,26 @@ class PipelineWorker : public Napi::AsyncWorker {
             ->set("embedded", TRUE)
             ->set("intent", VIPS_INTENT_PERCEPTUAL));
         }
+      }
+
+      // Extract channel
+      if (baton->extractChannel > -1) {
+        if (baton->extractChannel >= image.bands()) {
+          if (baton->extractChannel == 3 && sharp::HasAlpha(image)) {
+            baton->extractChannel = image.bands() - 1;
+          } else {
+            (baton->err)
+              .append("Cannot extract channel ").append(std::to_string(baton->extractChannel))
+              .append(" from image with channels 0-").append(std::to_string(image.bands() - 1));
+            return Error();
+          }
+        }
+        VipsInterpretation colourspace = sharp::Is16Bit(image.interpretation())
+          ? VIPS_INTERPRETATION_GREY16
+          : VIPS_INTERPRETATION_B_W;
+        image = image
+          .extract_band(baton->extractChannel)
+          .copy(VImage::option()->set("interpretation", colourspace));
       }
 
       // Apply output ICC profile
@@ -869,6 +871,8 @@ class PipelineWorker : public Napi::AsyncWorker {
             ->set("bitdepth", baton->gifBitdepth)
             ->set("effort", baton->gifEffort)
             ->set("reoptimise", baton->gifReoptimise)
+            ->set("interframe_maxerror", baton->gifInterFrameMaxError)
+            ->set("interpalette_maxerror", baton->gifInterPaletteMaxError)
             ->set("dither", baton->gifDither)));
           baton->bufferOut = static_cast<char*>(area->data);
           baton->bufferOutLength = area->length;
@@ -935,6 +939,21 @@ class PipelineWorker : public Napi::AsyncWorker {
           area->free_fn = nullptr;
           vips_area_unref(area);
           baton->formatOut = "dz";
+        } else if (baton->formatOut == "jxl" ||
+          (baton->formatOut == "input" && inputImageType == sharp::ImageType::JXL)) {
+          // Write JXL to buffer
+          image = sharp::RemoveAnimationProperties(image);
+          VipsArea *area = reinterpret_cast<VipsArea*>(image.jxlsave_buffer(VImage::option()
+            ->set("strip", !baton->withMetadata)
+            ->set("distance", baton->jxlDistance)
+            ->set("tier", baton->jxlDecodingTier)
+            ->set("effort", baton->jxlEffort)
+            ->set("lossless", baton->jxlLossless)));
+          baton->bufferOut = static_cast<char*>(area->data);
+          baton->bufferOutLength = area->length;
+          area->free_fn = nullptr;
+          vips_area_unref(area);
+          baton->formatOut = "jxl";
         } else if (baton->formatOut == "raw" ||
           (baton->formatOut == "input" && inputImageType == sharp::ImageType::RAW)) {
           // Write raw, uncompressed image data to buffer
@@ -973,6 +992,7 @@ class PipelineWorker : public Napi::AsyncWorker {
         bool const isTiff = sharp::IsTiff(baton->fileOut);
         bool const isJp2 = sharp::IsJp2(baton->fileOut);
         bool const isHeif = sharp::IsHeif(baton->fileOut);
+        bool const isJxl = sharp::IsJxl(baton->fileOut);
         bool const isDz = sharp::IsDz(baton->fileOut);
         bool const isDzZip = sharp::IsDzZip(baton->fileOut);
         bool const isV = sharp::IsV(baton->fileOut);
@@ -1090,6 +1110,17 @@ class PipelineWorker : public Napi::AsyncWorker {
               ? VIPS_FOREIGN_SUBSAMPLE_OFF : VIPS_FOREIGN_SUBSAMPLE_ON)
             ->set("lossless", baton->heifLossless));
           baton->formatOut = "heif";
+        } else if (baton->formatOut == "jxl" || (mightMatchInput && isJxl) ||
+          (willMatchInput && inputImageType == sharp::ImageType::JXL)) {
+          // Write JXL to file
+          image = sharp::RemoveAnimationProperties(image);
+          image.jxlsave(const_cast<char*>(baton->fileOut.data()), VImage::option()
+            ->set("strip", !baton->withMetadata)
+            ->set("distance", baton->jxlDistance)
+            ->set("tier", baton->jxlDecodingTier)
+            ->set("effort", baton->jxlEffort)
+            ->set("lossless", baton->jxlLossless));
+          baton->formatOut = "jxl";
         } else if (baton->formatOut == "dz" || isDz || isDzZip) {
           // Write DZ to file
           if (isDzZip) {
@@ -1175,8 +1206,8 @@ class PipelineWorker : public Napi::AsyncWorker {
         // Add buffer size to info
         info.Set("size", static_cast<uint32_t>(baton->bufferOutLength));
         // Pass ownership of output data to Buffer instance
-        Napi::Buffer<char> data = Napi::Buffer<char>::New(env, static_cast<char*>(baton->bufferOut),
-          baton->bufferOutLength, sharp::FreeCallback);
+        Napi::Buffer<char> data = sharp::NewOrCopyBuffer(env, static_cast<char*>(baton->bufferOut),
+          baton->bufferOutLength);
         Callback().MakeCallback(Receiver().Value(), { env.Null(), data, info });
       } else {
         // Add file size to info
@@ -1549,6 +1580,8 @@ Napi::Value pipeline(const Napi::CallbackInfo& info) {
   baton->gifBitdepth = sharp::AttrAsUint32(options, "gifBitdepth");
   baton->gifEffort = sharp::AttrAsUint32(options, "gifEffort");
   baton->gifDither = sharp::AttrAsDouble(options, "gifDither");
+  baton->gifInterFrameMaxError = sharp::AttrAsDouble(options, "gifInterFrameMaxError");
+  baton->gifInterPaletteMaxError = sharp::AttrAsDouble(options, "gifInterPaletteMaxError");
   baton->gifReoptimise = sharp::AttrAsBool(options, "gifReoptimise");
   baton->tiffQuality = sharp::AttrAsUint32(options, "tiffQuality");
   baton->tiffPyramid = sharp::AttrAsBool(options, "tiffPyramid");
@@ -1573,6 +1606,10 @@ Napi::Value pipeline(const Napi::CallbackInfo& info) {
     options, "heifCompression", VIPS_TYPE_FOREIGN_HEIF_COMPRESSION);
   baton->heifEffort = sharp::AttrAsUint32(options, "heifEffort");
   baton->heifChromaSubsampling = sharp::AttrAsStr(options, "heifChromaSubsampling");
+  baton->jxlDistance = sharp::AttrAsDouble(options, "jxlDistance");
+  baton->jxlDecodingTier = sharp::AttrAsUint32(options, "jxlDecodingTier");
+  baton->jxlEffort = sharp::AttrAsUint32(options, "jxlEffort");
+  baton->jxlLossless = sharp::AttrAsBool(options, "jxlLossless");
   baton->rawDepth = sharp::AttrAsEnum<VipsBandFormat>(options, "rawDepth", VIPS_TYPE_BAND_FORMAT);
   // Animated output properties
   if (sharp::HasAttr(options, "loop")) {

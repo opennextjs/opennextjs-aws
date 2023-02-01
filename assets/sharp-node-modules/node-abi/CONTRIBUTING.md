@@ -4,7 +4,7 @@
 
 ## Commit Message Guidelines
 
-This module uses [`semantic-release`](https://github.com/semantic-release/semantic-release) to automatically release new versions via Travis.
+This module uses [`semantic-release`](https://github.com/semantic-release/semantic-release) to automatically release new versions via [Continuous Auth](https://continuousauth.dev/).
 Therefor we have very precise rules over how our git commit messages can be formatted.
 
 Each commit message consists of a **header**, a **body** and a **footer**.  The header has a special
