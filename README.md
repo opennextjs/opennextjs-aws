@@ -230,7 +230,7 @@ package.json
 You can build the file path like this:
 
 ```ts
-path.join(process.cwd(), 'posts', 'my-post.md');
+path.join(process.cwd(), "posts", "my-post.md");
 ```
 
 As mentioned in the [Server function](#server-lambda-function) section, in a non-monorepo setup, the `server-function` bundle looks like:
