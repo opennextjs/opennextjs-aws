@@ -50,6 +50,11 @@ const server = slsHttp(
   {
     binary: true,
     provider: "aws",
+    request: (request: any) => {
+      // nextjs doesn't parse body if the property exists
+      // https://github.com/dougmoscrop/serverless-http/issues/227
+      delete request.body;
+    },
   },
 );
 
