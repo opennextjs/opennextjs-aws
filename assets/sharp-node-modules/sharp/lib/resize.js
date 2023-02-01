@@ -111,6 +111,8 @@ function isResizeExpected (options) {
  *
  * Some of these values are based on the [object-fit](https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit) CSS property.
  *
+ * <img alt="Examples of various values for the fit property when resizing" width="100%" style="aspect-ratio: 998/243" src="https://cdn.jsdelivr.net/gh/lovell/sharp@main/docs/image/api-resize-fit.png">
+ *
  * When using a **fit** of `cover` or `contain`, the default **position** is `centre`. Other options are:
  * - `sharp.position`: `top`, `right top`, `right`, `right bottom`, `bottom`, `left bottom`, `left`, `left top`.
  * - `sharp.gravity`: `north`, `northeast`, `east`, `southeast`, `south`, `southwest`, `west`, `northwest`, `center` or `centre`.
@@ -217,8 +219,8 @@ function isResizeExpected (options) {
  * @param {number} [width] - pixels wide the resultant image should be. Use `null` or `undefined` to auto-scale the width to match the height.
  * @param {number} [height] - pixels high the resultant image should be. Use `null` or `undefined` to auto-scale the height to match the width.
  * @param {Object} [options]
- * @param {String} [options.width] - alternative means of specifying `width`. If both are present this take priority.
- * @param {String} [options.height] - alternative means of specifying `height`. If both are present this take priority.
+ * @param {String} [options.width] - alternative means of specifying `width`. If both are present this takes priority.
+ * @param {String} [options.height] - alternative means of specifying `height`. If both are present this takes priority.
  * @param {String} [options.fit='cover'] - how the image should be resized to fit both provided dimensions, one of `cover`, `contain`, `fill`, `inside` or `outside`.
  * @param {String} [options.position='centre'] - position, gravity or strategy to use when `fit` is `cover` or `contain`.
  * @param {String|Object} [options.background={r: 0, g: 0, b: 0, alpha: 1}] - background colour when `fit` is `contain`, parsed by the [color](https://www.npmjs.org/package/color) module, defaults to black without transparency.

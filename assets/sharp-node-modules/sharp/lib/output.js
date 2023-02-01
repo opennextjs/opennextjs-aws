@@ -22,10 +22,13 @@ const formats = new Map([
   ['jp2', 'jp2'],
   ['jpx', 'jp2'],
   ['j2k', 'jp2'],
-  ['j2c', 'jp2']
+  ['j2c', 'jp2'],
+  ['jxl', 'jxl']
 ]);
 
-const errJp2Save = new Error('JP2 output requires libvips with support for OpenJPEG');
+const jp2Regex = /\.jp[2x]|j2[kc]$/i;
+
+const errJp2Save = () => new Error('JP2 output requires libvips with support for OpenJPEG');
 
 const bitdepthFromColourCount = (colours) => 1 << 31 - Math.clz32(Math.ceil(Math.log2(colours)));
 
@@ -68,6 +71,8 @@ function toFile (fileOut, callback) {
     err = new Error('Missing output file path');
   } else if (is.string(this.options.input.file) && path.resolve(this.options.input.file) === path.resolve(fileOut)) {
     err = new Error('Cannot use same file for input and output');
+  } else if (jp2Regex.test(fileOut) && !this.constructor.format.jp2k.output.file) {
+    err = errJp2Save();
   }
   if (err) {
     if (is.fn(callback)) {
@@ -547,6 +552,12 @@ function webp (options) {
  *   .gif({ dither: 0 })
  *   .toBuffer();
  *
+ * @example
+ * // Lossy file size reduction of animated GIF
+ * await sharp('in.gif', { animated: true })
+ *   .gif({ interFrameMaxError: 8 })
+ *   .toFile('optim.gif');
+ *
  * @param {Object} [options] - output options
  * @param {boolean} [options.reoptimise=false] - always generate new palettes (slow), re-use existing by default
  * @param {boolean} [options.reoptimize=false] - alternative spelling of `options.reoptimise`
@@ -554,6 +565,8 @@ function webp (options) {
  * @param {number} [options.colors=256] - alternative spelling of `options.colours`
  * @param {number} [options.effort=7] - CPU effort, between 1 (fastest) and 10 (slowest)
  * @param {number} [options.dither=1.0] - level of Floyd-Steinberg error diffusion, between 0 (least) and 1 (most)
+ * @param {number} [options.interFrameMaxError=0] - maximum inter-frame error for transparency, between 0 (lossless) and 32
+ * @param {number} [options.interPaletteMaxError=3] - maximum inter-palette error for palette reuse, between 0 and 256
  * @param {number} [options.loop=0] - number of animation iterations, use 0 for infinite animation
  * @param {number|number[]} [options.delay] - delay(s) between animation frames (in milliseconds)
  * @param {boolean} [options.force=true] - force GIF output, otherwise attempt to use input format
@@ -587,6 +600,20 @@ function gif (options) {
         this.options.gifDither = options.dither;
       } else {
         throw is.invalidParameterError('dither', 'number between 0.0 and 1.0', options.dither);
+      }
+    }
+    if (is.defined(options.interFrameMaxError)) {
+      if (is.number(options.interFrameMaxError) && is.inRange(options.interFrameMaxError, 0, 32)) {
+        this.options.gifInterFrameMaxError = options.interFrameMaxError;
+      } else {
+        throw is.invalidParameterError('interFrameMaxError', 'number between 0.0 and 32.0', options.interFrameMaxError);
+      }
+    }
+    if (is.defined(options.interPaletteMaxError)) {
+      if (is.number(options.interPaletteMaxError) && is.inRange(options.interPaletteMaxError, 0, 256)) {
+        this.options.gifInterPaletteMaxError = options.interPaletteMaxError;
+      } else {
+        throw is.invalidParameterError('interPaletteMaxError', 'number between 0.0 and 256.0', options.interPaletteMaxError);
       }
     }
   }
@@ -630,7 +657,7 @@ function gif (options) {
 /* istanbul ignore next */
 function jp2 (options) {
   if (!this.constructor.format.jp2k.output.buffer) {
-    throw errJp2Save;
+    throw errJp2Save();
   }
   if (is.object(options)) {
     if (is.defined(options.quality)) {
@@ -910,6 +937,71 @@ function heif (options) {
     }
   }
   return this._updateFormatOut('heif', options);
+}
+
+/**
+ * Use these JPEG-XL (JXL) options for output image.
+ *
+ * This feature is experimental, please do not use in production systems.
+ *
+ * Requires libvips compiled with support for libjxl.
+ * The prebuilt binaries do not include this - see
+ * {@link https://sharp.pixelplumbing.com/install#custom-libvips installing a custom libvips}.
+ *
+ * Image metadata (EXIF, XMP) is unsupported.
+ *
+ * @since 0.31.3
+ *
+ * @param {Object} [options] - output options
+ * @param {number} [options.distance=1.0] - maximum encoding error, between 0 (highest quality) and 15 (lowest quality)
+ * @param {number} [options.quality] - calculate `distance` based on JPEG-like quality, between 1 and 100, overrides distance if specified
+ * @param {number} [options.decodingTier=0] - target decode speed tier, between 0 (highest quality) and 4 (lowest quality)
+ * @param {boolean} [options.lossless=false] - use lossless compression
+ * @param {number} [options.effort=7] - CPU effort, between 3 (fastest) and 9 (slowest)
+ * @returns {Sharp}
+ * @throws {Error} Invalid options
+ */
+function jxl (options) {
+  if (is.object(options)) {
+    if (is.defined(options.quality)) {
+      if (is.integer(options.quality) && is.inRange(options.quality, 1, 100)) {
+        // https://github.com/libjxl/libjxl/blob/0aeea7f180bafd6893c1db8072dcb67d2aa5b03d/tools/cjxl_main.cc#L640-L644
+        this.options.jxlDistance = options.quality >= 30
+          ? 0.1 + (100 - options.quality) * 0.09
+          : 53 / 3000 * options.quality * options.quality - 23 / 20 * options.quality + 25;
+      } else {
+        throw is.invalidParameterError('quality', 'integer between 1 and 100', options.quality);
+      }
+    } else if (is.defined(options.distance)) {
+      if (is.number(options.distance) && is.inRange(options.distance, 0, 15)) {
+        this.options.jxlDistance = options.distance;
+      } else {
+        throw is.invalidParameterError('distance', 'number between 0.0 and 15.0', options.distance);
+      }
+    }
+    if (is.defined(options.decodingTier)) {
+      if (is.integer(options.decodingTier) && is.inRange(options.decodingTier, 0, 4)) {
+        this.options.jxlDecodingTier = options.decodingTier;
+      } else {
+        throw is.invalidParameterError('decodingTier', 'integer between 0 and 4', options.decodingTier);
+      }
+    }
+    if (is.defined(options.lossless)) {
+      if (is.bool(options.lossless)) {
+        this.options.jxlLossless = options.lossless;
+      } else {
+        throw is.invalidParameterError('lossless', 'boolean', options.lossless);
+      }
+    }
+    if (is.defined(options.effort)) {
+      if (is.integer(options.effort) && is.inRange(options.effort, 3, 9)) {
+        this.options.jxlEffort = options.effort;
+      } else {
+        throw is.invalidParameterError('effort', 'integer between 3 and 9', options.effort);
+      }
+    }
+  }
+  return this._updateFormatOut('jxl', options);
 }
 
 /**
@@ -1282,6 +1374,7 @@ module.exports = function (Sharp) {
     tiff,
     avif,
     heif,
+    jxl,
     gif,
     raw,
     tile,

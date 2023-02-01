@@ -4,16 +4,15 @@
 
 const fs = require('fs');
 const path = require('path');
-const child_process = require('child_process');
 
 // Read the output of the command, break it into lines, and use the reducer to
 // decide whether the file is an N-API module or not.
-function checkFile(file, command, argv, reducer) {
-  const child = child_process.spawn(command, argv, {
+function checkFile (file, command, argv, reducer) {
+  const child = require('child_process').spawn(command, argv, {
     stdio: ['inherit', 'pipe', 'inherit']
   });
   let leftover = '';
-  let isNapi = undefined;
+  let isNapi;
   child.stdout.on('data', (chunk) => {
     if (isNapi === undefined) {
       chunk = (leftover + chunk.toString()).split(/[\r\n]+/);
@@ -27,11 +26,11 @@ function checkFile(file, command, argv, reducer) {
   child.on('close', (code, signal) => {
     if ((code === null && signal !== null) || (code !== 0)) {
       console.log(
-        command + ' exited with code: '  + code + ' and signal: ' + signal);
+        command + ' exited with code: ' + code + ' and signal: ' + signal);
     } else {
       // Green if it's a N-API module, red otherwise.
       console.log(
-          '\x1b[' + (isNapi ? '42' : '41') + 'm' +
+        '\x1b[' + (isNapi ? '42' : '41') + 'm' +
           (isNapi ? '    N-API' : 'Not N-API') +
           '\x1b[0m: ' + file);
     }
@@ -39,7 +38,7 @@ function checkFile(file, command, argv, reducer) {
 }
 
 // Use nm -a to list symbols.
-function checkFileUNIX(file) {
+function checkFileUNIX (file) {
   checkFile(file, 'nm', ['-a', file], (soFar, line) => {
     if (soFar === undefined) {
       line = line.match(/([0-9a-f]*)? ([a-zA-Z]) (.*$)/);
@@ -54,7 +53,7 @@ function checkFileUNIX(file) {
 }
 
 // Use dumpbin /imports to list symbols.
-function checkFileWin32(file) {
+function checkFileWin32 (file) {
   checkFile(file, 'dumpbin', ['/imports', file], (soFar, line) => {
     if (soFar === undefined) {
       line = line.match(/([0-9a-f]*)? +([a-zA-Z0-9]) (.*$)/);
@@ -68,16 +67,16 @@ function checkFileWin32(file) {
 
 // Descend into a directory structure and pass each file ending in '.node' to
 // one of the above checks, depending on the OS.
-function recurse(top) {
+function recurse (top) {
   fs.readdir(top, (error, items) => {
     if (error) {
-      throw ("error reading directory " + top + ": " + error);
+      throw new Error('error reading directory ' + top + ': ' + error);
     }
     items.forEach((item) => {
       item = path.join(top, item);
       fs.stat(item, ((item) => (error, stats) => {
         if (error) {
-          throw ("error about " + item + ": " + error);
+          throw new Error('error about ' + item + ': ' + error);
         }
         if (stats.isDirectory()) {
           recurse(item);
@@ -86,9 +85,9 @@ function recurse(top) {
             // artefacts of node-addon-api having identified a version of
             // Node.js that ships with a correct implementation of N-API.
             path.basename(item) !== 'nothing.node') {
-          process.platform === 'win32' ?
-              checkFileWin32(item) :
-              checkFileUNIX(item);
+          process.platform === 'win32'
+            ? checkFileWin32(item)
+            : checkFileUNIX(item);
         }
       })(item));
     });

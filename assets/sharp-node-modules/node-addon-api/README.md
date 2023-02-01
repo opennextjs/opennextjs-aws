@@ -16,15 +16,15 @@ provided by Node.js when using C++. It provides a C++ object model
 and exception handling semantics with low overhead.
 
 There are three options for implementing addons: Node-API, nan, or direct
-use of internal V8, libuv and Node.js libraries. Unless there is a need for
-direct access to functionality which is not exposed by Node-API as outlined
+use of internal V8, libuv, and Node.js libraries. Unless there is a need for
+direct access to functionality that is not exposed by Node-API as outlined
 in [C/C++ addons](https://nodejs.org/dist/latest/docs/api/addons.html)
 in Node.js core, use Node-API. Refer to
 [C/C++ addons with Node-API](https://nodejs.org/dist/latest/docs/api/n-api.html)
 for more information on Node-API.
 
 Node-API is an ABI stable C interface provided by Node.js for building native
-addons. It is independent from the underlying JavaScript runtime (e.g. V8 or ChakraCore)
+addons. It is independent of the underlying JavaScript runtime (e.g. V8 or ChakraCore)
 and is maintained as part of Node.js itself. It is intended to insulate
 native addons from changes in the underlying JavaScript engine and allow
 modules compiled for one version to run on later versions of Node.js without
@@ -46,7 +46,7 @@ provides an [ABI stability guide][] containing a detailed explanation of ABI
 stability in general, and the Node-API ABI stability guarantee in particular.
 
 As new APIs are added to Node-API, node-addon-api must be updated to provide
-wrappers for those new APIs. For this reason node-addon-api provides
+wrappers for those new APIs. For this reason, node-addon-api provides
 methods that allow callers to obtain the underlying Node-API handles so
 direct calls to Node-API and the use of the objects/methods provided by
 node-addon-api can be used together. For example, in order to be able
@@ -56,7 +56,7 @@ APIs exposed by node-addon-api are generally used to create and
 manipulate JavaScript values. Concepts and operations generally map
 to ideas specified in the **ECMA262 Language Specification**.
 
-The [Node-API Resource](https://nodejs.github.io/node-addon-examples/) offers an
+The [Node-API Resource](https://nodejs.github.io/node-addon-examples/) offers an
 excellent orientation and tips for developers just getting started with Node-API
 and node-addon-api.
 
@@ -70,7 +70,7 @@ and node-addon-api.
 - **[Contributors](#contributors)**
 - **[License](#license)**
 
-## **Current version: 5.0.0**
+## **Current version: 5.1.0**
 
 (See [CHANGELOG.md](CHANGELOG.md) for complete Changelog)
 
@@ -187,6 +187,28 @@ npm test --NAPI_VERSION=X
 
 where X is the version of Node-API you want to target.
 
+To run a specific unit test, filter conditions are available
+
+**Example:**
+  compile and run only tests on objectwrap.cc and objectwrap.js
+  ```
+    npm run unit --filter=objectwrap
+  ```
+
+Multiple unit tests cane be selected with wildcards
+
+**Example:**
+compile and run all test files ending with "reference" -> function_reference.cc, object_reference.cc, reference.cc
+ ```
+    npm run unit --filter=*reference
+ ```
+
+Multiple filter conditions can be joined to broaden the test selection
+
+**Example:**
+ compile and run all tests under folders threadsafe_function and typed_threadsafe_function and also the objectwrap.cc file
+    npm run unit --filter='*function objectwrap'
+
 ### **Debug**
 
 To run the **node-addon-api** tests with `--debug` option:
@@ -195,7 +217,7 @@ To run the **node-addon-api** tests with `--debug` option:
 npm run-script dev
 ```
 
-If you want faster build, you might use the following option:
+If you want a faster build, you might use the following option:
 
 ```
 npm run-script dev:incremental
@@ -223,7 +245,7 @@ See [benchmark/README.md](benchmark/README.md) for more details about running an
 
 As node-addon-api's core mission is to expose the plain C Node-API as C++
 wrappers, tools that facilitate n-api/node-addon-api providing more
-convenient patterns on developing a Node.js add-ons with n-api/node-addon-api
+convenient patterns for developing a Node.js add-on with n-api/node-addon-api
 can be published to NPM as standalone packages. It is also recommended to tag
 such packages with `node-addon-api` to provide more visibility to the community.
 
@@ -269,19 +291,21 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details on our philosophy around
 | ------------------- | ----------------------------------------------------- |
 | Anna Henningsen     | [addaleax](https://github.com/addaleax)               |
 | Chengzhong Wu       | [legendecas](https://github.com/legendecas)           |
-| Gabriel Schulhof    | [gabrielschulhof](https://github.com/gabrielschulhof) |
-| Jim Schlight        | [jschlight](https://github.com/jschlight)             |
+| Jack Xia            | [JckXia](https://github.com/JckXia)                   |
+| Kevin Eady          | [KevinEady](https://github.com/KevinEady)             |
 | Michael Dawson      | [mhdawson](https://github.com/mhdawson)               |
-| Kevin Eady          | [KevinEady](https://github.com/KevinEady)
 | Nicola Del Gobbo    | [NickNaso](https://github.com/NickNaso)               |
+| Vladimir Morozov    | [vmoroz](https://github.com/vmoroz)                   |
 
 ### Emeritus
 | Name                | GitHub Link                                           |
 | ------------------- | ----------------------------------------------------- |
 | Arunesh Chandra     | [aruneshchandra](https://github.com/aruneshchandra)   |
 | Benjamin Byholm     | [kkoopa](https://github.com/kkoopa)                   |
-| Jason Ginchereau    | [jasongin](https://github.com/jasongin)               |
+| Gabriel Schulhof    | [gabrielschulhof](https://github.com/gabrielschulhof) |
 | Hitesh Kanwathirtha | [digitalinfinity](https://github.com/digitalinfinity) |
+| Jason Ginchereau    | [jasongin](https://github.com/jasongin)               |
+| Jim Schlight        | [jschlight](https://github.com/jschlight)             |
 | Sampson Gao         | [sampsongao](https://github.com/sampsongao)           |
 | Taylor Woll         | [boingoing](https://github.com/boingoing)             |
 

@@ -16,6 +16,10 @@
       "url": "https://github.com/alexanderfloh"
     },
     {
+      "name": "Ammar Faizi",
+      "url": "https://github.com/ammarfaizi2"
+    },
+    {
       "name": "András Timár, Dr",
       "url": "https://github.com/timarandras"
     },
@@ -72,6 +76,10 @@
       "url": "https://github.com/danbev"
     },
     {
+      "name": "Dante Calderón",
+      "url": "https://github.com/dantehemerson"
+    },
+    {
       "name": "Darshan Sen",
       "url": "https://github.com/RaisinTen"
     },
@@ -102,6 +110,10 @@
     {
       "name": "extremeheat",
       "url": "https://github.com/extremeheat"
+    },
+    {
+      "name": "Feng Yu",
+      "url": "https://github.com/F3n67u"
     },
     {
       "name": "Ferdinand Holzer",
@@ -148,6 +160,10 @@
       "url": "https://github.com/jasongin"
     },
     {
+      "name": "Jenny",
+      "url": "https://github.com/egg-bread"
+    },
+    {
       "name": "Jeroen Janssen",
       "url": "https://github.com/japj"
     },
@@ -166,6 +182,10 @@
     {
       "name": "joshgarde",
       "url": "https://github.com/joshgarde"
+    },
+    {
+      "name": "Julian Mesa",
+      "url": "https://github.com/julianmesa-gitkraken"
     },
     {
       "name": "Kasumi Hanazuki",
@@ -198,6 +218,10 @@
     {
       "name": "Kyle Farnung",
       "url": "https://github.com/kfarnung"
+    },
+    {
+      "name": "Kyle Kovacs",
+      "url": "https://github.com/nullromo"
     },
     {
       "name": "legendecas",
@@ -268,12 +292,20 @@
       "url": "https://github.com/pacop"
     },
     {
+      "name": "Peter Šándor",
+      "url": "https://github.com/petersandor"
+    },
+    {
       "name": "Philipp Renoth",
       "url": "https://github.com/DaAitch"
     },
     {
       "name": "rgerd",
       "url": "https://github.com/rgerd"
+    },
+    {
+      "name": "Richard Lau",
+      "url": "https://github.com/richardlau"
     },
     {
       "name": "Rolf Timmermans",
@@ -286,6 +318,10 @@
     {
       "name": "Ryuichi Okumura",
       "url": "https://github.com/okuryu"
+    },
+    {
+      "name": "Saint Gabriel",
+      "url": "https://github.com/chineduG"
     },
     {
       "name": "Sampson Gao",
@@ -351,6 +387,10 @@
     {
       "name": "Ziqiu Zhao",
       "url": "https://github.com/ZzqiZQute"
+    },
+    {
+      "name": "Feng Yu",
+      "url": "https://github.com/F3n67u"
     }
   ],
   "description": "Node.js API (Node-API)",
@@ -401,6 +441,7 @@
     "benchmark": "node benchmark",
     "pretest": "node-gyp rebuild -C test",
     "test": "node test",
+    "test:debug": "node-gyp rebuild -C test --debug && NODE_API_BUILD_CONFIG=Debug node ./test/index.js",
     "predev": "node-gyp rebuild -C test --debug",
     "dev": "node test",
     "predev:incremental": "node-gyp configure build -C test --debug",
@@ -410,6 +451,6 @@
     "lint:fix": "node tools/clang-format --fix && node tools/eslint-format --fix"
   },
   "pre-commit": "lint",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "support": true
 }

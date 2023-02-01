@@ -1,10 +1,9 @@
 {
   "name": "node-abi",
-  "version": "3.30.0",
+  "version": "3.31.0",
   "description": "Get the Node ABI for a given target and runtime, and vice versa.",
   "main": "index.js",
   "scripts": {
-    "semantic-release": "semantic-release",
     "test": "tape test/index.js",
     "update-abi-registry": "node --unhandled-rejections=strict scripts/update-abi-registry.js"
   },
@@ -26,7 +25,7 @@
   },
   "homepage": "https://github.com/lgeiger/node-abi#readme",
   "devDependencies": {
-    "@continuous-auth/semantic-release-npm": "^2.0.0",
+    "@continuous-auth/semantic-release-npm": "^3.0.0",
     "got": "^11.8.2",
     "tape": "^5.3.1"
   },
