@@ -57,8 +57,14 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
     return request;
   }
 
+  // In the case where `middleware.ts` response w/ a body, send that back to the client
+  let responseBody
+  const state = Object.getOwnPropertySymbols(response).find(s => s.toString() === 'Symbol(state)')
+  if (state) responseBody = response[state]?.body?.source
+
   return {
     status: response.status,
+    body: responseBody,
     headers: httpHeadersToCfHeaders(response.headers),
   };
 }
