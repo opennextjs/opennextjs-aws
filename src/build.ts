@@ -248,6 +248,8 @@ function createMiddlewareBundle(buildOutput: any) {
     banner: {
       js: [
         // WORKAROUND: Add `Headers.getAll()` extension to the middleware function — https://github.com/serverless-stack/open-next#workaround-add-headersgetall-extension-to-the-middleware-function
+        // WORKAROUND: Add `crypto` and `CryptoKey` for next-auth middleware - https://github.com/serverless-stack/open-next#workaround-nextauth-middleware
+        "import crypto from 'node:crypto';",
         "class Response extends globalThis.Response {",
         "  constructor(body, init) {",
         "    super(body, init);",
@@ -264,6 +266,8 @@ function createMiddlewareBundle(buildOutput: any) {
         "}",
         // Polyfill Response and self
         "Object.assign(globalThis, {",
+        "  crypto,",
+        "  CryptoKey: crypto.webcrypto.CryptoKey,",
         "  Response,",
         "  self: {},",
         "});",
@@ -306,6 +310,7 @@ function esbuildSync(options: BuildOptions) {
     format: "esm",
     platform: "node",
     bundle: true,
+    minify: true,
     ...options,
   });
 

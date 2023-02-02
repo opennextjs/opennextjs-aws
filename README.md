@@ -282,6 +282,11 @@ Vercel uses the `Headers.getAll()` function in its middleware code, but this fun
 
 We decided to go with option 1 because it does not require an addition dependency and it is possible that Vercel will remove the use of the `getAll()` function in the future.
 
+#### WORKAROUND: NextAuth Middleware
+
+`next-auth` uses `jose`, which is bundled oddly. For example, it assumes `crypto` and `CryptoKey` are globally available. To handle this, we inject `crypto` and `CryptoKey` into the `globalThis` instance to circumvent this issue.
+
+
 ## Example
 
 In the `example` folder, you can find a Next.js feature test app. It contains a variety of pages that each test a single Next.js feature.
