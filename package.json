@@ -24,6 +24,7 @@
     "@tsconfig/node18": "^1.0.1",
     "@vercel/build-utils": "^5.7.0",
     "@vercel/next": "^3.3.2",
+    "minify-all-js": "0.1.9",
     "esbuild": "^0.15.18",
     "serverless-http": "^3.1.0",
     "yargs": "^17.6.2"

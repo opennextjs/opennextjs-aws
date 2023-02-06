@@ -4,6 +4,8 @@ import path from "node:path";
 import { buildSync, BuildOptions } from "esbuild";
 // @ts-ignore @vercel/next does not provide types
 import { build as nextBuild } from "@vercel/next";
+// @ts-ignore no types
+import minify from 'minify-all-js'
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
@@ -166,6 +168,25 @@ function createServerBundle(monorepoRoot: string) {
       `export * from "./${packagePath}/index.mjs";`,
     ].join(""))
   };
+
+  // note: These node_modules appear to be dev dependencies but are in the
+  // production build.
+  // These constitutes ~20MB of fixed lambda size.
+  removeNodeModule(path.join(outputPath, 'node_modules'), [
+    '@esbuild',
+    'esbuild',
+    'webpack',
+    'uglify-js',
+    'react', // react and react-dom are precompiled in nextjs
+    'react-dom',
+    '@webassemblyjs'
+  ]);
+
+  // Minifying the Nextjs App js files reduce lambda size upwards of ~60%.
+  minify([outputPath], {
+    compress_json: true,
+    mangle: true,
+  })
 }
 
 function createImageOptimizationBundle() {
@@ -312,5 +333,11 @@ function esbuildSync(options: BuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(`There was a problem bundling ${(options.entryPoints as string[])[0]}.`);
+  }
+}
+
+function removeNodeModule(moduleRoot: string, modules: string[]) {
+  for (const module of modules) {
+    fs.rmSync(path.join(moduleRoot, module), { force: true, recursive: true })
   }
 }
