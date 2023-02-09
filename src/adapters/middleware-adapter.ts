@@ -58,11 +58,6 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   }
 
   if (response.headers.get("x-middleware-rewrite")) {
-    // const { pathname, search } = new URL(response.headers.get("x-middleware-rewrite"));
-    // request.uri = pathname;
-    // if (search) request.querystring = search.slice(1);
-    // return request;
-
     const url = new URL(response.headers.get("x-middleware-rewrite"))
 
     const res = await fetch(url.href, {
