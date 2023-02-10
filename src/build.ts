@@ -4,6 +4,9 @@ import path from "node:path";
 import { buildSync, BuildOptions } from "esbuild";
 // @ts-ignore @vercel/next does not provide types
 import { build as nextBuild } from "@vercel/next";
+import type { NextConfig } from "next";
+import type { Redirect, Rewrite } from "next/dist/lib/load-custom-routes.js";
+
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
@@ -13,7 +16,8 @@ const tempDir = path.join(outputDir, ".build");
 export async function build() {
   // Pre-build validation
   printVersion();
-  checkRunningInsideNextjsApp();
+  const { default: nextJsConfig } = await checkRunningInsideNextjsApp();
+  console.log({ nextJsConfig })
   setStandaloneBuildMode();
   const monorepoRoot = findMonorepoRoot();
 
@@ -26,11 +30,18 @@ export async function build() {
   initOutputDir();
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
-  createMiddlewareBundle(buildOutput);
+  const redirects = (await nextJsConfig.redirects?.()) ?? [];
+  const rewrites = await (async () => {
+    const raw = (await nextJsConfig.rewrites?.()) ?? [];
+    if (Array.isArray(raw)) return raw;
+    console.warn("Only simple rewrite configuration (flat array) is supported. Rewrites will be ignored.");
+    return [];
+  })();
+  createMiddlewareBundle(buildOutput, { redirects, rewrites });
   createAssets();
 }
 
-function checkRunningInsideNextjsApp() {
+function checkRunningInsideNextjsApp(): Promise<{ default: NextConfig }> {
   const extension = ["js", "cjs", "mjs"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`))
   );
@@ -38,6 +49,7 @@ function checkRunningInsideNextjsApp() {
     console.error("Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.");
     process.exit(1);
   }
+  return import(path.join(appPath, `next.config.${extension}`))
 }
 
 function findMonorepoRoot() {
@@ -219,7 +231,7 @@ function createImageOptimizationBundle() {
   );
 }
 
-function createMiddlewareBundle(buildOutput: any) {
+function createMiddlewareBundle(buildOutput: any, { redirects, rewrites }: { redirects: Redirect[], rewrites: Rewrite[] }) {
   const middlewareName = getMiddlewareName();
   if (middlewareName) {
     console.info(`Bundling middleware edge function...`);
@@ -232,6 +244,10 @@ function createMiddlewareBundle(buildOutput: any) {
   // Create output folder
   const outputPath = path.join(outputDir, "middleware-function");
   fs.mkdirSync(outputPath, { recursive: true });
+
+  // Save redirects and rewrites to file
+  fs.writeFileSync(path.join(tempDir, "rewrites.json"), JSON.stringify(rewrites))
+  fs.writeFileSync(path.join(tempDir, "redirects.json"), JSON.stringify(redirects))
 
   // Save middleware code to file
   const src: string = buildOutput.output[middlewareName].files["index.js"].data;

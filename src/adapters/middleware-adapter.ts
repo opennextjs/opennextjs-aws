@@ -1,11 +1,25 @@
 import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
-  CloudFrontHeaders
+  CloudFrontHeaders,
+  CloudFrontRequest,
 } from "aws-lambda"
+import type { Redirect, Rewrite } from "next/dist/lib/load-custom-routes.js";
+import { match, compile } from "path-to-regexp";
 
 // @ts-ignore
 const index = await (() => import("./middleware.js"))();
+
+// @ts-ignore
+const redirectsJson: Redirect[] = (await (() => import("./redirects.json"))()).default;
+// @ts-ignore
+const rewritesJson: Rewrite[] = (await (() => import("./rewrites.json"))()).default;
+
+const redirectMatchers = redirectsJson.map(r => match(r.source, { strict: true }));
+const redirectCompilers = redirectsJson.map(r => compile(r.destination.replace(/http(s)?:\/\//, "http$1/")));
+
+const rewriteMatchers = rewritesJson.map(r => match(r.source, { strict: true }));
+const rewriteCompilers = rewritesJson.map(r => compile(r.destination.replace(/http(s)?:\/\//, "http$1/")))
 
 export async function handler(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
   const request = event.Records[0].cf.request;
@@ -15,7 +29,6 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   console.log(request.headers);
 
   // Convert CloudFront request to Node request
-  // @ts-ignore Types has not been added for Node 18 native fetch API
   const requestHeaders = new Headers();
   for (const [key, values] of Object.entries(headers)) {
     for (const { value } of values) {
@@ -25,6 +38,42 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
     }
   }
   const host = headers["host"][0].value;
+
+  for (const [i, matcher] of redirectMatchers.entries()) {
+    const match = matcher(uri);
+    if (!match) continue;
+
+    const destination = `https://${host}${redirectCompilers[i](match.params).replace(/^http(s)?\//, "http$1://")}`;
+    console.log(request.origin)
+
+    console.log(`redirected from ${uri} to ${destination}`)
+
+    return {
+      status: redirectsJson[i].permanent ? "301" : "302",
+      headers: {
+        "location": [{ key: "location", value: destination }]
+      }
+    }
+  }
+
+  for (const [i, matcher] of rewriteMatchers.entries()) {
+    const match = matcher(uri);
+    if (!match) continue;
+
+    const rawDestination = rewriteCompilers[i](match.params).replace(/^http(s)?\//, "http$1://");
+    const destination = /^https?:\/\//.test(rawDestination) ? rawDestination : `https://${host}${rawDestination}`
+    console.log(request.origin)
+
+    console.log(`redirected from ${uri} to ${destination}`)
+
+    return {
+      status: redirectsJson[i].permanent ? "301" : "302",
+      headers: {
+        "location": [{ key: "location", value: destination }]
+      }
+    }
+  }
+
   const qs = querystring.length > 0 ? `?${querystring}` : "";
   const url = new URL(`${uri}${qs}`, `https://${host}`);
 
@@ -57,25 +106,9 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
     return request;
   }
 
-  if (response.headers.get("x-middleware-rewrite")) {
-    const url = new URL(response.headers.get("x-middleware-rewrite"))
-
-    const res = await fetch(url.href, {
-      method: request.method,
-      headers: { ...requestHeaders, host: url.host }
-    })
-    const buffer = Buffer.from(await res.arrayBuffer())
-    console.log("rewrite response headers", res.headers)
-    const filteredResHeaders = filteredCfHeaders(res.headers)
-    console.log("filtered headers", filteredResHeaders)
-
-    return {
-      status: String(res.status),
-      headers: filteredResHeaders,
-      body: buffer.toString("base64"),
-      bodyEncoding: "base64"
-    }
-  }
+  const middlewareRewrite = response.headers.get("x-middleware-rewrite")
+  if (middlewareRewrite)
+    return handleRewrite(request, requestHeaders, middlewareRewrite)
 
   return {
     status: response.status,
@@ -107,6 +140,28 @@ function filteredCfHeaders(httpHeaders: Headers): CloudFrontHeaders {
 
   const cfHeaders = httpHeadersToCfHeaders(httpHeaders)
   return Object.fromEntries(Object.entries(cfHeaders).filter(([k]) => !blacklistedHeaders.some(h => h.test(k))))
+}
+
+async function handleRewrite(request: CloudFrontRequest, requestHeaders: Headers, destination: string): Promise<CloudFrontRequestResult> {
+  if (!destination) return;
+
+  const url = new URL(destination)
+
+  const res = await fetch(url.href, {
+    method: request.method,
+    headers: { ...requestHeaders, host: url.host }
+  })
+  const buffer = Buffer.from(await res.arrayBuffer())
+  console.log("rewrite response headers", res.headers)
+  const filteredResHeaders = filteredCfHeaders(res.headers)
+  console.log("filtered headers", filteredResHeaders)
+
+  return {
+    status: String(res.status),
+    headers: filteredResHeaders,
+    body: buffer.toString("base64"),
+    bodyEncoding: "base64"
+  }
 }
 
 function getMiddlewareRequestHeaders(response: { headers: Headers }) {

@@ -11,6 +11,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w",
+    "prepare": "tsc",
     "release": "./.changeset/release",
     "release-snapshot": "./.changeset/snapshot"
   },
@@ -25,12 +26,17 @@
     "@vercel/build-utils": "^5.7.0",
     "@vercel/next": "^3.3.2",
     "esbuild": "^0.15.18",
+    "path-to-regexp": "^6.2.1",
     "serverless-http": "^3.1.0",
     "yargs": "^17.6.2"
+  },
+  "peerDependencies": {
+    "path-to-regexp": "^6.2.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.109",
     "@types/node": "^18.11.17",
+    "next": "^13.1.6",
     "node-fetch": "^3.3.0",
     "typescript": "^4.9.3"
   },
