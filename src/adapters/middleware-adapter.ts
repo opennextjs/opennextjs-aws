@@ -40,6 +40,8 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   }
   const host = headers["host"][0].value;
 
+  const requestBody = body?.data ? Buffer.from(body.data, body.encoding === "base64" ? "base64" : "utf-8") : undefined
+
   for (const [i, matcher] of redirectMatchers.entries()) {
     const match = matcher(uri);
     if (!match) continue;
@@ -65,7 +67,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
 
     console.log(`rewrote from ${uri} to ${destination}`)
 
-    return handleRewrite(request, requestHeaders, destination)
+    return handleRewrite(request, requestHeaders, requestBody, destination)
   }
 
   if (!index?.default) return request;
@@ -76,11 +78,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   const nodeRequest = new Request(url.toString(), {
     method,
     headers: requestHeaders,
-    body: body?.data
-      ? body.encoding === "base64"
-        ? Buffer.from(body.data, "base64").toString()
-        : body.data
-      : undefined,
+    body: requestBody
   });
 
   // Process request
@@ -104,7 +102,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
 
   const middlewareRewrite = response.headers.get("x-middleware-rewrite")
   if (middlewareRewrite)
-    return handleRewrite(request, requestHeaders, middlewareRewrite)
+    return handleRewrite(request, requestHeaders, requestBody, middlewareRewrite)
 
   return {
     status: response.status,
@@ -138,15 +136,17 @@ function filteredCfHeaders(httpHeaders: Headers): CloudFrontHeaders {
   return Object.fromEntries(Object.entries(cfHeaders).filter(([k]) => !blacklistedHeaders.some(h => h.test(k))))
 }
 
-async function handleRewrite(request: CloudFrontRequest, requestHeaders: Headers, destination: string): Promise<CloudFrontRequestResult> {
+async function handleRewrite(request: CloudFrontRequest, requestHeaders: Headers, requestBody: Buffer | undefined, destination: string): Promise<CloudFrontRequestResult> {
   if (!destination) return;
 
   const url = new URL(destination)
 
   const res = await fetch(url.href, {
     method: request.method,
+    body: requestBody,
     headers: { ...requestHeaders, host: url.host }
   })
+
   const buffer = Buffer.from(await res.arrayBuffer())
   console.log("rewrite response headers", res.headers)
   const filteredResHeaders = filteredCfHeaders(res.headers)
