@@ -45,7 +45,6 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
     if (!match) continue;
 
     const destination = `https://${host}${redirectCompilers[i](match.params).replace(/^http(s)?\//, "http$1://")}`;
-    console.log(request.origin)
 
     console.log(`redirected from ${uri} to ${destination}`)
 
@@ -63,16 +62,10 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
 
     const rawDestination = rewriteCompilers[i](match.params).replace(/^http(s)?\//, "http$1://");
     const destination = /^https?:\/\//.test(rawDestination) ? rawDestination : `https://${host}${rawDestination}`
-    console.log(request.origin)
 
-    console.log(`redirected from ${uri} to ${destination}`)
+    console.log(`rewrote from ${uri} to ${destination}`)
 
-    return {
-      status: redirectsJson[i].permanent ? "301" : "302",
-      headers: {
-        "location": [{ key: "location", value: destination }]
-      }
-    }
+    return handleRewrite(request, requestHeaders, destination)
   }
 
   if (!index?.default) return request;
