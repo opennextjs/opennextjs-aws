@@ -7,12 +7,13 @@ import type {
 import type { Redirect, Rewrite } from "next/dist/lib/load-custom-routes.js";
 import { match, compile } from "path-to-regexp";
 
-// @ts-ignore
-const index = await (() => import("./middleware.js"))();
+// @ts-expect-error
+const index = await (async () => { try { return import("./middleware.js") } catch { } })();
 
-// @ts-ignore
+// @ts-expect-error
 const redirectsJson: Redirect[] = (await (() => import("./redirects.json"))()).default;
-// @ts-ignore
+
+// @ts-expect-error
 const rewritesJson: Rewrite[] = (await (() => import("./rewrites.json"))()).default;
 
 const redirectMatchers = redirectsJson.map(r => match(r.source, { strict: true }));
@@ -73,6 +74,8 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
       }
     }
   }
+
+  if (!index?.default) return request;
 
   const qs = querystring.length > 0 ? `?${querystring}` : "";
   const url = new URL(`${uri}${qs}`, `https://${host}`);

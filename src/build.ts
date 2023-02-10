@@ -233,7 +233,7 @@ function createImageOptimizationBundle() {
 
 function createMiddlewareBundle(buildOutput: any, { redirects, rewrites }: { redirects: Redirect[], rewrites: Rewrite[] }) {
   const middlewareName = getMiddlewareName();
-  if (middlewareName) {
+  if (middlewareName || redirects.length || rewrites.length) {
     console.info(`Bundling middleware edge function...`);
   }
   else {
@@ -246,20 +246,22 @@ function createMiddlewareBundle(buildOutput: any, { redirects, rewrites }: { red
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Save redirects and rewrites to file
-  fs.writeFileSync(path.join(tempDir, "rewrites.json"), JSON.stringify(rewrites))
-  fs.writeFileSync(path.join(tempDir, "redirects.json"), JSON.stringify(redirects))
+  fs.writeFileSync(path.join(__dirname, "adapters", "rewrites.json"), JSON.stringify(rewrites))
+  fs.writeFileSync(path.join(__dirname, "adapters", "redirects.json"), JSON.stringify(redirects))
 
   // Save middleware code to file
-  const src: string = buildOutput.output[middlewareName].files["index.js"].data;
-  fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
+  if (middlewareName) {
+    const src: string = buildOutput.output[middlewareName].files["index.js"].data;
+    fs.writeFileSync(path.join(__dirname, "adapters", "middleware.js"), src);
+  } else fs.writeFileSync(path.join(__dirname, "adapters", "middleware.js"), "");
   fs.copyFileSync(
     path.join(__dirname, "adapters", "middleware-adapter.js"),
     path.join(tempDir, "middleware-adapter.js"),
   );
 
-  // Build Lambda code
+  // Build Lambda code (in open-next, to resolve path-to-regexp)
   esbuildSync({
-    entryPoints: [path.join(tempDir, "middleware-adapter.js")],
+    entryPoints: [path.join(__dirname, "adapters", "middleware-adapter.js")],
     outfile: path.join(outputPath, "index.mjs"),
     banner: {
       js: [
