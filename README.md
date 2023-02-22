@@ -282,10 +282,9 @@ Vercel uses the `Headers.getAll()` function in its middleware code, but this fun
 
 We decided to go with option 1 because it does not require an addition dependency and it is possible that Vercel will remove the use of the `getAll()` function in the future.
 
-#### WORKAROUND: NextAuth Middleware
+#### WORKAROUND: Polyfill `crypto` for the middleware function
 
-`next-auth` uses `jose`, which is bundled oddly. For example, it assumes `crypto` and `CryptoKey` are globally available. To handle this, we inject `crypto` and `CryptoKey` into the `globalThis` instance to circumvent this issue.
-
+[NextAuth.js](https://next-auth.js.org) uses the [`jose`](https://github.com/panva/jose) library at runtime to encrypt and decrypt JWT tokens. The library, in turn, uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). This workaround polyfills `crypto` and `CryptoKey` into the `globalThis` instance.
 
 ## Example
 

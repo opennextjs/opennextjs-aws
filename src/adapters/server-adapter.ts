@@ -1,15 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { IncomingMessage, ServerResponse } from "node:http";
-import slsHttp from "serverless-http"
+import slsHttp from "serverless-http";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
   Context,
-} from "aws-lambda"
+} from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-import { loadConfig } from "./util.js"
+import { loadConfig } from "./util.js";
 
 setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
@@ -37,15 +37,21 @@ const requestHandler = new NextServer.default({
 const server = slsHttp(
   async (req: IncomingMessage, res: ServerResponse) => {
     await requestHandler(req, res).catch((e: any) => {
-      console.error("NextJS request failed.")
-      console.error(e)
+      console.error("NextJS request failed.");
+      console.error(e);
 
-      res.setHeader("Content-Type", "application/json")
-      res.end(JSON.stringify({
-        message: "Server failed to respond.",
-        details: e,
-      }, null, 2))
-    })
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify(
+          {
+            message: "Server failed to respond.",
+            details: e,
+          },
+          null,
+          2
+        )
+      );
+    });
   },
   {
     binary: true,
@@ -55,15 +61,18 @@ const server = slsHttp(
       // https://github.com/dougmoscrop/serverless-http/issues/227
       delete request.body;
     },
-  },
+  }
 );
 
 /////////////
 // Handler //
 /////////////
 
-export async function handler(event: APIGatewayProxyEventV2, context: Context): Promise<APIGatewayProxyResultV2> {
-  console.log(event)
+export async function handler(
+  event: APIGatewayProxyEventV2,
+  context: Context
+): Promise<APIGatewayProxyResultV2> {
+  console.log(event);
 
   // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   const middlewareRequestHeaders = JSON.parse(
@@ -75,8 +84,12 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
   const response: APIGatewayProxyResultV2 = await server(event, context);
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
-  if (htmlPages.includes(event.rawPath) && !response.headers?.["cache-control"]) {
-    response.headers!["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
+  if (
+    htmlPages.includes(event.rawPath) &&
+    !response.headers?.["cache-control"]
+  ) {
+    response.headers!["cache-control"] =
+      "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
   // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
