@@ -18,8 +18,8 @@ import {
   ImageOptimizerCache,
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
-
 import { loadConfig } from "./util.js";
+import { debug } from "./logger.js";
 
 const bucketName = process.env.BUCKET_NAME;
 const nextDir = path.join(__dirname, ".next");
@@ -31,7 +31,7 @@ const nextConfig = {
     ...config.images,
   },
 };
-console.log("Init config", {
+debug("Init config", {
   nextDir,
   bucketName,
   nextConfig,
@@ -45,7 +45,7 @@ export async function handler(
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
   // Images are handled via header and query param information.
-  console.log("handler event", event);
+  debug("handler event", event);
   const { headers: rawHeaders, queryStringParameters: queryString } = event;
 
   try {
@@ -90,7 +90,7 @@ function validateImageParams(
     nextConfig,
     false
   );
-  console.log("image params", imageParams);
+  debug("image params", imageParams);
   if ("errorMessage" in imageParams) {
     throw new Error(imageParams.errorMessage);
   }
@@ -109,7 +109,7 @@ async function optimizeImage(
     false, // not in dev mode
     downloadHandler
   );
-  console.log("optimized result", result);
+  debug("optimized result", result);
   return result;
 }
 
@@ -127,7 +127,7 @@ function buildSuccessResponse(result: any) {
 }
 
 function buildFailureResponse(e: any) {
-  console.error(e);
+  debug(e);
   return {
     statusCode: 500,
     headers: {
@@ -147,7 +147,7 @@ async function downloadHandler(
 ) {
   // downloadHandler is called by Next.js. We don't call this function
   // directly.
-  console.log("downloadHandler url", url);
+  debug("downloadHandler url", url);
 
   // Reads the output from the Writable and writes to the response
   const pipeRes = (w: Writable, res: ServerResponse) => {

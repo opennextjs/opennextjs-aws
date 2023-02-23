@@ -294,9 +294,27 @@ Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/construct
 
 ## Debugging
 
-To find the **server and image optimization** log, go to the AWS CloudWatch console in the **region you deployed to**.
+To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
 
-To find the **middleware** log, go to the AWS CloudWatch console in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
+To find the **middleware log**, go to the AWS CloudWatch console in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
+
+#### Debug mode
+
+You can run OpenNext in debug mode by setting the `OPEN_NEXT_DEBUG` environment variable:
+
+```bash
+OPEN_NEXT_DEBUG=true npx open-next@latest build
+```
+
+This does two things:
+
+1. Lambda handler functions in the build output will not be minified.
+1. Lambda handler functions will automatically `console.log` the request event object along with other debugging information.
+
+It is recommended to **turn off debug mode when building for production** because:
+
+1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
+1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increated AWS costs.
 
 ## Opening an issue
 

@@ -10,12 +10,13 @@ import type {
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
 import { loadConfig } from "./util.js";
+import { debug } from "./logger.js";
 
 setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
-console.log({ nextDir });
+debug({ nextDir });
 
 // Create a NextServer
 const requestHandler = new NextServer.default({
@@ -72,7 +73,7 @@ export async function handler(
   event: APIGatewayProxyEventV2,
   context: Context
 ): Promise<APIGatewayProxyResultV2> {
-  console.log(event);
+  debug(event);
 
   // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   const middlewareRequestHeaders = JSON.parse(
@@ -98,7 +99,7 @@ export async function handler(
   );
   response.headers = { ...response.headers, ...middlewareResponseHeaders };
 
-  console.log("response headers", response.headers);
+  debug("response headers", response.headers);
 
   return response;
 }
