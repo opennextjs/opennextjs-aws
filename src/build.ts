@@ -248,10 +248,12 @@ function createMiddlewareBundle(buildOutput: any) {
   // Save middleware code to file
   const src: string = buildOutput.output[middlewareName].files["index.js"].data;
   fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
-  fs.copyFileSync(
-    path.join(__dirname, "adapters", "middleware-adapter.js"),
-    path.join(tempDir, "middleware-adapter.js")
-  );
+  ["middleware-adapter.js", "logger.js"].forEach((file) => {
+    fs.copyFileSync(
+      path.join(__dirname, "adapters", file),
+      path.join(tempDir, file)
+    );
+  });
 
   // Build Lambda code
   esbuildSync({
@@ -319,8 +321,15 @@ function esbuildSync(options: BuildOptions) {
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: true,
+    minify: process.env.OPEN_NEXT_DEBUG ? false : true,
     ...options,
+    // "process.env.OPEN_NEXT_DEBUG" determins if the logger writes to console.log
+    define: {
+      ...options.define,
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
+        ? "true"
+        : "false",
+    },
   });
 
   if (result.errors.length > 0) {

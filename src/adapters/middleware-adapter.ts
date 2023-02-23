@@ -3,6 +3,7 @@ import type {
   CloudFrontRequestResult,
   CloudFrontHeaders,
 } from "aws-lambda";
+import { debug } from "./logger.js";
 
 // @ts-ignore
 const index = await (() => import("./middleware.js"))();
@@ -12,9 +13,9 @@ export async function handler(
 ): Promise<CloudFrontRequestResult> {
   const request = event.Records[0].cf.request;
   const { uri, method, headers, querystring, body } = request;
-  console.log(uri);
-  console.log(request);
-  console.log(request.headers);
+  debug(uri);
+  debug(request);
+  debug(request.headers);
 
   // Convert CloudFront request to Node request
   // @ts-ignore Types has not been added for Node 18 native fetch API
@@ -44,7 +45,7 @@ export async function handler(
   const response = await index.default(nodeRequest, {
     waitUntil: () => {},
   });
-  console.log("middleware response header", response.headers);
+  debug("middleware response header", response.headers);
 
   // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   if (response.headers.get("x-middleware-next") === "1") {
@@ -78,7 +79,7 @@ function getMiddlewareRequestHeaders(response: any) {
     .forEach((key: string) => {
       headers[key] = response.headers.get(`x-middleware-request-${key}`);
     });
-  console.log("getMiddlewareRequestHeaders", headers);
+  debug("getMiddlewareRequestHeaders", headers);
   return JSON.stringify(headers);
 }
 
@@ -89,7 +90,7 @@ function getMiddlewareResponseHeaders(response: any) {
       headers[key] = value;
     }
   });
-  console.log("getMiddlewareResponseHeaders", headers);
+  debug("getMiddlewareResponseHeaders", headers);
   return JSON.stringify(headers);
 }
 
@@ -98,6 +99,6 @@ function httpHeadersToCfHeaders(httpHeaders: any) {
   httpHeaders.forEach((value: string, key: string) => {
     headers[key] = [{ key, value }];
   });
-  console.log("httpHeadersToCfHeaders", headers);
+  debug("httpHeadersToCfHeaders", headers);
   return headers;
 }
