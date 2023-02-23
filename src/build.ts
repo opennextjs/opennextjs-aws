@@ -17,7 +17,6 @@ export async function build() {
   // Pre-build validation
   printVersion();
   const { default: nextJsConfig } = await checkRunningInsideNextjsApp();
-  console.log({ nextJsConfig })
   setStandaloneBuildMode();
   const monorepoRoot = findMonorepoRoot();
 
