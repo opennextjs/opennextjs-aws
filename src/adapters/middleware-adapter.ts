@@ -1,13 +1,15 @@
 import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
-  CloudFrontHeaders
-} from "aws-lambda"
+  CloudFrontHeaders,
+} from "aws-lambda";
 
 // @ts-ignore
 const index = await (() => import("./middleware.js"))();
 
-export async function handler(event: CloudFrontRequestEvent): Promise<CloudFrontRequestResult> {
+export async function handler(
+  event: CloudFrontRequestEvent
+): Promise<CloudFrontRequestResult> {
   const request = event.Records[0].cf.request;
   const { uri, method, headers, querystring, body } = request;
   console.log(uri);
@@ -20,7 +22,7 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
   for (const [key, values] of Object.entries(headers)) {
     for (const { value } of values) {
       if (value) {
-        requestHeaders.append(key, value)
+        requestHeaders.append(key, value);
       }
     }
   }
@@ -40,25 +42,30 @@ export async function handler(event: CloudFrontRequestEvent): Promise<CloudFront
 
   // Process request
   const response = await index.default(nodeRequest, {
-    waitUntil: () => { },
+    waitUntil: () => {},
   });
   console.log("middleware response header", response.headers);
 
   // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
   if (response.headers.get("x-middleware-next") === "1") {
-    headers["x-op-middleware-request-headers"] = [{
-      key: "x-op-middleware-request-headers",
-      value: getMiddlewareRequestHeaders(response),
-    }];
-    headers["x-op-middleware-response-headers"] = [{
-      key: "x-op-middleware-response-headers",
-      value: getMiddlewareResponseHeaders(response),
-    }];
+    headers["x-op-middleware-request-headers"] = [
+      {
+        key: "x-op-middleware-request-headers",
+        value: getMiddlewareRequestHeaders(response),
+      },
+    ];
+    headers["x-op-middleware-response-headers"] = [
+      {
+        key: "x-op-middleware-response-headers",
+        value: getMiddlewareResponseHeaders(response),
+      },
+    ];
     return request;
   }
 
   return {
     status: response.status,
+    body: response.body ? await response.text() : undefined,
     headers: httpHeadersToCfHeaders(response.headers),
   };
 }
@@ -69,7 +76,7 @@ function getMiddlewareRequestHeaders(response: any) {
     .split(",")
     .filter(Boolean)
     .forEach((key: string) => {
-      headers[key] = response.headers.get(`x-middleware-request-${key}`)
+      headers[key] = response.headers.get(`x-middleware-request-${key}`);
     });
   console.log("getMiddlewareRequestHeaders", headers);
   return JSON.stringify(headers);

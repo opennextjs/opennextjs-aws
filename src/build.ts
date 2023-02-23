@@ -35,7 +35,9 @@ function checkRunningInsideNextjsApp() {
     fs.existsSync(path.join(appPath, `next.config.${ext}`))
   );
   if (!extension) {
-    console.error("Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.");
+    console.error(
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app."
+    );
     process.exit(1);
   }
 }
@@ -43,9 +45,11 @@ function checkRunningInsideNextjsApp() {
 function findMonorepoRoot() {
   let currentPath = appPath;
   while (currentPath !== "/") {
-    if (fs.existsSync(path.join(currentPath, "package-lock.json"))
-      || fs.existsSync(path.join(currentPath, "yarn.lock"))
-      || fs.existsSync(path.join(currentPath, "pnpm-lock.yaml"))) {
+    if (
+      fs.existsSync(path.join(currentPath, "package-lock.json")) ||
+      fs.existsSync(path.join(currentPath, "yarn.lock")) ||
+      fs.existsSync(path.join(currentPath, "pnpm-lock.yaml"))
+    ) {
       if (currentPath !== appPath) {
         console.info("Monorepo detected at", currentPath);
       }
@@ -81,13 +85,15 @@ function buildNextjsApp(monorepoRoot: string) {
 
 function printHeader(header: string) {
   header = `OpenNext — ${header}`;
-  console.info([
-    "",
-    "┌" + "─".repeat(header.length + 2) + "┐",
-    `│ ${header} │`,
-    "└" + "─".repeat(header.length + 2) + "┘",
-    "",
-  ].join("\n"));
+  console.info(
+    [
+      "",
+      "┌" + "─".repeat(header.length + 2) + "┐",
+      `│ ${header} │`,
+      "└" + "─".repeat(header.length + 2) + "┘",
+      "",
+    ].join("\n")
+  );
 }
 
 function printVersion() {
@@ -103,7 +109,12 @@ function initOutputDir() {
 
 function getMiddlewareName() {
   // note: middleware can be at the root or inside "src"
-  const filePath = path.join(appPath, ".next", "server", "middleware-manifest.json");
+  const filePath = path.join(
+    appPath,
+    ".next",
+    "server",
+    "middleware-manifest.json"
+  );
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json).middleware?.["/"]?.name;
 }
@@ -118,11 +129,10 @@ function createServerBundle(monorepoRoot: string) {
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
   //       symlinks. We don't want to resolve the symlinks when copying.
-  fs.cpSync(
-    path.join(appPath, ".next/standalone"),
-    path.join(outputPath),
-    { recursive: true, verbatimSymlinks: true }
-  );
+  fs.cpSync(path.join(appPath, ".next/standalone"), path.join(outputPath), {
+    recursive: true,
+    verbatimSymlinks: true,
+  });
 
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
@@ -134,10 +144,7 @@ function createServerBundle(monorepoRoot: string) {
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
-  fs.rmSync(
-    path.join(outputPath, packagePath, "server.js"),
-    { force: true }
-  );
+  fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
@@ -162,10 +169,11 @@ function createServerBundle(monorepoRoot: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
   if (isMonorepo) {
-    fs.writeFileSync(path.join(outputPath, "index.mjs"), [
-      `export * from "./${packagePath}/index.mjs";`,
-    ].join(""))
-  };
+    fs.writeFileSync(
+      path.join(outputPath, "index.mjs"),
+      [`export * from "./${packagePath}/index.mjs";`].join("")
+    );
+  }
 }
 
 function createImageOptimizationBundle() {
@@ -180,7 +188,9 @@ function createImageOptimizationBundle() {
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
-    entryPoints: [path.join(__dirname, "adapters", "image-optimization-adapter.js")],
+    entryPoints: [
+      path.join(__dirname, "adapters", "image-optimization-adapter.js"),
+    ],
     external: ["sharp", "next"],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -208,7 +218,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
     path.join(appPath, ".next/required-server-files.json"),
-    path.join(outputPath, ".next/required-server-files.json"),
+    path.join(outputPath, ".next/required-server-files.json")
   );
 
   // Copy over sharp node modules
@@ -223,9 +233,11 @@ function createMiddlewareBundle(buildOutput: any) {
   const middlewareName = getMiddlewareName();
   if (middlewareName) {
     console.info(`Bundling middleware edge function...`);
-  }
-  else {
-    console.info(`Bundling middleware edge function... \x1b[36m%s\x1b[0m`, "skipped");
+  } else {
+    console.info(
+      `Bundling middleware edge function... \x1b[36m%s\x1b[0m`,
+      "skipped"
+    );
     return;
   }
 
@@ -238,7 +250,7 @@ function createMiddlewareBundle(buildOutput: any) {
   fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
   fs.copyFileSync(
     path.join(__dirname, "adapters", "middleware-adapter.js"),
-    path.join(tempDir, "middleware-adapter.js"),
+    path.join(tempDir, "middleware-adapter.js")
   );
 
   // Build Lambda code
@@ -262,10 +274,15 @@ function createMiddlewareBundle(buildOutput: any) {
         "    };",
         "  }",
         "}",
-        // Polyfill Response and self
         "Object.assign(globalThis, {",
         "  Response,",
         "  self: {},",
+        "});",
+        // WORKAROUND: Polyfill `crypto` for the middleware function (NextAuth specific) - https://github.com/serverless-stack/open-next#workaround-polyfill-crypto-for-the-middleware-function
+        "import crypto from 'node:crypto';",
+        "Object.assign(globalThis, {",
+        "  crypto,",
+        "  CryptoKey: crypto.webcrypto.CryptoKey,",
         "});",
       ].join(""),
     },
@@ -293,11 +310,7 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  fs.cpSync(
-    path.join(appPath, "public"),
-    outputPath,
-    { recursive: true }
-  );
+  fs.cpSync(path.join(appPath, "public"), outputPath, { recursive: true });
 }
 
 function esbuildSync(options: BuildOptions) {
@@ -306,11 +319,14 @@ function esbuildSync(options: BuildOptions) {
     format: "esm",
     platform: "node",
     bundle: true,
+    minify: true,
     ...options,
   });
 
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling ${(options.entryPoints as string[])[0]}.`);
+    throw new Error(
+      `There was a problem bundling ${(options.entryPoints as string[])[0]}.`
+    );
   }
 }
