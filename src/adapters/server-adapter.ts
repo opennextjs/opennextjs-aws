@@ -31,7 +31,9 @@ const requestHandler = new NextServer.default({
   //  - Headers
   //  - Middleware
   //  - SSG cache
-  minimalMode: true,
+  // minimalMode from createServerBundle on build.ts
+  // @ts-ignore
+  minimalMode,
 }).getRequestHandler();
 
 // Create a HTTP server invoking the NextServer

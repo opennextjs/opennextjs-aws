@@ -10,7 +10,13 @@ const appPath = process.cwd();
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
-export async function build() {
+export async function build({
+  installCommand,
+  minimalMode = true,
+}: {
+  installCommand: string | undefined;
+  minimalMode: boolean;
+}) {
   // Pre-build validation
   printVersion();
   checkRunningInsideNextjsApp();
@@ -19,12 +25,12 @@ export async function build() {
 
   // Build Next.js app
   printHeader("Building Next.js app");
-  const buildOutput = await buildNextjsApp(monorepoRoot);
+  const buildOutput = await buildNextjsApp(monorepoRoot, installCommand);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
-  createServerBundle(monorepoRoot);
+  createServerBundle(monorepoRoot, minimalMode);
   createImageOptimizationBundle();
   createMiddlewareBundle(buildOutput);
   createAssets();
@@ -69,7 +75,7 @@ function setStandaloneBuildMode() {
   process.env.NEXT_PRIVATE_STANDALONE = "true";
 }
 
-function buildNextjsApp(monorepoRoot: string) {
+function buildNextjsApp(monorepoRoot: string, installCommand: string) {
   // note: always pass in "next.config.js" as the entrypoint.
   //       @vercel/next only accepts "next.config.js" as the
   //       entrypoint. But it doesn't actually use the file.
@@ -78,7 +84,7 @@ function buildNextjsApp(monorepoRoot: string) {
     repoRootPath: monorepoRoot,
     workPath: appPath,
     entrypoint: "next.config.js",
-    config: {},
+    config: { installCommand },
     meta: {},
   });
 }
@@ -119,7 +125,7 @@ function getMiddlewareName() {
   return JSON.parse(json).middleware?.["/"]?.name;
 }
 
-function createServerBundle(monorepoRoot: string) {
+function createServerBundle(monorepoRoot: string, minimalMode: boolean) {
   console.info(`Bundling server function...`);
 
   // Create output folder
@@ -160,6 +166,7 @@ function createServerBundle(monorepoRoot: string) {
         "const require = topLevelCreateRequire(import.meta.url);",
         "import url from 'url';",
         "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+        `const minimalMode = ${minimalMode}`,
       ].join(""),
     },
   });
