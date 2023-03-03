@@ -75,7 +75,7 @@ function setStandaloneBuildMode() {
   process.env.NEXT_PRIVATE_STANDALONE = "true";
 }
 
-function buildNextjsApp(monorepoRoot: string, installCommand: string) {
+function buildNextjsApp(monorepoRoot: string, installCommand: string | undefined) {
   // note: always pass in "next.config.js" as the entrypoint.
   //       @vercel/next only accepts "next.config.js" as the
   //       entrypoint. But it doesn't actually use the file.
