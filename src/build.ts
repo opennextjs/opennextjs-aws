@@ -32,7 +32,11 @@ export async function build({
   initOutputDir();
   createServerBundle(monorepoRoot, minimalMode);
   createImageOptimizationBundle();
-  createMiddlewareBundle(buildOutput);
+  if (minimalMode) {
+    createMiddlewareBundle(buildOutput);
+  } else {
+    console.info("MinimalMode disabled middleware edge function skipped...");
+  }
   createAssets();
 }
 
