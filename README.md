@@ -49,6 +49,10 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
    ```bash
    npx open-next@latest build
    ```
+  
+   CLI Options:
+   installCommand: Send a custom install command, For example: yarn workspaces focus --all --production
+   disableMinimalMode: Disable minimal mode
 
    This will generate an `.open-next` directory with the following bundles:
 
