@@ -20,6 +20,8 @@ debug({ nextDir });
 
 // Create a NextServer
 const requestHandler = new NextServer.default({
+  hostname: "localhost",
+  port: Number(process.env.PORT) || 3000,
   // Next.js compression should be disabled because of a bug in the bundled
   // `compression` package — https://github.com/vercel/next.js/issues/11669
   conf: { ...config, compress: false },
