@@ -37,6 +37,13 @@ const requestHandler = new NextServer.default({
 // Create a HTTP server invoking the NextServer
 const server = slsHttp(
   async (req: IncomingMessage, res: ServerResponse) => {
+
+    if (process.env.OPEN_NEXT_REQ_BASE_URL) {
+      // https://google.com + /nextjs/route
+      req.url = `${process.env.OPEN_NEXT_REQ_BASE_URL}${req.url}`;
+    }
+    
+
     await requestHandler(req, res).catch((e: any) => {
       console.error("NextJS request failed.");
       console.error(e);
@@ -99,7 +106,10 @@ export async function handler(
   );
   response.headers = { ...response.headers, ...middlewareResponseHeaders };
 
-  debug("response headers", response.headers);
+  // new beta appDir does not set statusCode and lambda fails to correctly send response
+  if (!response.statusCode) {
+    response.statusCode = 200;
+  }
 
   return response;
 }
