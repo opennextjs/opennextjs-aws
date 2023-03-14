@@ -26,7 +26,7 @@ export async function build() {
   initOutputDir();
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
-  createMiddlewareBundle(buildOutput);
+  // createMiddlewareBundle(buildOutput);
   createAssets();
 }
 

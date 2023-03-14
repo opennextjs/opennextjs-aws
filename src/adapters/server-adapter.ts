@@ -31,18 +31,16 @@ const requestHandler = new NextServer.default({
   //  - Headers
   //  - Middleware
   //  - SSG cache
-  minimalMode: true,
+  minimalMode: false,
 }).getRequestHandler();
 
 // Create a HTTP server invoking the NextServer
 const server = slsHttp(
   async (req: IncomingMessage, res: ServerResponse) => {
-
-    if (process.env.OPEN_NEXT_REQ_BASE_URL) {
-      // https://google.com + /nextjs/route
-      req.url = `${process.env.OPEN_NEXT_REQ_BASE_URL}${req.url}`;
-    }
-    
+    // if (process.env.OPEN_NEXT_REQ_BASE_URL) {
+    //   // https://google.com + /nextjs/route
+    //   req.url = `${process.env.OPEN_NEXT_REQ_BASE_URL}${req.url}`;
+    // }
 
     await requestHandler(req, res).catch((e: any) => {
       console.error("NextJS request failed.");
