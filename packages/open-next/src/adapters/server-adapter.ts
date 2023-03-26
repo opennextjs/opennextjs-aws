@@ -54,7 +54,14 @@ const requestHandler = new NextServer.default({
   port: Number(process.env.PORT) || 3000,
   // Next.js compression should be disabled because of a bug in the bundled
   // `compression` package — https://github.com/vercel/next.js/issues/11669
-  conf: { ...config, compress: false },
+  conf: {
+    ...config,
+    compress: false,
+    experimental: {
+      ...config.experimental,
+      incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.js`,
+    },
+  },
   customServer: false,
   dev: false,
   dir: __dirname,
@@ -121,8 +128,7 @@ export async function handler(
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
   if (htmlPages.includes(internalEvent.rawPath) && headers["cache-control"]) {
-    headers["cache-control"] =
-      "public, max-age=0, s-maxage=31536000, must-revalidate";
+    headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
   return convertTo({

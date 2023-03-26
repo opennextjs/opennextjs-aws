@@ -261,6 +261,15 @@ function createServerBundle(monorepoRoot: string) {
   // It will be replaced with the Lambda handler.
   fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
+  //build cache.js
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "cache.js")],
+    external: ["@aws-sdk/client-s3"],
+    outfile: path.join(outputPath, "cache.js"),
+    target: ["node18"],
+    format: "cjs",
+  });
+
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
