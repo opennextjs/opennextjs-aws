@@ -169,9 +169,14 @@ function createServerBundle(monorepoRoot: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
   if (isMonorepo) {
+    // Generate package import path if inside nested monorepo
+    // note: in the monorepo with nested folder structure
+    //       "packagePath" will be in format of "dirname\\package-root-dir" in windows
+    //       "packageImportPath" should be "dirname/package-root-dir"
+    const packageImportPath = path.posix.join(...packagePath.split(path.sep));
     fs.writeFileSync(
       path.join(outputPath, "index.mjs"),
-      [`export * from "./${packagePath}/index.mjs";`].join("")
+      [`export * from "./${packageImportPath}/index.mjs";`].join("")
     );
   }
 }
