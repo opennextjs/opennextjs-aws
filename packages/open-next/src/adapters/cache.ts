@@ -107,35 +107,44 @@ export default class S3Cache {
           },
         };
         return cacheEntry;
-      } catch (_) {
+      } catch (e) {
         // no .meta data for the related key
+        console.error(e);
       }
     }
-    try {
-      const { Body, LastModified } = await this.getS3Object(`${key}.body`);
+    if (
+      keys.includes(`${key}.html`) &&
+      (keys.includes(`${key}.json`) || keys.includes(`${key}.rsc`))
+    ) {
+      try {
+        const { Body, LastModified } = await this.getS3Object(`${key}.html`);
 
-      const pageData = keys.includes(`${key}.json`)
-        ? JSON.parse(
-            (await (await this.getS3Object(`${key}.json`)).Body?.transformToString()) ??
-              "{}"
-          )
-        : Buffer.from(
-            (await (await this.getS3Object(`${key}.rsc`)).Body?.transformToByteArray()) ??
-              Buffer.alloc(0)
-          );
+        const pageData = keys.includes(`${key}.json`)
+          ? JSON.parse(
+              (await (await this.getS3Object(`${key}.json`)).Body?.transformToString()) ??
+                "{}"
+            )
+          : Buffer.from(
+              (await (
+                await this.getS3Object(`${key}.rsc`)
+              ).Body?.transformToByteArray()) ?? Buffer.alloc(0)
+            );
 
-      const cacheEntry: CacheHandlerValue = {
-        lastModified: LastModified?.getTime(),
-        value: {
-          kind: "PAGE",
-          html: (await Body?.transformToString()) ?? "",
-          pageData,
-        },
-      };
-      return cacheEntry;
-    } catch (_) {
-      return null;
+        const cacheEntry: CacheHandlerValue = {
+          lastModified: LastModified?.getTime(),
+          value: {
+            kind: "PAGE",
+            html: (await Body?.transformToString()) ?? "",
+            pageData,
+          },
+        };
+        return cacheEntry;
+      } catch (e) {
+        console.error(e);
+        return null;
+      }
     }
+    return null;
   }
 
   async set(key: string, data?: IncrementalCacheValue): Promise<void> {
