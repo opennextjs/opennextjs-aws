@@ -1,4 +1,8 @@
 {
+  "publishConfig": {
+    "directory": "dist",
+    "access": "public"
+  },
   "name": "open-next",
   "version": "0.0.0",
   "license": "MIT",
