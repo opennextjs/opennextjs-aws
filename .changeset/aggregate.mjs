@@ -4,9 +4,7 @@ import { execSync } from "node:child_process";
 
 const THANKLESS_COMMITTERS = ["thdxr", "fwang", "jayair"];
 
-const { version } = JSON.parse(
-  await fs.readFile("./packages/core/package.json")
-);
+const { version } = JSON.parse(await fs.readFile("./package.json"));
 
 const changesets = JSON.parse(await fs.readFile(".changeset/config.json"));
 const packages = changesets.fixed[0];
@@ -48,6 +46,9 @@ for (const pkg of packages) {
   }
 }
 
+const notes = ["#### Changes", ...changes];
+console.log(notes.join("\n"));
+console.log(`::set-output name=notes::${notes.join("%0A")}`);
 console.log(`::set-output name=version::v${version}`);
 
 execSync(`git tag v${version}`);

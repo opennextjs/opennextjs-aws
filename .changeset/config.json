@@ -5,13 +5,9 @@
     { "repo": "serverless-stack/open-next" }
   ],
   "commit": false,
-  "fixed": [
-    [
-      "open-next"
-    ]
-  ],
+  "fixed": [["open-next"]],
   "linked": [],
-  "access": "restricted",
+  "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": []

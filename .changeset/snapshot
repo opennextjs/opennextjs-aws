@@ -9,4 +9,3 @@ sed -i.bak -e '2,5d' dist/package.json
 pnpm changeset publish --no-git-tag --tag=snapshot 
 cp .changeset/config.json.bak .changeset/config.json
 git checkout '**/package.json' '**/CHANGELOG.md' '.changeset'
-
