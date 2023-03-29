@@ -5,6 +5,8 @@ import {
   PutObjectCommandInput,
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
+import path from "path";
+import { loadBuildId } from "./util.js";
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -72,29 +74,33 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
+type Extension = "json" | "html" | "rsc" | "body" | "meta";
+
 export default class S3Cache {
   private client: S3Client;
+  private buildId: string;
   constructor(_ctx: CacheHandlerContext) {
     this.client = new S3Client({});
+    this.buildId = loadBuildId(path.dirname(_ctx.serverDistDir ?? ".next/server"));
   }
 
   async get(key: string): Promise<CacheHandlerValue | null> {
     const { Contents } = await this.client.send(
       new ListObjectsV2Command({
         Bucket: process.env.CACHE_BUCKET_NAME,
-        Prefix: `${key}.`,
+        Prefix: `${this.buildId}${key}.`,
       })
     );
     const keys = Contents?.map(({ Key }) => Key);
     if (!keys?.length) {
       return null;
     }
-    if (keys.includes(`${key}.body`)) {
+    if (keys.includes(this.getPath(key, "body"))) {
       try {
-        const { Body, LastModified } = await this.getS3Object(`${key}.body`);
+        const { Body, LastModified } = await this.getS3Object(key, "body");
         const body = await Body?.transformToByteArray();
 
-        const { Body: metaBody } = await this.getS3Object(`${key}.meta`);
+        const { Body: metaBody } = await this.getS3Object(key, "meta");
         const meta = JSON.parse((await metaBody?.transformToString()) ?? "{}");
 
         const cacheEntry: CacheHandlerValue = {
@@ -113,21 +119,21 @@ export default class S3Cache {
       }
     }
     if (
-      keys.includes(`${key}.html`) &&
-      (keys.includes(`${key}.json`) || keys.includes(`${key}.rsc`))
+      keys.includes(this.getPath(key, "html")) &&
+      (keys.includes(this.getPath(key, "json")) ||
+        keys.includes(this.getPath(key, "rsc")))
     ) {
       try {
-        const { Body, LastModified } = await this.getS3Object(`${key}.html`);
+        const { Body, LastModified } = await this.getS3Object(key, "html");
 
-        const pageData = keys.includes(`${key}.json`)
+        const pageData = keys.includes(this.getPath(key, "json"))
           ? JSON.parse(
-              (await (await this.getS3Object(`${key}.json`)).Body?.transformToString()) ??
+              (await (await this.getS3Object(key, "json")).Body?.transformToString()) ??
                 "{}"
             )
           : Buffer.from(
-              (await (
-                await this.getS3Object(`${key}.rsc`)
-              ).Body?.transformToByteArray()) ?? Buffer.alloc(0)
+              (await (await this.getS3Object(key, "rsc")).Body?.transformToByteArray()) ??
+                Buffer.alloc(0)
             );
 
         const cacheEntry: CacheHandlerValue = {
@@ -150,34 +156,45 @@ export default class S3Cache {
   async set(key: string, data?: IncrementalCacheValue): Promise<void> {
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
-      await this.putS3Object(`${key}.body`, body);
-      await this.putS3Object(`${key}.meta`, JSON.stringify({ status, headers }));
+      await this.putS3Object(key, body, "body");
+      await this.putS3Object(key, JSON.stringify({ status, headers }), "meta");
     }
     if (data?.kind === "PAGE") {
       const { html, pageData } = data;
-      await this.putS3Object(`${key}.html`, html);
+      await this.putS3Object(key, html, "html");
       const isAppPath = typeof pageData === "string";
       await this.putS3Object(
-        isAppPath ? `${key}.rsc` : `${key}.json`,
-        isAppPath ? pageData : JSON.stringify(pageData)
+        key,
+        isAppPath ? pageData : JSON.stringify(pageData),
+        isAppPath ? "rsc" : "json"
       );
     }
   }
 
-  private async getS3Object(key: string) {
+  private getPath(key: string, extension: Extension) {
+    return path.join(this.buildId, `${key}.${extension}`);
+  }
+
+  private async getS3Object(key: string, extension: Extension) {
+    const Key = this.getPath(key, extension);
     return this.client.send(
       new GetObjectCommand({
         Bucket: process.env.CACHE_BUCKET_NAME,
-        Key: key,
+        Key,
       })
     );
   }
 
-  private async putS3Object(key: string, value: PutObjectCommandInput["Body"]) {
+  private async putS3Object(
+    key: string,
+    value: PutObjectCommandInput["Body"],
+    extension: Extension
+  ) {
+    const Key = this.getPath(key, extension);
     return this.client.send(
       new PutObjectCommand({
         Bucket: process.env.CACHE_BUCKET_NAME,
-        Key: key,
+        Key,
         Body: value,
       })
     );

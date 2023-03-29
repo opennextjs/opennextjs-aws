@@ -17,6 +17,36 @@ export function loadConfig(nextDir: string) {
   const { config } = JSON.parse(json);
   return config as NextConfig;
 }
+export function loadBuildId(nextDir: string) {
+  const filePath = path.join(nextDir, "BUILD_ID");
+  return fs.readFileSync(filePath, "utf-8").trim();
+}
+
+interface PrerenderManifest {
+  version: number;
+  routes: {
+    dataRoute: string;
+    srcRoute: string | null;
+    initialRevalidateSeconds: number | boolean;
+  }[];
+  dynamicRoutes: {
+    routeRegex: string;
+    dataRoute: string;
+    fallback: string | null;
+    dataRouteRegex: string;
+  }[];
+  preview: {
+    previewModeId: string;
+    previewModeSigningKey: string;
+    previewModeEncryptionKey: string;
+  };
+}
+
+export function loadPrerenderManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "prerender-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as PrerenderManifest;
+}
 
 export function loadHtmlPages(nextDir: string) {
   const filePath = path.join(nextDir, "server", "pages-manifest.json");
