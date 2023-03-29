@@ -16,10 +16,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc -w",
-    "prettier": "prettier --cache -w --loglevel=error .",
-    "release": "./.changeset/release",
-    "release-snapshot": "./.changeset/snapshot"
+    "dev": "tsc -w"
   },
   "keywords": [],
   "author": "",
