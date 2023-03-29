@@ -6,6 +6,7 @@ import type {
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
 } from "aws-lambda";
+import { request } from "node:https";
 import {
   generateUniqueId,
   loadAppPathsManifestKeys,
@@ -23,6 +24,7 @@ import {
   applyOverride as applyNextjsRequireHooksOverride,
 } from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+import fs from "node:fs";
 
 const NEXT_DIR = path.join(__dirname, ".next");
 const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
@@ -128,7 +130,30 @@ export async function handler(
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
   if (htmlPages.includes(internalEvent.rawPath) && headers["cache-control"]) {
-    headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
+    headers["cache-control"] =
+      "public, max-age=0, s-maxage=31536000, must-revalidate";
+  }
+
+  // WORKAROUND: `NextServer` does not revalidate correctly
+  // x-nextjs-cache should be allowed in cloudfront headers
+  const nextJsCacheHeader = headers?.["x-nextjs-cache"];
+  if (nextJsCacheHeader === "STALE" || nextJsCacheHeader === "MISS") {
+    headers!["cache-control"] =
+      "public, max-age=0, s-maxage=0, must-revalidate";
+    const filePath = path.join(NEXT_DIR, "prerender-manifest.json");
+    const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    const preview = json.preview;
+    try {
+      request(`https://${headers.host}${internalEvent.rawPath}`, {
+        method: "HEAD",
+        headers: { "x-prerender-revalidate": preview.previewModeId },
+      })
+        .on("error", (err) => console.error(err))
+        .end();
+    } catch (e) {
+      console.error("Failed to revalidate stale page.", internalEvent.rawPath);
+      console.error(e);
+    }
   }
 
   return convertTo({
