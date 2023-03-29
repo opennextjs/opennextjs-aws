@@ -20,18 +20,14 @@ debug({ nextDir });
 
 // Create a NextServer
 const requestHandler = new NextServer.default({
+  hostname: "localhost",
+  port: Number(process.env.PORT) || 3000,
   // Next.js compression should be disabled because of a bug in the bundled
   // `compression` package — https://github.com/vercel/next.js/issues/11669
   conf: { ...config, compress: false },
   customServer: false,
   dev: false,
   dir: __dirname,
-  // "minimalMode" controls:
-  //  - Rewrites and redirects
-  //  - Headers
-  //  - Middleware
-  //  - SSG cache
-  minimalMode: true,
 }).getRequestHandler();
 
 // Create a HTTP server invoking the NextServer
@@ -75,12 +71,6 @@ export async function handler(
 ): Promise<APIGatewayProxyResultV2> {
   debug(event);
 
-  // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
-  const middlewareRequestHeaders = JSON.parse(
-    event.headers["x-op-middleware-request-headers"] || "{}"
-  );
-  event.headers = { ...event.headers, ...middlewareRequestHeaders };
-
   // Invoke NextServer
   const response: APIGatewayProxyResultV2 = await server(event, context);
 
@@ -92,14 +82,6 @@ export async function handler(
     response.headers!["cache-control"] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
-
-  // WORKAROUND: Pass headers from middleware function to server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific
-  const middlewareResponseHeaders = JSON.parse(
-    event.headers["x-op-middleware-response-headers"] || "{}"
-  );
-  response.headers = { ...response.headers, ...middlewareResponseHeaders };
-
-  debug("response headers", response.headers);
 
   return response;
 }
