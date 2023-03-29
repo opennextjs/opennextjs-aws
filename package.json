@@ -10,9 +10,9 @@
   "type": "module",
   "description": "Open source Next.js serverless adapter",
   "homepage": "https://open-next.js.org",
-  "main": "src/build",
+  "main": "index.js",
   "bin": {
-    "open-next": "./dist/index.js"
+    "open-next": "./index.js"
   },
   "scripts": {
     "build": "tsc",
