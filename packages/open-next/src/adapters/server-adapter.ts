@@ -144,12 +144,14 @@ export async function handler(
     const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
     const preview = json.preview;
     try {
-      request(`https://${headers.host}${internalEvent.rawPath}`, {
-        method: "HEAD",
-        headers: { "x-prerender-revalidate": preview.previewModeId },
-      })
-        .on("error", (err) => console.error(err))
-        .end();
+      await new Promise<void>((resolve, reject) => {
+        request(`https://${headers.host}${internalEvent.rawPath}`, {
+          method: "HEAD",
+          headers: { "x-prerender-revalidate": preview.previewModeId },
+        })
+          .on("error", (err) => reject(err))
+          .end(() => resolve());
+      });
     } catch (e) {
       console.error("Failed to revalidate stale page.", internalEvent.rawPath);
       console.error(e);
