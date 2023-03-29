@@ -5,7 +5,6 @@
     { "repo": "serverless-stack/open-next" }
   ],
   "commit": false,
-  "fixed": [["open-next"]],
   "linked": [],
   "access": "public",
   "baseBranch": "main",
