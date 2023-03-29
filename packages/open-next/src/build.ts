@@ -270,6 +270,29 @@ function createServerBundle(monorepoRoot: string) {
     format: "cjs",
   });
 
+  //Copy prerendered pages to cache folder
+  const buildId = fs.readFileSync(path.join(appPath, ".next/BUILD_ID"), "utf-8");
+  const outputCache = path.join(outputDir, "cache", buildId);
+  fs.cpSync(
+    path.join(appPath, ".next/standalone", packagePath, ".next/server/pages"),
+    outputCache,
+    {
+      recursive: true,
+      verbatimSymlinks: true,
+    }
+  );
+  const removeJsFiles = (dir: string) => {
+    fs.readdirSync(dir).forEach((file) => {
+      if (fs.statSync(path.join(dir, file)).isDirectory()) {
+        removeJsFiles(path.join(dir, file));
+      }
+      if (file.endsWith(".js") || file.endsWith(".js.nft.json")) {
+        fs.rmSync(path.join(dir, file), { force: true });
+      }
+    });
+  };
+  removeJsFiles(outputCache);
+
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
