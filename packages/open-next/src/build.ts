@@ -3,8 +3,6 @@ import url from "node:url";
 import path from "node:path";
 import cp from "node:child_process";
 import { buildSync, BuildOptions } from "esbuild";
-// @ts-ignore @vercel/next does not provide types
-import { build as nextBuild } from "@vercel/next";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
@@ -20,7 +18,7 @@ export async function build() {
 
   // Build Next.js app
   printHeader("Building Next.js app");
-  await buildNextjsApp(monorepoRoot, packager);
+  await buildNextjsApp(packager);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
@@ -71,23 +69,11 @@ function setStandaloneBuildMode() {
   process.env.NEXT_PRIVATE_STANDALONE = "true";
 }
 
-function buildNextjsApp(
-  monorepoRoot: string,
-  packager: "npm" | "yarn" | "pnpm"
-) {
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
   cp.spawnSync(packager, packager === "npm" ? ["run", "build"] : ["build"], {
     stdio: "inherit",
     cwd: appPath,
   });
-  // TODO remove
-  //return nextBuild({
-  //  files: [],
-  //  repoRootPath: monorepoRoot,
-  //  workPath: appPath,
-  //  entrypoint: "next.config.js",
-  //  config: {},
-  //  meta: {},
-  //});
 }
 
 function printHeader(header: string) {
