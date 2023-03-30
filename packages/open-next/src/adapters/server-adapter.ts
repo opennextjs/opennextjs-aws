@@ -106,7 +106,8 @@ export async function handler(
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,
-    headers: internalEvent.headers,
+    //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
+    headers: { ...internalEvent.headers, purpose: "prefetch" },
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,
   };
