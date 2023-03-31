@@ -139,8 +139,8 @@ function createServerBundle(monorepoRoot: string) {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
         "const require = topLevelCreateRequire(import.meta.url);",
-        "import url from 'url';",
-        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join(""),
     },
   });
@@ -189,8 +189,8 @@ function createImageOptimizationBundle() {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
         "const require = topLevelCreateRequire(import.meta.url);",
-        "import url from 'url';",
-        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join("\n"),
     },
   });
