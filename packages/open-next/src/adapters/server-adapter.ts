@@ -4,7 +4,9 @@ import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
 import type {
   APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
   CloudFrontRequestEvent,
+  CloudFrontRequestResult,
   CloudFrontHeaders,
 } from "aws-lambda";
 // @ts-ignore
@@ -123,21 +125,23 @@ const eventParser = {
 export async function handler(
   event: APIGatewayProxyEventV2 | CloudFrontRequestEvent
 ) {
-  debug(event);
+  debug("handler event", event);
 
   // Parse Lambda event and create Next.js request
   const isCloudFrontEvent = (event as CloudFrontRequestEvent).Records?.[0]?.cf;
   const parser = isCloudFrontEvent
     ? eventParser.cloudfront(event as CloudFrontRequestEvent)
     : eventParser.apiv2(event as APIGatewayProxyEventV2);
-  const req = new IncomingMessage({
+  const reqProps = {
     method: parser.method,
     url: parser.url,
     headers: parser.headers,
     body: parser.body,
     remoteAddress: parser.remoteAddress,
-  });
-  const res = new ServerResponse({ method: req.method });
+  };
+  debug("IncomingMessage constructor props", reqProps);
+  const req = new IncomingMessage(reqProps);
+  const res = new ServerResponse({ method: reqProps.method });
 
   // Process Next.js request
   await processRequest(req, res);
@@ -148,6 +152,7 @@ export async function handler(
   const isBase64Encoded = isBinaryContentType(headers["content-type"]);
   const encoding = isBase64Encoded ? "base64" : "utf8";
   const body = ServerResponse.body(res).toString(encoding);
+  debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
   if (htmlPages.includes(parser.rawPath) && headers["cache-control"]) {
@@ -223,13 +228,15 @@ function formatApiv2Response({
       }
       headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
     });
-  return {
+  const response: APIGatewayProxyResultV2 = {
     statusCode,
     headers,
-    cookies: rawHeaders["set-cookie"],
+    cookies: rawHeaders["set-cookie"] as string[] | undefined,
     body,
     isBase64Encoded,
   };
+  debug(response);
+  return response;
 }
 
 function formatCloudFrontResponse({
@@ -252,11 +259,13 @@ function formatCloudFrontResponse({
         : [{ key, value: value.toString() }]),
     ];
   });
-  return {
-    status: statusCode,
+  const response: CloudFrontRequestResult = {
+    status: statusCode.toString(),
     statusDescription: "OK",
     headers,
     bodyEncoding: isBase64Encoded ? "base64" : "text",
     body,
   };
+  debug(response);
+  return response;
 }

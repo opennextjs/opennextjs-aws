@@ -241,6 +241,7 @@ function esbuildSync(options: BuildOptions) {
     platform: "node",
     bundle: true,
     minify: process.env.OPEN_NEXT_DEBUG ? false : true,
+    sourcemap: process.env.OPEN_NEXT_DEBUG ? "inline" : false,
     ...options,
     // "process.env.OPEN_NEXT_DEBUG" determins if the logger writes to console.log
     define: {
