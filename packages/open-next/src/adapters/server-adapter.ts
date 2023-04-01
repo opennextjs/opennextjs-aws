@@ -143,7 +143,7 @@ export async function handler(
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
-  const statusCode = res.statusCode;
+  const statusCode = res.statusCode || 200;
   const headers = ServerResponse.headers(res);
   const isBase64Encoded = isBinaryContentType(headers["content-type"]);
   const encoding = isBase64Encoded ? "base64" : "utf8";
