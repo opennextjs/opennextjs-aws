@@ -149,7 +149,11 @@ export async function handler(
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
   const headers = ServerResponse.headers(res);
-  const isBase64Encoded = isBinaryContentType(headers["content-type"]);
+  const isBase64Encoded = isBinaryContentType(
+    Array.isArray(headers["content-type"])
+      ? headers["content-type"][0]
+      : headers["content-type"]
+  );
   const encoding = isBase64Encoded ? "base64" : "utf8";
   const body = ServerResponse.body(res).toString(encoding);
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
@@ -161,7 +165,10 @@ export async function handler(
   }
 
   return isCloudFrontEvent
-    ? formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
+    ? // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
+      statusCode === 404
+      ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
+      : formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
     : formatApiv2Response({ statusCode, headers, isBase64Encoded, body });
 }
 
@@ -251,14 +258,16 @@ function formatCloudFrontResponse({
   isBase64Encoded: boolean;
 }) {
   const headers: CloudFrontHeaders = {};
-  Object.entries(rawHeaders).forEach(([key, value]) => {
-    headers[key] = [
-      ...(headers[key] || []),
-      ...(Array.isArray(value)
-        ? value.map((v) => ({ key, value: v }))
-        : [{ key, value: value.toString() }]),
-    ];
-  });
+  Object.entries(rawHeaders)
+    .filter(([key]) => key.toLowerCase() !== "content-length")
+    .forEach(([key, value]) => {
+      headers[key] = [
+        ...(headers[key] || []),
+        ...(Array.isArray(value)
+          ? value.map((v) => ({ key, value: v }))
+          : [{ key, value: value.toString() }]),
+      ];
+    });
   const response: CloudFrontRequestResult = {
     status: statusCode.toString(),
     statusDescription: "OK",
@@ -268,4 +277,8 @@ function formatCloudFrontResponse({
   };
   debug(response);
   return response;
+}
+
+function formatCloudFrontFailoverResponse(event: CloudFrontRequestEvent) {
+  return event.Records[0].cf.request;
 }
