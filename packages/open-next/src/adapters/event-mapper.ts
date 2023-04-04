@@ -17,6 +17,7 @@ type InternalEvent = {
   readonly body: Buffer;
   readonly headers: Record<string, string>;
   readonly remoteAddress: string;
+  readonly domainName: string;
 };
 
 type InternalResult = {
@@ -83,6 +84,7 @@ function convertFromAPIGatewayProxyEvent(
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
     headers: normalizeAPIGatewayProxyEventHeaders(event),
     remoteAddress: requestContext.identity.sourceIp,
+    domainName: requestContext.domainName ?? "",
   };
 }
 
@@ -98,6 +100,7 @@ function convertFromAPIGatewayProxyEventV2(
     body: normalizeAPIGatewayProxyEventV2Body(event),
     headers: normalizeAPIGatewayProxyEventV2Headers(event),
     remoteAddress: requestContext.http.sourceIp,
+    domainName: requestContext.domainName ?? "",
   };
 }
 
@@ -106,6 +109,7 @@ function convertFromCloudFrontRequestEvent(
 ): InternalEvent {
   const { method, uri, querystring, body, headers, clientIp } =
     event.Records[0].cf.request;
+  const {distributionDomainName} = event.Records[0]['cf'].config;
   return {
     type: "cf",
     method,
@@ -117,6 +121,7 @@ function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
+    domainName: distributionDomainName,
   };
 }
 

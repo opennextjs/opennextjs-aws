@@ -22,7 +22,7 @@ export function loadBuildId(nextDir: string) {
   return fs.readFileSync(filePath, "utf-8").trim();
 }
 
-interface PrerenderManifest {
+export interface PrerenderManifest {
   version: number;
   routes: {
     dataRoute: string;
