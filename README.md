@@ -334,19 +334,21 @@ On Vercel, the Next.js app is built in an undocumented way using the "[minimalMo
 
 On the other hand, OpenNext uses the standard `next build` command, which generates a server function that includes the middleware code. This means that for cached requests, the CDN (CloudFront) will send back the cached response, and the middleware code is not run.
 
-We considered building the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](https://github.com/serverless-stack/open-next/tree/vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
+We previously built the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](https://github.com/serverless-stack/open-next/tree/vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
 
-1. Cold start - Running middleware and server in two separate Lambda functions result in double the latency.
+1. Cold start - Running middleware and server in two separate Lambda functions results in double the latency.
 1. Maintenance - Because the "minimalMode" is not documented, there will likely be unhandled edge cases, and triaging would require constant reverse engineering of Vercel's code base.
 1. Feature parity - Lambda@Edge functions triggered on Viewer Request do not have access to geolocation headers, which affects i18n support.
 
 #### How does OpenNext compared to AWS Amplify?
 
-OpenNext is an open initiative, and there are two advantages to being open:
+OpenNext is an open source initiative, and there are two main advantages when comapred to Amplify:
 
-1. Amplify's NextJS hosting is a black box. Resources are not deployed to your AWS account. All Amplify users share the same CloudFront CDN owned by the Amplify team. This prevents you from customizing the setup, and customization is important for achieving feature parity with Vercel. By customizing the setup, you can pick and choose which features you want to keep or give up.
+1. The community contributions to OpenNext allows it to have better feature support.
 
-1. Amplify's architecture implementation is closed-source. Bug fixes often take much longer to get fixed for closed-source projects, and you are likely to encounter many quirks when hosting Next.js anywhere but Vercel.
+1. Amplify's NextJS hosting is a black box. Resources are not deployed to your AWS account. All Amplify users share the same CloudFront CDN owned by the Amplify team. This prevents you from customizing the setup, and customization is important if you are looking for Vercel-like features.
+
+1. Amplify's implementation is closed-source. Bug fixes often take much longer to get fixed as you have to go through AWS support. And you are likely to encounter more quirks when hosting Next.js anywhere but Vercel.
 
 ---
 
