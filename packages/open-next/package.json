@@ -14,7 +14,7 @@
   "homepage": "https://open-next.js.org",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf dist/assets && cp -r assets dist/assets && tsc",
+    "build": "rm -rf dist/assets && mkdir -p dist && cp -r assets dist/assets && tsc",
     "dev": "tsc -w"
   },
   "keywords": [],
