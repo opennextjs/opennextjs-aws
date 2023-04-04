@@ -178,10 +178,11 @@ async function downloadHandler(
       // Download image from S3
       // note: S3 expects keys without leading `/`
       const client = new S3Client({});
+      const keyPrefix = (process.env.BUCKET_KEY_PREFIX || "").replace(/^\//, "");
       const response = await client.send(
         new GetObjectCommand({
           Bucket: bucketName,
-          Key: url.href.replace(/^\//, ""),
+          Key: keyPrefix + (keyPrefix.endsWith("/") ? "" : "/") + url.href.replace(/^\//, ""),
         })
       );
 
