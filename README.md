@@ -334,7 +334,7 @@ On Vercel, the Next.js app is built in an undocumented way using the "[minimalMo
 
 On the other hand, OpenNext uses the standard `next build` command, which generates a server function that includes the middleware code. This means that for cached requests, the CDN (CloudFront) will send back the cached response, and the middleware code is not run.
 
-We considered building the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](/../vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
+We considered building the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](https://github.com/serverless-stack/open-next/tree/vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
 
 1. Cold start - Running middleware and server in two separate Lambda functions result in double the latency.
 1. Maintenance - Because the "minimalMode" is not documented, there will likely be unhandled edge cases, and triaging would require constant reverse engineering of Vercel's code base.
