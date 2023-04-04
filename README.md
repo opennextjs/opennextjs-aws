@@ -18,7 +18,6 @@
   <a href="#quick-start">Quick start</a> |
   <a href="#recommended-infrastructure-on-aws">Infrastructure</a> |
   <a href="#example">Example</a> |
-  <a href="#contribute">Contribute</a> |
   <a href="#faq">FAQ</a>
 </p>
 
@@ -35,6 +34,8 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] Incremental static regeneration (ISR)
 - [x] Middleware
 - [x] Image optimization
+- [x] [NextAuth.js](https://next-auth.js.org)
+- [x] [Running at edge](#running-at-edge)
 
 ## Quick start
 
@@ -57,11 +58,8 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
      .open-next/
        assets/                        -> Static files to upload to an S3 Bucket
        server-function/               -> Handler code for server Lambda Function
-       middleware-function/           -> Handler code for middleware Lambda@Edge Function
        image-optimization-function/   -> Handler code for image optimization Lambda Function
    ```
-
-   If your Next.js app does not use [middleware](https://nextjs.org/docs/advanced-features/middleware), `middleware-function` will not be generated.
 
 3. Add `.open-next` to your `.gitignore` file
    ```
@@ -71,15 +69,15 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 ## How does OpenNext work?
 
-When calling `open-next build`, OpenNext **builds the Next.js app** using the `@vercel/next` package. It then **transforms the build output** to a format that can be deployed to AWS.
+When calling `open-next build`, OpenNext **runs `next build`** to build the Next.js app, and then **transforms the build output** to a format that can be deployed to AWS.
 
 #### Building the Next.js app
 
-OpenNext imports the `@vercel/next` package to do the build. The package internally calls `next build` with the [`minimalMode`](https://github.com/vercel/next.js/discussions/29801) flag. This flag disables running middleware in the server code, and instead bundles the middleware code separately. This allows us to deploy middleware to edge locations, similar to how middleware is deployed on Vercel.
+OpenNext runs the `build` script in your `package.json` file. Depnding on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
 
 #### Transforming the build output
 
-The build output is then transformed into a format that can be deployed to AWS. Files in `assets/` are ready to be uploaded to AWS S3. And the function code is wrapped inside Lambda handlers, ready to be deployed to AWS Lambda and Lambda@Edge.
+The build output is then transformed into a format that can be deployed to AWS. Files in `assets/` are ready to be uploaded to AWS S3. And the function code is wrapped inside Lambda handlers, ready to be deployed to AWS Lambda or Lambda@Edge.
 
 ## Recommended infrastructure on AWS
 
@@ -172,21 +170,27 @@ This ensures that the Lambda handler remains at `index.mjs`.
 
 Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
 
-| Behavior          | Requests            | Origin                                                                                                                                | Allowed Headers                                                                                                                                                                                                               |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                             |                                                                                                                                                                                                                               |
-| `/_next/image`    | Image optimization  | image optimization function                                                                                                           | `Accept`                                                                                                                                                                                                                      |
-| `/_next/data/*`   | data requests       | server function                                                                                                                       | `x-op-middleware-request-headers`<br />`x-op-middleware-response-headers`<br />`x-nextjs-data`<br />`x-middleware-prefetch`<br />[see why](#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific) |
-| `/api/*`          | API                 | server function                                                                                                                       |                                                                                                                                                                                                                               |
-| `/*`              | catch all           | server function<br />fallback to S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) | `x-op-middleware-request-headers`<br />`x-op-middleware-response-headers`<br />`x-nextjs-data`<br />`x-middleware-prefetch`<br />[see why](#workaround-pass-headers-from-middleware-function-to-server-function-aws-specific) |
+| Behavior          | Requests            | Origin                                                                                                                                |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                             |
+| `/_next/image`    | Image optimization  | image optimization function                                                                                                           |
+| `/_next/data/*`   | data requests       | server function                                                                                                                       |
+| `/api/*`          | API                 | server function                                                                                                                       |
+| `/*`              | catch all           | server function<br />fallback to S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
-#### Middleware Lambda@Edge function (optional)
+#### Running at edge
 
-Create a Lambda function using the code in the `.open-next/middleware-function` folder, with the handler `index.mjs`. Attach this function to the `/_next/data/*` and `/*` behaviors on `viewer request`. This allows the function to run your [Middleware](https://nextjs.org/docs/advanced-features/middleware) code before the request reaches your server function, and also before cached content.
+The server function can also run at edge locations by configuring it as Lambda@Edge on Origin Request. The server function can accept both regional request events (API payload version 2.0) and edge request events (CloudFront Origin Request payload). Depending on the shape of the Lambda event object, the function will process the request accordingly.
 
-The middleware function uses the [global fetch API](https://nodejs.org/de/blog/announcements/v18-release-announce/#new-globally-available-browser-compatible-apis), which requires the function to run on the Node.js 18 runtime. [See why Node.js 18 runtime is required.](#workaround-add-headersgetall-extension-to-the-middleware-function)
+To configure the CloudFront distribution:
 
-Note that if middleware is not used in the Next.js app, the `middleware-function` bundle will not be generated. In this case, you do not have to create the Lambda@Edge function or configure it in the CloudFront distribution.
+| Behavior          | Requests            | Lambda@Edge     | Origin                                                                                               |
+| ----------------- | ------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | -               | S3 bucket                                                                                            |
+| `/_next/image`    | Image optimization  | -               | image optimization function                                                                          |
+| `/_next/data/*`   | data requests       | server function | -                                                                                                    |
+| `/api/*`          | API                 | server function | -                                                                                                    |
+| `/*`              | catch all           | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
 ## Limitations and workarounds
 
@@ -263,29 +267,6 @@ In this case, `path.join(process.cwd(), "posts", "my-post.md")` cannot be resolv
 
 To work around the issue, we change the working directory for the server function to where `.next/` is located, ie. `packages/web`.
 
-#### WORKAROUND: Pass headers from middleware function to server function (AWS specific)
-
-[Middleware](https://nextjs.org/docs/advanced-features/middleware) allows you to modify the request and response headers. To do this, the middleware function must be able to pass custom headers defined in your Next.js app's middleware code to the server function.
-
-CloudFront allows you to pass all headers to the server function, but doing so also includes the `Host` header. This will cause API Gateway to reject the request. There is no way to configure CloudFront to pass **all but the `Host` header**.
-
-To work around this issue, the middleware function JSON encodes all request headers into the `x-op-middleware-request-headers` header and all response headers into the `x-op-middleware-response-headers` header. The server function will then decode these headers.
-
-Note that the `x-op-middleware-request-headers` and `x-op-middleware-response-headers` headers must be added to the allowed list in the CloudFront distribution's cache policy.
-
-#### WORKAROUND: Add `Headers.getAll()` extension to the middleware function
-
-Vercel uses the `Headers.getAll()` function in its middleware code, but this function is not part of the Node.js 18 [global fetch API](https://nodejs.org/de/blog/announcements/v18-release-announce/#new-globally-available-browser-compatible-apis). To handle this, we have two options:
-
-1. Inject the `getAll()` function into the global fetch API.
-2. Use the [`node-fetch`](https://github.com/node-fetch/node-fetch) package to polyfill the fetch API.
-
-We decided to go with option 1 because it does not require an addition dependency and it is possible that Vercel will remove the use of the `getAll()` function in the future.
-
-#### WORKAROUND: Polyfill `crypto` for the middleware function
-
-[NextAuth.js](https://next-auth.js.org) uses the [`jose`](https://github.com/panva/jose) library at runtime to encrypt and decrypt JWT tokens. The library, in turn, uses the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API). This workaround polyfills `crypto` and `CryptoKey` into the `globalThis` instance.
-
 ## Example
 
 In the `example` folder, you can find a Next.js feature test app. It contains a variety of pages that each test a single Next.js feature.
@@ -296,7 +277,7 @@ Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/construct
 
 To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
 
-To find the **middleware log**, go to the AWS CloudWatch console in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
+If the server function is **deployed to Lambda@Edge**, the logs will appear in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
 
 #### Debug mode
 
@@ -306,9 +287,10 @@ You can run OpenNext in debug mode by setting the `OPEN_NEXT_DEBUG` environment 
 OPEN_NEXT_DEBUG=true npx open-next@latest build
 ```
 
-This does two things:
+This does a few things:
 
 1. Lambda handler functions in the build output will not be minified.
+1. Lambda handler functions in the build output has sourcemap enabled inline.
 1. Lambda handler functions will automatically `console.log` the request event object along with other debugging information.
 
 It is recommended to **turn off debug mode when building for production** because:
@@ -334,26 +316,39 @@ To run `OpenNext` locally:
    ```bash
    pnpm dev
    ```
-1. Make `open-next` linkable from your Next.js app:
-   ```bash
-   pnpm link --global
-   ```
-1. Link `open-next` in your Next.js app:
+1. Now, you can make changes in `open-next` and build your Next.js app to test the changes.
    ```bash
    cd path/to/my/nextjs/app
-   pnpm link --global open-next
+   path/to/open-next/packages/open-next/dist/index.js build
    ```
-   Now, you can make changes in `open-next` and run `pnpm open-next build` in your Next.js app to test the changes.
 
 ## FAQ
 
-#### Why use the `@vercel/next` package for building the Next.js app?
+#### Will my Next.js app behave the same as it does on Vercel?
 
-The `next build` command generates a server function that includes the middleware code. This means that if you use middleware for static pages, these pages cannot be cached by the CDN (CloudFront). If cached, CDN will send back the cached response without calling the origin (server function). To ensure the middleware is invoked on every request, caching is always disabled.
+OpenNext aims to deploy your Next.js app to AWS using services like CloudFront, S3, and Lambda. While Vercel uses some AWS services, it also has proprietary infrastructures, resulting in a natural gap of feature parity. And OpenNext is filling that gap.
 
-On the other hand, Vercel deploys the middleware code to edge functions, which are invoked before the request reaches the CDN. This allows static pages can be cached, as the middleware is called before the CDN sends back a cached response.
+One architectural difference is how [middleware](https://nextjs.org/docs/advanced-features/middleware) is run, but this should not affect the behavior of most apps.
 
-To replicated this setup, OpenNext uses the `@vercel/next` package to build the Next.js app. This separates the middleware code from the server code, allowing for caching of static pages.
+On Vercel, the Next.js app is built in an undocumented way using the "[minimalMode](https://github.com/vercel/next.js/discussions/29801)". The middleware code is separated from the server code and deployed to edge locations, while the server code is deployed to a single region. When a user makes a request, the middleware code runs first. Then the request reaches the CDN. If the request is cached, the cached response is returned; otherwise, the request hits the server function. This means that the middleware is called even for cached requests.
+
+On the other hand, OpenNext uses the standard `next build` command, which generates a server function that includes the middleware code. This means that for cached requests, the CDN (CloudFront) will send back the cached response, and the middleware code is not run.
+
+We previously built the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](https://github.com/serverless-stack/open-next/tree/vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
+
+1. Cold start - Running middleware and server in two separate Lambda functions results in double the latency.
+1. Maintenance - Because the "minimalMode" is not documented, there will likely be unhandled edge cases, and triaging would require constant reverse engineering of Vercel's code base.
+1. Feature parity - Lambda@Edge functions triggered on Viewer Request do not have access to geolocation headers, which affects i18n support.
+
+#### How does OpenNext compared to AWS Amplify?
+
+OpenNext is an open source initiative, and there are two main advantages when comapred to Amplify:
+
+1. The community contributions to OpenNext allows it to have better feature support.
+
+1. Amplify's Next.js hosting is a black box. Resources are not deployed to your AWS account. All Amplify users share the same CloudFront CDN owned by the Amplify team. This prevents you from customizing the setup, and customization is important if you are looking for Vercel-like features.
+
+1. Amplify's implementation is closed-source. Bug fixes often take much longer to get fixed as you have to go through AWS support. And you are likely to encounter more quirks when hosting Next.js anywhere but Vercel.
 
 ---
 

@@ -1,46 +1,22 @@
 {
-  "name": "open-next",
+  "name": "monorepo",
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
   "type": "module",
-  "description": "Open source Next.js serverless adapter",
-  "homepage": "https://open-next.js.org",
-  "main": "src/build",
-  "bin": {
-    "open-next": "./dist/index.js"
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc -w",
+    "build": "pnpm -r build",
     "prettier": "prettier --cache -w --loglevel=error .",
+    "version": "./.changeset/version",
     "release": "./.changeset/release",
     "release-snapshot": "./.changeset/snapshot"
   },
-  "keywords": [],
-  "author": "",
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.234.0",
+  "devDependencies": {
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@tsconfig/node18": "^1.0.1",
-    "@vercel/build-utils": "^5.7.0",
-    "@vercel/next": "^3.3.2",
-    "esbuild": "^0.15.18",
-    "serverless-http": "^3.1.0",
-    "yargs": "^17.6.2"
-  },
-  "devDependencies": {
-    "@types/aws-lambda": "^8.10.109",
-    "@types/node": "^18.11.17",
-    "prettier": "^2.8.4",
-    "typescript": "^4.9.3"
-  },
-  "bugs": {
-    "url": "https://github.com/serverless-stack/open-next/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/serverless-stack/open-next.git"
+    "prettier": "^2.8.4"
   }
 }
