@@ -324,7 +324,7 @@ To run `OpenNext` locally:
 
 ## FAQ
 
-#### Will my Next.js app behave the same as on Vercel?
+#### Will my Next.js app behave the same as it does on Vercel?
 
 OpenNext aims to deploy your Next.js app to AWS using services like CloudFront, S3, and Lambda. While Vercel uses some AWS services, it also has proprietary infrastructures, resulting in a natural gap of feature parity. And OpenNext is filling that gap.
 
@@ -340,7 +340,7 @@ We considered building the app using the "minimalMode" and having the same archi
 1. Maintenance - Because the "minimalMode" is not documented, there will likely be unhandled edge cases, and triaging would require constant reverse engineering of Vercel's code base.
 1. Feature parity - Lambda@Edge functions triggered on Viewer Request do not have access to geolocation headers, which affects i18n support.
 
-#### How is OpenNext compared to AWS Amplify?
+#### How does OpenNext compared to AWS Amplify?
 
 OpenNext is an open initiative, and there are two advantages to being open:
 
