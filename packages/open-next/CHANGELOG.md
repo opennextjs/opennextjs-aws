@@ -1,0 +1,13 @@
+# open-next
+
+## 0.8.0
+
+### Minor Changes
+
+- 5a4455e: Add support for running server with Lambda@Edge
+
+### Patch Changes
+
+- 5a4455e: Server: handle undefined response status code
+- 5a4455e: Turn on inline sourcemap when OPEN_NEXT_DEBUG is set
+- 5a4455e: Remove minimal mode
