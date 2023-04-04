@@ -73,7 +73,7 @@ When calling `open-next build`, OpenNext **runs `next build`** to build the Next
 
 #### Building the Next.js app
 
-OpenNext run the `build` script in your `package.json` file. Depnding on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will run.
+OpenNext runs the `build` script in your `package.json` file. Depnding on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
 
 #### Transforming the build output
 
@@ -180,9 +180,9 @@ Create a CloudFront distribution, and dispatch requests to their corresponding h
 
 #### Running at edge
 
-The server function can also run at edge locations. Configure the server function as Lambda@Edge on Origin Request. The server function accepts both regional request events (API payload version 2.0) and edge request events (CloudFront Origin Request payload). Depending on the shape of the Lambda event object, the function will process the request accordingly.
+The server function can also run at edge locations by configuring it as Lambda@Edge on Origin Request. The server function can accept both regional request events (API payload version 2.0) and edge request events (CloudFront Origin Request payload). Depending on the shape of the Lambda event object, the function will process the request accordingly.
 
-Configure the CloudFront distribution:
+To configure the CloudFront distribution:
 
 | Behavior          | Requests            | Lambda@Edge     | Origin                                                                                               |
 | ----------------- | ------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
