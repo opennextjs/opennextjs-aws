@@ -1,13 +1,7 @@
 # open-next
 
-## 0.0.0-20230329192618
+## 0.8.1
 
 ### Patch Changes
 
-- efbf33b: Remove minimal mode
-
-## 0.0.0-20221205225535
-
-### Patch Changes
-
-- Test
+- [`bdd29d1`](https://github.com/serverless-stack/open-next/commit/bdd29d1) Fix spawn error on Windows
