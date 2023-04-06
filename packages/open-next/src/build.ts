@@ -70,11 +70,18 @@ function setStandaloneBuildMode() {
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
-  cp.spawnSync(packager, packager === "npm" ? ["run", "build"] : ["build"], {
-    stdio: "inherit",
-    cwd: appPath,
-    shell: true,
-  });
+  const result = cp.spawnSync(
+    packager,
+    packager === "npm" ? ["run", "build"] : ["build"],
+    {
+      stdio: "inherit",
+      cwd: appPath,
+      shell: true,
+    }
+  );
+  if (result.status && result.status !== 0) {
+    process.exit(1);
+  }
 }
 
 function printHeader(header: string) {
