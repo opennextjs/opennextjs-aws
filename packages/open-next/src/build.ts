@@ -273,14 +273,36 @@ function createServerBundle(monorepoRoot: string) {
   //Copy prerendered pages to cache folder
   const buildId = fs.readFileSync(path.join(appPath, ".next/BUILD_ID"), "utf-8");
   const outputCache = path.join(outputDir, "cache", buildId);
-  fs.cpSync(
-    path.join(appPath, ".next/standalone", packagePath, ".next/server/pages"),
-    outputCache,
-    {
+  //Copy pages to cache folder
+  const pagesPrerenderedPath = path.join(
+    appPath,
+    ".next/standalone",
+    packagePath,
+    ".next/server/pages"
+  );
+  if (fs.existsSync(pagesPrerenderedPath)) {
+    fs.cpSync(
+      path.join(appPath, ".next/standalone", packagePath, ".next/server/pages"),
+      outputCache,
+      {
+        recursive: true,
+        verbatimSymlinks: true,
+      }
+    );
+  }
+  //Copy app to cache folder
+  const appPrerenderedPath = path.join(
+    appPath,
+    ".next/standalone",
+    packagePath,
+    ".next/server/app"
+  );
+  if (fs.existsSync(appPrerenderedPath)) {
+    fs.cpSync(appPrerenderedPath, outputCache, {
       recursive: true,
       verbatimSymlinks: true,
-    }
-  );
+    });
+  }
   const removeJsFiles = (dir: string) => {
     fs.readdirSync(dir).forEach((file) => {
       if (fs.statSync(path.join(dir, file)).isDirectory()) {

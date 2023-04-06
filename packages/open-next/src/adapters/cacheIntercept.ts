@@ -28,6 +28,12 @@ interface ProxyResult {
   isBase64Encoded: boolean;
 }
 
+interface TypeMatcher {
+  html: string;
+  json: string;
+  rsc: string;
+}
+
 export class CacheInterceptor {
   buildId: string;
   s3 = new S3Client({});
@@ -148,13 +154,21 @@ export class CacheInterceptor {
     if (matchedRoute) {
       const { revalidate, key } = matchedRoute;
       const isDataRoute = uri.startsWith("/_next/data");
+      const isRscRoute = event.headers.rsc === "1";
+
+      const byType = ({ html, json, rsc }: TypeMatcher) =>
+        isDataRoute ? json : isRscRoute ? rsc : html;
 
       try {
         const bucketName = process.env.CACHE_BUCKET_NAME;
         const { Body, LastModified } = await this.s3.send(
           new GetObjectCommand({
             Bucket: bucketName,
-            Key: `${this.buildId}${key}${isDataRoute ? ".json" : ".html"}`,
+            Key: `${this.buildId}${key}${byType({
+              html: ".html",
+              json: ".json",
+              rsc: ".rsc",
+            })}`,
           })
         );
         if (!Body) throw new Error("No body found in s3 response.");
@@ -177,7 +191,11 @@ export class CacheInterceptor {
           statusCode: 200,
           body: method === "GET" ? body : "",
           headers: {
-            "Content-Type": isDataRoute ? "application/json" : "text/html",
+            "Content-Type": byType({
+              html: "text/html",
+              json: "application/json",
+              rsc: "text/x-component",
+            }),
             "Cache-Control": isStale
               ? "s-maxage=0"
               : `s-max-age=${remaining}, stale-while-revalidate`,
