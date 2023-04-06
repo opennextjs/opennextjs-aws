@@ -6,7 +6,5 @@
     "moduleResolution": "nodenext",
     "outDir": "./dist",
     "allowSyntheticDefaultImports": true
-  },
-  "include": ["src"],
-  "exclude": []
+  }
 }

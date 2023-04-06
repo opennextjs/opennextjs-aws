@@ -1,6 +1,3 @@
-# Ignore docs
 /docs/**/*.*
-# Ignore examples
 /example/**/*.*
-# Ignore cli
-/cli/assets/**/*.*
+/assets/**/*.*
