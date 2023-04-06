@@ -1,5 +1,11 @@
 # open-next
 
+## 0.8.1
+
+### Patch Changes
+
+- bdd29d1: Fix spawn error on Windows
+
 ## 0.8.0
 
 ### Minor Changes
