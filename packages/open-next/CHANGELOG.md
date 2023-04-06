@@ -1,5 +1,11 @@
 # open-next
 
+## 0.8.2
+
+### Patch Changes
+
+- e5b5204: Handle `next build` error
+
 ## 0.8.1
 
 ### Patch Changes
