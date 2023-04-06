@@ -342,7 +342,7 @@ We previously built the app using the "minimalMode" and having the same architec
 
 #### How does OpenNext compared to AWS Amplify?
 
-OpenNext is an open source initiative, and there are two main advantages when comapred to Amplify:
+OpenNext is an open source initiative, and there are a couple of advantages when comapred to Amplify:
 
 1. The community contributions to OpenNext allows it to have better feature support.
 
