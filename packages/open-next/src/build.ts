@@ -73,6 +73,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
   cp.spawnSync(packager, packager === "npm" ? ["run", "build"] : ["build"], {
     stdio: "inherit",
     cwd: appPath,
+    shell: true,
   });
 }
 
