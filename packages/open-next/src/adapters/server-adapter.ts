@@ -6,15 +6,16 @@ import type {
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
 } from "aws-lambda";
-import { request } from "node:https";
 import {
-  generateUniqueId,
   loadAppPathsManifestKeys,
   loadConfig,
   loadHtmlPages,
   loadPublicAssets,
   loadRoutesManifest,
   setNodeEnv,
+  loadPrerenderManifest,
+  revalidateInBackground,
+  generateUniqueId,
 } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
@@ -37,6 +38,7 @@ const htmlPages = loadHtmlPages(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
+const prerenderManifest = loadPrerenderManifest(NEXT_DIR);
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
 
@@ -151,22 +153,13 @@ export async function handler(
   if (nextJsCacheHeader === "STALE" || nextJsCacheHeader === "MISS") {
     headers!["cache-control"] =
       "public, max-age=0, s-maxage=0, must-revalidate";
-    const filePath = path.join(NEXT_DIR, "prerender-manifest.json");
-    const json = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    const preview = json.preview;
-    try {
-      await new Promise<void>((resolve, reject) => {
-        request(`https://${headers.host}${internalEvent.rawPath}`, {
-          method: "HEAD",
-          headers: { "x-prerender-revalidate": preview.previewModeId },
-        })
-          .on("error", (err) => reject(err))
-          .end(() => resolve());
-      });
-    } catch (e) {
-      console.error("Failed to revalidate stale page.", internalEvent.rawPath);
-      console.error(e);
-    }
+    const preview = prerenderManifest.preview;
+
+    await revalidateInBackground(
+      internalEvent.domainName,
+      internalEvent.rawPath,
+      preview.previewModeId
+    );
   }
 
   return convertTo({

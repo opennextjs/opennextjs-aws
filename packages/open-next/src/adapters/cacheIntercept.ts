@@ -1,4 +1,4 @@
-import type { PrerenderManifest } from "./util.js";
+import { PrerenderManifest, revalidateInBackground } from "./util.js";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { request as httpsRequest } from "https";
 
@@ -19,6 +19,7 @@ interface ProxyEvent {
   rawPath: string;
   headers: Record<string, string>;
   method: string;
+  domainName: string;
 }
 
 interface ProxyResult {
@@ -34,9 +35,11 @@ interface TypeMatcher {
   rsc: string;
 }
 
+const DEFAULT_REVALIDATE = 365 * 24 * 60 * 60;
+
 export class CacheInterceptor {
   buildId: string;
-  s3 = new S3Client({});
+  s3 = new S3Client({ region: process.env.CACHE_BUCKET_REGION });
   revalidates = new Map<string, number>();
   prerenderedRoutes: MatchedRoute[] = [];
   compiledDynamicRoutes: CompiledDynamicRoute[] = [];
@@ -48,7 +51,7 @@ export class CacheInterceptor {
       ([route, { srcRoute, initialRevalidateSeconds, dataRoute }]) => {
         const _initialRevalidateSeconds =
           typeof initialRevalidateSeconds === "boolean"
-            ? 60 * 60 * 24 * 365 // 1 year
+            ? DEFAULT_REVALIDATE // 1 year
             : initialRevalidateSeconds;
         this.revalidates.set(srcRoute ?? route, _initialRevalidateSeconds);
         this.prerenderedRoutes.push({
@@ -119,22 +122,11 @@ export class CacheInterceptor {
       return {
         key,
         route: url,
-        revalidate: this.revalidates.get(foundCompiled) ?? 0,
+        revalidate: this.revalidates.get(foundCompiled) ?? DEFAULT_REVALIDATE,
       };
     }
     return null;
   };
-
-  async revalidate(uri: string, host?: string) {
-    await new Promise<void>((resolve, reject) => {
-      httpsRequest(`https://${host}${uri}`, {
-        method: "HEAD",
-        headers: { "x-prerender-revalidate": this.preview },
-      })
-        .on("error", (err) => reject(err))
-        .end(() => resolve());
-    });
-  }
 
   async handler(event: ProxyEvent): Promise<ProxyResult | false> {
     const startTime = Date.now();
@@ -182,7 +174,7 @@ export class CacheInterceptor {
 
         if (expirationDate < now) {
           // Stale, revalidate
-          await this.revalidate(uri, event.headers.host);
+          await revalidateInBackground(event.domainName, uri, this.preview);
           isStale = true;
         }
 
@@ -198,7 +190,7 @@ export class CacheInterceptor {
             }),
             "Cache-Control": isStale
               ? "s-maxage=0"
-              : `s-max-age=${remaining}, stale-while-revalidate`,
+              : `s-maxage=${remaining}, stale-while-revalidate`,
           },
           isBase64Encoded: false,
         };

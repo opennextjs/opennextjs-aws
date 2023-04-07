@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { NextConfig, RoutesManifest } from "./next-types.js";
 import type { PublicFiles } from "../build.js";
+import { request } from "node:https";
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -89,4 +90,24 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
+}
+
+export async function revalidateInBackground(
+  host: string,
+  path: string,
+  preview: string
+) {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      request(`https://${host}${path}`, {
+        method: "HEAD",
+        headers: { "x-prerender-revalidate": preview },
+      })
+        .on("error", (err) => reject(err))
+        .end(() => resolve());
+    });
+  } catch (e) {
+    console.error("Failed to revalidate stale page.", path);
+    console.error(e);
+  }
 }
