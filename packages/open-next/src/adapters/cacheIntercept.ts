@@ -191,6 +191,7 @@ export class CacheInterceptor {
             "Cache-Control": isStale
               ? "s-maxage=0"
               : `s-maxage=${remaining}, stale-while-revalidate`,
+            "x-cache-intercepted": "1",
           },
           isBase64Encoded: false,
         };
