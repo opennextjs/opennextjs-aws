@@ -9,6 +9,8 @@ const appPath = process.cwd();
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
+export type PublicAssets = Record<string, "file" | "dir">;
+
 export async function build() {
   // Pre-build validation
   printVersion();
@@ -110,6 +112,19 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
+function readTopLevelPublicFilesAndDirs() {
+  const publicPath = path.join(appPath, "public");
+
+  const items: PublicAssets = {};
+
+  fs.readdirSync(publicPath).map((file) => {
+    items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
+      ? "dir"
+      : "file";
+  });
+  return items;
+}
+
 function createServerBundle(monorepoRoot: string) {
   console.info(`Bundling server function...`);
 
@@ -165,6 +180,14 @@ function createServerBundle(monorepoRoot: string) {
       [`export * from "./${packagePath}/index.mjs";`].join("")
     );
   }
+
+  // Save a list of top level files in /public
+  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
+  fs.mkdirSync(outputOpenNextPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(outputOpenNextPath, "public-files.json"),
+    JSON.stringify(readTopLevelPublicFilesAndDirs())
+  );
 }
 
 function createImageOptimizationBundle() {

@@ -14,11 +14,14 @@ import NextServer from "next/dist/server/next-server.js";
 import { loadConfig } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
+import type { PublicAssets } from "../build.js";
 
 setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
+const openNextDir = path.join(__dirname, ".open-next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
+const publicAssets = loadPublicAssets();
 debug({ nextDir });
 
 // Create a NextServer
@@ -132,6 +135,18 @@ export async function handler(
   const parser = isCloudFrontEvent
     ? eventParser.cloudfront(event as CloudFrontRequestEvent)
     : eventParser.apiv2(event as APIGatewayProxyEventV2);
+
+  // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
+  if (
+    publicAssets[parser.rawPath] === "file" ||
+    publicAssets[parser.rawPath.split("/")[0]] === "dir"
+  ) {
+    return isCloudFrontEvent
+      ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
+      : formatApiv2FailoverResponse();
+  }
+
+  // Process Next.js request
   const reqProps = {
     method: parser.method,
     url: parser.url,
@@ -142,8 +157,6 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-
-  // Process Next.js request
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -165,10 +178,7 @@ export async function handler(
   }
 
   return isCloudFrontEvent
-    ? // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-      statusCode === 404
-      ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
-      : formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
+    ? formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
     : formatApiv2Response({ statusCode, headers, isBase64Encoded, body });
 }
 
@@ -187,6 +197,12 @@ function loadHtmlPages() {
   return Object.entries(JSON.parse(json))
     .filter(([_, value]) => (value as string).endsWith(".html"))
     .map(([key]) => key);
+}
+
+function loadPublicAssets() {
+  const filePath = path.join(openNextDir, "public-files.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as PublicAssets;
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
@@ -244,6 +260,10 @@ function formatApiv2Response({
   };
   debug(response);
   return response;
+}
+
+function formatApiv2FailoverResponse() {
+  return { statusCode: 503 };
 }
 
 function formatCloudFrontResponse({
