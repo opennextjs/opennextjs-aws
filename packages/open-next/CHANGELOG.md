@@ -1,5 +1,15 @@
 # open-next
 
+## 0.9.0
+
+### Minor Changes
+
+- 787c1b2: Support Next.js 404 pages
+
+### Patch Changes
+
+- 6395849: Fix "Cannot find package 'next'"
+
 ## 0.8.2
 
 ### Patch Changes
