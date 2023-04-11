@@ -13,11 +13,11 @@ export async function build() {
   // Pre-build validation
   printVersion();
   checkRunningInsideNextjsApp();
-  setStandaloneBuildMode();
   const { root: monorepoRoot, packager } = findMonorepoRoot();
 
   // Build Next.js app
   printHeader("Building Next.js app");
+  setStandaloneBuildMode(monorepoRoot);
   await buildNextjsApp(packager);
 
   // Generate deployable bundle
@@ -64,9 +64,11 @@ function findMonorepoRoot() {
   return { root: appPath, packager: "npm" as const };
 }
 
-function setStandaloneBuildMode() {
-  // Equivalent to setting `target: 'standalone'` in next.config.js
+function setStandaloneBuildMode(monorepoRoot: string) {
+  // Equivalent to setting `target: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
+  // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
+  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
