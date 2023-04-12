@@ -116,12 +116,13 @@ function readTopLevelPublicFilesAndDirs() {
   const publicPath = path.join(appPath, "public");
 
   const items: PublicAssets = {};
-
-  fs.readdirSync(publicPath).map((file) => {
-    items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
-      ? "dir"
-      : "file";
-  });
+  if (fs.existsSync(publicPath)) {
+    fs.readdirSync(publicPath).map((file) => {
+      items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
+        ? "dir"
+        : "file";
+    });
+  }
   return items;
 }
 
@@ -264,7 +265,10 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  fs.cpSync(path.join(appPath, "public"), outputPath, { recursive: true });
+  const publicPath = path.join(appPath, "public");
+  if (fs.existsSync(publicPath)) {
+    fs.cpSync(publicPath, outputPath, { recursive: true });
+  }
 }
 
 function esbuildSync(options: BuildOptions) {
