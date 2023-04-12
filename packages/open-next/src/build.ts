@@ -6,6 +6,7 @@ import { buildSync, BuildOptions } from "esbuild";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
+const appPublicPath = path.join(appPath, "public");
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
@@ -115,15 +116,14 @@ function initOutputDir() {
 }
 
 function listPublicFiles() {
-  const publicPath = path.join(appPath, "public");
   const result: PublicFiles = { files: [] };
 
-  if (!fs.existsSync(publicPath)) {
+  if (!fs.existsSync(appPublicPath)) {
     return result;
   }
 
   function processDirectory(pathInPublic: string) {
-    const files = fs.readdirSync(path.join(publicPath, pathInPublic), {
+    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
       withFileTypes: true,
     });
 
@@ -277,9 +277,8 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  const publicPath = path.join(appPath, "public");
-  if (fs.existsSync(publicPath)) {
-    fs.cpSync(publicPath, outputPath, { recursive: true });
+  if (fs.existsSync(appPublicPath)) {
+    fs.cpSync(appPublicPath, outputPath, { recursive: true });
   }
 }
 
