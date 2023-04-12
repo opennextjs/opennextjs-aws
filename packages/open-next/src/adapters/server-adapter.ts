@@ -11,11 +11,12 @@ import type {
 } from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-import { loadConfig } from "./util.js";
+import { loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import type { PublicAssets } from "../build.js";
 
+setNodeEnv();
 setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
 const openNextDir = path.join(__dirname, ".open-next");
