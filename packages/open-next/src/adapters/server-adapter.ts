@@ -52,7 +52,7 @@ export async function handler(
   if (publicAssets.files.includes(internalEvent.rawPath)) {
     return internalEvent.type === "cf"
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
-      : formatApiv2FailoverResponse();
+      : formatAPIGatewayFailoverResponse();
   }
 
   // Process Next.js request
@@ -86,7 +86,8 @@ export async function handler(
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
-  return convertTo(internalEvent, {
+  return convertTo({
+    type: internalEvent.type,
     statusCode,
     headers,
     isBase64Encoded,
@@ -142,7 +143,7 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-function formatApiv2FailoverResponse() {
+function formatAPIGatewayFailoverResponse() {
   return { statusCode: 503 };
 }
 
