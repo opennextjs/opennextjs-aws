@@ -9,7 +9,9 @@ const appPath = process.cwd();
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
-export type PublicAssets = Record<string, "file" | "dir">;
+export type PublicFiles = {
+  files: string[];
+};
 
 export async function build() {
   // Pre-build validation
@@ -112,17 +114,25 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function readTopLevelPublicFilesAndDirs() {
+function listPublicFiles() {
   const publicPath = path.join(appPath, "public");
 
-  const items: PublicAssets = {};
+  const result: PublicFiles = { files: [] };
 
-  fs.readdirSync(publicPath).map((file) => {
-    items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
-      ? "dir"
-      : "file";
-  });
-  return items;
+  function processDirectory(pathInPublic: string) {
+    const files = fs.readdirSync(path.join(publicPath, pathInPublic), {
+      withFileTypes: true,
+    });
+
+    for (const file of files) {
+      file.isDirectory()
+        ? processDirectory(path.join(pathInPublic, file.name))
+        : result.files.push(path.join(pathInPublic, file.name));
+    }
+  }
+
+  processDirectory("/");
+  return result;
 }
 
 function createServerBundle(monorepoRoot: string) {
@@ -186,7 +196,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.mkdirSync(outputOpenNextPath, { recursive: true });
   fs.writeFileSync(
     path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(readTopLevelPublicFilesAndDirs())
+    JSON.stringify(listPublicFiles())
   );
 }
 

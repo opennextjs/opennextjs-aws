@@ -14,7 +14,7 @@ import NextServer from "next/dist/server/next-server.js";
 import { loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
-import type { PublicAssets } from "../build.js";
+import type { PublicFiles } from "../build.js";
 
 setNodeEnv();
 setNextjsServerWorkingDirectory();
@@ -138,7 +138,7 @@ export async function handler(
     : eventParser.apiv2(event as APIGatewayProxyEventV2);
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-  if (isPublicAsset(parser.rawPath)) {
+  if (publicAssets.files.includes(parser.rawPath)) {
     return isCloudFrontEvent
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatApiv2FailoverResponse();
@@ -200,18 +200,7 @@ function loadHtmlPages() {
 function loadPublicAssets() {
   const filePath = path.join(openNextDir, "public-files.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PublicAssets;
-}
-
-function isPublicAsset(rawPath: string) {
-  console.log(publicAssets);
-  console.log({ rawPath });
-  // rawPath = "/favicon.ico"
-  // rawPath = "/images/logo.png"
-  return (
-    publicAssets[rawPath] === "file" ||
-    publicAssets[rawPath.split("/").slice(0, 2).join("/")] === "dir"
-  );
+  return JSON.parse(json) as PublicFiles;
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
