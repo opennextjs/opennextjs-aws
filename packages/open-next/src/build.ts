@@ -314,6 +314,16 @@ function createServerBundle(monorepoRoot: string) {
     });
   };
   removeJsFiles(outputCache);
+  //Copy fetch-cache to cache folder
+  const fetchCachePrerenderedPath = path.join(appPath, ".next/cache/fetch-cache");
+  if (fs.existsSync(fetchCachePrerenderedPath)) {
+    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+    fs.mkdirSync(fetchOutputPath, { recursive: true });
+    fs.cpSync(fetchCachePrerenderedPath, fetchOutputPath, {
+      recursive: true,
+      verbatimSymlinks: true,
+    });
+  }
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the

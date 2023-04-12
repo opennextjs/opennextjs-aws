@@ -1,6 +1,7 @@
 import { PrerenderManifest, revalidateInBackground } from "./util.js";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { request as httpsRequest } from "https";
+import { debug } from "./logger.js";
 
 interface MatchedRoute {
   key: string;
@@ -78,8 +79,6 @@ export class CacheInterceptor {
     );
 
     this.preview = preview["previewModeId"];
-
-    console.log("Lambda initialized in", Date.now() - startTime, "ms");
   }
   parsePath(path: string) {
     const hashIndex = path.indexOf("#");
@@ -136,7 +135,7 @@ export class CacheInterceptor {
       return false;
     }
 
-    console.log("Matched uri:", uri);
+    debug("Interceptor - Matched uri:", uri);
 
     const matchedRoute = this.matcher(uri);
     const method = event.method;
@@ -178,7 +177,9 @@ export class CacheInterceptor {
           isStale = true;
         }
 
-        console.log(`Serving ${uri} from s3 cache in ${Date.now() - startTime}ms`);
+        debug(
+          `Interceptor - Serving ${uri} from s3 cache in ${Date.now() - startTime}ms`
+        );
         return {
           statusCode: 200,
           body: method === "GET" ? body : "",
@@ -191,6 +192,7 @@ export class CacheInterceptor {
             "Cache-Control": isStale
               ? "s-maxage=0"
               : `s-maxage=${remaining}, stale-while-revalidate`,
+            Vary: "Accept-Encoding, RSC, Next-Router-Prefetch",
             "x-cache-intercepted": "1",
           },
           isBase64Encoded: false,
@@ -200,7 +202,7 @@ export class CacheInterceptor {
         return false;
       }
     }
-    console.log(`Serving ${uri} from origin in ${Date.now() - startTime}ms`);
+    debug(`Interceptor - Serving ${uri} from origin in ${Date.now() - startTime}ms`);
     return false;
   }
 }
