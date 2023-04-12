@@ -1,5 +1,12 @@
 # open-next
 
+## 0.9.3
+
+### Patch Changes
+
+- a574834: Support API Gateway REST API event
+- 81dbb69: Support Next.js apps without "public" folder
+
 ## 0.9.2
 
 ### Patch Changes
