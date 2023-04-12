@@ -1,5 +1,12 @@
 # open-next
 
+## 0.9.2
+
+### Patch Changes
+
+- ea0ab0c: Fix requesting public files returns 404
+- 0f56b91: Add strict checking to detect public file request
+
 ## 0.9.1
 
 ### Patch Changes
