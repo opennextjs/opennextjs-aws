@@ -6,10 +6,13 @@ import { buildSync, BuildOptions } from "esbuild";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
+const appPublicPath = path.join(appPath, "public");
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
-export type PublicAssets = Record<string, "file" | "dir">;
+export type PublicFiles = {
+  files: string[];
+};
 
 export async function build() {
   // Pre-build validation
@@ -112,17 +115,27 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function readTopLevelPublicFilesAndDirs() {
-  const publicPath = path.join(appPath, "public");
+function listPublicFiles() {
+  const result: PublicFiles = { files: [] };
 
-  const items: PublicAssets = {};
+  if (!fs.existsSync(appPublicPath)) {
+    return result;
+  }
 
-  fs.readdirSync(publicPath).map((file) => {
-    items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
-      ? "dir"
-      : "file";
-  });
-  return items;
+  function processDirectory(pathInPublic: string) {
+    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
+      withFileTypes: true,
+    });
+
+    for (const file of files) {
+      file.isDirectory()
+        ? processDirectory(path.join(pathInPublic, file.name))
+        : result.files.push(path.join(pathInPublic, file.name));
+    }
+  }
+
+  processDirectory("/");
+  return result;
 }
 
 function createServerBundle(monorepoRoot: string) {
@@ -186,7 +199,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.mkdirSync(outputOpenNextPath, { recursive: true });
   fs.writeFileSync(
     path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(readTopLevelPublicFilesAndDirs())
+    JSON.stringify(listPublicFiles())
   );
 }
 
@@ -264,7 +277,9 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  fs.cpSync(path.join(appPath, "public"), outputPath, { recursive: true });
+  if (fs.existsSync(appPublicPath)) {
+    fs.cpSync(appPublicPath, outputPath, { recursive: true });
+  }
 }
 
 function esbuildSync(options: BuildOptions) {
