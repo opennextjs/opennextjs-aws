@@ -4,6 +4,7 @@ import { Writable } from "node:stream";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type {
+  APIGatewayProxyEvent,
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
   APIGatewayProxyEventHeaders,
@@ -18,9 +19,11 @@ import {
   ImageOptimizerCache,
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
-import { loadConfig } from "./util.js";
+import { loadConfig, setNodeEnv } from "./util.js";
 import { debug } from "./logger.js";
+import { convertFrom, isAPIGatewayProxyEvent } from "./event-mapper.js";
 
+setNodeEnv();
 const bucketName = process.env.BUCKET_NAME;
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
@@ -42,7 +45,7 @@ debug("Init config", {
 /////////////
 
 export async function handler(
-  event: APIGatewayProxyEventV2
+  event: APIGatewayProxyEventV2 | APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResultV2> {
   // Images are handled via header and query param information.
   debug("handler event", event);
@@ -51,7 +54,10 @@ export async function handler(
   try {
     const headers = normalizeHeaderKeysToLowercase(rawHeaders);
     ensureBucketExists();
-    const imageParams = validateImageParams(headers, queryString);
+    const imageParams = validateImageParams(
+      headers,
+      queryString === null ? undefined : queryString
+    );
     const result = await optimizeImage(headers, imageParams);
 
     return buildSuccessResponse(result);

@@ -73,7 +73,7 @@ When calling `open-next build`, OpenNext **runs `next build`** to build the Next
 
 #### Building the Next.js app
 
-OpenNext runs the `build` script in your `package.json` file. Depnding on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
+OpenNext runs the `build` script in your `package.json` file. Depending on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
 
 #### Transforming the build output
 
@@ -115,9 +115,13 @@ public,max-age=0,s-maxage=31536000,must-revalidate
 
 #### Image optimization function
 
-Create a Lambda function using the code in the `.open-next/image-optimization-function` folder, with the handler `index.mjs`. Ensure that the **arm64** architecture is used.
+Create a Lambda function using the code in the `.open-next/image-optimization-function` folder, with the handler `index.mjs`. Also, ensure that the function is configured as follows:
 
-This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library, which is bundled with the function, is used to convert the image. The library is compiled against the `arm64` architecture and is intended to run on AWS Lamba Arm/Graviton2 architecture. [Learn about the better cost-performance offered by AWS Graviton2 processors.](https://aws.amazon.com/blogs/aws/aws-lambda-functions-powered-by-aws-graviton2-processor-run-your-functions-on-arm-and-get-up-to-34-better-price-performance/)
+- Set the architecture to `arm64`.
+- Set the `BUCKET_NAME` environment variable with the value being the name of the S3 bucket where the original images are stored.
+- Grant `s3:GetObject` permission.
+
+This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library, which is bundled with the function, is used to convert the image. The library is compiled against the `arm64` architecture and is intended to run on AWS Lambda Arm/Graviton2 architecture. [Learn about the better cost-performance offered by AWS Graviton2 processors.](https://aws.amazon.com/blogs/aws/aws-lambda-functions-powered-by-aws-graviton2-processor-run-your-functions-on-arm-and-get-up-to-34-better-price-performance/)
 
 Note that the image optimization function responds with the `Cache-Control` header, so the image will be cached both at the CDN level and at the browser level.
 
@@ -128,17 +132,21 @@ Create a Lambda function using the code in the `.open-next/server-function` fold
 This function handles all other types of requests from the Next.js app, including Server-side Rendering (SSR) requests and API requests. OpenNext builds the Next.js app in **standalone** mode. The standalone mode generates a `.next` folder containing the **NextServer** class that handles requests and a `node_modules` folder with **all the dependencies** needed to run the `NextServer`. The structure looks like this:
 
 ```
-  .next/              -> NextServer
-  node_modules/       -> dependencies
+  .next/                -> NextServer
+  node_modules/         -> dependencies
 ```
 
 The server function adapter wraps around `NextServer` and exports a handler function that supports the Lambda request and response. The `server-function` bundle looks like this:
 
 ```diff
-  .next/              -> NextServer
-  node_modules/       -> dependencies
-+ index.mjs           -> server function adapter
+  .next/                -> NextServer
++ .open-next/
++   public-files.json   -> `/public` file listing
+  node_modules/         -> dependencies
++ index.mjs             -> server function adapter
 ```
+
+The file `public-files.json` contains the top-level file and directory names in your app's `public/` folder. At runtime, the server function will forward any requests made to these files and directories to S3. And S3 will serve them directly. [See why.](#workaround-public-static-files-served-out-by-server-function-aws-specific)
 
 **Monorepo**
 
@@ -147,9 +155,9 @@ In the case of a monorepo, the build output looks slightly different. For exampl
 ```
   packages/
     web/
-      .next/          -> NextServer
-      node_modules/   -> dependencies from root node_modules (optional)
-  node_modules/       -> dependencies from package node_modules
+      .next/            -> NextServer
+      node_modules/     -> dependencies from root node_modules (optional)
+  node_modules/         -> dependencies from package node_modules
 ```
 
 In this case, the server function adapter needs to be created inside `packages/web` next to `.next/`. This is to ensure that the adapter can import dependencies from both `node_modules` folders. It is not a good practice to have the Lambda configuration coupled with the project structure, so instead of setting the Lambda handler to `packages/web/index.mjs`, we will add a wrapper `index.mjs` at the `server-function` bundle root that re-exports the adapter. The resulting structure looks like this:
@@ -157,11 +165,13 @@ In this case, the server function adapter needs to be created inside `packages/w
 ```diff
   packages/
     web/
-      .next/          -> NextServer
-      node_modules/   -> dependencies from root node_modules (optional)
-+     index.mjs       -> server function adapter
-  node_modules/       -> dependencies from package node_modules
-+ index.mjs           -> adapter wrapper
+      .next/                -> NextServer
++     .open-next/
++       public-files.json   -> `/public` file listing
+      node_modules/          -> dependencies from root node_modules (optional)
++     index.mjs              -> server function adapter
+  node_modules/              -> dependencies from package node_modules
++ index.mjs                  -> adapter wrapper
 ```
 
 This ensures that the Lambda handler remains at `index.mjs`.
@@ -170,13 +180,13 @@ This ensures that the Lambda handler remains at `index.mjs`.
 
 Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
 
-| Behavior          | Requests            | Origin                                                                                                                                |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                             |
-| `/_next/image`    | Image optimization  | image optimization function                                                                                                           |
-| `/_next/data/*`   | data requests       | server function                                                                                                                       |
-| `/api/*`          | API                 | server function                                                                                                                       |
-| `/*`              | catch all           | server function<br />fallback to S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+| Behavior          | Requests            | Origin                                                                                                                                       |
+| ----------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                                    |
+| `/_next/image`    | Image optimization  | image optimization function                                                                                                                  |
+| `/_next/data/*`   | data requests       | server function                                                                                                                              |
+| `/api/*`          | API                 | server function                                                                                                                              |
+| `/*`              | catch all           | server function fallback to<br />S3 bucket on 503<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
 #### Running at edge
 
@@ -204,9 +214,14 @@ https://my-nextjs-app.com/favicon.ico
 
 This requires the CloudFront distribution to have the behavior `/favicon.ico` and set the S3 bucket as the origin. However, CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions), so it is not a scalable solution to create one behavior per file.
 
-To work around the issue, requests for `public/` files are handled by the catch all behavior `/*`. The behavior sends the request to the server function first, and if the server fails to handle the request, it will fall back to the S3 bucket.
+To work around the issue, requests for `public/` files are handled by the catch all behavior `/*`. This behavior sends the request to the server function first, and if the server fails to handle the request, it will fall back to the S3 bucket.
 
-This means that on cache miss, the request will take slightly longer to process.
+During the build process, the top-level file and directory names in the `public/` folder are saved to the `.open-next/public-files.json` file within the server function bundle. At runtime, the server function checks the request URL path against the file. If the request is made to a file in the `public/` folder:
+
+- When deployed to a single region (Lambda), the server function returns a 503 response right away, and S3, which is configured as the failover origin on 503 status code, will serve the file. [Refer to the CloudFront setup.](#cloudfront-distribution)
+- When deployed to the edge (Lambda@Edge), the server function returns the request object. And the request will be handled by S3, which is configured as the origin. [Refer to the CloudFront setup.](#running-at-edge)
+
+This means that on cache miss, the request may take slightly longer to process.
 
 #### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
 
@@ -296,7 +311,7 @@ This does a few things:
 It is recommended to **turn off debug mode when building for production** because:
 
 1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
-1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increated AWS costs.
+1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increased AWS costs.
 
 ## Opening an issue
 
@@ -342,7 +357,7 @@ We previously built the app using the "minimalMode" and having the same architec
 
 #### How does OpenNext compared to AWS Amplify?
 
-OpenNext is an open source initiative, and there are a couple of advantages when comapred to Amplify:
+OpenNext is an open source initiative, and there are a couple of advantages when compared to Amplify:
 
 1. The community contributions to OpenNext allows it to have better feature support.
 

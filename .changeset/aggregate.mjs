@@ -4,7 +4,9 @@ import { execSync } from "node:child_process";
 
 const THANKLESS_COMMITTERS = ["thdxr", "fwang", "jayair"];
 
-const { version } = JSON.parse(await fs.readFile("./package.json"));
+const { version } = JSON.parse(
+  await fs.readFile("./packages/open-next/package.json")
+);
 
 const changesets = JSON.parse(await fs.readFile(".changeset/config.json"));
 const packages = changesets.fixed[0];

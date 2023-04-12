@@ -6,18 +6,23 @@ import { buildSync, BuildOptions } from "esbuild";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
+const appPublicPath = path.join(appPath, "public");
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
+
+export type PublicFiles = {
+  files: string[];
+};
 
 export async function build() {
   // Pre-build validation
   printVersion();
   checkRunningInsideNextjsApp();
-  setStandaloneBuildMode();
   const { root: monorepoRoot, packager } = findMonorepoRoot();
 
   // Build Next.js app
   printHeader("Building Next.js app");
+  setStandaloneBuildMode(monorepoRoot);
   await buildNextjsApp(packager);
 
   // Generate deployable bundle
@@ -64,16 +69,26 @@ function findMonorepoRoot() {
   return { root: appPath, packager: "npm" as const };
 }
 
-function setStandaloneBuildMode() {
-  // Equivalent to setting `target: 'standalone'` in next.config.js
+function setStandaloneBuildMode(monorepoRoot: string) {
+  // Equivalent to setting `target: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
+  // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
+  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
-  cp.spawnSync(packager, packager === "npm" ? ["run", "build"] : ["build"], {
-    stdio: "inherit",
-    cwd: appPath,
-  });
+  const result = cp.spawnSync(
+    packager,
+    packager === "npm" ? ["run", "build"] : ["build"],
+    {
+      stdio: "inherit",
+      cwd: appPath,
+      shell: true,
+    }
+  );
+  if (result.status && result.status !== 0) {
+    process.exit(1);
+  }
 }
 
 function printHeader(header: string) {
@@ -98,6 +113,29 @@ function printVersion() {
 function initOutputDir() {
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
+}
+
+function listPublicFiles() {
+  const result: PublicFiles = { files: [] };
+
+  if (!fs.existsSync(appPublicPath)) {
+    return result;
+  }
+
+  function processDirectory(pathInPublic: string) {
+    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
+      withFileTypes: true,
+    });
+
+    for (const file of files) {
+      file.isDirectory()
+        ? processDirectory(path.join(pathInPublic, file.name))
+        : result.files.push(path.join(pathInPublic, file.name));
+    }
+  }
+
+  processDirectory("/");
+  return result;
 }
 
 function createServerBundle(monorepoRoot: string) {
@@ -160,6 +198,14 @@ function createServerBundle(monorepoRoot: string) {
       [`export * from "./${packageImportPath}/index.mjs";`].join("")
     );
   }
+
+  // Save a list of top level files in /public
+  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
+  fs.mkdirSync(outputOpenNextPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(outputOpenNextPath, "public-files.json"),
+    JSON.stringify(listPublicFiles())
+  );
 }
 
 function createImageOptimizationBundle() {
@@ -236,7 +282,9 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  fs.cpSync(path.join(appPath, "public"), outputPath, { recursive: true });
+  if (fs.existsSync(appPublicPath)) {
+    fs.cpSync(appPublicPath, outputPath, { recursive: true });
+  }
 }
 
 function esbuildSync(options: BuildOptions) {
