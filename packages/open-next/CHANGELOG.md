@@ -1,5 +1,11 @@
 # open-next
 
+## 0.9.1
+
+### Patch Changes
+
+- 0dadccb: Set default NODE_ENV to production
+
 ## 0.9.0
 
 ### Minor Changes
