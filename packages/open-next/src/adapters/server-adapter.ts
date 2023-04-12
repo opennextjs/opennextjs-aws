@@ -5,6 +5,7 @@ import { ServerResponse } from "./response.js";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
+  APIGatewayProxyEvent,
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
   CloudFrontHeaders,
@@ -37,6 +38,67 @@ const requestHandler = new NextServer.default({
 }).getRequestHandler();
 
 const eventParser = {
+  apiv1: (event: APIGatewayProxyEvent) => ({
+    get method() {
+      return event.httpMethod;
+    },
+    get rawPath() {
+      return event.path;
+    },
+    get url() {
+      const params = new URLSearchParams();
+      if (event.multiValueQueryStringParameters) {
+        Object.entries(event.multiValueQueryStringParameters).forEach(
+          ([key, value]) => {
+            if (value === undefined) return;
+            value.forEach((v) => params.append(key, v));
+          }
+        );
+      }
+      if (event.queryStringParameters) {
+        Object.entries(event.queryStringParameters).forEach(([key, value]) => {
+          if (value === undefined) return;
+          params.append(key, value);
+        });
+      }
+
+      return event.path + (params.toString() ? "?" + params.toString() : "");
+    },
+    get body() {
+      const { body, isBase64Encoded } = event;
+      if (Buffer.isBuffer(body)) {
+        return body;
+      } else if (typeof body === "string") {
+        return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
+      } else if (typeof body === "object") {
+        return Buffer.from(JSON.stringify(body));
+      }
+      return Buffer.from("", "utf8");
+    },
+    get headers() {
+      const initialHeader: Record<string, string> = {};
+
+      if (event.multiValueHeaders) {
+        Object.entries(event.multiValueHeaders).reduce(
+          (headers, [key, value]) => {
+            if (value === undefined) return headers;
+            headers[key.toLowerCase()] = value.join(", ");
+            return headers;
+          },
+          initialHeader
+        );
+      }
+
+      return Object.entries(event.headers).reduce((headers, [key, value]) => {
+        if (value === undefined) return headers;
+        headers[key.toLowerCase()] = value;
+        return headers;
+      }, initialHeader);
+    },
+    get remoteAddress() {
+      return event.requestContext.identity.sourceIp;
+    },
+  }),
   apiv2: (event: APIGatewayProxyEventV2) => ({
     get method() {
       return event.requestContext.http.method;
@@ -121,27 +183,41 @@ const eventParser = {
   }),
 };
 
+function isCloudFrontEvent(
+  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
+): event is CloudFrontRequestEvent {
+  return !!(event as CloudFrontRequestEvent).Records?.[0]?.cf;
+}
+
+function isApiGatewayProxyEventV2(
+  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
+): event is APIGatewayProxyEventV2 {
+  return (event as APIGatewayProxyEventV2).version === "2.0";
+}
+
 /////////////
 // Handler //
 /////////////
 
 export async function handler(
-  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent
+  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
 ) {
   debug("handler event", event);
 
   // Parse Lambda event and create Next.js request
-  const isCloudFrontEvent = (event as CloudFrontRequestEvent).Records?.[0]?.cf;
-  const parser = isCloudFrontEvent
+
+  const parser = isCloudFrontEvent(event)
     ? eventParser.cloudfront(event as CloudFrontRequestEvent)
-    : eventParser.apiv2(event as APIGatewayProxyEventV2);
+    : isApiGatewayProxyEventV2(event)
+    ? eventParser.apiv2(event as APIGatewayProxyEventV2)
+    : eventParser.apiv1(event as APIGatewayProxyEvent);
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
   if (
     publicAssets[parser.rawPath] === "file" ||
     publicAssets[parser.rawPath.split("/")[0]] === "dir"
   ) {
-    return isCloudFrontEvent
+    return isCloudFrontEvent(event)
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatApiv2FailoverResponse();
   }
@@ -177,7 +253,7 @@ export async function handler(
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
-  return isCloudFrontEvent
+  return isCloudFrontEvent(event)
     ? formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
     : formatApiv2Response({ statusCode, headers, isBase64Encoded, body });
 }
