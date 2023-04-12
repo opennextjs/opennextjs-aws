@@ -1,32 +1,32 @@
 import fs from "node:fs";
 import url from "node:url";
 import path from "node:path";
+import cp from "node:child_process";
 import { buildSync, BuildOptions } from "esbuild";
-// @ts-ignore @vercel/next does not provide types
-import { build as nextBuild } from "@vercel/next";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
+export type PublicAssets = Record<string, "file" | "dir">;
+
 export async function build() {
   // Pre-build validation
   printVersion();
   checkRunningInsideNextjsApp();
-  setStandaloneBuildMode();
-  const monorepoRoot = findMonorepoRoot();
+  const { root: monorepoRoot, packager } = findMonorepoRoot();
 
   // Build Next.js app
   printHeader("Building Next.js app");
-  const buildOutput = await buildNextjsApp(monorepoRoot);
+  setStandaloneBuildMode(monorepoRoot);
+  await buildNextjsApp(packager);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
-  createMiddlewareBundle(buildOutput);
   createAssets();
 }
 
@@ -35,7 +35,9 @@ function checkRunningInsideNextjsApp() {
     fs.existsSync(path.join(appPath, `next.config.${ext}`))
   );
   if (!extension) {
-    console.error("Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.");
+    console.error(
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app."
+    );
     process.exit(1);
   }
 }
@@ -43,13 +45,17 @@ function checkRunningInsideNextjsApp() {
 function findMonorepoRoot() {
   let currentPath = appPath;
   while (currentPath !== "/") {
-    if (fs.existsSync(path.join(currentPath, "package-lock.json"))
-      || fs.existsSync(path.join(currentPath, "yarn.lock"))
-      || fs.existsSync(path.join(currentPath, "pnpm-lock.yaml"))) {
+    const found = [
+      { file: "package-lock.json", packager: "npm" as const },
+      { file: "yarn.lock", packager: "yarn" as const },
+      { file: "pnpm-lock.yaml", packager: "pnpm" as const },
+    ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
+
+    if (found) {
       if (currentPath !== appPath) {
         console.info("Monorepo detected at", currentPath);
       }
-      return currentPath;
+      return { root: currentPath, packager: found.packager };
     }
     currentPath = path.dirname(currentPath);
   }
@@ -57,41 +63,46 @@ function findMonorepoRoot() {
   // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
   //       not found in the app's directory or any of its parent directories.
   //       We are going to assume that the app is not part of a monorepo.
-  return appPath;
+  return { root: appPath, packager: "npm" as const };
 }
 
-function setStandaloneBuildMode() {
-  // Equivalent to setting `target: 'standalone'` in next.config.js
+function setStandaloneBuildMode(monorepoRoot: string) {
+  // Equivalent to setting `target: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
+  // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
+  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
-function buildNextjsApp(monorepoRoot: string) {
-  // note: always pass in "next.config.js" as the entrypoint.
-  //       @vercel/next only accepts "next.config.js" as the
-  //       entrypoint. But it doesn't actually use the file.
-  return nextBuild({
-    files: [],
-    repoRootPath: monorepoRoot,
-    workPath: appPath,
-    entrypoint: "next.config.js",
-    config: {},
-    meta: {},
-  });
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+  const result = cp.spawnSync(
+    packager,
+    packager === "npm" ? ["run", "build"] : ["build"],
+    {
+      stdio: "inherit",
+      cwd: appPath,
+      shell: true,
+    }
+  );
+  if (result.status && result.status !== 0) {
+    process.exit(1);
+  }
 }
 
 function printHeader(header: string) {
   header = `OpenNext — ${header}`;
-  console.info([
-    "",
-    "┌" + "─".repeat(header.length + 2) + "┐",
-    `│ ${header} │`,
-    "└" + "─".repeat(header.length + 2) + "┘",
-    "",
-  ].join("\n"));
+  console.info(
+    [
+      "",
+      "┌" + "─".repeat(header.length + 2) + "┐",
+      `│ ${header} │`,
+      "└" + "─".repeat(header.length + 2) + "┘",
+      "",
+    ].join("\n")
+  );
 }
 
 function printVersion() {
-  const pathToPackageJson = path.join(__dirname, "../package.json");
+  const pathToPackageJson = path.join(__dirname, "./package.json");
   const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
   console.info(`Using v${pkg.version}`);
 }
@@ -101,11 +112,17 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function getMiddlewareName() {
-  // note: middleware can be at the root or inside "src"
-  const filePath = path.join(appPath, ".next", "server", "middleware-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json).middleware?.["/"]?.name;
+function readTopLevelPublicFilesAndDirs() {
+  const publicPath = path.join(appPath, "public");
+
+  const items: PublicAssets = {};
+
+  fs.readdirSync(publicPath).map((file) => {
+    items[`/${file}`] = fs.statSync(path.join(publicPath, file)).isDirectory()
+      ? "dir"
+      : "file";
+  });
+  return items;
 }
 
 function createServerBundle(monorepoRoot: string) {
@@ -118,11 +135,10 @@ function createServerBundle(monorepoRoot: string) {
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
   //       symlinks. We don't want to resolve the symlinks when copying.
-  fs.cpSync(
-    path.join(appPath, ".next/standalone"),
-    path.join(outputPath),
-    { recursive: true, verbatimSymlinks: true }
-  );
+  fs.cpSync(path.join(appPath, ".next/standalone"), path.join(outputPath), {
+    recursive: true,
+    verbatimSymlinks: true,
+  });
 
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
@@ -134,10 +150,7 @@ function createServerBundle(monorepoRoot: string) {
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
-  fs.rmSync(
-    path.join(outputPath, packagePath, "server.js"),
-    { force: true }
-  );
+  fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
@@ -151,8 +164,8 @@ function createServerBundle(monorepoRoot: string) {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
         "const require = topLevelCreateRequire(import.meta.url);",
-        "import url from 'url';",
-        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join(""),
     },
   });
@@ -162,10 +175,19 @@ function createServerBundle(monorepoRoot: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
   if (isMonorepo) {
-    fs.writeFileSync(path.join(outputPath, "index.mjs"), [
-      `export * from "./${packagePath}/index.mjs";`,
-    ].join(""))
-  };
+    fs.writeFileSync(
+      path.join(outputPath, "index.mjs"),
+      [`export * from "./${packagePath}/index.mjs";`].join("")
+    );
+  }
+
+  // Save a list of top level files in /public
+  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
+  fs.mkdirSync(outputOpenNextPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(outputOpenNextPath, "public-files.json"),
+    JSON.stringify(readTopLevelPublicFilesAndDirs())
+  );
 }
 
 function createImageOptimizationBundle() {
@@ -180,7 +202,9 @@ function createImageOptimizationBundle() {
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
-    entryPoints: [path.join(__dirname, "adapters", "image-optimization-adapter.js")],
+    entryPoints: [
+      path.join(__dirname, "adapters", "image-optimization-adapter.js"),
+    ],
     external: ["sharp", "next"],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -198,8 +222,8 @@ function createImageOptimizationBundle() {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
         "const require = topLevelCreateRequire(import.meta.url);",
-        "import url from 'url';",
-        "const __dirname = url.fileURLToPath(new URL('.', import.meta.url));",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join("\n"),
     },
   });
@@ -208,68 +232,15 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
     path.join(appPath, ".next/required-server-files.json"),
-    path.join(outputPath, ".next/required-server-files.json"),
+    path.join(outputPath, ".next/required-server-files.json")
   );
 
   // Copy over sharp node modules
   fs.cpSync(
-    path.join(__dirname, "../assets/sharp-node-modules"),
+    path.join(__dirname, "./assets/sharp-node-modules"),
     path.join(outputPath, "node_modules"),
     { recursive: true }
   );
-}
-
-function createMiddlewareBundle(buildOutput: any) {
-  const middlewareName = getMiddlewareName();
-  if (middlewareName) {
-    console.info(`Bundling middleware edge function...`);
-  }
-  else {
-    console.info(`Bundling middleware edge function... \x1b[36m%s\x1b[0m`, "skipped");
-    return;
-  }
-
-  // Create output folder
-  const outputPath = path.join(outputDir, "middleware-function");
-  fs.mkdirSync(outputPath, { recursive: true });
-
-  // Save middleware code to file
-  const src: string = buildOutput.output[middlewareName].files["index.js"].data;
-  fs.writeFileSync(path.join(tempDir, "middleware.js"), src);
-  fs.copyFileSync(
-    path.join(__dirname, "adapters", "middleware-adapter.js"),
-    path.join(tempDir, "middleware-adapter.js"),
-  );
-
-  // Build Lambda code
-  esbuildSync({
-    entryPoints: [path.join(tempDir, "middleware-adapter.js")],
-    outfile: path.join(outputPath, "index.mjs"),
-    banner: {
-      js: [
-        // WORKAROUND: Add `Headers.getAll()` extension to the middleware function — https://github.com/serverless-stack/open-next#workaround-add-headersgetall-extension-to-the-middleware-function
-        "class Response extends globalThis.Response {",
-        "  constructor(body, init) {",
-        "    super(body, init);",
-        "    this.headers.getAll = (name) => {",
-        "      name = name.toLowerCase();",
-        "      if (name !== 'set-cookie') {",
-        "        throw new Error('Headers.getAll is only supported for Set-Cookie');",
-        "      }",
-        "      return [...this.headers.entries()]",
-        "        .filter(([key]) => key === name)",
-        "        .map(([, value]) => value);",
-        "    };",
-        "  }",
-        "}",
-        // Polyfill Response and self
-        "Object.assign(globalThis, {",
-        "  Response,",
-        "  self: {},",
-        "});",
-      ].join(""),
-    },
-  });
 }
 
 function createAssets() {
@@ -293,11 +264,7 @@ function createAssets() {
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  fs.cpSync(
-    path.join(appPath, "public"),
-    outputPath,
-    { recursive: true }
-  );
+  fs.cpSync(path.join(appPath, "public"), outputPath, { recursive: true });
 }
 
 function esbuildSync(options: BuildOptions) {
@@ -306,11 +273,22 @@ function esbuildSync(options: BuildOptions) {
     format: "esm",
     platform: "node",
     bundle: true,
+    minify: process.env.OPEN_NEXT_DEBUG ? false : true,
+    sourcemap: process.env.OPEN_NEXT_DEBUG ? "inline" : false,
     ...options,
+    // "process.env.OPEN_NEXT_DEBUG" determins if the logger writes to console.log
+    define: {
+      ...options.define,
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
+        ? "true"
+        : "false",
+    },
   });
 
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
-    throw new Error(`There was a problem bundling ${(options.entryPoints as string[])[0]}.`);
+    throw new Error(
+      `There was a problem bundling ${(options.entryPoints as string[])[0]}.`
+    );
   }
 }

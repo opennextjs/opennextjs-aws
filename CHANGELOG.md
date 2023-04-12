@@ -1,7 +1,7 @@
 # open-next
 
-## 0.0.0-20221205225535
+## 0.8.1
 
 ### Patch Changes
 
-- Test
+- [`bdd29d1`](https://github.com/serverless-stack/open-next/commit/bdd29d1) Fix spawn error on Windows

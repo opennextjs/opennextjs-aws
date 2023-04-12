@@ -6,8 +6,7 @@ const command = process.argv[2];
 
 if (command === "build") {
   build();
-}
-else {
+} else {
   console.log("Unknown command");
   console.log("");
   console.log("Usage:");
