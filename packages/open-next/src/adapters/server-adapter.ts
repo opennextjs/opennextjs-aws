@@ -4,10 +4,8 @@ import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
 import type {
   APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
+  APIGatewayProxyEvent,
   CloudFrontRequestEvent,
-  CloudFrontRequestResult,
-  CloudFrontHeaders,
 } from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
@@ -15,6 +13,7 @@ import { loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import type { PublicFiles } from "../build.js";
+import { convertFrom, convertTo } from "./event-mapper.js";
 
 setNodeEnv();
 setNextjsServerWorkingDirectory();
@@ -37,120 +36,32 @@ const requestHandler = new NextServer.default({
   dir: __dirname,
 }).getRequestHandler();
 
-const eventParser = {
-  apiv2: (event: APIGatewayProxyEventV2) => ({
-    get method() {
-      return event.requestContext.http.method;
-    },
-    get rawPath() {
-      return event.rawPath;
-    },
-    get url() {
-      const { rawPath, rawQueryString } = event;
-      return rawQueryString.length > 0
-        ? `${rawPath}?${rawQueryString}`
-        : rawPath;
-    },
-    get body() {
-      const { body, isBase64Encoded } = event;
-      if (Buffer.isBuffer(body)) {
-        return body;
-      } else if (typeof body === "string") {
-        return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
-      } else if (typeof body === "object") {
-        return Buffer.from(JSON.stringify(body));
-      }
-      return Buffer.from("", "utf8");
-    },
-    get headers() {
-      const { headers: rawHeaders, cookies } = event;
-
-      const headers: Record<string, string> = {};
-
-      if (Array.isArray(cookies)) {
-        headers["cookie"] = cookies.join("; ");
-      }
-
-      for (const [key, value] of Object.entries(rawHeaders || {})) {
-        headers[key.toLowerCase()] = value!;
-      }
-
-      return headers;
-    },
-    get remoteAddress() {
-      return event.requestContext.http.sourceIp;
-    },
-  }),
-  cloudfront: (event: CloudFrontRequestEvent) => ({
-    get method() {
-      return event.Records[0].cf.request.method;
-    },
-    get rawPath() {
-      return event.Records[0].cf.request.uri;
-    },
-    get url() {
-      const { uri, querystring } = event.Records[0].cf.request;
-      return querystring.length > 0 ? `${uri}?${querystring}` : uri;
-    },
-    get body() {
-      const { body } = event.Records[0].cf.request;
-      if (!body) {
-        return Buffer.from("", "utf8");
-      }
-
-      return body.encoding === "base64"
-        ? Buffer.from(body.data, "base64")
-        : Buffer.from(body.data, "utf8");
-    },
-    get headers() {
-      const { headers: rawHeaders } = event.Records[0].cf.request;
-      const headers: Record<string, string> = {};
-
-      for (const [key, values] of Object.entries(rawHeaders)) {
-        for (const { value } of values) {
-          if (value) {
-            headers[key] = value;
-          }
-        }
-      }
-
-      return headers;
-    },
-    get remoteAddress() {
-      return event.Records[0].cf.request.clientIp;
-    },
-  }),
-};
-
 /////////////
 // Handler //
 /////////////
 
 export async function handler(
-  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent
+  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
 ) {
   debug("handler event", event);
+  const internalEvent = convertFrom(event);
 
   // Parse Lambda event and create Next.js request
-  const isCloudFrontEvent = (event as CloudFrontRequestEvent).Records?.[0]?.cf;
-  const parser = isCloudFrontEvent
-    ? eventParser.cloudfront(event as CloudFrontRequestEvent)
-    : eventParser.apiv2(event as APIGatewayProxyEventV2);
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-  if (publicAssets.files.includes(parser.rawPath)) {
-    return isCloudFrontEvent
+  if (publicAssets.files.includes(internalEvent.rawPath)) {
+    return internalEvent.type === "cf"
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
-      : formatApiv2FailoverResponse();
+      : formatAPIGatewayFailoverResponse();
   }
 
   // Process Next.js request
   const reqProps = {
-    method: parser.method,
-    url: parser.url,
-    headers: parser.headers,
-    body: parser.body,
-    remoteAddress: parser.remoteAddress,
+    method: internalEvent.method,
+    url: internalEvent.url,
+    headers: internalEvent.headers,
+    body: internalEvent.body,
+    remoteAddress: internalEvent.remoteAddress,
   };
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
@@ -170,14 +81,18 @@ export async function handler(
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
-  if (htmlPages.includes(parser.rawPath) && headers["cache-control"]) {
+  if (htmlPages.includes(internalEvent.rawPath) && headers["cache-control"]) {
     headers["cache-control"] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
-  return isCloudFrontEvent
-    ? formatCloudFrontResponse({ statusCode, headers, isBase64Encoded, body })
-    : formatApiv2Response({ statusCode, headers, isBase64Encoded, body });
+  return convertTo({
+    type: internalEvent.type,
+    statusCode,
+    headers,
+    isBase64Encoded,
+    body,
+  });
 }
 
 //////////////////////
@@ -228,73 +143,8 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-function formatApiv2Response({
-  statusCode,
-  headers: rawHeaders,
-  body,
-  isBase64Encoded,
-}: {
-  statusCode: number;
-  headers: Record<string, string | string[]>;
-  body: string;
-  isBase64Encoded: boolean;
-}) {
-  const headers: Record<string, string> = {};
-  Object.entries(rawHeaders)
-    .filter(([key]) => key.toLowerCase() !== "set-cookie")
-    .forEach(([key, value]) => {
-      if (value === null) {
-        headers[key] = "";
-        return;
-      }
-      headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
-    });
-  const response: APIGatewayProxyResultV2 = {
-    statusCode,
-    headers,
-    cookies: rawHeaders["set-cookie"] as string[] | undefined,
-    body,
-    isBase64Encoded,
-  };
-  debug(response);
-  return response;
-}
-
-function formatApiv2FailoverResponse() {
+function formatAPIGatewayFailoverResponse() {
   return { statusCode: 503 };
-}
-
-function formatCloudFrontResponse({
-  statusCode,
-  headers: rawHeaders,
-  body,
-  isBase64Encoded,
-}: {
-  statusCode: number;
-  headers: Record<string, string | string[]>;
-  body: string;
-  isBase64Encoded: boolean;
-}) {
-  const headers: CloudFrontHeaders = {};
-  Object.entries(rawHeaders)
-    .filter(([key]) => key.toLowerCase() !== "content-length")
-    .forEach(([key, value]) => {
-      headers[key] = [
-        ...(headers[key] || []),
-        ...(Array.isArray(value)
-          ? value.map((v) => ({ key, value: v }))
-          : [{ key, value: value.toString() }]),
-      ];
-    });
-  const response: CloudFrontRequestResult = {
-    status: statusCode.toString(),
-    statusDescription: "OK",
-    headers,
-    bodyEncoding: isBase64Encoded ? "base64" : "text",
-    body,
-  };
-  debug(response);
-  return response;
 }
 
 function formatCloudFrontFailoverResponse(event: CloudFrontRequestEvent) {
