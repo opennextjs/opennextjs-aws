@@ -188,9 +188,11 @@ function createServerBundle(monorepoRoot: string) {
   //       the root of the bundle. We will create a dummy `index.mjs`
   //       that re-exports the real handler.
   if (isMonorepo) {
+    // always use posix path for import path
+    const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
     fs.writeFileSync(
       path.join(outputPath, "index.mjs"),
-      [`export * from "./${packagePath}/index.mjs";`].join("")
+      [`export * from "./${packagePosixPath}/index.mjs";`].join("")
     );
   }
 
