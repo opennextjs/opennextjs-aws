@@ -1,3 +1,7 @@
+// Copied and modified from serverless-http by Doug Moscrop
+// https://github.com/dougmoscrop/serverless-http/blob/master/lib/response.js
+// Licensed under the MIT License
+
 // @ts-nocheck
 import http from "node:http";
 

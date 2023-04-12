@@ -11,11 +11,12 @@ import type {
 } from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-import { loadConfig } from "./util.js";
+import { loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
-import type { PublicAssets } from "../build.js";
+import type { PublicFiles } from "../build.js";
 
+setNodeEnv();
 setNextjsServerWorkingDirectory();
 const nextDir = path.join(__dirname, ".next");
 const openNextDir = path.join(__dirname, ".open-next");
@@ -137,10 +138,7 @@ export async function handler(
     : eventParser.apiv2(event as APIGatewayProxyEventV2);
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-  if (
-    publicAssets[parser.rawPath] === "file" ||
-    publicAssets[parser.rawPath.split("/")[0]] === "dir"
-  ) {
+  if (publicAssets.files.includes(parser.rawPath)) {
     return isCloudFrontEvent
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatApiv2FailoverResponse();
@@ -202,7 +200,7 @@ function loadHtmlPages() {
 function loadPublicAssets() {
   const filePath = path.join(openNextDir, "public-files.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PublicAssets;
+  return JSON.parse(json) as PublicFiles;
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
