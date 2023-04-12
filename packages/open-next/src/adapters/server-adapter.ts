@@ -138,10 +138,7 @@ export async function handler(
     : eventParser.apiv2(event as APIGatewayProxyEventV2);
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-  if (
-    publicAssets[parser.rawPath] === "file" ||
-    publicAssets[parser.rawPath.split("/")[0]] === "dir"
-  ) {
+  if (isPublicAsset(parser.rawPath)) {
     return isCloudFrontEvent
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatApiv2FailoverResponse();
@@ -204,6 +201,17 @@ function loadPublicAssets() {
   const filePath = path.join(openNextDir, "public-files.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as PublicAssets;
+}
+
+function isPublicAsset(rawPath: string) {
+  console.log(publicAssets);
+  console.log({ rawPath });
+  // rawPath = "/favicon.ico"
+  // rawPath = "/images/logo.png"
+  return (
+    publicAssets[rawPath] === "file" ||
+    publicAssets[rawPath.split("/").slice(0, 2).join("/")] === "dir"
+  );
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
