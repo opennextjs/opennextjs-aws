@@ -3,6 +3,10 @@ import path from "node:path";
 import type { NextConfig, RoutesManifest } from "./next-types.js";
 import type { PublicFiles } from "../build.js";
 import { request } from "node:https";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+
+const sqsClient = new SQSClient({ region: process.env.ORIGIN_REGION });
+const queueUrl = process.env.REVALIDATION_QUEUE_URL;
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -92,22 +96,23 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   });
 }
 
-export async function revalidateInBackground(
-  host: string,
-  path: string,
-  preview: string
-) {
+// We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
+// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
+// If you need to have a revalidation happen more frequently than 5 minutes,
+// your page will need to have a different etag to bypass the deduplication window.
+// If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
+export async function revalidateInBackground(path: string, etag?: string) {
   try {
-    await new Promise<void>((resolve, reject) => {
-      request(`https://${host}${path}`, {
-        method: "HEAD",
-        headers: { "x-prerender-revalidate": preview },
-      })
-        .on("error", (err) => reject(err))
-        .end(() => resolve());
+    const command = new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageDeduplicationId: `${path}-${etag}`,
+      MessageBody: JSON.stringify({ url: path }),
+      MessageGroupId: "revalidate",
     });
+
+    await sqsClient.send(command);
   } catch (e) {
-    console.error("Failed to revalidate stale page.", path);
+    console.error(`Failed to revalidate stale page ${path}`);
     console.error(e);
   }
 }

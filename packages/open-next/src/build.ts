@@ -261,6 +261,8 @@ function createServerBundle(monorepoRoot: string) {
   // It will be replaced with the Lambda handler.
   fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
+  //ISR handling
+
   //build cache.js
   esbuildSync({
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
@@ -324,6 +326,20 @@ function createServerBundle(monorepoRoot: string) {
       verbatimSymlinks: true,
     });
   }
+
+  //Create revalidation handler
+  // Create output folder
+  const outputRevalidationPath = path.join(outputDir, "revalidation-function");
+  fs.mkdirSync(outputRevalidationPath, { recursive: true });
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
+    external: ["@aws-sdk/client-sqs"],
+    outfile: path.join(outputRevalidationPath, "index.mjs"),
+  });
+  fs.copyFileSync(
+    path.join(appPath, ".next", "prerender-manifest.json"),
+    path.join(outputRevalidationPath, "prerender-manifest.json")
+  );
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the

@@ -82,7 +82,7 @@ export default class S3Cache {
   private client: S3Client;
   private buildId: string;
   constructor(_ctx: CacheHandlerContext) {
-    this.client = new S3Client({ region: process.env.CACHE_BUCKET_REGION });
+    this.client = new S3Client({ region: process.env.ORIGIN_REGION });
     this.buildId = loadBuildId(path.dirname(_ctx.serverDistDir ?? ".next/server"));
   }
 

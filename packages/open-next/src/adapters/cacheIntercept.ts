@@ -6,7 +6,6 @@ import { debug } from "./logger.js";
 interface MatchedRoute {
   key: string;
   route: string;
-  // srcRoute: string;
   revalidate: number;
 }
 
@@ -40,13 +39,12 @@ const DEFAULT_REVALIDATE = 365 * 24 * 60 * 60;
 
 export class CacheInterceptor {
   buildId: string;
-  s3 = new S3Client({ region: process.env.CACHE_BUCKET_REGION });
+  s3 = new S3Client({ region: process.env.ORIGIN_REGION });
   revalidates = new Map<string, number>();
   prerenderedRoutes: MatchedRoute[] = [];
   compiledDynamicRoutes: CompiledDynamicRoute[] = [];
   preview: string;
   constructor({ routes, dynamicRoutes, preview }: PrerenderManifest, buildId: string) {
-    const startTime = Date.now();
     this.buildId = buildId;
     Object.entries(routes).forEach(
       ([route, { srcRoute, initialRevalidateSeconds, dataRoute }]) => {
@@ -129,7 +127,6 @@ export class CacheInterceptor {
 
   async handler(event: ProxyEvent): Promise<ProxyResult | false> {
     const startTime = Date.now();
-    // const request = event.Records[0].cf.request;
     const uri = event.rawPath;
     if (event.headers["x-prerender-revalidate"] === this.preview) {
       return false;
@@ -152,7 +149,7 @@ export class CacheInterceptor {
 
       try {
         const bucketName = process.env.CACHE_BUCKET_NAME;
-        const { Body, LastModified } = await this.s3.send(
+        const { Body, LastModified, ETag } = await this.s3.send(
           new GetObjectCommand({
             Bucket: bucketName,
             Key: `${this.buildId}${key}${byType({
@@ -170,10 +167,9 @@ export class CacheInterceptor {
         const expirationDate = LastModified.getTime() + revalidate * 1000;
         const now = Date.now();
         const remaining = ((expirationDate - now) / 1000).toFixed(0);
-
         if (expirationDate < now) {
           // Stale, revalidate
-          await revalidateInBackground(event.domainName, uri, this.preview);
+          await revalidateInBackground(uri, ETag);
           isStale = true;
         }
 
@@ -198,7 +194,7 @@ export class CacheInterceptor {
           isBase64Encoded: false,
         };
       } catch (e) {
-        console.error(e);
+        debug(e);
         return false;
       }
     }
