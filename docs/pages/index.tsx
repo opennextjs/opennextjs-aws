@@ -203,7 +203,7 @@ export default function Home() {
                 <code>NextjsSite</code>
               </a>{" "}
               construct for this. You can look at the{" "}
-              <a href="https://github.com/serverless-stack/sst/blob/master/packages/resources/src/NextjsSite.ts">
+              <a href="https://github.com/serverless-stack/sst/blob/master/packages/sst/src/constructs/NextjsSite.ts">
                 source of the SST construct
               </a>{" "}
               to see what infrastructure you need. We'll document this in detail
@@ -220,7 +220,7 @@ export default function Home() {
         <p>
           Note that, if you are not a library author and are just looking for a
           way to deploy your serverless Next.js app to AWS,{" "}
-          <a href="https://sst.dev/examples/how-to-create-a-nextjs-app-with-serverless.html">
+          <a href="https://docs.sst.dev/start/nextjs">
             follow this tutorial
           </a>
           .
