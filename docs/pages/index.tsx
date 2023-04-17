@@ -40,11 +40,21 @@ export default function Home() {
           <a href={SITE.sst} target="_blank">
             SST
           </a>{" "}
-          to{" "}
-          <a href="https://sst.dev/examples/how-to-create-a-nextjs-app-with-serverless.html">
-            deploy Next.js apps
-          </a>{" "}
+          to <a href="https://docs.sst.dev/start/nextjs">deploy Next.js apps</a>{" "}
           to AWS using Lambda, Lambda@Edge, CloudFront, and S3.
+        </p>
+        <pre>
+          <code>
+            $ npx create-next-app
+            <br />$ npx create-sst
+            <br />$ npx sst deploy
+          </code>
+        </pre>
+        <p>
+          <a href="https://docs.sst.dev/start/nextjs">
+            Deploy your Next.js app to AWS with SST
+          </a>
+          .
         </p>
       </section>
 
