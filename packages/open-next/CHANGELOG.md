@@ -1,5 +1,15 @@
 # open-next
 
+## 1.0.0
+
+### Major Changes
+
+- a7a279a: Document deployment options
+
+### Patch Changes
+
+- aaf4e71: Fix server function handler import path building on Windows
+
 ## 0.9.3
 
 ### Patch Changes
