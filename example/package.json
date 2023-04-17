@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "sst bind next dev",
     "build": "next build",
     "start": "next start"
   },
@@ -16,5 +16,10 @@
     "remark": "^13.0.0",
     "remark-html": "^13.0.2",
     "swr": "^1.0.1"
+  },
+  "devDependencies": {
+    "sst": "^2.5.3",
+    "aws-cdk-lib": "2.72.1",
+    "constructs": "10.1.156"
   }
 }
