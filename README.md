@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://open-next.js.org/">Website</a> |
-  <a href="#quick-start">Quick start</a> |
+  <a href="#deployment">Deployment</a> |
   <a href="#recommended-infrastructure-on-aws">Infrastructure</a> |
   <a href="#example">Example</a> |
   <a href="#faq">FAQ</a>
@@ -37,36 +37,6 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] [Running at edge](#running-at-edge)
 
-## Quick start
-
-1. Navigate to your Next.js app
-
-   ```bash
-   cd my-next-app
-   ```
-
-2. Build the app
-
-   ```bash
-   npx open-next@latest build
-   ```
-
-   This will generate an `.open-next` directory with the following bundles:
-
-   ```bash
-   my-next-app/
-     .open-next/
-       assets/                        -> Static files to upload to an S3 Bucket
-       server-function/               -> Handler code for server Lambda Function
-       image-optimization-function/   -> Handler code for image optimization Lambda Function
-   ```
-
-3. Add `.open-next` to your `.gitignore` file
-   ```
-   # OpenNext
-   /.open-next/
-   ```
-
 ## How does OpenNext work?
 
 When calling `open-next build`, OpenNext **runs `next build`** to build the Next.js app, and then **transforms the build output** to a format that can be deployed to AWS.
@@ -77,7 +47,17 @@ OpenNext runs the `build` script in your `package.json` file. Depending on the l
 
 #### Transforming the build output
 
-The build output is then transformed into a format that can be deployed to AWS. Files in `assets/` are ready to be uploaded to AWS S3. And the function code is wrapped inside Lambda handlers, ready to be deployed to AWS Lambda or Lambda@Edge.
+The build output is then transformed into a format that can be deployed to AWS. The transformed output is generated inside the `.open-next` folder within your Next.js app. Files in `assets/` are ready to be uploaded to AWS S3. And the function code is wrapped inside Lambda handlers, ready to be deployed to AWS Lambda or Lambda@Edge.
+
+```bash
+my-next-app/
+  .open-next/
+    assets/                        -> Static files to upload to an S3 Bucket
+    server-function/               -> Handler code for server Lambda Function
+    image-optimization-function/   -> Handler code for image optimization Lambda Function
+```
+
+## Deployment
 
 ## Recommended infrastructure on AWS
 
