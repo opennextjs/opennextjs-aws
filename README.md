@@ -59,6 +59,34 @@ my-next-app/
 
 ## Deployment
 
+OpenNext allows you to deploy your Next.js apps using a growing list of frameworks.
+
+### SST
+
+The easiest way to deploy OpenNext to AWS is with [SST](https://docs.sst.dev/start/nextjs). This is maintained by the OpenNext team and only requires three simple steps:
+
+1. Run `npx create-sst@latest` in your Next.js app
+2. Run `npm install`
+3. Deploy to AWS `npx sst deploy`
+
+For more information, check out the SST docs: https://docs.sst.dev/start/nextjs
+
+### Other Frameworks
+
+The OpenNext community has contributed deployment options for a few other frameworks.
+
+- CDK: https://github.com/jetbridge/cdk-nextjs
+- CloudFormation: https://github.com/serverless-stack/open-next/issues/32
+- Serverless Framework: https://github.com/serverless-stack/open-next/issues/32
+
+To use these, you'll need to run the following inside your Next.js app.
+
+```bash
+$ npx open-next@latest build
+```
+
+If you are using OpenNext to deploy using a framework that is not listed here, please let us know so we can add it to the list.
+
 ## Recommended infrastructure on AWS
 
 OpenNext does not create the underlying infrastructure. You can create the infrastructure for your app with your preferred tool — SST, AWS CDK, Terraform, Serverless Framework, etc.
@@ -264,9 +292,10 @@ To work around the issue, we change the working directory for the server functio
 
 ## Example
 
-In the `example` folder, you can find a Next.js feature test app. It contains a variety of pages that each test a single Next.js feature.
+In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).
 
-Here's a link deployed using SST's [`NextjsSite`](https://docs.sst.dev/constructs/NextjsSite) construct.
+AWS link: https://d1gwt3w78t4dm3.cloudfront.net
+Vercel link: https://open-next.vercel.app
 
 ## Debugging
 
@@ -295,7 +324,7 @@ It is recommended to **turn off debug mode when building for production** becaus
 
 ## Opening an issue
 
-To open an issue, create a pull request (PR) and add a new page to the benchmark app in `example` folder that demonstrate the issue.
+To open an issue, create a pull request (PR) and add a new page to the [benchmark app](#example) in `example` folder that demonstrate the issue.
 
 ## Contribute
 
