@@ -120,9 +120,9 @@ export async function handler(
     url: internalEvent.url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
-    // 1. We could just let the revalidation go as normal, but due to the nature of lambda functions this could cause issues
+    // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
     // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
-    // 3. We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
+    // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
     headers: { ...internalEvent.headers, purpose: "prefetch" },
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,

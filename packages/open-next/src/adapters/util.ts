@@ -4,6 +4,7 @@ import type { NextConfig, RoutesManifest } from "./next-types.js";
 import type { PublicFiles } from "../build.js";
 import { request } from "node:https";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { debug } from "./logger.js";
 
 const sqsClient = new SQSClient({ region: process.env.ORIGIN_REGION });
 const queueUrl = process.env.REVALIDATION_QUEUE_URL;
@@ -112,7 +113,7 @@ export async function revalidateInBackground(path: string, etag?: string) {
 
     await sqsClient.send(command);
   } catch (e) {
-    console.error(`Failed to revalidate stale page ${path}`);
-    console.error(e);
+    debug(`Failed to revalidate stale page ${path}`);
+    debug(e);
   }
 }
