@@ -78,11 +78,11 @@ body {
 pre {
   border-radius: 5px;
   padding: 0.75rem 1rem;
+  background-color: var(--theme-code-bg);
 }
 pre, code {
   font-family: var(--font-code);
   line-height: 2rem;
-  background-color: var(--theme-code-bg);
   white-space: pre-line;
 }
 
