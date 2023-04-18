@@ -28,3 +28,9 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# open-next
+/.open-next
+
+# sst
+/.sst
