@@ -11,6 +11,7 @@
     "date-fns": "^2.23.0",
     "gray-matter": "^4.0.3",
     "next": "13.0.5",
+    "next-auth": "^4.22.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "remark": "^13.0.0",
@@ -18,8 +19,8 @@
     "swr": "^1.0.1"
   },
   "devDependencies": {
-    "sst": "^2.5.3",
     "aws-cdk-lib": "2.72.1",
-    "constructs": "10.1.156"
+    "constructs": "10.1.156",
+    "sst": "^2.5.3"
   }
 }
