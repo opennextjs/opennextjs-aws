@@ -1,5 +1,5 @@
 import { SSTConfig } from "sst";
-import { NextjsSite } from "sst/constructs";
+import { Config, NextjsSite } from "sst/constructs";
 
 export default {
   config(_input) {
@@ -10,7 +10,12 @@ export default {
   },
   stacks(app) {
     app.stack(function Site({ stack }) {
-      const site = new NextjsSite(stack, "site");
+      const site = new NextjsSite(stack, "site",{
+        bind: [
+          new Config.Secret(stack, "GITHUB_CLIENT_ID"),
+          new Config.Secret(stack, "GITHUB_CLIENT_SECRET"),
+        ],
+      });
 
       stack.addOutputs({
         SiteUrl: site.url,
