@@ -9,6 +9,7 @@ export const authOptions = {
       clientSecret: Config.GITHUB_CLIENT_SECRET,
     }),
   ],
+  secret: Config.NEXTAUTH_SECRET,
 };
 
 export default NextAuth(authOptions);
