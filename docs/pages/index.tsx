@@ -189,10 +189,10 @@ export default function Home() {
               <code>.open-next</code> directory.
             </p>
             <p>
-              This directory contains a zip file of your app that'll run in a
-              Lambda function, a zip file that'll run the middleware Lambda@Edge
-              function, and a zip fileectory containing your static assets
-              that'll go to S3.
+              This contains a directory for your app that can be either
+              run in a Lambda function or Lambda@Edge, a directory for an image
+              optimization Lambda function, and another directory for your static
+              assets that'll be uploaded to S3.
             </p>
           </li>
           <li>
