@@ -267,9 +267,11 @@ function normalizeAPIGatewayProxyEventHeaders(
       }
     }
   }
+  if (event.headers) {
     for (const [key, value] of Object.entries(event.headers)) {
       if (value) {
         headers[key.toLowerCase()] = value;
+      }
     }
   }
   return headers;
