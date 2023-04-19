@@ -260,14 +260,16 @@ function normalizeAPIGatewayProxyEventHeaders(
   event.multiValueHeaders;
   const headers: Record<string, string> = {};
 
-  for (const [key, values] of Object.entries(event.multiValueHeaders)) {
-    if (values) {
-      headers[key.toLowerCase()] = values.join(",");
+  if (event.multiValueHeaders) {
+    for (const [key, values] of Object.entries(event.multiValueHeaders)) {
+      if (values) {
+        headers[key.toLowerCase()] = values.join(",");
+      }
     }
   }
-  for (const [key, value] of Object.entries(event.headers)) {
-    if (value) {
-      headers[key.toLowerCase()] = value;
+    for (const [key, value] of Object.entries(event.headers)) {
+      if (value) {
+        headers[key.toLowerCase()] = value;
     }
   }
   return headers;
