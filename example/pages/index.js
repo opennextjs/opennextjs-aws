@@ -39,6 +39,7 @@ export default function Home({}) {
         <Link href={`/image-optimization-imported`}>Image Optimization — imported image</Link><br />
         <Link href={`/image-optimization-remote`}>Image Optimization — remote image</Link><br />
         <Link href={`/image-html-tag`}>Image using html image tag</Link><br />
+        <Link href={`/font-css-front`}>Font — CSS Font</Link><br />
         <Link href={`/page-does-not-exist`}>404 Page not found</Link><br />
       </section>
     </Layout>

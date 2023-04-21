@@ -25,3 +25,8 @@ img {
   max-width: 100%;
   display: block;
 }
+
+@font-face {
+  font-family: 'MuseoModerno';
+  src: url('/fonts/MuseoModerno/MuseoModerno-Regular.ttf') format('truetype');
+}
