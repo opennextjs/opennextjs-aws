@@ -376,7 +376,7 @@ OpenNext is an open source initiative, and there are a couple of advantages when
 
 ## Acknowledgements
 
-We are especially grateful for the projects that inspired OpenNext and the amazing tools and libraries that have been developed by the community:
+We are grateful for the projects that inspired OpenNext and the amazing tools and libraries developed by the community:
 
 - [nextjs-lambda](https://github.com/sladg/nextjs-lambda) by [Jan](https://github.com/sladg) for serving as inspiration for packaging Next.js's standalone output to Lambda.
 - [CDK NextJS](https://github.com/jetbridge/cdk-nextjs/) by [JetBridge](https://github.com/jetbridge) for its contribution to the deployment architecture of a Next.js application on AWS.
