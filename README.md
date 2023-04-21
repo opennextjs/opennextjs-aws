@@ -388,11 +388,3 @@ Special shoutout to [@khuezy](https://github.com/khuezy) for his outstanding con
 ---
 
 Maintained by [SST](https://sst.dev). Join our community: [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
-
-## Acknowledgements
-
-Based on prior work:
-
-- Serverless [serverless-nextjs plugin](https://github.com/serverless-nextjs/serverless-next.js)
-- Serverless Stack [NextjsSite](https://docs.sst.dev/constructs/NextjsSite)
-- JetBridge [CDK NextJS](https://github.com/jetbridge/cdk-nextjs/)
