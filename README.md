@@ -295,6 +295,7 @@ To work around the issue, we change the working directory for the server functio
 In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).
 
 AWS link: https://d1gwt3w78t4dm3.cloudfront.net
+
 Vercel link: https://open-next.vercel.app
 
 ## Debugging
