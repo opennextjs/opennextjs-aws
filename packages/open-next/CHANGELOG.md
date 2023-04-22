@@ -1,5 +1,16 @@
 # open-next
 
+## 1.1.0
+
+### Minor Changes
+
+- 7fb6116: Add option to minimize server bundle size
+
+### Patch Changes
+
+- 43d2370: Set "x-forwarded-host" as NextServer "host"
+- fe6740b: Example: add NextAuth example
+
 ## 1.0.0
 
 ### Major Changes
