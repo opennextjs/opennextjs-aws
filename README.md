@@ -188,13 +188,13 @@ This ensures that the Lambda handler remains at `index.mjs`.
 
 Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
 
-| Behavior          | Requests            | Origin                                                                                                                                       |
-| ----------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | S3 bucket                                                                                                                                    |
-| `/_next/image`    | Image optimization  | image optimization function                                                                                                                  |
-| `/_next/data/*`   | data requests       | server function                                                                                                                              |
-| `/api/*`          | API                 | server function                                                                                                                              |
-| `/*`              | catch all           | server function fallback to<br />S3 bucket on 503<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+| Behavior          | Requests            | CloudFront Function                                                                         | Origin                                                                                                                                       |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | -                                                                                           | S3 bucket                                                                                                                                    |
+| `/_next/image`    | Image optimization  | -                                                                                           | image optimization function                                                                                                                  |
+| `/_next/data/*`   | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function                                                                                                                              |
+| `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function                                                                                                                              |
+| `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function fallback to<br />S3 bucket on 503<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
 #### Running at edge
 
@@ -202,13 +202,13 @@ The server function can also run at edge locations by configuring it as Lambda@E
 
 To configure the CloudFront distribution:
 
-| Behavior          | Requests            | Lambda@Edge     | Origin                                                                                               |
-| ----------------- | ------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | -               | S3 bucket                                                                                            |
-| `/_next/image`    | Image optimization  | -               | image optimization function                                                                          |
-| `/_next/data/*`   | data requests       | server function | -                                                                                                    |
-| `/api/*`          | API                 | server function | -                                                                                                    |
-| `/*`              | catch all           | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+| Behavior          | Requests            | CloudFront Function                                                                         | Lambda@Edge     | Origin                                                                                               |
+| ----------------- | ------------------- | ------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
+| `/_next/static/*` | Hashed static files | -                                                                                           | -               | S3 bucket                                                                                            |
+| `/_next/image`    | Image optimization  | -                                                                                           | -               | image optimization function                                                                          |
+| `/_next/data/*`   | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
+| `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
+| `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
 ## Limitations and workarounds
 
@@ -230,6 +230,22 @@ During the build process, the top-level file and directory names in the `public/
 - When deployed to the edge (Lambda@Edge), the server function returns the request object. And the request will be handled by S3, which is configured as the origin. [Refer to the CloudFront setup.](#running-at-edge)
 
 This means that on cache miss, the request may take slightly longer to process.
+
+#### WORKAROUND: Set `x-forwarded-host` header (AWS specific)
+
+When the server function receives a request, the `host` value in the Lambda request header is set to the hostname of the AWS Lambda service instead of the actual frontend hostname. This creates an issue for the server function (middleware, SSR routes, or API routes) when it needs to know the frontend host.
+
+To work around the issue, a CloudFront function is run on Viewer Request, which sets the frontend hostname as the `x-forwarded-host` header. The function code looks like this:
+
+```ts
+function handler(event) {
+  var request = event.request;
+  request.headers["x-forwarded-host"] = request.headers.host;
+  return request;
+}
+```
+
+The server function would then sets the `host` header of the request to the value of the `x-forwarded-host` header when sending the request to the `NextServer`.
 
 #### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
 
