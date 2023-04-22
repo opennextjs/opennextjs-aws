@@ -2,6 +2,7 @@ import fs from "node:fs";
 import url from "node:url";
 import path from "node:path";
 import cp from "node:child_process";
+import { minifyAll } from "./minimize-js.js";
 import { buildSync, BuildOptions } from "esbuild";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -31,6 +32,9 @@ export async function build() {
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
   createAssets();
+  if (process.env.OPEN_NEXT_MINIFY) {
+    await minifyServerBundle();
+  }
 }
 
 function checkRunningInsideNextjsApp() {
@@ -203,6 +207,14 @@ function createServerBundle(monorepoRoot: string) {
     path.join(outputOpenNextPath, "public-files.json"),
     JSON.stringify(listPublicFiles())
   );
+}
+
+async function minifyServerBundle() {
+  console.info(`Minimizing server function...`);
+  await minifyAll(path.join(outputDir, "server-function"), {
+    compress_json: true,
+    mangle: true,
+  });
 }
 
 function createImageOptimizationBundle() {

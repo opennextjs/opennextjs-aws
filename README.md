@@ -314,6 +314,18 @@ AWS link: https://d1gwt3w78t4dm3.cloudfront.net
 
 Vercel link: https://open-next.vercel.app
 
+## Advanced usage
+
+#### OPEN_NEXT_MINIMIZE
+
+Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app. To enable it, simply run:
+
+```bash
+OPEN_NEXT_MINIMIZE=true open-next build
+```
+
+Enabling this option can significantly help to reduce the cold start time of the server function. However, it's an **experimental feature**, and you need to opt-in to use it. Once this option is thoroughly tested and found to be stable, it will be enabled by default.
+
 ## Debugging
 
 To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
@@ -339,9 +351,9 @@ It is recommended to **turn off debug mode when building for production** becaus
 1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
 1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increased AWS costs.
 
-## Opening an issue
+#### Opening an issue
 
-To open an issue, create a pull request (PR) and add a new page to the [benchmark app](#example) in `example` folder that demonstrate the issue.
+To help diagnose issues, it's always helpful to provide a reproducible setup when opening an issue. One easy way to do this is to create a pull request (PR) and add a new page to the [benchmark app](#example) located in the `example` folder, which reproduces the issue. The PR will automatically deploy the app to AWS.
 
 ## Contribute
 
