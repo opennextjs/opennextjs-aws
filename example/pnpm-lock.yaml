@@ -4,6 +4,7 @@ importers:
 
   .:
     specifiers:
+      '@next/font': 13.0.5
       aws-cdk-lib: 2.72.1
       constructs: 10.1.156
       date-fns: ^2.23.0
@@ -17,6 +18,7 @@ importers:
       sst: ^2.5.3
       swr: ^1.0.1
     dependencies:
+      '@next/font': 13.0.5
       date-fns: 2.29.3
       gray-matter: 4.0.3
       next: 13.0.5_biqbaboplfbrettd7655fr4n2y
@@ -1897,6 +1899,10 @@ packages:
 
   /@next/env/13.0.5:
     resolution: {integrity: sha512-F3KLtiDrUslAZhTYTh8Zk5ZaavbYwLUn3NYPBnOjAXU8hWm0QVGVzKIOuURQ098ofRU4e9oglf3Sj9pFx5nI5w==}
+    dev: false
+
+  /@next/font/13.0.5:
+    resolution: {integrity: sha512-NrP4B8pxwerrkkuG/m7MQv0ks89Kk4Lc0kzbiRaYX+Xb0coDaw+I9T+g42aOHf8j8ta1vtKqb5XE1+troZ4CoQ==}
     dev: false
 
   /@next/swc-android-arm-eabi/13.0.5:

@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@next/font": "13.0.5",
     "date-fns": "^2.23.0",
     "gray-matter": "^4.0.3",
     "next": "13.0.5",
