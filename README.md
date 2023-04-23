@@ -316,12 +316,12 @@ Vercel link: https://open-next.vercel.app
 
 ## Advanced usage
 
-#### OPEN_NEXT_MINIMIZE
+#### OPEN_NEXT_MINIFY
 
 Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app. To enable it, simply run:
 
 ```bash
-OPEN_NEXT_MINIMIZE=true open-next build
+OPEN_NEXT_MINIFY=true open-next build
 ```
 
 Enabling this option can significantly help to reduce the cold start time of the server function. However, it's an **experimental feature**, and you need to opt-in to use it. Once this option is thoroughly tested and found to be stable, it will be enabled by default.
