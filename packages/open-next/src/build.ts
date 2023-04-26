@@ -166,14 +166,17 @@ function createServerBundle(monorepoRoot: string) {
   const packagePath = path.relative(monorepoRoot, appPath);
 
   // Copy over edge-chunks to .next/server/edge-chunks in the bundle
-  fs.mkdirSync(path.join(outputPath, packagePath, ".next/server"), {
-    recursive: true,
-  });
-  fs.cpSync(
-    path.join(appPath, ".next/server/edge-chunks"),
-    path.join(outputPath, packagePath, ".next/server/edge-chunks"),
-    { recursive: true }
-  );
+  const chunksBuildPath = path.join(appPath, ".next/server/edge-chunks");
+  if (fs.existsSync(chunksBuildPath)) {
+    fs.mkdirSync(path.join(outputPath, packagePath, ".next/server"), {
+      recursive: true,
+    });
+    fs.cpSync(
+      chunksBuildPath,
+      path.join(outputPath, packagePath, ".next/server/edge-chunks"),
+      { recursive: true }
+    );
+  }
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
