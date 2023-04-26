@@ -109,7 +109,7 @@ function printHeader(header: string) {
 }
 
 function printVersion() {
-  const pathToPackageJson = path.join(__dirname, "./package.json");
+  const pathToPackageJson = path.join(__dirname, "..", "./package.json"); // go up from dist/
   const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
   console.info(`Using v${pkg.version}`);
 }
@@ -164,6 +164,16 @@ function createServerBundle(monorepoRoot: string) {
   //       We need to output the handler file inside the package path.
   const isMonorepo = monorepoRoot !== appPath;
   const packagePath = path.relative(monorepoRoot, appPath);
+
+  // Copy over edge-chunks to .next/server/edge-chunks in the bundle
+  fs.mkdirSync(path.join(outputPath, packagePath, ".next/server"), {
+    recursive: true,
+  });
+  fs.cpSync(
+    path.join(appPath, ".next/server/edge-chunks"),
+    path.join(outputPath, packagePath, ".next/server/edge-chunks"),
+    { recursive: true }
+  );
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
