@@ -243,13 +243,6 @@ function normalizeAPIGatewayProxyEventQueryParams(
       }
     }
   }
-  if (event.queryStringParameters) {
-    for (const [key, value] of Object.entries(event.queryStringParameters)) {
-      if (value !== undefined) {
-        params.append(key, value);
-      }
-    }
-  }
   const value = params.toString();
   return value ? `?${value}` : "";
 }
