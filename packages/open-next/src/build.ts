@@ -109,7 +109,7 @@ function printHeader(header: string) {
 }
 
 function printVersion() {
-  const pathToPackageJson = path.join(__dirname, "./package.json");
+  const pathToPackageJson = path.join(__dirname, "..", "./package.json"); // go up from dist/
   const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
   console.info(`Using v${pkg.version}`);
 }
