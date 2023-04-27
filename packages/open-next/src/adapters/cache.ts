@@ -153,10 +153,8 @@ export default class S3Cache {
               (await (await this.getS3Object(key, "json")).Body?.transformToString()) ??
                 "{}"
             )
-          : Buffer.from(
-              (await (await this.getS3Object(key, "rsc")).Body?.transformToByteArray()) ??
-                Buffer.alloc(0)
-            );
+          : 
+              (await (await this.getS3Object(key, "rsc")).Body?.transformToString()) 
 
         const cacheEntry: CacheHandlerValue = {
           lastModified: LastModified?.getTime(),
