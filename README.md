@@ -43,7 +43,9 @@ When calling `open-next build`, OpenNext **runs `next build`** to build the Next
 
 #### Building the Next.js app
 
-OpenNext runs the `build` script in your `package.json` file. Depending on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
+By default, OpenNext runs the `build` script in your `package.json` file. Depending on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
+
+If you want to use a custom build command, use `open-next build [custom command]`, for example `open-next build customBuild`.
 
 #### Transforming the build output
 

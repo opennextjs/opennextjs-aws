@@ -15,7 +15,11 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build() {
+export type BuildArguments = {
+  buildCommand: string;
+};
+
+export async function build(buildArguments: BuildArguments) {
   // Pre-build validation
   printVersion();
   checkRunningInsideNextjsApp();
@@ -24,7 +28,7 @@ export async function build() {
   // Build Next.js app
   printHeader("Building Next.js app");
   setStandaloneBuildMode(monorepoRoot);
-  await buildNextjsApp(packager);
+  await buildNextjsApp(packager, buildArguments);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
@@ -80,10 +84,10 @@ function setStandaloneBuildMode(monorepoRoot: string) {
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
-function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm", buildArguments: BuildArguments) {
   const result = cp.spawnSync(
     packager,
-    packager === "npm" ? ["run", "build"] : ["build"],
+    packager === "npm" ? ["run", buildArguments.buildCommand] : [buildArguments.buildCommand],
     {
       stdio: "inherit",
       cwd: appPath,
