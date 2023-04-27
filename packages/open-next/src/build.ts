@@ -249,6 +249,19 @@ function createServerBundle(monorepoRoot: string) {
     verbatimSymlinks: true,
   });
 
+  const removeFiles = (conditionFn: (file: string) => boolean) => (dir: string) =>  {
+    fs.readdirSync(dir).forEach((file) => {
+      if (fs.statSync(path.join(dir, file)).isDirectory()) {
+        removeFiles(conditionFn)(path.join(dir, file));
+      }
+      if (conditionFn(file)) {
+          fs.rmSync(path.join(dir, file), { force: true });
+      }
+    });
+  }
+
+  const removeHtmlFiles = removeFiles((file) => (file.endsWith(".html") || file.endsWith(".rsc")  || file.endsWith(".json") && (file !== "404.html" &&  file !== "500.html")));
+
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
   //       `node_modules` inside `.next/standalone`, and others inside
@@ -256,6 +269,9 @@ function createServerBundle(monorepoRoot: string) {
   //       We need to output the handler file inside the package path.
   const isMonorepo = monorepoRoot !== appPath;
   const packagePath = path.relative(monorepoRoot, appPath);
+
+  removeHtmlFiles(path.join(outputPath, packagePath, ".next/server/pages"));
+  removeHtmlFiles(path.join(outputPath, packagePath, ".next/server/app"));
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
@@ -305,16 +321,7 @@ function createServerBundle(monorepoRoot: string) {
       verbatimSymlinks: true,
     });
   }
-  const removeJsFiles = (dir: string) => {
-    fs.readdirSync(dir).forEach((file) => {
-      if (fs.statSync(path.join(dir, file)).isDirectory()) {
-        removeJsFiles(path.join(dir, file));
-      }
-      if (file.endsWith(".js") || file.endsWith(".js.nft.json")) {
-        fs.rmSync(path.join(dir, file), { force: true });
-      }
-    });
-  };
+  const removeJsFiles = removeFiles((file) => (file.endsWith(".js") || file.endsWith(".js.nft.json")));
   removeJsFiles(outputCache);
   //Copy fetch-cache to cache folder
   const fetchCachePrerenderedPath = path.join(appPath, ".next/cache/fetch-cache");
