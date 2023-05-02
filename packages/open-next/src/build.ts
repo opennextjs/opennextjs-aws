@@ -134,7 +134,7 @@ function listPublicFiles() {
     for (const file of files) {
       file.isDirectory()
         ? processDirectory(path.join(pathInPublic, file.name))
-        : result.files.push(path.join(pathInPublic, file.name));
+        : result.files.push(path.posix.join(pathInPublic, file.name));
     }
   }
 
