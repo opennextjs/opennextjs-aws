@@ -1,5 +1,15 @@
 # open-next
 
+## 1.2.0
+
+### Minor Changes
+
+- 935544a: Add support for NextRequest geolocation
+
+### Patch Changes
+
+- 0a4b952: Store public file posix path on Windows
+
 ## 1.1.0
 
 ### Minor Changes
