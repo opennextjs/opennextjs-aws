@@ -1,15 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 
-
-type ImageLoaderProps = {
-    src: string;
-    width: number;
-    quality?: number;
-};
-type ImageLoaderPropsWithConfig = ImageLoaderProps & {
-    config: Readonly<ImageConfig>;
-};
 type RemotePattern = {
     protocol?: 'http' | 'https';
     hostname: string;
