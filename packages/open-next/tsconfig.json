@@ -5,6 +5,6 @@
     "module": "esnext",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
   }
 }

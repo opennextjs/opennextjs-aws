@@ -21,12 +21,12 @@ import {
 } from "next/dist/server/image-optimizer";
 import { loadConfig, setNodeEnv } from "./util.js";
 import { debug } from "./logger.js";
-import { convertFrom, isAPIGatewayProxyEvent } from "./event-mapper.js";
 
-setNodeEnv();
-const bucketName = process.env.BUCKET_NAME;
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
+setNodeEnv(config);
+const bucketName = process.env.BUCKET_NAME;
+
 const nextConfig = {
   ...defaultConfig,
   images: {
