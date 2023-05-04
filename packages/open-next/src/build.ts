@@ -114,6 +114,39 @@ function printVersion() {
   console.info(`Using v${pkg.version}`);
 }
 
+function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
+  const basePath = path.join(outputPath, packagePath, ".next", "server");
+  const rootMiddlewarePath = path.join(basePath, "middleware.js");
+  const srcMiddlewarePath = path.join(basePath, "src", "middleware.js");
+  if (fs.existsSync(rootMiddlewarePath)) {
+    inject(rootMiddlewarePath);
+  } else if (fs.existsSync(srcMiddlewarePath)) {
+    inject(srcMiddlewarePath);
+  }
+
+  function inject(middlewarePath: string) {
+    const content = fs.readFileSync(middlewarePath, "utf-8");
+    fs.writeFileSync(
+      middlewarePath,
+      content.replace(
+        "geo: init.geo || {}",
+        `geo: init.geo || {
+        country: this.headers.get("cloudfront-viewer-country"),
+        countryName: this.headers.get("cloudfront-viewer-country-name"),
+        region: this.headers.get("cloudfront-viewer-country-region"),
+        regionName: this.headers.get("cloudfront-viewer-country-region-name"),
+        city: this.headers.get("cloudfront-viewer-city"),
+        postalCode: this.headers.get("cloudfront-viewer-postal-code"),
+        timeZone: this.headers.get("cloudfront-viewer-time-zone"),
+        latitude: this.headers.get("cloudfront-viewer-latitude"),
+        longitude: this.headers.get("cloudfront-viewer-longitude"),
+        metroCode: this.headers.get("cloudfront-viewer-metro-code"),
+      }`
+      )
+    );
+  }
+}
+
 function initOutputDir() {
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
@@ -207,6 +240,9 @@ function createServerBundle(monorepoRoot: string) {
     path.join(outputOpenNextPath, "public-files.json"),
     JSON.stringify(listPublicFiles())
   );
+
+  // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
+  injectMiddlewareGeolocation(outputPath, packagePath);
 }
 
 async function minifyServerBundle() {

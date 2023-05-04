@@ -247,6 +247,57 @@ function handler(event) {
 
 The server function would then sets the `host` header of the request to the value of the `x-forwarded-host` header when sending the request to the `NextServer`.
 
+#### WORKAROUND: Set `NextRequest` geolocation data
+
+When your application is hosted on Vercel, you can access a user's geolocation inside your middleware through the `NextRequest` object.
+
+```ts
+export function middleware(request: NextRequest) {
+  request.geo.country;
+  request.geo.city;
+}
+```
+
+When your application is hosted on AWS, you can [obtain the geolocation data from CloudFront request headers](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/adding-cloudfront-headers.html#cloudfront-headers-viewer-location). However, there is no way to set this data on the `NextRequest` object passed to the middleware function.
+
+To work around the issue, the `NextRequest` constructor is modified to initialize geolocation data from CloudFront headers, instead of using the default empty object.
+
+```diff
+- geo: init.geo || {}
++ geo: init.geo || {
++   country: this.headers("cloudfront-viewer-country"),
++   countryName: this.headers("cloudfront-viewer-country-name"),
++   region: this.headers("cloudfront-viewer-country-region"),
++   regionName: this.headers("cloudfront-viewer-country-region-name"),
++   city: this.headers("cloudfront-viewer-city"),
++   postalCode: this.headers("cloudfront-viewer-postal-code"),
++   timeZone: this.headers("cloudfront-viewer-time-zone"),
++   latitude: this.headers("cloudfront-viewer-latitude"),
++   longitude: this.headers("cloudfront-viewer-longitude"),
++   metroCode: this.headers("cloudfront-viewer-metro-code"),
++ }
+```
+
+CloudFront provides more detailed geolocation information, such as postal code and timezone. Here is a complete list of `geo` properties available in your middleware:
+
+```ts
+export function middleware(request: NextRequest) {
+  // Supported by Next.js
+  request.geo.country;
+  request.geo.region;
+  request.geo.city;
+  request.geo.latitude;
+  request.geo.longitude;
+
+  // Also supported by OpenNext
+  request.geo.countryName;
+  request.geo.regionName;
+  request.geo.postalCode;
+  request.geo.timeZone;
+  request.geo.metroCode;
+}
+```
+
 #### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
 
 As mentioned in the [Server function](#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. However, `NextServer` does not seem to set the correct `Cache Control` headers.
