@@ -30,8 +30,9 @@ debug({ nextDir });
 const requestHandler = new NextServer.default({
   hostname: "localhost",
   port: Number(process.env.PORT) || 3000,
-  conf: config,
+  conf: {...config, compress: false},
   customServer: false,
+  dev: false,
   dir: __dirname,
 }).getRequestHandler();
 
