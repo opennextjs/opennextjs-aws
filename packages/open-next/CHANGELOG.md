@@ -1,5 +1,11 @@
 # open-next
 
+## 1.2.1
+
+### Patch Changes
+
+- 54ce502: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
+
 ## 1.2.0
 
 ### Minor Changes
