@@ -22,13 +22,10 @@ import {
 import { loadConfig, setNodeEnv } from "./util.js";
 import { debug } from "./logger.js";
 
+setNodeEnv();
 const bucketName = process.env.BUCKET_NAME;
-
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
-
-setNodeEnv(config);
-
 const nextConfig = {
   ...defaultConfig,
   images: {
