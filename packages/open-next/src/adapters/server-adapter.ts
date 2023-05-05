@@ -22,6 +22,7 @@ const openNextDir = path.join(__dirname, ".open-next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
 const publicAssets = loadPublicAssets();
+setNextjsPrebundledReact(config);
 debug({ nextDir });
 
 // Create a NextServer
@@ -107,6 +108,14 @@ export async function handler(
 function setNextjsServerWorkingDirectory() {
   // WORKAROUND: Set `NextServer` working directory (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-nextserver-working-directory-aws-specific
   process.chdir(__dirname);
+}
+
+function setNextjsPrebundledReact(config: any) {
+  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
+    .serverActions
+    ? "experimental"
+    : "next";
 }
 
 function loadHtmlPages() {

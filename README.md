@@ -357,6 +357,14 @@ In this case, `path.join(process.cwd(), "posts", "my-post.md")` cannot be resolv
 
 To work around the issue, we change the working directory for the server function to where `.next/` is located, ie. `packages/web`.
 
+#### WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
+
+For Next.js 13.2 and later versions, you need to explicitly set the `__NEXT_PRIVATE_PREBUNDLED_REACT` environment variable. Although this environment variable isn't documented at the time of writing, you can refer to the Next.js source code to understand its usage:
+
+> In standalone mode, we don't have separated render workers so if both app and pages are used, we need to resolve to the prebundled React to ensure the correctness of the version for app.
+
+> Require these modules with static paths to make sure they are tracked by NFT when building the app in standalone mode, as we are now conditionally aliasing them it's tricky to track them in build time.
+
 ## Example
 
 In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).
