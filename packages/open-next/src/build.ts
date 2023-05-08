@@ -203,7 +203,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
   // Build Lambda code
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relys on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -261,7 +261,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Build Lambda code (1st pass)
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relys on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -273,7 +273,7 @@ function createImageOptimizationBundle() {
   });
 
   // Build Lambda code (2nd pass)
-  // note: bundle in user's Next.js app again b/c the adatper relys on the
+  // note: bundle in user's Next.js app again b/c the adapter relys on the
   //       "next" package. And the "next" package from user's app should
   //       be used.
   esbuildSync({
