@@ -298,6 +298,11 @@ This cost estimate is based on the `us-east-1` region pricing and does not consi
 
 ## Limitations and workarounds
 
+#### KNOWN ISSUE: Using both app and pages dir causing issue on 13.4
+
+There is a known issue in Next.js that affects projects that use both pages and app directories simultaneously. The problem seems to originate from some external dependencies that rely on react and fail to use the proper prebundled react version from Next.js.
+Until [this issue](https://github.com/vercel/next.js/issues/49355) is resolved, we recommend that you stick to version 13.3 if you need to use both directories in your project.
+
 #### WORKAROUND: `public/` static files served by the server function (AWS specific)
 
 As mentioned in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. Ideally, requests for these files should be handled by the S3 bucket, like so:
