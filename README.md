@@ -385,6 +385,14 @@ OPEN_NEXT_MINIFY=true open-next build
 
 Enabling this option can significantly help to reduce the cold start time of the server function. However, it's an **experimental feature**, and you need to opt-in to use it. Once this option is thoroughly tested and found to be stable, it will be enabled by default.
 
+#### OPEN_NEXT_SKIP_BUILD
+You can skip OpenNext from running the build command by setting the `OPEN_NEXT_SKIP_BUILD` environment variable:
+
+```bash
+OPEN_NEXT_SKIP_BUILD=1
+```
+*This requires building your application before running OpenNext.
+
 ## Debugging
 
 To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
