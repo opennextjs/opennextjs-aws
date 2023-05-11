@@ -7,6 +7,7 @@ const command = process.argv[2];
 if (command === "build") {
   const buildArguments: BuildArguments = {
     buildCommand: process.argv[3] ? process.argv[3] : "build",
+    appPath: ".",
   }
   build(buildArguments);
 } else {

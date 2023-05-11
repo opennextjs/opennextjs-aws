@@ -6,8 +6,6 @@ import { minifyAll } from "./minimize-js.js";
 import { buildSync, BuildOptions } from "esbuild";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-const appPath = process.cwd();
-const appPublicPath = path.join(appPath, "public");
 const outputDir = ".open-next";
 const tempDir = path.join(outputDir, ".build");
 
@@ -17,13 +15,14 @@ export type PublicFiles = {
 
 export type BuildArguments = {
   buildCommand: string;
+  appPath: string;
 };
 
 export async function build(buildArguments: BuildArguments) {
   // Pre-build validation
   printVersion();
-  checkRunningInsideNextjsApp();
-  const { root: monorepoRoot, packager } = findMonorepoRoot();
+  checkRunningInsideNextjsApp(buildArguments);
+  const { root: monorepoRoot, packager } = findMonorepoRoot(buildArguments);
 
   // Build Next.js app
   printHeader("Building Next.js app");
@@ -33,17 +32,17 @@ export async function build(buildArguments: BuildArguments) {
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
-  createServerBundle(monorepoRoot);
-  createImageOptimizationBundle();
-  createAssets();
+  createServerBundle(monorepoRoot, buildArguments);
+  createImageOptimizationBundle(buildArguments);
+  createAssets(buildArguments);
   if (process.env.OPEN_NEXT_MINIFY) {
     await minifyServerBundle();
   }
 }
 
-function checkRunningInsideNextjsApp() {
+function checkRunningInsideNextjsApp(buildArguments: BuildArguments) {
   const extension = ["js", "cjs", "mjs"].find((ext) =>
-    fs.existsSync(path.join(appPath, `next.config.${ext}`))
+    fs.existsSync(path.join(buildArguments.appPath, `next.config.${ext}`))
   );
   if (!extension) {
     console.error(
@@ -53,8 +52,8 @@ function checkRunningInsideNextjsApp() {
   }
 }
 
-function findMonorepoRoot() {
-  let currentPath = appPath;
+function findMonorepoRoot(buildArguments: BuildArguments) {
+  let currentPath = buildArguments.appPath;
   while (currentPath !== "/") {
     const found = [
       { file: "package-lock.json", packager: "npm" as const },
@@ -63,7 +62,7 @@ function findMonorepoRoot() {
     ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
 
     if (found) {
-      if (currentPath !== appPath) {
+      if (currentPath !== buildArguments.appPath) {
         console.info("Monorepo detected at", currentPath);
       }
       return { root: currentPath, packager: found.packager };
@@ -74,7 +73,7 @@ function findMonorepoRoot() {
   // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
   //       not found in the app's directory or any of its parent directories.
   //       We are going to assume that the app is not part of a monorepo.
-  return { root: appPath, packager: "npm" as const };
+  return { root: buildArguments.appPath, packager: "npm" as const };
 }
 
 function setStandaloneBuildMode(monorepoRoot: string) {
@@ -90,7 +89,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm", buildArguments: Build
     packager === "npm" ? ["run", buildArguments.buildCommand] : [buildArguments.buildCommand],
     {
       stdio: "inherit",
-      cwd: appPath,
+      cwd: buildArguments.appPath,
       shell: true,
     }
   );
@@ -156,15 +155,15 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function listPublicFiles() {
+function listPublicFiles(buildArguments: BuildArguments) {
   const result: PublicFiles = { files: [] };
 
-  if (!fs.existsSync(appPublicPath)) {
+  if (!fs.existsSync(path.join(buildArguments.appPath, "public"))) {
     return result;
   }
 
   function processDirectory(pathInPublic: string) {
-    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
+    const files = fs.readdirSync(path.join(path.join(buildArguments.appPath, "public"), pathInPublic), {
       withFileTypes: true,
     });
 
@@ -179,7 +178,7 @@ function listPublicFiles() {
   return result;
 }
 
-function createServerBundle(monorepoRoot: string) {
+function createServerBundle(monorepoRoot: string, buildArguments: BuildArguments) {
   console.info(`Bundling server function...`);
 
   // Create output folder
@@ -189,7 +188,7 @@ function createServerBundle(monorepoRoot: string) {
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
   //       symlinks. We don't want to resolve the symlinks when copying.
-  fs.cpSync(path.join(appPath, ".next/standalone"), path.join(outputPath), {
+  fs.cpSync(path.join(buildArguments.appPath, ".next/standalone"), path.join(outputPath), {
     recursive: true,
     verbatimSymlinks: true,
   });
@@ -199,8 +198,8 @@ function createServerBundle(monorepoRoot: string) {
   //       `node_modules` inside `.next/standalone`, and others inside
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
-  const isMonorepo = monorepoRoot !== appPath;
-  const packagePath = path.relative(monorepoRoot, appPath);
+  const isMonorepo = monorepoRoot !== buildArguments.appPath;
+  const packagePath = path.relative(monorepoRoot, buildArguments.appPath);
 
   // Standalone output already has a Node server "server.js", remove it.
   // It will be replaced with the Lambda handler.
@@ -242,7 +241,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.mkdirSync(outputOpenNextPath, { recursive: true });
   fs.writeFileSync(
     path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(listPublicFiles())
+    JSON.stringify(listPublicFiles(buildArguments))
   );
 
   // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
@@ -257,7 +256,7 @@ async function minifyServerBundle() {
   });
 }
 
-function createImageOptimizationBundle() {
+function createImageOptimizationBundle(buildArguments: BuildArguments) {
   console.info(`Bundling image optimization function...`);
 
   // Create output folder
@@ -298,7 +297,7 @@ function createImageOptimizationBundle() {
   // Copy over .next/required-server-files.json file
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
-    path.join(appPath, ".next/required-server-files.json"),
+    path.join(buildArguments.appPath, ".next/required-server-files.json"),
     path.join(outputPath, ".next/required-server-files.json")
   );
 
@@ -310,7 +309,7 @@ function createImageOptimizationBundle() {
   );
 }
 
-function createAssets() {
+function createAssets(buildArguments: BuildArguments) {
   console.info(`Bundling assets...`);
 
   // Create output folder
@@ -323,16 +322,16 @@ function createAssets() {
   // - .next/static   => _next/static
   // - public/*       => *
   fs.copyFileSync(
-    path.join(appPath, ".next/BUILD_ID"),
+    path.join(buildArguments.appPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID")
   );
   fs.cpSync(
-    path.join(appPath, ".next/static"),
+    path.join(buildArguments.appPath, ".next/static"),
     path.join(outputPath, "_next", "static"),
     { recursive: true }
   );
-  if (fs.existsSync(appPublicPath)) {
-    fs.cpSync(appPublicPath, outputPath, { recursive: true });
+  if (fs.existsSync(path.join(buildArguments.appPath, "public"))) {
+    fs.cpSync(path.join(buildArguments.appPath, "public"), outputPath, { recursive: true });
   }
 }
 
