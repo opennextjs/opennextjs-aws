@@ -9,11 +9,14 @@ import type {
 } from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
+//@ts-ignore
+import { getMaybePagePath } from "next/dist/server/require.js";
 import { loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import type { PublicFiles } from "../build.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
+import { overrideReact } from "./require-hooks.js";
 
 setNodeEnv();
 setNextjsServerWorkingDirectory();
@@ -22,7 +25,7 @@ const openNextDir = path.join(__dirname, ".open-next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
 const publicAssets = loadPublicAssets();
-setNextjsPrebundledReact(config);
+overrideReact(config);
 debug({ nextDir });
 
 // Create a NextServer
@@ -72,6 +75,22 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
+
+  //Function is not present in older version of next.js
+  if (!getMaybePagePath) {
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+  } else {
+    // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React —
+    // We try to detect if the page is in pageDir or not. If it is, we set
+    // `__NEXT_PRIVATE_PREBUNDLED_REACT` to `undefined` to use node_modules React.
+    // Otherwise, we use prebundled react.
+    if (getMaybePagePath(req.url, nextDir, config.i18n?.locales, false)) {
+      process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+    } else {
+      setNextjsPrebundledReact(config);
+    }
+  }
+
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -88,8 +107,7 @@ export async function handler(
 
   // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
   if (htmlPages.includes(internalEvent.rawPath) && headers["cache-control"]) {
-    headers["cache-control"] =
-      "public, max-age=0, s-maxage=31536000, must-revalidate";
+    headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
   return convertTo({
@@ -112,8 +130,7 @@ function setNextjsServerWorkingDirectory() {
 
 function setNextjsPrebundledReact(config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
-  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
-    .serverActions
+  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental.serverActions
     ? "experimental"
     : "next";
 }

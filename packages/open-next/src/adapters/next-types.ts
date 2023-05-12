@@ -26,8 +26,12 @@ type ImageConfigComplete = {
 type ImageConfig = Partial<ImageConfigComplete>;
 
 export interface NextConfig {
+  i18n?: {
+    locales: string[];
+  };
   experimental: {
     serverActions?: boolean;
+    appDir?: boolean;
   };
   images: ImageConfig;
 }
