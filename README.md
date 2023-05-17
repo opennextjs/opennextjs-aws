@@ -440,9 +440,23 @@ Enabling this option can significantly help to reduce the cold start time of the
 
 ## Debugging
 
-To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
+#### Function logs
+
+To find the **server, image optimization, and warmer log**, go to the AWS CloudWatch console in the **region you deployed to**.
 
 If the server function is **deployed to Lambda@Edge**, the logs will appear in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
+
+#### Warmer function logs
+
+The logs from the warmer function provide insights into the results of the warming process.
+
+```
+{ event: 'warmer result', sent: 2, success: 2, uniqueServersWarmed: 2 }
+```
+
+- `sent` — The number of times the warmer invoked the server function using the Lambda SDK. This value should correspond to the `CONCURRENCY` set in the warmer function.
+- `success` — The number of SDK calls that returned a 200 status code, indicating successful invocations.
+- `uniqueServersWarmed` — This helps track any instances that responded unusually quickly and served multiple warming requests. As all SDK calls are made concurrently using `await Promise.all()`, this metric is useful for monitoring the number of unique warmed instances.
 
 #### Debug mode
 
