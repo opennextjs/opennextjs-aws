@@ -29,9 +29,10 @@ export async function build() {
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
+  createAssets();
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
-  createAssets();
+  createWarmerBundle();
   if (process.env.OPEN_NEXT_MINIFY) {
     await minifyServerBundle();
   }
@@ -243,6 +244,32 @@ function createServerBundle(monorepoRoot: string) {
 
   // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
   injectMiddlewareGeolocation(outputPath, packagePath);
+}
+
+function createWarmerBundle() {
+  console.info(`Bundling warmer function...`);
+
+  // Create output folder
+  const outputPath = path.join(outputDir, "warmer-function");
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  // Build Lambda code
+  // note: bundle in OpenNext package b/c the adatper relys on the
+  //       "serverless-http" package which is not a dependency in user's
+  //       Next.js app.
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
+    external: ["next"],
+    outfile: path.join(outputPath, "index.mjs"),
+    banner: {
+      js: [
+        "import { createRequire as topLevelCreateRequire } from 'module';",
+        "const require = topLevelCreateRequire(import.meta.url);",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+      ].join(""),
+    },
+  });
 }
 
 async function minifyServerBundle() {

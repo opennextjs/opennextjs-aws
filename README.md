@@ -36,6 +36,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] [Running at edge](#running-at-edge)
+- [x] [No cold start](#warmer-function)
 
 ## How does OpenNext work?
 
@@ -55,6 +56,7 @@ my-next-app/
     assets/                        -> Static files to upload to an S3 Bucket
     server-function/               -> Handler code for server Lambda Function
     image-optimization-function/   -> Handler code for image optimization Lambda Function
+    warmer-function/               -> Cron job code to keep server function warm
 ```
 
 ## Deployment
@@ -209,6 +211,57 @@ To configure the CloudFront distribution:
 | `/_next/data/*`   | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
 | `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
 | `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+
+#### Warmer function
+
+Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remmember, **Warming is optional** and is only required if you want to keep the server function warm.
+
+To set this up, create a Lambda function using the code in the `.open-next/warmer-function` folder with `index.mjs` as the handler. Ensure the function is configured as follows:
+
+- Set the `FUNCTION_NAME` environment variable with the value being the name of the server Lambda function.
+- Set the `CONCURRENCY` environment variable with the value being the number of server functions to warm.
+- Grant `lambda:InvokeFunction` permission to allow the warmer to invoke the server function.
+
+Also, create an EventBridge scheduled rule to invoke the warmer function every 5 minutes.
+
+Please note, warming is currently only supported when the server function is deployed to a single region (Lambda).
+
+**Prewarm**
+
+Each time you deploy, a new version of the Lambda function will be generated. All warmed server function instances will be turned off. And there won't be any warm instances until the warmer function runs again at the next 5-minute interval.
+
+To ensure the functions are prewarmed on deploy, create a [CloudFormation Custom Resource](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-custom-resources.html) to invoke the warmer function on deployment. The custom resource should be configured as follows:
+
+- Invoke the warmer function on resource `Create` and `Update`.
+- Include a timestamp value in the resource property to ensure the custom resource runs on every deployment.
+- Grant `lambda:InvokeFunction` permission to allow the custom resource to invoke the warmer function.
+
+**Cost**
+
+There are three components to the cost:
+
+1. EventBridge scheduler: $0.00864
+   ```
+   Requests cost — 8,640 invocations per month x $1/million = $0.00864
+   ```
+1. Warmer function: $0.145728288
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
+   ```
+1. Server function: $0.0161280288 per warmed instance
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
+   ```
+
+For example, keeping 50 instances of the server function warm will cost approximately **$0.96 per month**
+
+```
+$0.00864 + $0.145728288 + $0.0161280288 x 50 = $0.960769728
+```
+
+This cost estimate is based on the `us-east-1` region pricing and does not consider any free tier benefits.
 
 ## Limitations and workarounds
 

@@ -20,6 +20,7 @@
   "keywords": [],
   "author": "",
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.234.0",
     "@aws-sdk/client-s3": "^3.234.0",
     "@node-minify/core": "^8.0.6",
     "@node-minify/terser": "^8.0.6",
