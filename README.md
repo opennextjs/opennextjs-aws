@@ -214,7 +214,7 @@ To configure the CloudFront distribution:
 
 #### Warmer function
 
-Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remmember, **Warming is optional** and is only required if you want to keep the server function warm.
+Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remember, **Warming is optional** and is only required if you want to keep the server function warm.
 
 To set this up, create a Lambda function using the code in the `.open-next/warmer-function` folder with `index.mjs` as the handler. Ensure the function is configured as follows:
 
