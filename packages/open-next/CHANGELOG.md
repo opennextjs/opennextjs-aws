@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.0
+
+### Minor Changes
+
+- d03a8c5: Add ability to warm server function
+
 ## 1.2.1
 
 ### Patch Changes
