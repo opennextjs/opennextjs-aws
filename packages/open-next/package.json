@@ -4,7 +4,7 @@
     "access": "public"
   },
   "name": "open-next",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "bin": {
     "open-next": "./index.js"
   },
