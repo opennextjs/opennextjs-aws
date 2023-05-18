@@ -11,8 +11,10 @@ const BODY = Symbol();
 const HEADERS = Symbol();
 
 function getString(data) {
-  if (Buffer.isBuffer(data) || ArrayBuffer.isView(data)) {
+  if (Buffer.isBuffer(data)) {
     return data.toString("utf8");
+  } else if (ArrayBuffer.isView(data)) {
+    return Buffer.from(data).toString("utf8");
   } else if (typeof data === "string") {
     return data;
   } else {
