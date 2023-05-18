@@ -104,17 +104,6 @@ export async function handler(
       : formatAPIGatewayFailoverResponse();
   }
 
-  // // Process Next.js request
-  // //Try intercept the request to see if it is a cached request
-  // const cacheResponse = await cacheInterceptor.handler(internalEvent);
-  // if (cacheResponse) {
-  //   // If we have a cache response, return it and don't invoke NextServer
-  //   return convertTo({
-  //     type: internalEvent.type,
-  //     ...cacheResponse,
-  //   });
-  // }
-
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,

@@ -249,18 +249,24 @@ function createServerBundle(monorepoRoot: string) {
     verbatimSymlinks: true,
   });
 
-  const removeFiles = (conditionFn: (file: string) => boolean) => (dir: string) =>  {
-    fs.readdirSync(dir).forEach((file) => {
-      if (fs.statSync(path.join(dir, file)).isDirectory()) {
-        removeFiles(conditionFn)(path.join(dir, file));
-      }
-      if (conditionFn(file)) {
+  const removeFiles =
+    (conditionFn: (file: string) => boolean) => (dir: string) => {
+      fs.readdirSync(dir).forEach((file) => {
+        if (fs.statSync(path.join(dir, file)).isDirectory()) {
+          removeFiles(conditionFn)(path.join(dir, file));
+        }
+        if (conditionFn(file)) {
           fs.rmSync(path.join(dir, file), { force: true });
-      }
-    });
-  }
+        }
+      });
+    };
 
-  const removeHtmlFiles = removeFiles((file) => (file.endsWith(".html") || file.endsWith(".rsc")  || file.endsWith(".json") && (file !== "404.html" &&  file !== "500.html")));
+  const removeHtmlFiles = removeFiles(
+    (file) =>
+      file.endsWith(".html") ||
+      file.endsWith(".rsc") ||
+      (file.endsWith(".json") && file !== "404.html" && file !== "500.html")
+  );
 
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
@@ -282,14 +288,17 @@ function createServerBundle(monorepoRoot: string) {
   //build cache.js
   esbuildSync({
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
-    external: ["@aws-sdk/client-s3"],
+    external: ["@aws-sdk/client-sqs"],
     outfile: path.join(outputPath, "cache.js"),
     target: ["node18"],
     format: "cjs",
   });
 
   //Copy prerendered pages to cache folder
-  const buildId = fs.readFileSync(path.join(appPath, ".next/BUILD_ID"), "utf-8");
+  const buildId = fs.readFileSync(
+    path.join(appPath, ".next/BUILD_ID"),
+    "utf-8"
+  );
   const outputCache = path.join(outputDir, "cache", buildId);
   //Copy pages to cache folder
   const pagesPrerenderedPath = path.join(
@@ -321,10 +330,15 @@ function createServerBundle(monorepoRoot: string) {
       verbatimSymlinks: true,
     });
   }
-  const removeJsFiles = removeFiles((file) => (file.endsWith(".js") || file.endsWith(".js.nft.json")));
+  const removeJsFiles = removeFiles(
+    (file) => file.endsWith(".js") || file.endsWith(".js.nft.json")
+  );
   removeJsFiles(outputCache);
   //Copy fetch-cache to cache folder
-  const fetchCachePrerenderedPath = path.join(appPath, ".next/cache/fetch-cache");
+  const fetchCachePrerenderedPath = path.join(
+    appPath,
+    ".next/cache/fetch-cache"
+  );
   if (fs.existsSync(fetchCachePrerenderedPath)) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
     fs.mkdirSync(fetchOutputPath, { recursive: true });

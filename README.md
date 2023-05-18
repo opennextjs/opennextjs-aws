@@ -209,14 +209,6 @@ To solve this issue :
 - Since we cannot continue the execution of the lambda once we have returned data from the cache, we check for `x-nextjs-cache` on the response from the **NextServer** and if it's stale or miss, we just put the url in a SQS queue to trigger a revalidation.
 - A lambda is listening for SQS events and fire a `HEAD` request in preview mode for all the url that needs to be revalidated
 
-##### **Experimental** Cache Interceptor
-
-We also implemented an experimental cache interceptor. The goal of the interceptor is to return data from s3 directly without having to invoke **NextServer**.
-
-This approach is faster especially on cold starts, but it comes at a cost, middleware functions will not be called for intercepted routes. It is also more prone to breaking in future versions of next.
-
-If you want to try this feature, you need to set the environment variable `EXPERIMENTAL_CACHE_INTERCEPTION` to `true` when you run the server function.
-
 #### CloudFront distribution
 
 Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
