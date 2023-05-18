@@ -11,24 +11,24 @@ const BODY = Symbol();
 const HEADERS = Symbol();
 
 function getString(data) {
-  if (Buffer.isBuffer(data)) {
+  if (Buffer.isBuffer(data) || ArrayBuffer.isView(data)) {
     return data.toString("utf8");
   } else if (typeof data === "string") {
     return data;
   } else {
-    throw new Error(`response.write() of unexpected type: ${typeof data}`);
+    throw new Error(`response.getString() of unexpected type: ${typeof data}`);
   }
 }
 
 function addData(stream, data) {
   if (
     Buffer.isBuffer(data) ||
-    typeof data === "string" ||
-    data instanceof Uint8Array
+    ArrayBuffer.isView(data) ||
+    typeof data === "string"
   ) {
     stream[BODY].push(Buffer.from(data));
   } else {
-    throw new Error(`response.write() of unexpected type: ${typeof data}`);
+    throw new Error(`response.addData() of unexpected type: ${typeof data}`);
   }
 }
 
