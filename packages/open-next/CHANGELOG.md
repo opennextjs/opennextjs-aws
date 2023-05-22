@@ -1,5 +1,12 @@
 # open-next
 
+## 1.3.2
+
+### Patch Changes
+
+- b701d51: server: handle API Gateway REST API event without multiValueHeaders
+- e330412: server: use node_modules React for Pages and prebundled for App
+
 ## 1.3.1
 
 ### Patch Changes
