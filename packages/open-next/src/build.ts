@@ -204,7 +204,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
   // Build Lambda code
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -288,7 +288,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Build Lambda code (1st pass)
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -300,7 +300,7 @@ function createImageOptimizationBundle() {
   });
 
   // Build Lambda code (2nd pass)
-  // note: bundle in user's Next.js app again b/c the adatper relys on the
+  // note: bundle in user's Next.js app again b/c the adapter relies on the
   //       "next" package. And the "next" package from user's app should
   //       be used.
   esbuildSync({
@@ -368,7 +368,7 @@ function esbuildSync(options: BuildOptions) {
     minify: process.env.OPEN_NEXT_DEBUG ? false : true,
     sourcemap: process.env.OPEN_NEXT_DEBUG ? "inline" : false,
     ...options,
-    // "process.env.OPEN_NEXT_DEBUG" determins if the logger writes to console.log
+    // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...options.define,
       "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
