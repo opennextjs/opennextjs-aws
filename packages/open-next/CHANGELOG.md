@@ -1,5 +1,17 @@
 # open-next
 
+## 1.3.1
+
+### Patch Changes
+
+- 4bd2009: server: support ArrayBuffer response
+
+## 1.3.0
+
+### Minor Changes
+
+- d03a8c5: Add ability to warm server function
+
 ## 1.2.1
 
 ### Patch Changes
