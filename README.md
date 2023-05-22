@@ -418,6 +418,8 @@ For Next.js 13.2 and later versions, you need to explicitly set the `__NEXT_PRIV
 
 > Require these modules with static paths to make sure they are tracked by NFT when building the app in standalone mode, as we are now conditionally aliasing them it's tricky to track them in build time.
 
+On every request, we try to detect whether the route is using the Pages Router or the App Router. If the Pages Router is being used, we set `__NEXT_PRIVATE_PREBUNDLED_REACT` to `undefined`, which means the React version from the `node_modules` is used. However, if the App Router is used, `__NEXT_PRIVATE_PREBUNDLED_REACT` is set, and the prebundled React version is used.
+
 ## Example
 
 In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).

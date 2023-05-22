@@ -9,11 +9,14 @@ import type {
 } from "aws-lambda";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
+//@ts-ignore
+import { getMaybePagePath } from "next/dist/server/require.js";
 import { generateUniqueId, loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import type { PublicFiles } from "../build.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
+import { overrideReact } from "./require-hooks.js";
 import { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 setNodeEnv();
@@ -23,7 +26,7 @@ const openNextDir = path.join(__dirname, ".open-next");
 const config = loadConfig(nextDir);
 const htmlPages = loadHtmlPages();
 const publicAssets = loadPublicAssets();
-setNextjsPrebundledReact(config);
+initializeNextjsRequireHooks(config);
 debug({ nextDir });
 
 // Generate a 6 letter unique server ID
@@ -83,6 +86,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
+  setNextjsPrebundledReact(req, config);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -121,8 +125,28 @@ function setNextjsServerWorkingDirectory() {
   process.chdir(__dirname);
 }
 
-function setNextjsPrebundledReact(config: any) {
+function initializeNextjsRequireHooks(config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+  overrideReact(config);
+}
+
+function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
+  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+
+  // "getMaybePagePath" is not present in older version of next.js
+  // => use node_modules React
+  if (!getMaybePagePath) {
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+    return;
+  }
+
+  // pages route => use node_modules React
+  if (getMaybePagePath(req.url, nextDir, config.i18n?.locales, false)) {
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+    return;
+  }
+
+  // app router => use prebundled React
   process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
     .serverActions
     ? "experimental"
