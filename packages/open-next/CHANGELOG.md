@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.3
+
+### Patch Changes
+
+- c353984: server: handle duplicate API Gateway REST API query string
+
 ## 1.3.2
 
 ### Patch Changes
