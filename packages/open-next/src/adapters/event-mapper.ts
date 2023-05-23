@@ -231,22 +231,24 @@ function normalizeAPIGatewayProxyEventV2Body(
 function normalizeAPIGatewayProxyEventQueryParams(
   event: APIGatewayProxyEvent
 ): string {
+  // Note that the same query string values are returned in both
+  // "multiValueQueryStringParameters" and "queryStringParameters".
+  // We only need to use one of them.
+  // For example:
+  //   "?name=foo" appears in the event object as
+  //   {
+  //     ...
+  //     queryStringParameters: { name: 'foo' },
+  //     multiValueQueryStringParameters: { name: [ 'foo' ] },
+  //     ...
+  //   }
   const params = new URLSearchParams();
-  if (event.multiValueQueryStringParameters) {
-    for (const [key, value] of Object.entries(
-      event.multiValueQueryStringParameters
-    )) {
-      if (value !== undefined) {
-        for (const v of value) {
-          params.append(key, v);
-        }
-      }
-    }
-  }
-  if (event.queryStringParameters) {
-    for (const [key, value] of Object.entries(event.queryStringParameters)) {
-      if (value !== undefined) {
-        params.append(key, value);
+  for (const [key, value] of Object.entries(
+    event.multiValueQueryStringParameters || {}
+  )) {
+    if (value !== undefined) {
+      for (const v of value) {
+        params.append(key, v);
       }
     }
   }
