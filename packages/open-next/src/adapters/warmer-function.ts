@@ -1,6 +1,7 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type { Context } from "aws-lambda";
 import { generateUniqueId } from "./util.js";
+import { debug } from "./logger.js";
 const lambda = new LambdaClient({});
 const FUNCTION_NAME = process.env.FUNCTION_NAME!;
 const CONCURRENCY = parseInt(process.env.CONCURRENCY!);
@@ -19,7 +20,7 @@ export interface WarmerResponse {
 
 export async function handler(_event: any, context: Context) {
   const warmerId = `warmer-${generateUniqueId()}`;
-  console.log({
+  debug({
     event: "warmer invoked",
     functionName: FUNCTION_NAME,
     concurrency: CONCURRENCY,
@@ -64,7 +65,7 @@ export async function handler(_event: any, context: Context) {
     ) as WarmerResponse;
     warmedServerIds.push(payload.serverId);
   });
-  console.log({
+  debug({
     event: "warmer result",
     sent: CONCURRENCY,
     success: warmedServerIds.length,

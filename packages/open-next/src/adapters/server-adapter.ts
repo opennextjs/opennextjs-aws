@@ -53,12 +53,12 @@ export async function handler(
     | APIGatewayProxyEvent
     | WarmerEvent
 ) {
+  debug("event", event);
+
   // Handler warmer
   if ("type" in event) {
     return formatWarmerResponse(event);
   }
-
-  debug("event", event);
 
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event);
@@ -201,7 +201,6 @@ function formatCloudFrontFailoverResponse(event: CloudFrontRequestEvent) {
 }
 
 function formatWarmerResponse(event: WarmerEvent) {
-  console.log(event);
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({ serverId } satisfies WarmerResponse);
