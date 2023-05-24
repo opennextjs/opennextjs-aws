@@ -199,10 +199,7 @@ function formatWarmerResponse(event: WarmerEvent) {
 }
 
 function isNextjsVersionAtLeast(required: `${number}.${number}.${number}`) {
-  const filePath = path.join(NODE_MODULES_DIR, "next", "package.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  const version = JSON.parse(json).version;
-
+  const version = require("next/package.json").version;
   const [major, minor, patch] = version.split("-")[0].split(".").map(Number);
   const [reqMajor, reqMinor, reqPatch] = required.split(".").map(Number);
   return (
