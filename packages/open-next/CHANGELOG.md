@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.5
+
+### Patch Changes
+
+- 19d9f95: server: use require() to resolve next/package.json
+
 ## 1.3.4
 
 ### Patch Changes
