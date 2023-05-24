@@ -1,5 +1,12 @@
 # open-next
 
+## 1.3.4
+
+### Patch Changes
+
+- 7a4b8d0: warmer: use debugger for logging
+- 33dab58: server: do not override default alias for older Next.js versions
+
 ## 1.3.3
 
 ### Patch Changes
