@@ -23,18 +23,20 @@ export function addHookAliases(
 }
 
 // Add default aliases
-addHookAliases(
-  [
-    // Use `require.resolve` explicitly to make them statically analyzable
-    // styled-jsx needs to be resolved as the external dependency.
-    ["styled-jsx", require.resolve("styled-jsx")],
-    ["styled-jsx/style", require.resolve("styled-jsx/style")],
-    ["styled-jsx/style", require.resolve("styled-jsx/style")],
-    ["server-only", require.resolve("next/dist/compiled/server-only")],
-    ["client-only", require.resolve("next/dist/compiled/client-only")],
-  ],
-  "app"
-);
+export function overrideDefault() {
+  addHookAliases(
+    [
+      // Use `require.resolve` explicitly to make them statically analyzable
+      // styled-jsx needs to be resolved as the external dependency.
+      ["styled-jsx", require.resolve("styled-jsx")],
+      ["styled-jsx/style", require.resolve("styled-jsx/style")],
+      ["styled-jsx/style", require.resolve("styled-jsx/style")],
+      ["server-only", require.resolve("next/dist/compiled/server-only")],
+      ["client-only", require.resolve("next/dist/compiled/client-only")],
+    ],
+    "app"
+  );
+}
 
 // Override built-in React packages if necessary
 export function overrideReact(config: NextConfig) {

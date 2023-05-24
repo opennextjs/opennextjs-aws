@@ -16,18 +16,20 @@ import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import type { PublicFiles } from "../build.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
-import { overrideReact } from "./require-hooks.js";
-import { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+import { overrideDefault, overrideReact } from "./require-hooks.js";
+import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+
+const NEXT_DIR = path.join(__dirname, ".next");
+const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
+const NODE_MODULES_DIR = path.join(__dirname, "node_modules");
+debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 setNodeEnv();
 setNextjsServerWorkingDirectory();
-const nextDir = path.join(__dirname, ".next");
-const openNextDir = path.join(__dirname, ".open-next");
-const config = loadConfig(nextDir);
+const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages();
 const publicAssets = loadPublicAssets();
 initializeNextjsRequireHooks(config);
-debug({ nextDir });
 
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
@@ -127,6 +129,8 @@ function setNextjsServerWorkingDirectory() {
 
 function initializeNextjsRequireHooks(config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+  if (!isNextjsVersionAtLeast("13.1.3")) return;
+  overrideDefault();
   overrideReact(config);
 }
 
@@ -141,7 +145,7 @@ function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
   }
 
   // pages route => use node_modules React
-  if (getMaybePagePath(req.url, nextDir, config.i18n?.locales, false)) {
+  if (getMaybePagePath(req.url, NEXT_DIR, config.i18n?.locales, false)) {
     process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
     return;
   }
@@ -151,20 +155,6 @@ function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
     .serverActions
     ? "experimental"
     : "next";
-}
-
-function loadHtmlPages() {
-  const filePath = path.join(nextDir, "server", "pages-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return Object.entries(JSON.parse(json))
-    .filter(([_, value]) => (value as string).endsWith(".html"))
-    .map(([key]) => key);
-}
-
-function loadPublicAssets() {
-  const filePath = path.join(openNextDir, "public-files.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PublicFiles;
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
@@ -206,4 +196,32 @@ function formatWarmerResponse(event: WarmerEvent) {
       resolve({ serverId } satisfies WarmerResponse);
     }, event.delay);
   });
+}
+
+function isNextjsVersionAtLeast(required: `${number}.${number}.${number}`) {
+  const filePath = path.join(NODE_MODULES_DIR, "next", "package.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  const version = JSON.parse(json).version;
+
+  const [major, minor, patch] = version.split("-")[0].split(".").map(Number);
+  const [reqMajor, reqMinor, reqPatch] = required.split(".").map(Number);
+  return (
+    major > reqMajor ||
+    (major === reqMajor && minor > reqMinor) ||
+    (major === reqMajor && minor === reqMinor && patch >= reqPatch)
+  );
+}
+
+function loadHtmlPages() {
+  const filePath = path.join(NEXT_DIR, "server", "pages-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return Object.entries(JSON.parse(json))
+    .filter(([_, value]) => (value as string).endsWith(".html"))
+    .map(([key]) => key);
+}
+
+function loadPublicAssets() {
+  const filePath = path.join(OPEN_NEXT_DIR, "public-files.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as PublicFiles;
 }
