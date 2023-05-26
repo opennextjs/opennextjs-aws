@@ -35,3 +35,13 @@ export interface NextConfig {
   };
   images: ImageConfig;
 }
+
+interface RouteDefinition {
+  page: string;
+  regex: string;
+}
+
+export interface RoutesManifest {
+  dynamicRoutes: RouteDefinition[];
+  staticRoutes: RouteDefinition[];
+}

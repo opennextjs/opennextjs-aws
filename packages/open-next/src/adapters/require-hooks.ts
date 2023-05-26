@@ -31,8 +31,6 @@ export function overrideDefault() {
       ["styled-jsx", require.resolve("styled-jsx")],
       ["styled-jsx/style", require.resolve("styled-jsx/style")],
       ["styled-jsx/style", require.resolve("styled-jsx/style")],
-      ["server-only", require.resolve("next/dist/compiled/server-only")],
-      ["client-only", require.resolve("next/dist/compiled/client-only")],
     ],
     "app"
   );
@@ -42,17 +40,20 @@ export function overrideDefault() {
 export function overrideReact(config: NextConfig) {
   addHookAliases(
     [
-      ["react", `/var/task/node_modules/react`],
-      ["react/jsx-runtime", `/var/task/node_modules/react/jsx-runtime`],
-      ["react/jsx-dev-runtime", `/var/task/node_modules/react/jsx-dev-runtime`],
-      ["react-dom", `/var/task/node_modules/react-dom`],
-      [
-        "react-dom/server.browser",
-        `/var/task/node_modules/react-dom/server.browser`,
-      ],
+      ["react", require.resolve(`react`)],
+      ["react/jsx-runtime", require.resolve(`react/jsx-runtime`)],
     ],
     "page"
   );
+
+  // ignore: react/jsx-dev-runtime is not available on older version of Next.js ie. v13.1.6
+  try {
+    addHookAliases(
+      [["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)]],
+      "page"
+    );
+  } catch (e) {}
+
   if (config.experimental.appDir) {
     if (config.experimental.serverActions) {
       addHookAliases(
