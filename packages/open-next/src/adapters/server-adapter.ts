@@ -15,8 +15,6 @@ const node_react: [string, string][] = [
 ];
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-//@ts-ignore
-import { getMaybePagePath } from "next/dist/server/require.js";
 import { generateUniqueId, loadConfig, setNodeEnv } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
@@ -24,10 +22,10 @@ import type { PublicFiles } from "../build.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
 import { overrideDefault, overrideReact } from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+import { RoutesManifest } from "./next-types.js";
 
 const NEXT_DIR = path.join(__dirname, ".next");
 const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
-const NODE_MODULES_DIR = path.join(__dirname, "node_modules");
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 setNodeEnv();
@@ -35,6 +33,7 @@ setNextjsServerWorkingDirectory();
 const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages();
 const publicAssets = loadPublicAssets();
+const { routesManifest, appPathsManifest } = loadRoutesAndAppPathsManifest();
 initializeNextjsRequireHooks(config);
 
 // Generate a 6 letter unique server ID
@@ -140,27 +139,44 @@ function initializeNextjsRequireHooks(config: any) {
   overrideReact(config, node_react);
 }
 
+function getRoutePattern(url: string): string | null {
+  let routePattern: string | null = null;
+  routesManifest.staticRoutes.forEach((route) => {
+    if (new RegExp(route.regex).test(url)) {
+      // We need to add `/page` to the end of the route pattern because that's how it is in the appPathsManifest
+      routePattern = `${route.page}/page`;
+    }
+  });
+  if (routePattern) return routePattern;
+  routesManifest.dynamicRoutes.forEach((route) => {
+    if (new RegExp(route.regex).test(url)) {
+      routePattern = `${route.page}/page`;
+    }
+  });
+  return routePattern;
+}
+
+function isAppRoute(url: string) {
+  const routePattern = getRoutePattern(url);
+  if (!routePattern) return false;
+  return Object.keys(appPathsManifest).includes(routePattern);
+}
+
 function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
-
-  // "getMaybePagePath" is not present in older version of next.js
-  // => use node_modules React
-  if (!getMaybePagePath) {
-    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+  const isApp = isAppRoute(req.url ?? "");
+  debug("setNextjsPrebundledReact", { url: req.url, isApp });
+  // app routes => use prebundled React
+  if (isApp) {
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
+      .serverActions
+      ? "experimental"
+      : "next";
     return;
-  }
-
-  // pages route => use node_modules React
-  if (getMaybePagePath(req.url, NEXT_DIR, config.i18n?.locales, false)) {
+    // page routes => use node_modules React
+  } else {
     process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
-    return;
   }
-
-  // app router => use prebundled React
-  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
-    .serverActions
-    ? "experimental"
-    : "next";
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
@@ -227,4 +243,25 @@ function loadPublicAssets() {
   const filePath = path.join(OPEN_NEXT_DIR, "public-files.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as PublicFiles;
+}
+
+function loadRoutesAndAppPathsManifest() {
+  const filePath = path.join(NEXT_DIR, "routes-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+
+  const appPathsManifestPath = path.join(
+    NEXT_DIR,
+    "server",
+    "app-paths-manifest.json"
+  );
+  const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
+    ? fs.readFileSync(appPathsManifestPath, "utf-8")
+    : "{}";
+  return {
+    routesManifest: JSON.parse(json) as RoutesManifest,
+    appPathsManifest: JSON.parse(appPathsManifestJson) as Record<
+      string,
+      string
+    >,
+  };
 }
