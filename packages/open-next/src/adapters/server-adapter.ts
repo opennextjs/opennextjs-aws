@@ -7,6 +7,12 @@ import type {
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
 } from "aws-lambda";
+// We need to resolve those react deps before nextjs overrides them with prebundled one in case of app dir
+const node_react: [string, string][] = [
+  ["react", require.resolve(`react`)],
+  ["react/jsx-runtime", require.resolve(`react/jsx-runtime`)],
+  ["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)],
+];
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
 //@ts-ignore
@@ -131,7 +137,7 @@ function initializeNextjsRequireHooks(config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
   if (!isNextjsVersionAtLeast("13.1.3")) return;
   overrideDefault();
-  overrideReact(config);
+  overrideReact(config, node_react);
 }
 
 function setNextjsPrebundledReact(req: IncomingMessage, config: any) {

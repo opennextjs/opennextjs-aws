@@ -11,10 +11,9 @@ const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
 const hookPropertyMapPage = new Map();
 
-export function addHookAliases(
-  aliases: [string, string][] = [],
-  type: "app" | "page"
-) {
+type Alias = [string, string];
+
+export function addHookAliases(aliases: Alias[] = [], type: "app" | "page") {
   for (const [key, value] of aliases) {
     type === "app"
       ? hookPropertyMapApp.set(key, value)
@@ -31,28 +30,14 @@ export function overrideDefault() {
       ["styled-jsx", require.resolve("styled-jsx")],
       ["styled-jsx/style", require.resolve("styled-jsx/style")],
       ["styled-jsx/style", require.resolve("styled-jsx/style")],
-      ["server-only", require.resolve("next/dist/compiled/server-only")],
-      ["client-only", require.resolve("next/dist/compiled/client-only")],
     ],
     "app"
   );
 }
 
 // Override built-in React packages if necessary
-export function overrideReact(config: NextConfig) {
-  addHookAliases(
-    [
-      ["react", `/var/task/node_modules/react`],
-      ["react/jsx-runtime", `/var/task/node_modules/react/jsx-runtime`],
-      ["react/jsx-dev-runtime", `/var/task/node_modules/react/jsx-dev-runtime`],
-      ["react-dom", `/var/task/node_modules/react-dom`],
-      [
-        "react-dom/server.browser",
-        `/var/task/node_modules/react-dom/server.browser`,
-      ],
-    ],
-    "page"
-  );
+export function overrideReact(config: NextConfig, pageDeps: Alias[]) {
+  addHookAliases(pageDeps, "page");
   if (config.experimental.appDir) {
     if (config.experimental.serverActions) {
       addHookAliases(
