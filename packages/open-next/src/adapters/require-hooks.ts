@@ -11,9 +11,10 @@ const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
 const hookPropertyMapPage = new Map();
 
-type Alias = [string, string];
-
-export function addHookAliases(aliases: Alias[] = [], type: "app" | "page") {
+export function addHookAliases(
+  aliases: [string, string][] = [],
+  type: "app" | "page"
+) {
   for (const [key, value] of aliases) {
     type === "app"
       ? hookPropertyMapApp.set(key, value)
@@ -36,8 +37,23 @@ export function overrideDefault() {
 }
 
 // Override built-in React packages if necessary
-export function overrideReact(config: NextConfig, pageDeps: Alias[]) {
-  addHookAliases(pageDeps, "page");
+export function overrideReact(config: NextConfig) {
+  addHookAliases(
+    [
+      ["react", require.resolve(`react`)],
+      ["react/jsx-runtime", require.resolve(`react/jsx-runtime`)],
+    ],
+    "page"
+  );
+
+  // ignore: react/jsx-dev-runtime is not available on older version of Next.js ie. v13.1.6
+  try {
+    addHookAliases(
+      [["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)]],
+      "page"
+    );
+  } catch (e) {}
+
   if (config.experimental.appDir) {
     if (config.experimental.serverActions) {
       addHookAliases(
