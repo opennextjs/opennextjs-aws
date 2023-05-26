@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.6
+
+### Patch Changes
+
+- 33460c3: server: Fix react dependencies resolution
+
 ## 1.3.5
 
 ### Patch Changes
