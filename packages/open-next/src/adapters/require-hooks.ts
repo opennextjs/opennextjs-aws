@@ -196,20 +196,22 @@ function isApp() {
   );
 }
 
-mod._resolveFilename = function (
-  originalResolveFilename: typeof resolveFilename,
-  requestMapApp: Map<string, string>,
-  requestMapPage: Map<string, string>,
-  request: string,
-  parent: any,
-  isMain: boolean,
-  options: any
-) {
-  const hookResolved = isApp()
-    ? requestMapApp.get(request)
-    : requestMapPage.get(request);
-  if (hookResolved) request = hookResolved;
-  return originalResolveFilename.call(mod, request, parent, isMain, options);
+export function applyOverride() {
+  mod._resolveFilename = function (
+    originalResolveFilename: typeof resolveFilename,
+    requestMapApp: Map<string, string>,
+    requestMapPage: Map<string, string>,
+    request: string,
+    parent: any,
+    isMain: boolean,
+    options: any
+  ) {
+    const hookResolved = isApp()
+      ? requestMapApp.get(request)
+      : requestMapPage.get(request);
+    if (hookResolved) request = hookResolved;
+    return originalResolveFilename.call(mod, request, parent, isMain, options);
 
-  // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
-}.bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
+    // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
+  }.bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
+}

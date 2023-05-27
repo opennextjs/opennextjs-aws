@@ -8,7 +8,7 @@ import type {
 } from "aws-lambda";
 import {
   generateUniqueId,
-  loadAppPathsManifest,
+  loadAppPathsManifestKeys,
   loadConfig,
   loadHtmlPages,
   loadPublicAssets,
@@ -18,7 +18,11 @@ import {
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
-import { overrideDefault, overrideReact } from "./require-hooks.js";
+import {
+  overrideDefault,
+  overrideReact,
+  applyOverride,
+} from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 const NEXT_DIR = path.join(__dirname, ".next");
@@ -30,7 +34,7 @@ setNextjsServerWorkingDirectory();
 const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
-const appPathsManifest = loadAppPathsManifest(NEXT_DIR);
+const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
@@ -41,6 +45,10 @@ overrideNextjsRequireHooks(config);
 
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
+// We need to apply the override after Next.js server is imported
+// since the override that Next.js does is done at import time
+applyOverride();
+
 const requestHandler = new NextServer.default({
   hostname: "localhost",
   port: Number(process.env.PORT) || 3000,
@@ -150,13 +158,13 @@ function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
   // Get route pattern
-  const route = [
-    ...routesManifest.staticRoutes,
-    ...routesManifest.dynamicRoutes,
-  ].find((route) => new RegExp(route.regex).test(req.url ?? ""));
+  const route = routesManifest.find((route) =>
+    new RegExp(route.regex).test(req.url ?? "")
+  );
 
-  const isApp = appPathsManifest[`${route?.page}/page`];
-  debug("setNextjsPrebundledReact", { url: req.url, isApp });
+  const isApp = appPathsManifestKeys.includes(route?.page ?? "");
+
+  debug("setNextjsPrebundledReact", { url: req.url, isApp, route });
 
   // app routes => use prebundled React
   if (isApp) {
