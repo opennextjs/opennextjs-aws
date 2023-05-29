@@ -8,5 +8,4 @@ pnpm changeset version --snapshot
 #sed -i.bak -e '2,5d' packages/open-next/dist/package.json
 pnpm changeset publish --no-git-tag --tag=snapshot 
 cp .changeset/config.json.bak .changeset/config.json
-#git checkout '**/package.json' '**/CHANGELOG.md' '.changeset'
-git checkout '**/CHANGELOG.md' '.changeset'
+git checkout '**/package.json' '**/CHANGELOG.md' '.changeset'
