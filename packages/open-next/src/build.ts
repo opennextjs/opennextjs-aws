@@ -110,7 +110,7 @@ function printHeader(header: string) {
 }
 
 function printVersion() {
-  const pathToPackageJson = path.join(__dirname, "./package.json");
+  const pathToPackageJson = path.join(__dirname, "../package.json");
   const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
   console.info(`Using v${pkg.version}`);
 }
@@ -327,7 +327,7 @@ function createImageOptimizationBundle() {
 
   // Copy over sharp node modules
   fs.cpSync(
-    path.join(__dirname, "./assets/sharp-node-modules"),
+    path.join(__dirname, "../assets/sharp-node-modules"),
     path.join(outputPath, "node_modules"),
     { recursive: true }
   );

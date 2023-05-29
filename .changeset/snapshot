@@ -4,8 +4,8 @@ set -e
 pnpm build
 sed -i.bak -e '3,6d' .changeset/config.json
 pnpm changeset version --snapshot 
-cp packages/open-next/package.json packages/open-next/dist/package.json
-sed -i.bak -e '2,5d' packages/open-next/dist/package.json
+#cp packages/open-next/package.json packages/open-next/dist/package.json
+#sed -i.bak -e '2,5d' packages/open-next/dist/package.json
 pnpm changeset publish --no-git-tag --tag=snapshot 
 cp .changeset/config.json.bak .changeset/config.json
 git checkout '**/package.json' '**/CHANGELOG.md' '.changeset'

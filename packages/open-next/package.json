@@ -1,24 +1,30 @@
 {
   "publishConfig": {
-    "directory": "dist",
     "access": "public"
   },
   "name": "open-next",
   "version": "1.3.7",
   "bin": {
-    "open-next": "./index.js"
+    "open-next": "./dist/index.js"
   },
   "license": "MIT",
   "type": "module",
   "description": "Open source Next.js serverless adapter",
   "homepage": "https://open-next.js.org",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "rm -rf dist/assets && mkdir -p dist && cp -r assets dist/assets && tsc",
+    "build": "tsc",
     "dev": "tsc -w"
   },
   "keywords": [],
   "author": "",
+  "files": [
+    "dist",
+    "assets",
+    "README.md"
+  ],
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.234.0",
     "@aws-sdk/client-s3": "^3.234.0",

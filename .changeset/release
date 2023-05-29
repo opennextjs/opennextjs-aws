@@ -2,7 +2,7 @@
 set -e
 
 pnpm build
-cp packages/open-next/package.json packages/open-next/dist/package.json
-cp README.md packages/open-next/dist/README.md
-sed -i.bak -e '2,5d' packages/open-next/dist/package.json
+#cp packages/open-next/package.json packages/open-next/dist/package.json
+cp README.md packages/open-next/README.md
+#sed -i.bak -e '2,5d' packages/open-next/dist/package.json
 pnpm changeset publish
