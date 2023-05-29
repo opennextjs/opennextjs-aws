@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.8
+
+### Patch Changes
+
+- e16aff7: npm publish root directory
+
 ## 1.3.7
 
 ### Patch Changes
