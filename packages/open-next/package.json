@@ -20,6 +20,11 @@
   },
   "keywords": [],
   "author": "",
+  "files": [
+    "dist",
+    "assets",
+    "README.md"
+  ],
   "dependencies": {
     "@aws-sdk/client-s3": "^3.234.0",
     "@node-minify/core": "^8.0.6",
