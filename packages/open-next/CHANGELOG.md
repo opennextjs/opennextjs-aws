@@ -1,5 +1,11 @@
 # open-next
 
+## 1.3.7
+
+### Patch Changes
+
+- 2c2f6b9: server: fix react resolution for group routes
+
 ## 1.3.6
 
 ### Patch Changes
