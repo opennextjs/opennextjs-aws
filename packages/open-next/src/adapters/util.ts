@@ -36,7 +36,7 @@ export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
-  // Static routes first so that static routes can take precedence over dynamic routes
+  // Static routes take precedence over dynamic routes
   return [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes];
 }
 

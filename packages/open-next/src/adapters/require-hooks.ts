@@ -11,7 +11,17 @@ const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
 const hookPropertyMapPage = new Map();
 
-export function addHookAliases(
+export function overrideHooks(config: NextConfig) {
+  try {
+    overrideDefault();
+    overrideReact(config);
+  } catch (e) {
+    console.error("Failed to override Next.js require hooks.", e);
+    throw e;
+  }
+}
+
+function addHookAliases(
   aliases: [string, string][] = [],
   type: "app" | "page"
 ) {
@@ -23,7 +33,7 @@ export function addHookAliases(
 }
 
 // Add default aliases
-export function overrideDefault() {
+function overrideDefault() {
   addHookAliases(
     [
       // Use `require.resolve` explicitly to make them statically analyzable
@@ -37,7 +47,7 @@ export function overrideDefault() {
 }
 
 // Override built-in React packages if necessary
-export function overrideReact(config: NextConfig) {
+function overrideReact(config: NextConfig) {
   addHookAliases(
     [
       ["react", require.resolve(`react`)],

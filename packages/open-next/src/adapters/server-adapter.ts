@@ -19,9 +19,8 @@ import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
 import {
-  overrideDefault,
-  overrideReact,
-  applyOverride,
+  overrideHooks as overrideNextjsRequireHooks,
+  applyOverride as applyNextjsRequireHooksOverride,
 } from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
@@ -39,15 +38,16 @@ const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
 
-// Need to override the require hooks for React before Next.js server
-// overrides them with prebundled ones in the case of app dir
+// WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+// Step 1: Need to override the require hooks for React before Next.js server
+//         overrides them with prebundled ones in the case of app dir
+// Step 2: Import Next.js server
+// Step 3: Apply the override after Next.js server is imported since the
+//         override that Next.js does is done at import time
 overrideNextjsRequireHooks(config);
-
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-// We need to apply the override after Next.js server is imported
-// since the override that Next.js does is done at import time
-applyOverride();
+applyNextjsRequireHooksOverride();
 
 const requestHandler = new NextServer.default({
   hostname: "localhost",
@@ -104,7 +104,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(req, config);
+  setNextjsPrebundledReact(internalEvent.rawPath, config);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -143,28 +143,16 @@ function setNextjsServerWorkingDirectory() {
   process.chdir(__dirname);
 }
 
-function overrideNextjsRequireHooks(config: any) {
-  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
-  try {
-    overrideDefault();
-    overrideReact(config);
-  } catch (e) {
-    console.error("Failed to override Next.js require hooks.", e);
-    throw e;
-  }
-}
-
-function setNextjsPrebundledReact(req: IncomingMessage, config: any) {
+function setNextjsPrebundledReact(rawPath: string, config: any) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
   // Get route pattern
   const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(req.url ?? "")
+    new RegExp(route.regex).test(rawPath ?? "")
   );
 
   const isApp = appPathsManifestKeys.includes(route?.page ?? "");
-
-  debug("setNextjsPrebundledReact", { url: req.url, isApp, route });
+  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
 
   // app routes => use prebundled React
   if (isApp) {
