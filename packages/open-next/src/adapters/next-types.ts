@@ -36,7 +36,7 @@ export interface NextConfig {
   images: ImageConfig;
 }
 
-interface RouteDefinition {
+export interface RouteDefinition {
   page: string;
   regex: string;
 }

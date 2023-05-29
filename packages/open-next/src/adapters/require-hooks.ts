@@ -11,7 +11,17 @@ const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
 const hookPropertyMapPage = new Map();
 
-export function addHookAliases(
+export function overrideHooks(config: NextConfig) {
+  try {
+    overrideDefault();
+    overrideReact(config);
+  } catch (e) {
+    console.error("Failed to override Next.js require hooks.", e);
+    throw e;
+  }
+}
+
+function addHookAliases(
   aliases: [string, string][] = [],
   type: "app" | "page"
 ) {
@@ -23,7 +33,7 @@ export function addHookAliases(
 }
 
 // Add default aliases
-export function overrideDefault() {
+function overrideDefault() {
   addHookAliases(
     [
       // Use `require.resolve` explicitly to make them statically analyzable
@@ -37,7 +47,7 @@ export function overrideDefault() {
 }
 
 // Override built-in React packages if necessary
-export function overrideReact(config: NextConfig) {
+function overrideReact(config: NextConfig) {
   addHookAliases(
     [
       ["react", require.resolve(`react`)],
@@ -196,20 +206,22 @@ function isApp() {
   );
 }
 
-mod._resolveFilename = function (
-  originalResolveFilename: typeof resolveFilename,
-  requestMapApp: Map<string, string>,
-  requestMapPage: Map<string, string>,
-  request: string,
-  parent: any,
-  isMain: boolean,
-  options: any
-) {
-  const hookResolved = isApp()
-    ? requestMapApp.get(request)
-    : requestMapPage.get(request);
-  if (hookResolved) request = hookResolved;
-  return originalResolveFilename.call(mod, request, parent, isMain, options);
+export function applyOverride() {
+  mod._resolveFilename = function (
+    originalResolveFilename: typeof resolveFilename,
+    requestMapApp: Map<string, string>,
+    requestMapPage: Map<string, string>,
+    request: string,
+    parent: any,
+    isMain: boolean,
+    options: any
+  ) {
+    const hookResolved = isApp()
+      ? requestMapApp.get(request)
+      : requestMapPage.get(request);
+    if (hookResolved) request = hookResolved;
+    return originalResolveFilename.call(mod, request, parent, isMain, options);
 
-  // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
-}.bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
+    // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
+  }.bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
+}

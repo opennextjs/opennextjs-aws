@@ -35,10 +35,12 @@ export function loadPublicAssets(openNextDir: string) {
 export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as RoutesManifest;
+  const routesManifest = JSON.parse(json) as RoutesManifest;
+  // Static routes take precedence over dynamic routes
+  return [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes];
 }
 
-export function loadAppPathsManifest(nextDir: string) {
+export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestPath = path.join(
     nextDir,
     "server",
@@ -47,5 +49,14 @@ export function loadAppPathsManifest(nextDir: string) {
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")
     : "{}";
-  return JSON.parse(appPathsManifestJson) as Record<string, string>;
+  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<
+    string,
+    string
+  >;
+  return Object.keys(appPathsManifest).map((key) => {
+    // Remove group route params and /page suffix
+    const cleanedKey = key.replace(/\/\(\w+\)|\/page$/g, "");
+    // We need to check if the cleaned key is empty because it means it's the root path
+    return cleanedKey === "" ? "/" : cleanedKey;
+  });
 }
