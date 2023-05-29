@@ -1,5 +1,71 @@
 # open-next
 
+## 1.3.7
+
+### Patch Changes
+
+- 2c2f6b9: server: fix react resolution for group routes
+
+## 1.3.6
+
+### Patch Changes
+
+- 33460c3: server: Fix react dependencies resolution
+
+## 1.3.5
+
+### Patch Changes
+
+- 19d9f95: server: use require() to resolve next/package.json
+
+## 1.3.4
+
+### Patch Changes
+
+- 7a4b8d0: warmer: use debugger for logging
+- 33dab58: server: do not override default alias for older Next.js versions
+
+## 1.3.3
+
+### Patch Changes
+
+- c353984: server: handle duplicate API Gateway REST API query string
+
+## 1.3.2
+
+### Patch Changes
+
+- b701d51: server: handle API Gateway REST API event without multiValueHeaders
+- e330412: server: use node_modules React for Pages and prebundled for App
+
+## 1.3.1
+
+### Patch Changes
+
+- 4bd2009: server: support ArrayBuffer response
+
+## 1.3.0
+
+### Minor Changes
+
+- d03a8c5: Add ability to warm server function
+
+## 1.2.1
+
+### Patch Changes
+
+- 54ce502: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
+
+## 1.2.0
+
+### Minor Changes
+
+- 935544a: Add support for NextRequest geolocation
+
+### Patch Changes
+
+- 0a4b952: Store public file posix path on Windows
+
 ## 1.1.0
 
 ### Minor Changes

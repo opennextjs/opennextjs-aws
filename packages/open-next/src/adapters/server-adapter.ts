@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
@@ -7,24 +6,49 @@ import type {
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
 } from "aws-lambda";
-// @ts-ignore
-import NextServer from "next/dist/server/next-server.js";
-import { loadConfig, setNodeEnv } from "./util.js";
+import {
+  generateUniqueId,
+  loadAppPathsManifestKeys,
+  loadConfig,
+  loadHtmlPages,
+  loadPublicAssets,
+  loadRoutesManifest,
+  setNodeEnv,
+} from "./util.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug } from "./logger.js";
-import type { PublicFiles } from "../build.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
+import {
+  overrideHooks as overrideNextjsRequireHooks,
+  applyOverride as applyNextjsRequireHooksOverride,
+} from "./require-hooks.js";
+import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+
+const NEXT_DIR = path.join(__dirname, ".next");
+const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
+debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 setNodeEnv();
 setNextjsServerWorkingDirectory();
-const nextDir = path.join(__dirname, ".next");
-const openNextDir = path.join(__dirname, ".open-next");
-const config = loadConfig(nextDir);
-const htmlPages = loadHtmlPages();
-const publicAssets = loadPublicAssets();
-debug({ nextDir });
+const config = loadConfig(NEXT_DIR);
+const htmlPages = loadHtmlPages(NEXT_DIR);
+const routesManifest = loadRoutesManifest(NEXT_DIR);
+const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
+const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
+// Generate a 6 letter unique server ID
+const serverId = `server-${generateUniqueId()}`;
 
-// Create a NextServer
+// WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+// Step 1: Need to override the require hooks for React before Next.js server
+//         overrides them with prebundled ones in the case of app dir
+// Step 2: Import Next.js server
+// Step 3: Apply the override after Next.js server is imported since the
+//         override that Next.js does is done at import time
+overrideNextjsRequireHooks(config);
+// @ts-ignore
+import NextServer from "next/dist/server/next-server.js";
+applyNextjsRequireHooksOverride();
+
 const requestHandler = new NextServer.default({
   hostname: "localhost",
   port: Number(process.env.PORT) || 3000,
@@ -41,9 +65,18 @@ const requestHandler = new NextServer.default({
 /////////////
 
 export async function handler(
-  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
+  event:
+    | APIGatewayProxyEventV2
+    | CloudFrontRequestEvent
+    | APIGatewayProxyEvent
+    | WarmerEvent
 ) {
   debug("event", event);
+
+  // Handler warmer
+  if ("type" in event) {
+    return formatWarmerResponse(event);
+  }
 
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event);
@@ -71,6 +104,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
+  setNextjsPrebundledReact(internalEvent.rawPath, config);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -109,18 +143,28 @@ function setNextjsServerWorkingDirectory() {
   process.chdir(__dirname);
 }
 
-function loadHtmlPages() {
-  const filePath = path.join(nextDir, "server", "pages-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return Object.entries(JSON.parse(json))
-    .filter(([_, value]) => (value as string).endsWith(".html"))
-    .map(([key]) => key);
-}
+function setNextjsPrebundledReact(rawPath: string, config: any) {
+  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
-function loadPublicAssets() {
-  const filePath = path.join(openNextDir, "public-files.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PublicFiles;
+  // Get route pattern
+  const route = routesManifest.find((route) =>
+    new RegExp(route.regex).test(rawPath ?? "")
+  );
+
+  const isApp = appPathsManifestKeys.includes(route?.page ?? "");
+  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
+
+  // app routes => use prebundled React
+  if (isApp) {
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
+      .serverActions
+      ? "experimental"
+      : "next";
+    return;
+  }
+
+  // page routes => use node_modules React
+  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
 }
 
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
@@ -154,4 +198,12 @@ function formatAPIGatewayFailoverResponse() {
 
 function formatCloudFrontFailoverResponse(event: CloudFrontRequestEvent) {
   return event.Records[0].cf.request;
+}
+
+function formatWarmerResponse(event: WarmerEvent) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ serverId } satisfies WarmerResponse);
+    }, event.delay);
+  });
 }

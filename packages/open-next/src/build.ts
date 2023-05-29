@@ -29,9 +29,10 @@ export async function build() {
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
+  createAssets();
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
-  createAssets();
+  createWarmerBundle();
   if (process.env.OPEN_NEXT_MINIFY) {
     await minifyServerBundle();
   }
@@ -114,6 +115,39 @@ function printVersion() {
   console.info(`Using v${pkg.version}`);
 }
 
+function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
+  const basePath = path.join(outputPath, packagePath, ".next", "server");
+  const rootMiddlewarePath = path.join(basePath, "middleware.js");
+  const srcMiddlewarePath = path.join(basePath, "src", "middleware.js");
+  if (fs.existsSync(rootMiddlewarePath)) {
+    inject(rootMiddlewarePath);
+  } else if (fs.existsSync(srcMiddlewarePath)) {
+    inject(srcMiddlewarePath);
+  }
+
+  function inject(middlewarePath: string) {
+    const content = fs.readFileSync(middlewarePath, "utf-8");
+    fs.writeFileSync(
+      middlewarePath,
+      content.replace(
+        "geo: init.geo || {}",
+        `geo: init.geo || {
+        country: this.headers.get("cloudfront-viewer-country"),
+        countryName: this.headers.get("cloudfront-viewer-country-name"),
+        region: this.headers.get("cloudfront-viewer-country-region"),
+        regionName: this.headers.get("cloudfront-viewer-country-region-name"),
+        city: this.headers.get("cloudfront-viewer-city"),
+        postalCode: this.headers.get("cloudfront-viewer-postal-code"),
+        timeZone: this.headers.get("cloudfront-viewer-time-zone"),
+        latitude: this.headers.get("cloudfront-viewer-latitude"),
+        longitude: this.headers.get("cloudfront-viewer-longitude"),
+        metroCode: this.headers.get("cloudfront-viewer-metro-code"),
+      }`
+      )
+    );
+  }
+}
+
 function initOutputDir() {
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
@@ -134,7 +168,7 @@ function listPublicFiles() {
     for (const file of files) {
       file.isDirectory()
         ? processDirectory(path.join(pathInPublic, file.name))
-        : result.files.push(path.join(pathInPublic, file.name));
+        : result.files.push(path.posix.join(pathInPublic, file.name));
     }
   }
 
@@ -170,7 +204,7 @@ function createServerBundle(monorepoRoot: string) {
   fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
 
   // Build Lambda code
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -207,6 +241,35 @@ function createServerBundle(monorepoRoot: string) {
     path.join(outputOpenNextPath, "public-files.json"),
     JSON.stringify(listPublicFiles())
   );
+
+  // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
+  injectMiddlewareGeolocation(outputPath, packagePath);
+}
+
+function createWarmerBundle() {
+  console.info(`Bundling warmer function...`);
+
+  // Create output folder
+  const outputPath = path.join(outputDir, "warmer-function");
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  // Build Lambda code
+  // note: bundle in OpenNext package b/c the adatper relys on the
+  //       "serverless-http" package which is not a dependency in user's
+  //       Next.js app.
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
+    external: ["next"],
+    outfile: path.join(outputPath, "index.mjs"),
+    banner: {
+      js: [
+        "import { createRequire as topLevelCreateRequire } from 'module';",
+        "const require = topLevelCreateRequire(import.meta.url);",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+      ].join(""),
+    },
+  });
 }
 
 async function minifyServerBundle() {
@@ -225,7 +288,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Build Lambda code (1st pass)
-  // note: bundle in OpenNext package b/c the adatper relys on the
+  // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
@@ -237,7 +300,7 @@ function createImageOptimizationBundle() {
   });
 
   // Build Lambda code (2nd pass)
-  // note: bundle in user's Next.js app again b/c the adatper relys on the
+  // note: bundle in user's Next.js app again b/c the adapter relies on the
   //       "next" package. And the "next" package from user's app should
   //       be used.
   esbuildSync({
@@ -305,7 +368,7 @@ function esbuildSync(options: BuildOptions) {
     minify: process.env.OPEN_NEXT_DEBUG ? false : true,
     sourcemap: process.env.OPEN_NEXT_DEBUG ? "inline" : false,
     ...options,
-    // "process.env.OPEN_NEXT_DEBUG" determins if the logger writes to console.log
+    // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...options.define,
       "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG

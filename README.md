@@ -36,6 +36,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] [Running at edge](#running-at-edge)
+- [x] [No cold start](#warmer-function)
 
 ## How does OpenNext work?
 
@@ -55,6 +56,7 @@ my-next-app/
     assets/                        -> Static files to upload to an S3 Bucket
     server-function/               -> Handler code for server Lambda Function
     image-optimization-function/   -> Handler code for image optimization Lambda Function
+    warmer-function/               -> Cron job code to keep server function warm
 ```
 
 ## Deployment
@@ -210,6 +212,57 @@ To configure the CloudFront distribution:
 | `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
 | `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
+#### Warmer function
+
+Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remember, **Warming is optional** and is only required if you want to keep the server function warm.
+
+To set this up, create a Lambda function using the code in the `.open-next/warmer-function` folder with `index.mjs` as the handler. Ensure the function is configured as follows:
+
+- Set the `FUNCTION_NAME` environment variable with the value being the name of the server Lambda function.
+- Set the `CONCURRENCY` environment variable with the value being the number of server functions to warm.
+- Grant `lambda:InvokeFunction` permission to allow the warmer to invoke the server function.
+
+Also, create an EventBridge scheduled rule to invoke the warmer function every 5 minutes.
+
+Please note, warming is currently only supported when the server function is deployed to a single region (Lambda).
+
+**Prewarm**
+
+Each time you deploy, a new version of the Lambda function will be generated. All warmed server function instances will be turned off. And there won't be any warm instances until the warmer function runs again at the next 5-minute interval.
+
+To ensure the functions are prewarmed on deploy, create a [CloudFormation Custom Resource](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-custom-resources.html) to invoke the warmer function on deployment. The custom resource should be configured as follows:
+
+- Invoke the warmer function on resource `Create` and `Update`.
+- Include a timestamp value in the resource property to ensure the custom resource runs on every deployment.
+- Grant `lambda:InvokeFunction` permission to allow the custom resource to invoke the warmer function.
+
+**Cost**
+
+There are three components to the cost:
+
+1. EventBridge scheduler: $0.00864
+   ```
+   Requests cost — 8,640 invocations per month x $1/million = $0.00864
+   ```
+1. Warmer function: $0.145728288
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
+   ```
+1. Server function: $0.0161280288 per warmed instance
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
+   ```
+
+For example, keeping 50 instances of the server function warm will cost approximately **$0.96 per month**
+
+```
+$0.00864 + $0.145728288 + $0.0161280288 x 50 = $0.960769728
+```
+
+This cost estimate is based on the `us-east-1` region pricing and does not consider any free tier benefits.
+
 ## Limitations and workarounds
 
 #### WORKAROUND: `public/` static files served by the server function (AWS specific)
@@ -246,6 +299,57 @@ function handler(event) {
 ```
 
 The server function would then sets the `host` header of the request to the value of the `x-forwarded-host` header when sending the request to the `NextServer`.
+
+#### WORKAROUND: Set `NextRequest` geolocation data
+
+When your application is hosted on Vercel, you can access a user's geolocation inside your middleware through the `NextRequest` object.
+
+```ts
+export function middleware(request: NextRequest) {
+  request.geo.country;
+  request.geo.city;
+}
+```
+
+When your application is hosted on AWS, you can [obtain the geolocation data from CloudFront request headers](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/adding-cloudfront-headers.html#cloudfront-headers-viewer-location). However, there is no way to set this data on the `NextRequest` object passed to the middleware function.
+
+To work around the issue, the `NextRequest` constructor is modified to initialize geolocation data from CloudFront headers, instead of using the default empty object.
+
+```diff
+- geo: init.geo || {}
++ geo: init.geo || {
++   country: this.headers("cloudfront-viewer-country"),
++   countryName: this.headers("cloudfront-viewer-country-name"),
++   region: this.headers("cloudfront-viewer-country-region"),
++   regionName: this.headers("cloudfront-viewer-country-region-name"),
++   city: this.headers("cloudfront-viewer-city"),
++   postalCode: this.headers("cloudfront-viewer-postal-code"),
++   timeZone: this.headers("cloudfront-viewer-time-zone"),
++   latitude: this.headers("cloudfront-viewer-latitude"),
++   longitude: this.headers("cloudfront-viewer-longitude"),
++   metroCode: this.headers("cloudfront-viewer-metro-code"),
++ }
+```
+
+CloudFront provides more detailed geolocation information, such as postal code and timezone. Here is a complete list of `geo` properties available in your middleware:
+
+```ts
+export function middleware(request: NextRequest) {
+  // Supported by Next.js
+  request.geo.country;
+  request.geo.region;
+  request.geo.city;
+  request.geo.latitude;
+  request.geo.longitude;
+
+  // Also supported by OpenNext
+  request.geo.countryName;
+  request.geo.regionName;
+  request.geo.postalCode;
+  request.geo.timeZone;
+  request.geo.metroCode;
+}
+```
 
 #### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
 
@@ -306,6 +410,16 @@ In this case, `path.join(process.cwd(), "posts", "my-post.md")` cannot be resolv
 
 To work around the issue, we change the working directory for the server function to where `.next/` is located, ie. `packages/web`.
 
+#### WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
+
+For Next.js 13.2 and later versions, you need to explicitly set the `__NEXT_PRIVATE_PREBUNDLED_REACT` environment variable. Although this environment variable isn't documented at the time of writing, you can refer to the Next.js source code to understand its usage:
+
+> In standalone mode, we don't have separated render workers so if both app and pages are used, we need to resolve to the prebundled React to ensure the correctness of the version for app.
+
+> Require these modules with static paths to make sure they are tracked by NFT when building the app in standalone mode, as we are now conditionally aliasing them it's tricky to track them in build time.
+
+On every request, we try to detect whether the route is using the Pages Router or the App Router. If the Pages Router is being used, we set `__NEXT_PRIVATE_PREBUNDLED_REACT` to `undefined`, which means the React version from the `node_modules` is used. However, if the App Router is used, `__NEXT_PRIVATE_PREBUNDLED_REACT` is set, and the prebundled React version is used.
+
 ## Example
 
 In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).
@@ -328,9 +442,23 @@ Enabling this option can significantly help to reduce the cold start time of the
 
 ## Debugging
 
-To find the **server and image optimization log**, go to the AWS CloudWatch console in the **region you deployed to**.
+#### Function logs
+
+To find the **server, image optimization, and warmer log**, go to the AWS CloudWatch console in the **region you deployed to**.
 
 If the server function is **deployed to Lambda@Edge**, the logs will appear in the **region you are physically close to**. For example, if you deployed your app to `us-east-1` and you are visiting the app from in London, the logs are likely to be in `eu-west-2`.
+
+#### Warmer function logs
+
+The logs from the warmer function provide insights into the results of the warming process.
+
+```
+{ event: 'warmer result', sent: 2, success: 2, uniqueServersWarmed: 2 }
+```
+
+- `sent` — The number of times the warmer invoked the server function using the Lambda SDK. This value should correspond to the `CONCURRENCY` set in the warmer function.
+- `success` — The number of SDK calls that returned a 200 status code, indicating successful invocations.
+- `uniqueServersWarmed` — This helps track any instances that responded unusually quickly and served multiple warming requests. As all SDK calls are made concurrently using `await Promise.all()`, this metric is useful for monitoring the number of unique warmed instances.
 
 #### Debug mode
 
