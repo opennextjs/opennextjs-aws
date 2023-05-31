@@ -3,22 +3,27 @@ import url from "node:url";
 import path from "node:path";
 import cp from "node:child_process";
 import { minifyAll } from "./minimize-js.js";
-import { buildSync, BuildOptions } from "esbuild";
-import { exit } from "node:process";
+import { buildSync, BuildOptions as ESBuildOptions } from "esbuild";
 import { createRequire as topLevelCreateRequire } from "node:module";
+
+interface BuildOptions {
+  minify?: boolean;
+  debug?: boolean;
+  appPath?: string;
+}
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-const appPath = process.cwd();
-const appPublicPath = path.join(appPath, "public");
-const outputDir = ".open-next";
-const tempDir = path.join(outputDir, ".build");
+let options: ReturnType<typeof normalizeOptions>;
 
 export type PublicFiles = {
   files: string[];
 };
 
-export async function build() {
+export async function build(opts: BuildOptions = {}) {
+  // Initialize options
+  options = normalizeOptions(opts);
+
   // Pre-build validation
   printNextjsVersion();
   printOpenNextVersion();
@@ -37,12 +42,26 @@ export async function build() {
   createServerBundle(monorepoRoot);
   createImageOptimizationBundle();
   createWarmerBundle();
-  if (process.env.OPEN_NEXT_MINIFY) {
+  if (options.minify) {
     await minifyServerBundle();
   }
 }
 
+function normalizeOptions(opts: BuildOptions) {
+  const appPath = opts.appPath ?? process.cwd();
+  const outputDir = ".open-next";
+  return {
+    appPath,
+    appPublicPath: path.join(appPath, "public"),
+    outputDir,
+    tempDir: path.join(outputDir, ".build"),
+    minify: opts.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
+    debug: opts.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+  };
+}
+
 function checkRunningInsideNextjsApp() {
+  const { appPath } = options;
   const extension = ["js", "cjs", "mjs"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`))
   );
@@ -55,6 +74,7 @@ function checkRunningInsideNextjsApp() {
 }
 
 function findMonorepoRoot() {
+  const { appPath } = options;
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [
@@ -86,6 +106,7 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+  const { appPath } = options;
   const result = cp.spawnSync(
     packager,
     packager === "npm" ? ["run", "build"] : ["build"],
@@ -114,6 +135,7 @@ function printHeader(header: string) {
 }
 
 function printNextjsVersion() {
+  const { appPath } = options;
   cp.spawnSync(
     "node",
     [
@@ -167,11 +189,13 @@ function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
 }
 
 function initOutputDir() {
+  const { outputDir, tempDir } = options;
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
 function listPublicFiles() {
+  const { appPublicPath } = options;
   const result: PublicFiles = { files: [] };
 
   if (!fs.existsSync(appPublicPath)) {
@@ -196,6 +220,8 @@ function listPublicFiles() {
 
 function createServerBundle(monorepoRoot: string) {
   console.info(`Bundling server function...`);
+
+  const { appPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-function");
@@ -267,6 +293,8 @@ function createServerBundle(monorepoRoot: string) {
 function createWarmerBundle() {
   console.info(`Bundling warmer function...`);
 
+  const { outputDir } = options;
+
   // Create output folder
   const outputPath = path.join(outputDir, "warmer-function");
   fs.mkdirSync(outputPath, { recursive: true });
@@ -292,6 +320,7 @@ function createWarmerBundle() {
 
 async function minifyServerBundle() {
   console.info(`Minimizing server function...`);
+  const { outputDir } = options;
   await minifyAll(path.join(outputDir, "server-function"), {
     compress_json: true,
     mangle: true,
@@ -300,6 +329,8 @@ async function minifyServerBundle() {
 
 function createImageOptimizationBundle() {
   console.info(`Bundling image optimization function...`);
+
+  const { appPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
@@ -354,6 +385,8 @@ function createImageOptimizationBundle() {
 function createAssets() {
   console.info(`Bundling assets...`);
 
+  const { appPath, appPublicPath, outputDir } = options;
+
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
   fs.mkdirSync(outputPath, { recursive: true });
@@ -377,18 +410,19 @@ function createAssets() {
   }
 }
 
-function esbuildSync(options: BuildOptions) {
+function esbuildSync(esbuildOptions: ESBuildOptions) {
+  const { debug } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: process.env.OPEN_NEXT_DEBUG ? false : true,
-    sourcemap: process.env.OPEN_NEXT_DEBUG ? "inline" : false,
-    ...options,
+    minify: debug ? false : true,
+    sourcemap: debug ? "inline" : false,
+    ...esbuildOptions,
     // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
-      ...options.define,
+      ...esbuildOptions.define,
       "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
         ? "true"
         : "false",
@@ -398,7 +432,9 @@ function esbuildSync(options: BuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(options.entryPoints as string[])[0]}.`
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
+      }.`
     );
   }
 }
