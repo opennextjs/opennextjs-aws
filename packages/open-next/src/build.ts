@@ -4,7 +4,10 @@ import path from "node:path";
 import cp from "node:child_process";
 import { minifyAll } from "./minimize-js.js";
 import { buildSync, BuildOptions } from "esbuild";
+import { exit } from "node:process";
+import { createRequire as topLevelCreateRequire } from "node:module";
 
+const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 const appPath = process.cwd();
 const appPublicPath = path.join(appPath, "public");
@@ -17,7 +20,8 @@ export type PublicFiles = {
 
 export async function build() {
   // Pre-build validation
-  printVersion();
+  printNextjsVersion();
+  printOpenNextVersion();
   checkRunningInsideNextjsApp();
   const { root: monorepoRoot, packager } = findMonorepoRoot();
 
@@ -109,10 +113,24 @@ function printHeader(header: string) {
   );
 }
 
-function printVersion() {
-  const pathToPackageJson = path.join(__dirname, "../package.json");
-  const pkg = JSON.parse(fs.readFileSync(pathToPackageJson, "utf-8"));
-  console.info(`Using v${pkg.version}`);
+function printNextjsVersion() {
+  cp.spawnSync(
+    "node",
+    [
+      "-e",
+      `"console.info('Next.js v' + require('next/package.json').version)"`,
+    ],
+    {
+      stdio: "inherit",
+      cwd: appPath,
+      shell: true,
+    }
+  );
+}
+
+function printOpenNextVersion() {
+  const onVersion = require(path.join(__dirname, "../package.json")).version;
+  console.info(`OpenNext v${onVersion}`);
 }
 
 function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
