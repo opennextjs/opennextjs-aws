@@ -411,13 +411,14 @@ function createAssets() {
 }
 
 function esbuildSync(esbuildOptions: ESBuildOptions) {
+  const { debug } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: options.debug ? false : true,
-    sourcemap: options.debug ? "inline" : false,
+    minify: debug ? false : true,
+    sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
     // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
