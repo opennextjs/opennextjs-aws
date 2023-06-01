@@ -10,6 +10,7 @@ interface BuildOptions {
   minify?: boolean;
   debug?: boolean;
   appPath?: string;
+  buildCommand?: string;
 }
 
 const require = topLevelCreateRequire(import.meta.url);
@@ -57,6 +58,7 @@ function normalizeOptions(opts: BuildOptions) {
     tempDir: path.join(outputDir, ".build"),
     minify: opts.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
     debug: opts.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+    buildCommand: opts.buildCommand,
   };
 }
 
@@ -107,18 +109,13 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
   const { appPath } = options;
-  const result = cp.spawnSync(
-    packager,
-    packager === "npm" ? ["run", "build"] : ["build"],
-    {
-      stdio: "inherit",
-      cwd: appPath,
-      shell: true,
-    }
-  );
-  if (result.status && result.status !== 0) {
-    process.exit(1);
-  }
+  const command =
+    options.buildCommand ??
+    (packager === "npm" ? "npm run build" : `${packager} build`);
+  cp.execSync(command, {
+    stdio: "inherit",
+    cwd: appPath,
+  });
 }
 
 function printHeader(header: string) {
