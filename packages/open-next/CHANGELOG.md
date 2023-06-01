@@ -1,5 +1,17 @@
 # open-next
 
+## 1.4.0
+
+### Minor Changes
+
+- 2df80cc: Support invoking OpenNext programmatically
+
+### Patch Changes
+
+- 194b389: Print Next.js version in build log
+- ef30f3c: Allow custom build command
+- 34b5298: Export dist folder
+
 ## 1.3.8
 
 ### Patch Changes
