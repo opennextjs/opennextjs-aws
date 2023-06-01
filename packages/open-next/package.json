@@ -12,8 +12,6 @@
   "description": "Open source Next.js serverless adapter",
   "homepage": "https://open-next.js.org",
   "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w"
