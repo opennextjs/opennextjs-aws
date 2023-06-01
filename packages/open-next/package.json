@@ -18,6 +18,16 @@
     "build": "tsc",
     "dev": "tsc -w"
   },
+  "exports": {
+    "./*": "./dist/*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/*"
+      ]
+    }
+  },
   "keywords": [],
   "author": "",
   "files": [

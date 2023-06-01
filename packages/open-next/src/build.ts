@@ -43,9 +43,9 @@ export async function build(opts: BuildOptions = {}) {
   options = normalizeOptions(opts);
 
   // Pre-build validation
+  checkRunningInsideNextjsApp();
   printNextjsVersion();
   printOpenNextVersion();
-  checkRunningInsideNextjsApp();
   const { root: monorepoRoot, packager } = findMonorepoRoot();
 
   // Build Next.js app
