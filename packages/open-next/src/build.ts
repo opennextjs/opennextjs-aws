@@ -7,9 +7,26 @@ import { buildSync, BuildOptions as ESBuildOptions } from "esbuild";
 import { createRequire as topLevelCreateRequire } from "node:module";
 
 interface BuildOptions {
+  /**
+   * Minify the server bundle.
+   * @default false
+   */
   minify?: boolean;
+  /**
+   * Print debug information.
+   * @default false
+   */
   debug?: boolean;
-  appPath?: string;
+  /**
+   * The command to build the Next.js app.
+   * @default `npm run build`, `yarn build`, or `pnpm build` based on the lock file found in the app's directory or any of its parent directories.
+   * @example
+   * ```ts
+   * build({
+   *   buildCommand: "pnpm custom:build",
+   * });
+   * ```
+   */
   buildCommand?: string;
 }
 
@@ -49,7 +66,7 @@ export async function build(opts: BuildOptions = {}) {
 }
 
 function normalizeOptions(opts: BuildOptions) {
-  const appPath = opts.appPath ?? process.cwd();
+  const appPath = process.cwd();
   const outputDir = ".open-next";
   return {
     appPath,

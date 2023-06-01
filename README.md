@@ -44,7 +44,7 @@ When calling `open-next build`, OpenNext **runs `next build`** to build the Next
 
 #### Building the Next.js app
 
-OpenNext runs the `build` script in your `package.json` file. Depending on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run.
+OpenNext runs the `build` script in your `package.json` file. Depending on the lock file found in the app, the corresponding packager manager will be used. Either `npm run build`, `yarn build`, or `pnpm build` will be run. For more on customizing the build command, see [overriding the build command](#custom-build-command).
 
 #### Transforming the build output
 
@@ -430,15 +430,72 @@ Vercel link: https://open-next.vercel.app
 
 ## Advanced usage
 
-#### OPEN_NEXT_MINIFY
+#### Custom build command
 
-Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app. To enable it, simply run:
+OpenNext runs the `build` script in your `package.json` by default. However, you can specify a custom build command if required.
 
 ```bash
-OPEN_NEXT_MINIFY=true open-next build
+# CLI
+open-next build --build-command "pnpm custom:build"
 ```
 
-Enabling this option can significantly help to reduce the cold start time of the server function. However, it's an **experimental feature**, and you need to opt-in to use it. Once this option is thoroughly tested and found to be stable, it will be enabled by default.
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  buildCommand: "pnpm custom:build",
+});
+```
+
+#### Minify server function
+
+Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app.
+
+```bash
+# CLI
+open-next build --minify
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  minify: true,
+});
+```
+
+This feature is currently **experimental** and needs to be opted into. It can significantly decrease the server function's cold start time. Once it is thoroughly tested and its stability is confirmed, it will be enabled by default.
+
+#### Debug mode
+
+OpenNext can be executed in debug mode for bug tracking purposes.
+
+```bash
+# CLI
+OPEN_NEXT_DEBUG=true npx open-next@latest build
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  debug: true,
+});
+```
+
+This does a few things:
+
+1. Lambda handler functions in the build output will not be minified.
+1. Lambda handler functions in the build output has sourcemap enabled inline.
+1. Lambda handler functions will automatically `console.log` the request event object along with other debugging information.
+
+It is recommended to **turn off debug mode when building for production** because:
+
+1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
+1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increased AWS costs.
 
 ## Debugging
 
@@ -459,25 +516,6 @@ The logs from the warmer function provide insights into the results of the warmi
 - `sent` — The number of times the warmer invoked the server function using the Lambda SDK. This value should correspond to the `CONCURRENCY` set in the warmer function.
 - `success` — The number of SDK calls that returned a 200 status code, indicating successful invocations.
 - `uniqueServersWarmed` — This helps track any instances that responded unusually quickly and served multiple warming requests. As all SDK calls are made concurrently using `await Promise.all()`, this metric is useful for monitoring the number of unique warmed instances.
-
-#### Debug mode
-
-You can run OpenNext in debug mode by setting the `OPEN_NEXT_DEBUG` environment variable:
-
-```bash
-OPEN_NEXT_DEBUG=true npx open-next@latest build
-```
-
-This does a few things:
-
-1. Lambda handler functions in the build output will not be minified.
-1. Lambda handler functions in the build output has sourcemap enabled inline.
-1. Lambda handler functions will automatically `console.log` the request event object along with other debugging information.
-
-It is recommended to **turn off debug mode when building for production** because:
-
-1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
-1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increased AWS costs.
 
 #### Opening an issue
 

@@ -10,6 +10,7 @@ if (Object.keys(args).includes("--help")) printHelp();
 
 build({
   buildCommand: args["--build-command"],
+  minify: Object.keys(args).includes("--minify"),
 });
 
 function parseArgs() {
