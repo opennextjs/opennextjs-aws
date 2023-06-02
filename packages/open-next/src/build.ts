@@ -265,6 +265,7 @@ function createServerBundle(monorepoRoot: string) {
     (file) =>
       file.endsWith(".html") ||
       file.endsWith(".rsc") ||
+      file.endsWith(".meta") ||
       (file.endsWith(".json") && file !== "404.html" && file !== "500.html")
   );
 
