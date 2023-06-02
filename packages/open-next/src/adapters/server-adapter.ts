@@ -140,12 +140,26 @@ export async function handler(
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 
+  //WORKAROUND: `NextServer` does not set the correct cache response headers for stale-while-revalidate.
+  // Cloudfront expect the stale-while-revalidate value to be in seconds, but nextjs sets no value at all
+  // This causes cloudfront to not cache the stale data
+  // We fix this by setting the stale-while-revalidate value to 30 days
+  if ((headers["cache-control"] as string).includes("stale-while-revalidate")) {
+    headers!["cache-control"] = (headers["cache-control"] as string).replace(
+      "stale-while-revalidate",
+      "stale-while-revalidate=2592000" // 30 days
+    );
+  }
+
   // WORKAROUND: `NextServer` does not revalidate correctly
   // x-nextjs-cache should be allowed in cloudfront headers
   const nextJsCacheHeader = headers?.["x-nextjs-cache"];
-  if (nextJsCacheHeader === "STALE" || nextJsCacheHeader === "MISS") {
-    headers!["cache-control"] =
-      "public, max-age=0, s-maxage=0, must-revalidate";
+  if (nextJsCacheHeader === "STALE") {
+    // If the cache is stale, we revalidate in the background
+    // In order for cloudfront swr to work, we set the stale-while-revalidate value to 2 seconds
+    // This will cause cloudfront to cache the stale data for a short period of time while we revalidate in the background
+    // Once the revalidation is complete, cloudfront will serve the fresh data
+    headers!["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
     const etag = headers?.etag;
     await revalidateInBackground(internalEvent.rawPath, etag);
   }
