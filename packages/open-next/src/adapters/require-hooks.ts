@@ -3,6 +3,7 @@
 // Individually compiled modules are as defined for the compilation in bundles/webpack/packages/*.
 
 import type { NextConfig } from "./next-types.js";
+import { error } from "./logger.js";
 
 // This module will only be loaded once per process.
 
@@ -16,7 +17,7 @@ export function overrideHooks(config: NextConfig) {
     overrideDefault();
     overrideReact(config);
   } catch (e) {
-    console.error("Failed to override Next.js require hooks.", e);
+    error("Failed to override Next.js require hooks.", e);
     throw e;
   }
 }

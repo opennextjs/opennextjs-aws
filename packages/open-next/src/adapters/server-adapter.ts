@@ -1,31 +1,36 @@
 import path from "node:path";
-import { IncomingMessage } from "./request.js";
-import { ServerResponse } from "./response.js";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
 } from "aws-lambda";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { IncomingMessage } from "./request.js";
+import { ServerResponse } from "./response.js";
 import {
+  generateUniqueId,
   loadAppPathsManifestKeys,
   loadConfig,
   loadHtmlPages,
   loadPublicAssets,
   loadRoutesManifest,
   setNodeEnv,
-  loadPrerenderManifest,
-  revalidateInBackground,
-  generateUniqueId,
 } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
-import { debug } from "./logger.js";
+import { debug, error } from "./logger.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
 import {
   overrideHooks as overrideNextjsRequireHooks,
   applyOverride as applyNextjsRequireHooksOverride,
 } from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
-import fs from "node:fs";
+
+// Expected environment variables
+const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
+
+const sqsClient = new SQSClient({
+  region: REVALIDATION_QUEUE_REGION,
+});
 
 const NEXT_DIR = path.join(__dirname, ".next");
 const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
@@ -38,7 +43,6 @@ const htmlPages = loadHtmlPages(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
-const prerenderManifest = loadPrerenderManifest(NEXT_DIR);
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
 
@@ -53,23 +57,7 @@ overrideNextjsRequireHooks(config);
 import NextServer from "next/dist/server/next-server.js";
 applyNextjsRequireHooksOverride();
 
-const requestHandler = new NextServer.default({
-  hostname: "localhost",
-  port: Number(process.env.PORT) || 3000,
-  // Next.js compression should be disabled because of a bug in the bundled
-  // `compression` package — https://github.com/vercel/next.js/issues/11669
-  conf: {
-    ...config,
-    compress: false,
-    experimental: {
-      ...config.experimental,
-      incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.js`,
-    },
-  },
-  customServer: false,
-  dev: false,
-  dir: __dirname,
-}).getRequestHandler();
+const requestHandler = createRequestHandler();
 
 /////////////
 // Handler //
@@ -119,7 +107,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(internalEvent.rawPath, config);
+  setNextjsPrebundledReact(internalEvent.rawPath);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -134,35 +122,13 @@ export async function handler(
   const body = ServerResponse.body(res).toString(encoding);
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
-  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
-  if (htmlPages.includes(internalEvent.rawPath) && headers["cache-control"]) {
-    headers["cache-control"] =
-      "public, max-age=0, s-maxage=31536000, must-revalidate";
-  }
-
-  //WORKAROUND: `NextServer` does not set the correct cache response headers for stale-while-revalidate.
-  // Cloudfront expect the stale-while-revalidate value to be in seconds, but nextjs sets no value at all
-  // This causes cloudfront to not cache the stale data
-  // We fix this by setting the stale-while-revalidate value to 30 days
-  if ((headers["cache-control"] as string).includes("stale-while-revalidate")) {
-    headers!["cache-control"] = (headers["cache-control"] as string).replace(
-      "stale-while-revalidate",
-      "stale-while-revalidate=2592000" // 30 days
-    );
-  }
-
-  // WORKAROUND: `NextServer` does not revalidate correctly
-  // x-nextjs-cache should be allowed in cloudfront headers
-  const nextJsCacheHeader = headers?.["x-nextjs-cache"];
-  if (nextJsCacheHeader === "STALE") {
-    // If the cache is stale, we revalidate in the background
-    // In order for cloudfront swr to work, we set the stale-while-revalidate value to 2 seconds
-    // This will cause cloudfront to cache the stale data for a short period of time while we revalidate in the background
-    // Once the revalidation is complete, cloudfront will serve the fresh data
-    headers!["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
-    const etag = headers?.etag;
-    await revalidateInBackground(internalEvent.rawPath, etag);
-  }
+  fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
+  fixSWRCacheHeader(headers);
+  await revalidateIfRequired(
+    internalEvent.headers.host,
+    internalEvent.rawPath,
+    headers
+  );
 
   return convertTo({
     type: internalEvent.type,
@@ -182,7 +148,7 @@ function setNextjsServerWorkingDirectory() {
   process.chdir(__dirname);
 }
 
-function setNextjsPrebundledReact(rawPath: string, config: any) {
+function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
   // Get route pattern
@@ -206,6 +172,28 @@ function setNextjsPrebundledReact(rawPath: string, config: any) {
   process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
 }
 
+function createRequestHandler() {
+  return new NextServer.default({
+    hostname: "localhost",
+    port: 3000,
+    conf: {
+      ...config,
+      // Next.js compression should be disabled because of a bug in the bundled
+      // `compression` package — https://github.com/vercel/next.js/issues/11669
+      compress: false,
+      // By default, Next.js uses local disk to store ISR cache. We will use
+      // our own cache handler to store the cache on S3.
+      experimental: {
+        ...config.experimental,
+        incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.js`,
+      },
+    },
+    customServer: false,
+    dev: false,
+    dir: __dirname,
+  }).getRequestHandler();
+}
+
 async function processRequest(req: IncomingMessage, res: ServerResponse) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
@@ -215,7 +203,7 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
   try {
     await requestHandler(req, res);
   } catch (e: any) {
-    console.error("NextJS request failed.", e);
+    error("NextJS request failed.", e);
 
     res.setHeader("Content-Type", "application/json");
     res.end(
@@ -228,6 +216,65 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
         2
       )
     );
+  }
+}
+
+function fixCacheHeaderForHtmlPages(
+  rawPath: string,
+  headers: Record<string, string | undefined>
+) {
+  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
+  if (htmlPages.includes(rawPath) && headers["cache-control"]) {
+    headers["cache-control"] =
+      "public, max-age=0, s-maxage=31536000, must-revalidate";
+  }
+}
+
+function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
+  //WORKAROUND: `NextServer` does not set the correct cache response headers for stale-while-revalidate.
+  // Cloudfront expect the stale-while-revalidate value to be in seconds, but nextjs sets no value at all
+  // This causes cloudfront to not cache the stale data
+  // We fix this by setting the stale-while-revalidate value to 30 days
+  if (headers["cache-control"]?.includes("stale-while-revalidate")) {
+    headers["cache-control"] = headers["cache-control"].replace(
+      "stale-while-revalidate",
+      "stale-while-revalidate=2592000" // 30 days
+    );
+  }
+}
+
+async function revalidateIfRequired(
+  host: string,
+  rawPath: string,
+  headers: Record<string, string | undefined>
+) {
+  // WORKAROUND: `NextServer` does not revalidate correctly
+  // x-nextjs-cache should be allowed in cloudfront headers
+  if (headers["x-nextjs-cache"] !== "STALE") return;
+
+  // If the cache is stale, we revalidate in the background
+  // In order for cloudfront swr to work, we set the stale-while-revalidate value to 2 seconds
+  // This will cause cloudfront to cache the stale data for a short period of time while we revalidate in the background
+  // Once the revalidation is complete, cloudfront will serve the fresh data
+  headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
+
+  // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
+  // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
+  // If you need to have a revalidation happen more frequently than 5 minutes,
+  // your page will need to have a different etag to bypass the deduplication window.
+  // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
+  try {
+    await sqsClient.send(
+      new SendMessageCommand({
+        QueueUrl: REVALIDATION_QUEUE_URL,
+        MessageDeduplicationId: `${rawPath}-${headers.etag}`,
+        MessageBody: JSON.stringify({ host, url: rawPath }),
+        MessageGroupId: "revalidate",
+      })
+    );
+  } catch (e) {
+    debug(`Failed to revalidate stale page ${rawPath}`);
+    debug(e);
   }
 }
 

@@ -2,12 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import type { NextConfig, RoutesManifest } from "./next-types.js";
 import type { PublicFiles } from "../build.js";
-import { request } from "node:https";
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-import { debug } from "./logger.js";
-
-const sqsClient = new SQSClient({ region: process.env.ORIGIN_REGION });
-const queueUrl = process.env.REVALIDATION_QUEUE_URL;
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -26,32 +20,6 @@ export function loadConfig(nextDir: string) {
 export function loadBuildId(nextDir: string) {
   const filePath = path.join(nextDir, "BUILD_ID");
   return fs.readFileSync(filePath, "utf-8").trim();
-}
-
-export interface PrerenderManifest {
-  version: number;
-  routes: {
-    dataRoute: string;
-    srcRoute: string | null;
-    initialRevalidateSeconds: number | boolean;
-  }[];
-  dynamicRoutes: {
-    routeRegex: string;
-    dataRoute: string;
-    fallback: string | null;
-    dataRouteRegex: string;
-  }[];
-  preview: {
-    previewModeId: string;
-    previewModeSigningKey: string;
-    previewModeEncryptionKey: string;
-  };
-}
-
-export function loadPrerenderManifest(nextDir: string) {
-  const filePath = path.join(nextDir, "prerender-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PrerenderManifest;
 }
 
 export function loadHtmlPages(nextDir: string) {
@@ -95,25 +63,4 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
-}
-
-// We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
-// https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
-// If you need to have a revalidation happen more frequently than 5 minutes,
-// your page will need to have a different etag to bypass the deduplication window.
-// If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
-export async function revalidateInBackground(path: string, etag?: string) {
-  try {
-    const command = new SendMessageCommand({
-      QueueUrl: queueUrl,
-      MessageDeduplicationId: `${path}-${etag}`,
-      MessageBody: JSON.stringify({ url: path }),
-      MessageGroupId: "revalidate",
-    });
-
-    await sqsClient.send(command);
-  } catch (e) {
-    debug(`Failed to revalidate stale page ${path}`);
-    debug(e);
-  }
 }
