@@ -53,8 +53,10 @@ The build output is then transformed into a format that can be deployed to AWS. 
 ```bash
 my-next-app/
   .open-next/
+    cache/                         -> ISR cache files to upload to an S3 Bucket
     assets/                        -> Static files to upload to an S3 Bucket
     server-function/               -> Handler code for server Lambda Function
+    revalidation-function/         -> Handler code for revalidation Lambda Function
     image-optimization-function/   -> Handler code for image optimization Lambda Function
     warmer-function/               -> Cron job code to keep server function warm
 ```
