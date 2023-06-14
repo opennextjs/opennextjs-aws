@@ -168,17 +168,21 @@ export default class S3Cache {
   async set(key: string, data?: IncrementalCacheValue): Promise<void> {
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
-      await this.putS3Object(key, "body", body);
-      await this.putS3Object(key, "meta", JSON.stringify({ status, headers }));
+      await Promise.all([
+        this.putS3Object(key, "body", body),
+        this.putS3Object(key, "meta", JSON.stringify({ status, headers })),
+      ]);
     } else if (data?.kind === "PAGE") {
       const { html, pageData } = data;
-      await this.putS3Object(key, "html", html);
       const isAppPath = typeof pageData === "string";
-      await this.putS3Object(
-        key,
-        isAppPath ? "rsc" : "json",
-        isAppPath ? pageData : JSON.stringify(pageData)
-      );
+      await Promise.all([
+        this.putS3Object(key, "html", html),
+        this.putS3Object(
+          key,
+          isAppPath ? "rsc" : "json",
+          isAppPath ? pageData : JSON.stringify(pageData)
+        ),
+      ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
     }
@@ -197,7 +201,7 @@ export default class S3Cache {
     return path.posix.join(CACHE_BUCKET_KEY_PREFIX ?? "", this.buildId, key);
   }
 
-  private async listS3Objects(key: string) {
+  private listS3Objects(key: string) {
     return this.client.send(
       new ListObjectsV2Command({
         Bucket: CACHE_BUCKET_NAME,
@@ -206,7 +210,7 @@ export default class S3Cache {
     );
   }
 
-  private async getS3Object(key: string, extension: Extension) {
+  private getS3Object(key: string, extension: Extension) {
     return this.client.send(
       new GetObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
@@ -215,7 +219,7 @@ export default class S3Cache {
     );
   }
 
-  private async putS3Object(
+  private putS3Object(
     key: string,
     extension: Extension,
     value: PutObjectCommandInput["Body"]

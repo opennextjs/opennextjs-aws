@@ -517,8 +517,7 @@ function removeCachedPages(outputPath: string, packagePath: string) {
 function addCacheHandler(outputPath: string) {
   esbuildSync({
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
-    external: ["@aws-sdk/client-sqs"],
-    outfile: path.join(outputPath, "cache.js"),
+    outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
     format: "cjs",
   });

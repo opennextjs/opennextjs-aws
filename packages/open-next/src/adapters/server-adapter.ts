@@ -185,7 +185,7 @@ function createRequestHandler() {
       // our own cache handler to store the cache on S3.
       experimental: {
         ...config.experimental,
-        incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.js`,
+        incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
       },
     },
     customServer: false,
