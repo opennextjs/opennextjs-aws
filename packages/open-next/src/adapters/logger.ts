@@ -4,6 +4,18 @@ export function debug(...args: any[]) {
   }
 }
 
+export function warn(...args: any[]) {
+  console.warn(...args);
+}
+
 export function error(...args: any[]) {
   console.error(...args);
 }
+
+export const awsLogger = {
+  trace: () => {},
+  debug: () => {},
+  info: debug,
+  warn,
+  error,
+};

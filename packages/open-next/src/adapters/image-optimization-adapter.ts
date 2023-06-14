@@ -20,12 +20,12 @@ import {
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
 import { loadConfig, setNodeEnv } from "./util.js";
-import { debug, error } from "./logger.js";
+import { debug, error, awsLogger } from "./logger.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
 
-const s3Client = new S3Client({});
+const s3Client = new S3Client({ logger: awsLogger });
 
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");

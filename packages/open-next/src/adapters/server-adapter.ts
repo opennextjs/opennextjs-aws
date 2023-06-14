@@ -17,7 +17,7 @@ import {
   setNodeEnv,
 } from "./util.js";
 import { isBinaryContentType } from "./binary.js";
-import { debug, error } from "./logger.js";
+import { debug, error, awsLogger } from "./logger.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
 import {
   overrideHooks as overrideNextjsRequireHooks,
@@ -30,6 +30,7 @@ const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
 
 const sqsClient = new SQSClient({
   region: REVALIDATION_QUEUE_REGION,
+  logger: awsLogger,
 });
 
 const NEXT_DIR = path.join(__dirname, ".next");

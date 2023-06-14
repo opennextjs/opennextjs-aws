@@ -6,7 +6,7 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import path from "node:path";
-import { error } from "./logger.js";
+import { error, awsLogger } from "./logger.js";
 import { loadBuildId } from "./util.js";
 
 interface CachedFetchValue {
@@ -85,7 +85,7 @@ export default class S3Cache {
   private buildId: string;
 
   constructor(_ctx: CacheHandlerContext) {
-    this.client = new S3Client({});
+    this.client = new S3Client({ logger: awsLogger });
     this.buildId = loadBuildId(
       path.dirname(_ctx.serverDistDir ?? ".next/server")
     );
