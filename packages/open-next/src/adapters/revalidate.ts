@@ -20,16 +20,19 @@ export const handler = async (event: SQSEvent) => {
     const { host, url } = JSON.parse(record.body);
     debug(`Revalidating stale page`, { host, url });
 
-    // We fire off a GET request to the page to revalidate it
-    // This will trigger the page to be re-rendered and cached in S3
-    // By firing a GET request to the page, we ensure that the cache is also updated in CloudFront
-    // We use the previewModeId to ensure the page is revalidated in a blocking way in lambda
-    // https://github.com/vercel/next.js/blob/1088b3f682cbe411be2d1edc502f8a090e36dee4/packages/next/src/server/api-utils/node.ts#L353
+    // Make a HEAD request to the page to revalidate it. This will trigger
+    // the page to be re-rendered and cached in S3
+    // - HEAD request is used b/c it's not necessary to make a GET request
+    //   and have CloudFront cache the request. This is because the request
+    //   does not have real life headers and the cache won't be used anyway.
+    // - "previewModeId" is used to ensure the page is revalidated in a
+    //   blocking way in lambda
+    //   https://github.com/vercel/next.js/blob/1088b3f682cbe411be2d1edc502f8a090e36dee4/packages/next/src/server/api-utils/node.ts#L353
     await new Promise<IncomingMessage>((resolve, reject) => {
       const req = https.request(
         `https://${host}${url}`,
         {
-          method: "GET",
+          method: "HEAD",
           headers: {
             "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
           },

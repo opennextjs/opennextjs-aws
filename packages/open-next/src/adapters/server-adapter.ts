@@ -224,7 +224,7 @@ function fixCacheHeaderForHtmlPages(
   rawPath: string,
   headers: Record<string, string | undefined>
 ) {
-  // WORKAROUND: `NextServer` does not set cache response headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-response-headers-for-html-pages
+  // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (htmlPages.includes(rawPath) && headers["cache-control"]) {
     headers["cache-control"] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
@@ -232,10 +232,7 @@ function fixCacheHeaderForHtmlPages(
 }
 
 function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
-  //WORKAROUND: `NextServer` does not set the correct cache response headers for stale-while-revalidate.
-  // Cloudfront expect the stale-while-revalidate value to be in seconds, but nextjs sets no value at all
-  // This causes cloudfront to not cache the stale data
-  // We fix this by setting the stale-while-revalidate value to 30 days
+  // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
   if (headers["cache-control"]?.includes("stale-while-revalidate")) {
     headers["cache-control"] = headers["cache-control"].replace(
       "stale-while-revalidate",
@@ -249,14 +246,12 @@ async function revalidateIfRequired(
   rawPath: string,
   headers: Record<string, string | undefined>
 ) {
-  // WORKAROUND: `NextServer` does not revalidate correctly
-  // x-nextjs-cache should be allowed in cloudfront headers
   if (headers["x-nextjs-cache"] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
-  // In order for cloudfront swr to work, we set the stale-while-revalidate value to 2 seconds
-  // This will cause cloudfront to cache the stale data for a short period of time while we revalidate in the background
-  // Once the revalidation is complete, cloudfront will serve the fresh data
+  // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
+  // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
+  // Once the revalidation is complete, CloudFront will serve the fresh data
   headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
 
   // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
