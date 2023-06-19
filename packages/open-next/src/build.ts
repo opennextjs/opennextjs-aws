@@ -324,9 +324,7 @@ function createCacheAssets(monorepoRoot: string) {
 
   const { appPath, outputDir } = options;
   const packagePath = path.relative(monorepoRoot, appPath);
-  const buildId = fs
-    .readFileSync(path.join(appPath, ".next/BUILD_ID"), "utf-8")
-    .trim();
+  const buildId = getBuildId(appPath);
 
   // Copy pages to cache folder
   const dotNextPath = path.join(appPath, ".next/standalone", packagePath);
@@ -528,7 +526,7 @@ function addCacheHandler(outputPath: string) {
 /********************/
 
 function esbuildSync(esbuildOptions: ESBuildOptions) {
-  const { debug } = options;
+  const { appPath, debug } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -596,4 +594,10 @@ function getHtmlPages(dotNextPath: string) {
       acc.add(page);
       return acc;
     }, new Set<string>());
+}
+
+function getBuildId(dotNextPath: string) {
+  return fs
+    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
+    .trim();
 }

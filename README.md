@@ -130,7 +130,10 @@ public,max-age=0,s-maxage=31536000,must-revalidate
 
 Create an S3 bucket and upload the content in the `.open-next/cache` folder to the root of the bucket. If you need to upload the files to a subfolder within the bucket, [refer to this section](#reusing-same-bucket-for-asset-and-cache).
 
-The cache includes `html` and `json` files, prerendered during the build process, which are used to seed the revalidation cache.
+There are two types of caches in the `.open-next/cache` folder:
+
+- Route cache: This cache includes `html` and `json` files that are prerendered during the build. They are used to seed the revalidation cache.
+- Fetch cache: This cache includes fetch call responses, which might contain sensitive information. Make sure these files are not publicly accessible.
 
 #### Image optimization function
 
@@ -151,6 +154,7 @@ Create a Lambda function using the code in the `.open-next/server-function` fold
 
 - Set the `CACHE_BUCKET_NAME` environment variable with the value being the name of the S3 bucket where the cache files are stored.
 - Set the `CACHE_BUCKET_KEY_PREFIX` environment variable if the cache files are uploaded to a subfolder in the S3 bucket. The value is the path to the folder. This is optional.
+- Set the `CACHE_BUCKET_REGION` environment variable with the value being the region of the S3 bucket.
 - Set the `REVALIDATION_QUEUE_URL` environment variable with the value being the URL of the revalidation queue.
 - Set the `REVALIDATION_QUEUE_REGION` environment variable with the value being the region of the revalidation queue.
 - Grant `s3:GetObject`, `s3:PutObject`, and `s3:ListObjects` permission.
@@ -269,10 +273,19 @@ When you manualy revalidates the Next.js cache for a specific page, the ISR cach
 ```ts
 // pages/api/revalidate.js
 export default async function handler(req, res) {
-  await res.revalidate("/path-to-revalidate");
-  await invalidateCloudFrontPaths(["/path-to-revalidate"]);
+  await res.revalidate("/foo");
+  await invalidateCloudFrontPaths(["/foo"]);
   // ...
 }
+```
+
+If the pages router is in use, you must also invalidate the `_next/data/BUILD_ID/foo.json` path. The value for `BUILD_ID` can be found in the `.next/BUILD_ID` build output and can be accessed at runtime via the `process.env.NEXT_BUILD_ID` environment variable.
+
+```ts
+await invalidateCloudFrontPaths([
+  "/foo",
+  `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`,
+]);
 ```
 
 And here is an example of the `invalidateCloudFrontPaths()` function:
@@ -373,11 +386,6 @@ $0.00864 + $0.145728288 + $0.0161280288 x 50 = $0.960769728
 This cost estimate is based on the `us-east-1` region pricing and does not consider any free tier benefits.
 
 ## Limitations and workarounds
-
-#### KNOWN ISSUE: Using both app and pages dir causing issue on 13.4
-
-There is a known issue in Next.js that affects projects that use both pages and app directories simultaneously. The problem seems to originate from some external dependencies that rely on react and fail to use the proper prebundled react version from Next.js.
-Until [this issue](https://github.com/vercel/next.js/issues/49355) is resolved, we recommend that you stick to version 13.3 if you need to use both directories in your project.
 
 #### WORKAROUND: `public/` static files served by the server function (AWS specific)
 

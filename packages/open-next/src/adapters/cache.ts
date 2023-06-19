@@ -78,14 +78,18 @@ interface CacheHandlerValue {
 type Extension = "json" | "html" | "rsc" | "body" | "meta" | "fetch";
 
 // Expected environment variables
-const { CACHE_BUCKET_NAME, CACHE_BUCKET_KEY_PREFIX } = process.env;
+const { CACHE_BUCKET_NAME, CACHE_BUCKET_KEY_PREFIX, CACHE_BUCKET_REGION } =
+  process.env;
 
 export default class S3Cache {
   private client: S3Client;
   private buildId: string;
 
   constructor(_ctx: CacheHandlerContext) {
-    this.client = new S3Client({ logger: awsLogger });
+    this.client = new S3Client({
+      region: CACHE_BUCKET_REGION,
+      logger: awsLogger,
+    });
     this.buildId = loadBuildId(
       path.dirname(_ctx.serverDistDir ?? ".next/server")
     );

@@ -10,6 +10,7 @@ import { ServerResponse } from "./response.js";
 import {
   generateUniqueId,
   loadAppPathsManifestKeys,
+  loadBuildId,
   loadConfig,
   loadHtmlPages,
   loadPublicAssets,
@@ -38,6 +39,7 @@ const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 setNodeEnv();
+setBuildIdEnv();
 setNextjsServerWorkingDirectory();
 const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages(NEXT_DIR);
@@ -147,6 +149,12 @@ export async function handler(
 function setNextjsServerWorkingDirectory() {
   // WORKAROUND: Set `NextServer` working directory (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-nextserver-working-directory-aws-specific
   process.chdir(__dirname);
+}
+
+function setBuildIdEnv() {
+  // This allows users to access the CloudFront invalidating path when doing on-demand
+  // invalidations. ie. `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`
+  process.env.NEXT_BUILD_ID = loadBuildId(NEXT_DIR);
 }
 
 function setNextjsPrebundledReact(rawPath: string) {
