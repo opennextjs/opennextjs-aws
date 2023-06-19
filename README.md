@@ -329,6 +329,8 @@ await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
 await invalidateCFPaths(["/page/*"]);
 ```
 
+Please note that on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation) (`revalidatePath` and `revalidateTag`) is not yet supported.
+
 ## How warming works
 
 Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remember, **Warming is optional** and is only required if you want to keep the server function warm.

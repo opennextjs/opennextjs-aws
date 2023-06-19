@@ -1,5 +1,5 @@
 ---
-"open-next": minor
+"open-next": major
 ---
 
 Improved ISR support
