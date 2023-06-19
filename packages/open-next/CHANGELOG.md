@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.0
+
+### Major Changes
+
+- 855cf92: Improved ISR support
+
 ## 1.4.0
 
 ### Minor Changes
