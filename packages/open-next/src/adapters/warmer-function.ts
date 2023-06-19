@@ -1,7 +1,7 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import type { Context } from "aws-lambda";
 import { generateUniqueId } from "./util.js";
-import { debug } from "./logger.js";
+import { debug, error } from "./logger.js";
 const lambda = new LambdaClient({});
 const FUNCTION_NAME = process.env.FUNCTION_NAME!;
 const CONCURRENCY = parseInt(process.env.CONCURRENCY!);
@@ -47,7 +47,7 @@ export async function handler(_event: any, context: Context) {
           })
         );
       } catch (e) {
-        console.error(`failed to warm up #${i}`, e);
+        error(`failed to warm up #${i}`, e);
         // ignore error
       }
     })
@@ -57,7 +57,7 @@ export async function handler(_event: any, context: Context) {
   const warmedServerIds: string[] = [];
   ret.forEach((r, i) => {
     if (r?.StatusCode !== 200 || !r?.Payload) {
-      console.error(`failed to warm up #${i}:`, r?.Payload?.toString());
+      error(`failed to warm up #${i}:`, r?.Payload?.toString());
       return;
     }
     const payload = JSON.parse(

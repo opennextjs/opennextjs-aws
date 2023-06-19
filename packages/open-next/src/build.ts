@@ -56,8 +56,10 @@ export async function build(opts: BuildOptions = {}) {
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
-  createAssets();
+  createStaticAssets();
+  createCacheAssets(monorepoRoot);
   createServerBundle(monorepoRoot);
+  createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
   if (options.minify) {
@@ -169,139 +171,10 @@ function printOpenNextVersion() {
   console.info(`OpenNext v${onVersion}`);
 }
 
-function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
-  const basePath = path.join(outputPath, packagePath, ".next", "server");
-  const rootMiddlewarePath = path.join(basePath, "middleware.js");
-  const srcMiddlewarePath = path.join(basePath, "src", "middleware.js");
-  if (fs.existsSync(rootMiddlewarePath)) {
-    inject(rootMiddlewarePath);
-  } else if (fs.existsSync(srcMiddlewarePath)) {
-    inject(srcMiddlewarePath);
-  }
-
-  function inject(middlewarePath: string) {
-    const content = fs.readFileSync(middlewarePath, "utf-8");
-    fs.writeFileSync(
-      middlewarePath,
-      content.replace(
-        "geo: init.geo || {}",
-        `geo: init.geo || {
-        country: this.headers.get("cloudfront-viewer-country"),
-        countryName: this.headers.get("cloudfront-viewer-country-name"),
-        region: this.headers.get("cloudfront-viewer-country-region"),
-        regionName: this.headers.get("cloudfront-viewer-country-region-name"),
-        city: this.headers.get("cloudfront-viewer-city"),
-        postalCode: this.headers.get("cloudfront-viewer-postal-code"),
-        timeZone: this.headers.get("cloudfront-viewer-time-zone"),
-        latitude: this.headers.get("cloudfront-viewer-latitude"),
-        longitude: this.headers.get("cloudfront-viewer-longitude"),
-        metroCode: this.headers.get("cloudfront-viewer-metro-code"),
-      }`
-      )
-    );
-  }
-}
-
 function initOutputDir() {
   const { outputDir, tempDir } = options;
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
-}
-
-function listPublicFiles() {
-  const { appPublicPath } = options;
-  const result: PublicFiles = { files: [] };
-
-  if (!fs.existsSync(appPublicPath)) {
-    return result;
-  }
-
-  function processDirectory(pathInPublic: string) {
-    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
-      withFileTypes: true,
-    });
-
-    for (const file of files) {
-      file.isDirectory()
-        ? processDirectory(path.join(pathInPublic, file.name))
-        : result.files.push(path.posix.join(pathInPublic, file.name));
-    }
-  }
-
-  processDirectory("/");
-  return result;
-}
-
-function createServerBundle(monorepoRoot: string) {
-  console.info(`Bundling server function...`);
-
-  const { appPath, outputDir } = options;
-
-  // Create output folder
-  const outputPath = path.join(outputDir, "server-function");
-  fs.mkdirSync(outputPath, { recursive: true });
-
-  // Copy over standalone output files
-  // note: if user uses pnpm as the package manager, node_modules contain
-  //       symlinks. We don't want to resolve the symlinks when copying.
-  fs.cpSync(path.join(appPath, ".next/standalone"), path.join(outputPath), {
-    recursive: true,
-    verbatimSymlinks: true,
-  });
-
-  // Resolve path to the Next.js app if inside the monorepo
-  // note: if user's app is inside a monorepo, standalone mode places
-  //       `node_modules` inside `.next/standalone`, and others inside
-  //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
-  //       We need to output the handler file inside the package path.
-  const isMonorepo = monorepoRoot !== appPath;
-  const packagePath = path.relative(monorepoRoot, appPath);
-
-  // Standalone output already has a Node server "server.js", remove it.
-  // It will be replaced with the Lambda handler.
-  fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
-
-  // Build Lambda code
-  // note: bundle in OpenNext package b/c the adapter relies on the
-  //       "serverless-http" package which is not a dependency in user's
-  //       Next.js app.
-  esbuildSync({
-    entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
-    external: ["next"],
-    outfile: path.join(outputPath, packagePath, "index.mjs"),
-    banner: {
-      js: [
-        "import { createRequire as topLevelCreateRequire } from 'module';",
-        "const require = topLevelCreateRequire(import.meta.url);",
-        "import bannerUrl from 'url';",
-        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-      ].join(""),
-    },
-  });
-  // note: in the monorepo case, the handler file is output to
-  //       `.next/standalone/package/path/index.mjs`, but we want
-  //       the Lambda function to be able to find the handler at
-  //       the root of the bundle. We will create a dummy `index.mjs`
-  //       that re-exports the real handler.
-  if (isMonorepo) {
-    // always use posix path for import path
-    const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
-    fs.writeFileSync(
-      path.join(outputPath, "index.mjs"),
-      [`export * from "./${packagePosixPath}/index.mjs";`].join("")
-    );
-  }
-
-  // Save a list of top level files in /public
-  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
-  fs.mkdirSync(outputOpenNextPath, { recursive: true });
-  fs.writeFileSync(
-    path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(listPublicFiles())
-  );
-
-  // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
-  injectMiddlewareGeolocation(outputPath, packagePath);
 }
 
 function createWarmerBundle() {
@@ -339,6 +212,28 @@ async function minifyServerBundle() {
     compress_json: true,
     mangle: true,
   });
+}
+
+function createRevalidationBundle() {
+  console.info(`Bundling revalidation function...`);
+
+  const { appPath, outputDir } = options;
+
+  // Create output folder
+  const outputPath = path.join(outputDir, "revalidation-function");
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  // Build Lambda code
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
+    outfile: path.join(outputPath, "index.mjs"),
+  });
+
+  // Copy over .next/prerender-manifest.json file
+  fs.copyFileSync(
+    path.join(appPath, ".next", "prerender-manifest.json"),
+    path.join(outputPath, "prerender-manifest.json")
+  );
 }
 
 function createImageOptimizationBundle() {
@@ -396,8 +291,8 @@ function createImageOptimizationBundle() {
   );
 }
 
-function createAssets() {
-  console.info(`Bundling assets...`);
+function createStaticAssets() {
+  console.info(`Bundling static assets...`);
 
   const { appPath, appPublicPath, outputDir } = options;
 
@@ -424,8 +319,214 @@ function createAssets() {
   }
 }
 
+function createCacheAssets(monorepoRoot: string) {
+  console.info(`Bundling cache assets...`);
+
+  const { appPath, outputDir } = options;
+  const packagePath = path.relative(monorepoRoot, appPath);
+  const buildId = getBuildId(appPath);
+
+  // Copy pages to cache folder
+  const dotNextPath = path.join(appPath, ".next/standalone", packagePath);
+  const outputPath = path.join(outputDir, "cache", buildId);
+  [".next/server/pages", ".next/server/app"]
+    .map((dir) => path.join(dotNextPath, dir))
+    .filter(fs.existsSync)
+    .forEach((dir) => fs.cpSync(dir, outputPath, { recursive: true }));
+
+  // Remove non-cache files
+  const htmlPages = getHtmlPages(dotNextPath);
+  removeFiles(
+    outputPath,
+    (file) =>
+      file.endsWith(".js") ||
+      file.endsWith(".js.nft.json") ||
+      (file.endsWith(".html") && htmlPages.has(file))
+  );
+
+  // Copy fetch-cache to cache folder
+  const fetchCachePath = path.join(appPath, ".next/cache/fetch-cache");
+  if (fs.existsSync(fetchCachePath)) {
+    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+    fs.mkdirSync(fetchOutputPath, { recursive: true });
+    fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+  }
+}
+
+/***************************/
+/* Server Helper Functions */
+/***************************/
+
+function createServerBundle(monorepoRoot: string) {
+  console.info(`Bundling server function...`);
+
+  const { appPath, outputDir } = options;
+
+  // Create output folder
+  const outputPath = path.join(outputDir, "server-function");
+  fs.mkdirSync(outputPath, { recursive: true });
+
+  // Resolve path to the Next.js app if inside the monorepo
+  // note: if user's app is inside a monorepo, standalone mode places
+  //       `node_modules` inside `.next/standalone`, and others inside
+  //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
+  //       We need to output the handler file inside the package path.
+  const isMonorepo = monorepoRoot !== appPath;
+  const packagePath = path.relative(monorepoRoot, appPath);
+
+  // Copy over standalone output files
+  // note: if user uses pnpm as the package manager, node_modules contain
+  //       symlinks. We don't want to resolve the symlinks when copying.
+  fs.cpSync(path.join(appPath, ".next/standalone"), outputPath, {
+    recursive: true,
+    verbatimSymlinks: true,
+  });
+
+  // Standalone output already has a Node server "server.js", remove it.
+  // It will be replaced with the Lambda handler.
+  fs.rmSync(path.join(outputPath, packagePath, "server.js"), { force: true });
+
+  // Build Lambda code
+  // note: bundle in OpenNext package b/c the adapter relies on the
+  //       "serverless-http" package which is not a dependency in user's
+  //       Next.js app.
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
+    external: ["next"],
+    outfile: path.join(outputPath, packagePath, "index.mjs"),
+    banner: {
+      js: [
+        "import { createRequire as topLevelCreateRequire } from 'module';",
+        "const require = topLevelCreateRequire(import.meta.url);",
+        "import bannerUrl from 'url';",
+        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+      ].join(""),
+    },
+  });
+
+  if (isMonorepo) {
+    addMonorepoEntrypoint(outputPath, packagePath);
+  }
+  addPublicFilesList(outputPath, packagePath);
+  injectMiddlewareGeolocation(outputPath, packagePath);
+  removeCachedPages(outputPath, packagePath);
+  addCacheHandler(outputPath);
+}
+
+function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
+  // Note: in the monorepo case, the handler file is output to
+  //       `.next/standalone/package/path/index.mjs`, but we want
+  //       the Lambda function to be able to find the handler at
+  //       the root of the bundle. We will create a dummy `index.mjs`
+  //       that re-exports the real handler.
+
+  // Always use posix path for import path
+  const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
+  fs.writeFileSync(
+    path.join(outputPath, "index.mjs"),
+    [`export * from "./${packagePosixPath}/index.mjs";`].join("")
+  );
+}
+
+function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
+  // WORKAROUND: Set `NextRequest` geolocation data — https://github.com/serverless-stack/open-next#workaround-set-nextrequest-geolocation-data
+
+  const basePath = path.join(outputPath, packagePath, ".next", "server");
+  const rootMiddlewarePath = path.join(basePath, "middleware.js");
+  const srcMiddlewarePath = path.join(basePath, "src", "middleware.js");
+  if (fs.existsSync(rootMiddlewarePath)) {
+    inject(rootMiddlewarePath);
+  } else if (fs.existsSync(srcMiddlewarePath)) {
+    inject(srcMiddlewarePath);
+  }
+
+  function inject(middlewarePath: string) {
+    const content = fs.readFileSync(middlewarePath, "utf-8");
+    fs.writeFileSync(
+      middlewarePath,
+      content.replace(
+        "geo: init.geo || {}",
+        `geo: init.geo || {
+        country: this.headers.get("cloudfront-viewer-country"),
+        countryName: this.headers.get("cloudfront-viewer-country-name"),
+        region: this.headers.get("cloudfront-viewer-country-region"),
+        regionName: this.headers.get("cloudfront-viewer-country-region-name"),
+        city: this.headers.get("cloudfront-viewer-city"),
+        postalCode: this.headers.get("cloudfront-viewer-postal-code"),
+        timeZone: this.headers.get("cloudfront-viewer-time-zone"),
+        latitude: this.headers.get("cloudfront-viewer-latitude"),
+        longitude: this.headers.get("cloudfront-viewer-longitude"),
+        metroCode: this.headers.get("cloudfront-viewer-metro-code"),
+      }`
+      )
+    );
+  }
+}
+
+function addPublicFilesList(outputPath: string, packagePath: string) {
+  // Get a list of all files in /public
+  const { appPublicPath } = options;
+  const acc: PublicFiles = { files: [] };
+
+  function processDirectory(pathInPublic: string) {
+    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
+      withFileTypes: true,
+    });
+
+    for (const file of files) {
+      file.isDirectory()
+        ? processDirectory(path.join(pathInPublic, file.name))
+        : acc.files.push(path.posix.join(pathInPublic, file.name));
+    }
+  }
+
+  if (fs.existsSync(appPublicPath)) {
+    processDirectory("/");
+  }
+
+  // Save the list
+  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
+  fs.mkdirSync(outputOpenNextPath, { recursive: true });
+  fs.writeFileSync(
+    path.join(outputOpenNextPath, "public-files.json"),
+    JSON.stringify(acc)
+  );
+}
+
+function removeCachedPages(outputPath: string, packagePath: string) {
+  // Pre-rendered pages will be served out from S3 by the cache handler
+  const dotNextPath = path.join(outputPath, packagePath);
+  const htmlPages = getHtmlPages(dotNextPath);
+  [".next/server/pages", ".next/server/app"]
+    .map((dir) => path.join(dotNextPath, dir))
+    .filter(fs.existsSync)
+    .forEach((dir) =>
+      removeFiles(
+        dir,
+        (file) =>
+          file.endsWith(".json") ||
+          file.endsWith(".rsc") ||
+          file.endsWith(".meta") ||
+          (file.endsWith(".html") && !htmlPages.has(file))
+      )
+    );
+}
+
+function addCacheHandler(outputPath: string) {
+  esbuildSync({
+    entryPoints: [path.join(__dirname, "adapters", "cache.js")],
+    outfile: path.join(outputPath, "cache.cjs"),
+    target: ["node18"],
+    format: "cjs",
+  });
+}
+
+/********************/
+/* Helper Functions */
+/********************/
+
 function esbuildSync(esbuildOptions: ESBuildOptions) {
-  const { debug } = options;
+  const { appPath, debug } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -451,4 +552,52 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
       }.`
     );
   }
+}
+
+function removeFiles(
+  root: string,
+  conditionFn: (file: string) => boolean,
+  searchingDir: string = ""
+) {
+  fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
+    const filePath = path.join(root, searchingDir, file);
+
+    if (fs.statSync(filePath).isDirectory()) {
+      removeFiles(root, conditionFn, path.join(searchingDir, file));
+      return;
+    }
+
+    if (conditionFn(path.join(searchingDir, file))) {
+      fs.rmSync(filePath, { force: true });
+    }
+  });
+}
+
+function getHtmlPages(dotNextPath: string) {
+  // Get a list of HTML pages
+  //
+  // sample return value:
+  // Set([
+  //   '404.html',
+  //   'csr.html',
+  //   'image-html-tag.html',
+  // ])
+  const manifestPath = path.join(
+    dotNextPath,
+    ".next/server/pages-manifest.json"
+  );
+  const manifest = fs.readFileSync(manifestPath, "utf-8");
+  return Object.entries(JSON.parse(manifest))
+    .filter(([_, value]) => (value as string).endsWith(".html"))
+    .map(([_, value]) => (value as string).replace(/^pages\//, ""))
+    .reduce((acc, page) => {
+      acc.add(page);
+      return acc;
+    }, new Set<string>());
+}
+
+function getBuildId(dotNextPath: string) {
+  return fs
+    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
+    .trim();
 }

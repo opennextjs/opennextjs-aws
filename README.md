@@ -31,12 +31,12 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] Dynamic routes
 - [x] Static site generation (SSG)
 - [x] Server-side rendering (SSR)
-- [x] Incremental static regeneration (ISR)
+- [x] [Incremental static regeneration (ISR)](#how-isr-works)
 - [x] Middleware
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] [Running at edge](#running-at-edge)
-- [x] [No cold start](#warmer-function)
+- [x] [No cold start](#how-warming-works)
 
 ## How does OpenNext work?
 
@@ -53,8 +53,10 @@ The build output is then transformed into a format that can be deployed to AWS. 
 ```bash
 my-next-app/
   .open-next/
+    cache/                         -> ISR cache files to upload to an S3 Bucket
     assets/                        -> Static files to upload to an S3 Bucket
     server-function/               -> Handler code for server Lambda Function
+    revalidation-function/         -> Handler code for revalidation Lambda Function
     image-optimization-function/   -> Handler code for image optimization Lambda Function
     warmer-function/               -> Cron job code to keep server function warm
 ```
@@ -102,9 +104,9 @@ This is the recommended setup.
 
 Here are the recommended configurations for each AWS resource.
 
-#### S3 bucket
+#### Asset files
 
-Create an S3 bucket and upload the content in the `.open-next/assets` folder to the root of the bucket. For example, the file `.open-next/assets/favicon.ico` should be uploaded to `/favicon.ico` at the root of the bucket.
+Create an S3 bucket and upload the content in the `.open-next/assets` folder to the root of the bucket. For example, the file `.open-next/assets/favicon.ico` should be uploaded to `/favicon.ico` at the root of the bucket. If you need to upload the files to a subfolder within the bucket, [refer to this section](#reusing-same-bucket-for-asset-and-cache).
 
 There are two types of files in the `.open-next/assets` folder:
 
@@ -124,12 +126,22 @@ Other files inside the `.open-next/assets` folder are copied from your app's `pu
 public,max-age=0,s-maxage=31536000,must-revalidate
 ```
 
+#### Cache files
+
+Create an S3 bucket and upload the content in the `.open-next/cache` folder to the root of the bucket. If you need to upload the files to a subfolder within the bucket, [refer to this section](#reusing-same-bucket-for-asset-and-cache).
+
+There are two types of caches in the `.open-next/cache` folder:
+
+- Route cache: This cache includes `html` and `json` files that are prerendered during the build. They are used to seed the revalidation cache.
+- Fetch cache: This cache includes fetch call responses, which might contain sensitive information. Make sure these files are not publicly accessible.
+
 #### Image optimization function
 
 Create a Lambda function using the code in the `.open-next/image-optimization-function` folder, with the handler `index.mjs`. Also, ensure that the function is configured as follows:
 
 - Set the architecture to `arm64`.
 - Set the `BUCKET_NAME` environment variable with the value being the name of the S3 bucket where the original images are stored.
+- Set the `BUCKET_KEY_PREFIX` environment variable if the asset files are uploaded to a subfolder in the S3 bucket. The value is the path to the folder. This is Optional.
 - Grant `s3:GetObject` permission.
 
 This function handles image optimization requests when the Next.js `<Image>` component is used. The [sharp](https://www.npmjs.com/package/sharp) library, which is bundled with the function, is used to convert the image. The library is compiled against the `arm64` architecture and is intended to run on AWS Lambda Arm/Graviton2 architecture. [Learn about the better cost-performance offered by AWS Graviton2 processors.](https://aws.amazon.com/blogs/aws/aws-lambda-functions-powered-by-aws-graviton2-processor-run-your-functions-on-arm-and-get-up-to-34-better-price-performance/)
@@ -138,7 +150,15 @@ Note that the image optimization function responds with the `Cache-Control` head
 
 #### Server Lambda function
 
-Create a Lambda function using the code in the `.open-next/server-function` folder, with the handler `index.mjs`.
+Create a Lambda function using the code in the `.open-next/server-function` folder, with the handler `index.mjs`. Also, ensure that the function is configured as follows:
+
+- Set the `CACHE_BUCKET_NAME` environment variable with the value being the name of the S3 bucket where the cache files are stored.
+- Set the `CACHE_BUCKET_KEY_PREFIX` environment variable if the cache files are uploaded to a subfolder in the S3 bucket. The value is the path to the folder. This is optional.
+- Set the `CACHE_BUCKET_REGION` environment variable with the value being the region of the S3 bucket.
+- Set the `REVALIDATION_QUEUE_URL` environment variable with the value being the URL of the revalidation queue.
+- Set the `REVALIDATION_QUEUE_REGION` environment variable with the value being the region of the revalidation queue.
+- Grant `s3:GetObject`, `s3:PutObject`, and `s3:ListObjects` permission.
+- Grant `sqs:SendMessage` permission.
 
 This function handles all other types of requests from the Next.js app, including Server-side Rendering (SSR) requests and API requests. OpenNext builds the Next.js app in **standalone** mode. The standalone mode generates a `.next` folder containing the **NextServer** class that handles requests and a `node_modules` folder with **all the dependencies** needed to run the `NextServer`. The structure looks like this:
 
@@ -213,11 +233,17 @@ To configure the CloudFront distribution:
 | `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
 | `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
 
+#### Revalidation function
+
+Create a Lambda function using the code in the `.open-next/revalidation-function` folder, with the handler `index.mjs`.
+
+Also, create an SQS FIFO queue, and set it as the event source for this function.
+
+This function polls the queue for revalidation messages. Upon receiving a message, the function sends a HEAD request to the specified route for its revalidation.
+
 #### Warmer function
 
-Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remember, **Warming is optional** and is only required if you want to keep the server function warm.
-
-To set this up, create a Lambda function using the code in the `.open-next/warmer-function` folder with `index.mjs` as the handler. Ensure the function is configured as follows:
+Create a Lambda function using the code in the `.open-next/warmer-function` folder, with the handler `index.mjs`. Ensure the function is configured as follows:
 
 - Set the `FUNCTION_NAME` environment variable with the value being the name of the server Lambda function.
 - Set the `CONCURRENCY` environment variable with the value being the number of server functions to warm.
@@ -225,9 +251,93 @@ To set this up, create a Lambda function using the code in the `.open-next/warme
 
 Also, create an EventBridge scheduled rule to invoke the warmer function every 5 minutes.
 
+Read more on [how warming works](#how-warming-works).
+
+## How ISR works
+
+In standalone mode, Next.js prebuilds the ISR cache during the build process. And at runtime, **NextServer** expects this cache locally on the server. This works effectively when the server is run on a single web server machine, sharing the cache across all requests. In a Lambda environment, the cache needs to be housed centrally in a location accessible by all server Lambda function instances. S3 serves as this central location.
+
+To facilitate this:
+
+- ISR cache files are excluded from the `server-function` bundle and instead are uploaded to the cache bucket.
+- The default cache handler is replaced with a custom cache handler by configuring the [`incrementalCacheHandlerPath`](https://nextjs.org/docs/app/api-reference/next-config-js/incrementalCacheHandlerPath) field in `next.config.js`.
+- The custom cache handler manages the cache files on S3, handling both reading and writing operations.
+- If the cache is stale, the `server-function` sends the stale response back to the user while sending a message to the revalidation queue to trigger background revalidation.
+- The `revalidation-function` polls the message from the queue and makes a `HEAD` request to the route with the `x-prerender-revalidate` header.
+- The `server-function` receives the `HEAD` request and revalidates the cache.
+
+#### On-demand revalidation
+
+When you manualy revalidates the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:
+
+```ts
+// pages/api/revalidate.js
+export default async function handler(req, res) {
+  await res.revalidate("/foo");
+  await invalidateCloudFrontPaths(["/foo"]);
+  // ...
+}
+```
+
+If the pages router is in use, you must also invalidate the `_next/data/BUILD_ID/foo.json` path. The value for `BUILD_ID` can be found in the `.next/BUILD_ID` build output and can be accessed at runtime via the `process.env.NEXT_BUILD_ID` environment variable.
+
+```ts
+await invalidateCloudFrontPaths([
+  "/foo",
+  `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`,
+]);
+```
+
+And here is an example of the `invalidateCloudFrontPaths()` function:
+
+```ts
+import {
+  CloudFrontClient,
+  CreateInvalidationCommand,
+} from "@aws-sdk/client-cloudfront";
+
+const cloudFront = new CloudFrontClient({});
+
+function invalidateCFPaths(paths: string[]) {
+  cloudFront.send(
+    new CreateInvalidationCommand({
+      // Set CloudFront distribution ID here
+      DistributionId: distributionId,
+      InvalidationBatch: {
+        CallerReference: `${Date.now()}`,
+        Paths: {
+          Quantity: paths.length,
+          Items: paths,
+        },
+      },
+    })
+  );
+}
+```
+
+Note that manual CloudFront path invalidation incurs costs. According to the [AWS CloudFront pricing page](https://aws.amazon.com/cloudfront/pricing/):
+
+> No additional charge for the first 1,000 paths requested for invalidation each month. Thereafter, $0.005 per path requested for invalidation.
+
+Due to these costs, if multiple paths require invalidation, it is more economical to invalidate a wildcard path `/*`. For example:
+
+```ts
+// This costs $0.005 x 3 = $0.015 after the first 1000 paths
+await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
+
+// This costs $0.005, but also invalidates other routes such as "page/d"
+await invalidateCFPaths(["/page/*"]);
+```
+
+Please note that on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation) (`revalidatePath` and `revalidateTag`) is not yet supported.
+
+## How warming works
+
+Server functions may experience performance issues due to Lambda cold starts. To mitigate this, the server function can be invoked periodically. Remember, **Warming is optional** and is only required if you want to keep the server function warm.
+
 Please note, warming is currently only supported when the server function is deployed to a single region (Lambda).
 
-**Prewarm**
+#### Prewarm
 
 Each time you deploy, a new version of the Lambda function will be generated. All warmed server function instances will be turned off. And there won't be any warm instances until the warmer function runs again at the next 5-minute interval.
 
@@ -237,29 +347,42 @@ To ensure the functions are prewarmed on deploy, create a [CloudFormation Custom
 - Include a timestamp value in the resource property to ensure the custom resource runs on every deployment.
 - Grant `lambda:InvokeFunction` permission to allow the custom resource to invoke the warmer function.
 
-**Cost**
+#### Cost
 
 There are three components to the cost:
 
 1. EventBridge scheduler: $0.00864
-   ```
-   Requests cost — 8,640 invocations per month x $1/million = $0.00864
-   ```
+
+```
+
+Requests cost — 8,640 invocations per month x $1/million = $0.00864
+
+```
+
 1. Warmer function: $0.145728288
-   ```
-   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
-   Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
-   ```
+
+```
+
+Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
+
+```
+
 1. Server function: $0.0161280288 per warmed instance
-   ```
-   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
-   Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
-   ```
+
+```
+
+Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
+
+```
 
 For example, keeping 50 instances of the server function warm will cost approximately **$0.96 per month**
 
 ```
+
 $0.00864 + $0.145728288 + $0.0161280288 x 50 = $0.960769728
+
 ```
 
 This cost estimate is based on the `us-east-1` region pricing and does not consider any free tier benefits.
@@ -271,7 +394,9 @@ This cost estimate is based on the `us-east-1` region pricing and does not consi
 As mentioned in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. Ideally, requests for these files should be handled by the S3 bucket, like so:
 
 ```
+
 https://my-nextjs-app.com/favicon.ico
+
 ```
 
 This requires the CloudFront distribution to have the behavior `/favicon.ico` and set the S3 bucket as the origin. However, CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions), so it is not a scalable solution to create one behavior per file.
@@ -352,7 +477,7 @@ export function middleware(request: NextRequest) {
 }
 ```
 
-#### WORKAROUND: `NextServer` does not set cache response headers for HTML pages
+#### WORKAROUND: `NextServer` does not set cache headers for HTML pages
 
 As mentioned in the [Server function](#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. However, `NextServer` does not seem to set the correct `Cache Control` headers.
 
@@ -360,6 +485,22 @@ To work around the issue, the server function checks if the request is for an HT
 
 ```
 public, max-age=0, s-maxage=31536000, must-revalidate
+```
+
+#### WORKAROUND: `NextServer` does not set correct SWR cache headers
+
+`NextServer` does not seem to set an appropriate value for the `stale-while-revalidate` cache header. For example, the header might look like this:
+
+```
+s-maxage=600 stale-while-revalidate
+```
+
+This prevents CloudFront from caching the stale data.
+
+To work around the issue, the server function checks if the response includes the `stale-while-revalidate` header. If found, it sets the value to 30 days:
+
+```
+s-maxage=600 stale-while-revalidate=2592000
 ```
 
 #### WORKAROUND: Set `NextServer` working directory (AWS specific)
@@ -469,6 +610,22 @@ await build({
 
 This feature is currently **experimental** and needs to be opted into. It can significantly decrease the server function's cold start time. Once it is thoroughly tested and its stability is confirmed, it will be enabled by default.
 
+#### Reusing same bucket for asset and cache
+
+Typically, asset files are uploaded to the root of the bucket. However, you might want to store them in a subfolder of the bucket, for instance, when:
+
+- using a pre-existing bucket; or
+- storing both assets and cache files in the same bucket.
+
+If you choose to upload asset files to a subfolder (ie. "assets"), be sure to:
+
+- Set the `BUCKET_KEY_PREFIX` environment variable for the image optimization function to `assets`.
+- Set the "origin path" for the CloudFront S3 origin to `assets`.
+
+Similarly, if you decide to upload cache files to a subfolder (ie. "cache"), be sure to:
+
+- Set the `CACHE_BUCKET_KEY_PREFIX` environment variable for the server function to `cache`.
+
 #### Debug mode
 
 OpenNext can be executed in debug mode for bug tracking purposes.
@@ -564,7 +721,7 @@ We previously built the app using the "minimalMode" and having the same architec
 
 OpenNext is an open source initiative, and there are a couple of advantages when compared to Amplify:
 
-1. The community contributions to OpenNext allows it to have better feature support.
+1. The community contributions to OpenNext allows it to have better feature support. For example, Amplify does not currently support [on-demand revalidation](https://github.com/aws-amplify/amplify-hosting/issues/3116).
 
 1. Amplify's Next.js hosting is a black box. Resources are not deployed to your AWS account. All Amplify users share the same CloudFront CDN owned by the Amplify team. This prevents you from customizing the setup, and customization is important if you are looking for Vercel-like features.
 
@@ -579,7 +736,7 @@ We are grateful for the projects that inspired OpenNext and the amazing tools an
 - [serverless-http](https://github.com/dougmoscrop/serverless-http) by [Doug Moscrop](https://github.com/dougmoscrop) for developing an excellent library for transforming AWS Lambda events and responses.
 - [serverless-nextjs](https://github.com/serverless-nextjs/serverless-next.js) by [Serverless Framework](https://github.com/serverless) for paving the way for serverless Next.js applications on AWS.
 
-Special shoutout to [@khuezy](https://github.com/khuezy) for his outstanding contributions to the project.
+Special shoutout to [@khuezy](https://github.com/khuezy) and [@conico974](https://github.com/conico974) for their outstanding contributions to the project.
 
 ---
 

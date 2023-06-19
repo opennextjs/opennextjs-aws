@@ -20,10 +20,14 @@ import {
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
 import { loadConfig, setNodeEnv } from "./util.js";
-import { debug } from "./logger.js";
+import { debug, error, awsLogger } from "./logger.js";
+
+// Expected environment variables
+const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
+
+const s3Client = new S3Client({ logger: awsLogger });
 
 setNodeEnv();
-const bucketName = process.env.BUCKET_NAME;
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
 const nextConfig = {
@@ -35,7 +39,7 @@ const nextConfig = {
 };
 debug("Init config", {
   nextDir,
-  bucketName,
+  BUCKET_NAME,
   nextConfig,
 });
 
@@ -78,7 +82,7 @@ function normalizeHeaderKeysToLowercase(headers: APIGatewayProxyEventHeaders) {
 }
 
 function ensureBucketExists() {
-  if (!bucketName) {
+  if (!BUCKET_NAME) {
     throw new Error("Bucket name must be defined!");
   }
 }
@@ -162,7 +166,7 @@ async function downloadHandler(
         res.end();
       })
       .once("error", (err) => {
-        console.error("Failed to get image", { err });
+        error("Failed to get image", err);
         res.statusCode = 400;
         res.end();
       });
@@ -177,11 +181,13 @@ async function downloadHandler(
     else {
       // Download image from S3
       // note: S3 expects keys without leading `/`
-      const client = new S3Client({});
-      const response = await client.send(
+      const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
+      const response = await s3Client.send(
         new GetObjectCommand({
-          Bucket: bucketName,
-          Key: url.href.replace(/^\//, ""),
+          Bucket: BUCKET_NAME,
+          Key: keyPrefix
+            ? keyPrefix + "/" + url.href.replace(/^\//, "")
+            : url.href.replace(/^\//, ""),
         })
       );
 
@@ -202,7 +208,7 @@ async function downloadHandler(
       }
     }
   } catch (e: any) {
-    console.error("Failed to download image", e);
+    error("Failed to download image", e);
     throw e;
   }
 }

@@ -17,6 +17,10 @@ export function loadConfig(nextDir: string) {
   const { config } = JSON.parse(json);
   return config as NextConfig;
 }
+export function loadBuildId(nextDir: string) {
+  const filePath = path.join(nextDir, "BUILD_ID");
+  return fs.readFileSync(filePath, "utf-8").trim();
+}
 
 export function loadHtmlPages(nextDir: string) {
   const filePath = path.join(nextDir, "server", "pages-manifest.json");
