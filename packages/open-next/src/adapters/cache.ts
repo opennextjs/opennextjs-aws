@@ -76,7 +76,14 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-type Extension = "json" | "html" | "rsc" | "body" | "meta" | "fetch";
+type Extension =
+  | "json"
+  | "html"
+  | "rsc"
+  | "body"
+  | "meta"
+  | "fetch"
+  | "redirect";
 
 // Expected environment variables
 const { CACHE_BUCKET_NAME, CACHE_BUCKET_KEY_PREFIX, CACHE_BUCKET_REGION } =
@@ -115,6 +122,8 @@ export default class S3Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     const keys = await this.listS3Objects(key);
+    if (keys.length === 0) return null;
+    console.log("keys", keys);
 
     if (keys.includes(this.buildS3Key(key, "body"))) {
       try {
@@ -166,6 +175,22 @@ export default class S3Cache {
       }
       return null;
     }
+    // We check for redirect last, this way if a page has been regenerated after having been redirected, we'll get the page data
+    if (keys.includes(this.buildS3Key(key, "redirect"))) {
+      console.log("redirect", key);
+      try {
+        const [{ Body, LastModified }] = await Promise.all([
+          this.getS3Object(key, "redirect"),
+        ]);
+        const value = JSON.parse((await Body?.transformToString()) ?? "{}");
+        return {
+          lastModified: LastModified?.getTime(),
+          value,
+        };
+      } catch (e) {
+        error("Failed to get redirect cache", e);
+      }
+    }
     return null;
   }
 
@@ -189,6 +214,10 @@ export default class S3Cache {
       ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
+    } else if (data?.kind === "REDIRECT") {
+      //We delete potential page data if we're redirecting
+      await this.deleteS3Object(key);
+      await this.putS3Object(key, "redirect", JSON.stringify(data));
     } else if (data === null || data === undefined) {
       await this.deleteS3Object(key);
     }
@@ -198,7 +227,7 @@ export default class S3Cache {
     try {
       const keys = await this.listS3Objects(key);
       //Regex to match all possible extensions. We don't want to delete other files accidentally.
-      const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch)$`);
+      const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch|redirect)$`);
       await Promise.all(
         keys
           .filter((key) => regex.test(key ?? ""))
