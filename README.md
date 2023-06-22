@@ -172,12 +172,9 @@ The server function adapter wraps around `NextServer` and exports a handler func
 ```diff
   .next/                -> NextServer
 + .open-next/
-+   public-files.json   -> `/public` file listing
   node_modules/         -> dependencies
 + index.mjs             -> server function adapter
 ```
-
-The file `public-files.json` contains the top-level file and directory names in your app's `public/` folder. At runtime, the server function will forward any requests made to these files and directories to S3. And S3 will serve them directly. [See why.](#workaround-public-static-files-served-out-by-server-function-aws-specific)
 
 **Monorepo**
 
@@ -198,7 +195,6 @@ In this case, the server function adapter needs to be created inside `packages/w
     web/
       .next/                -> NextServer
 +     .open-next/
-+       public-files.json   -> `/public` file listing
       node_modules/          -> dependencies from root node_modules (optional)
 +     index.mjs              -> server function adapter
   node_modules/              -> dependencies from package node_modules
@@ -211,13 +207,14 @@ This ensures that the Lambda handler remains at `index.mjs`.
 
 Create a CloudFront distribution, and dispatch requests to their corresponding handlers (behaviors). The following behaviors are configured:
 
-| Behavior          | Requests            | CloudFront Function                                                                         | Origin                                                                                                                                       |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | -                                                                                           | S3 bucket                                                                                                                                    |
-| `/_next/image`    | Image optimization  | -                                                                                           | image optimization function                                                                                                                  |
-| `/_next/data/*`   | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function                                                                                                                              |
-| `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function                                                                                                                              |
-| `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function fallback to<br />S3 bucket on 503<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+| Behavior                                                                                                                      | Requests            | CloudFront Function                                                                         | Origin                      |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------- | --------------------------- |
+| `/_next/static/*`                                                                                                             | Hashed static files | -                                                                                           | S3 bucket                   |
+| `/favicon.ico`<br />`/my-images/*`<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) | public assets       | -                                                                                           | S3 bucket                   |
+| `/_next/image`                                                                                                                | Image optimization  | -                                                                                           | image optimization function |
+| `/_next/data/*`                                                                                                               | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function             |
+| `/api/*`                                                                                                                      | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function             |
+| `/*`                                                                                                                          | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function             |
 
 #### Running at edge
 
@@ -225,13 +222,14 @@ The server function can also run at edge locations by configuring it as Lambda@E
 
 To configure the CloudFront distribution:
 
-| Behavior          | Requests            | CloudFront Function                                                                         | Lambda@Edge     | Origin                                                                                               |
-| ----------------- | ------------------- | ------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
-| `/_next/static/*` | Hashed static files | -                                                                                           | -               | S3 bucket                                                                                            |
-| `/_next/image`    | Image optimization  | -                                                                                           | -               | image optimization function                                                                          |
-| `/_next/data/*`   | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
-| `/api/*`          | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                                                                                                    |
-| `/*`              | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | S3 bucket<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) |
+| Behavior                                                                                                                      | Requests            | CloudFront Function                                                                         | Lambda@Edge     | Origin                      |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------- | --------------- | --------------------------- |
+| `/_next/static/*`                                                                                                             | Hashed static files | -                                                                                           | -               | S3 bucket                   |
+| `/favicon.ico`<br />`/my-images/*`<br />[see why](#workaround-public-static-files-served-out-by-server-function-aws-specific) | public assets       | -                                                                                           | -               | S3 bucket                   |
+| `/_next/image`                                                                                                                | Image optimization  | -                                                                                           | -               | image optimization function |
+| `/_next/data/*`                                                                                                               | data requests       | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                           |
+| `/api/*`                                                                                                                      | API                 | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                           |
+| `/*`                                                                                                                          | catch all           | set `x-forwarded-host`<br />[see why](#workaround-set-x-forwarded-host-header-aws-specific) | server function | -                           |
 
 #### Revalidation function
 
@@ -389,26 +387,49 @@ This cost estimate is based on the `us-east-1` region pricing and does not consi
 
 ## Limitations and workarounds
 
-#### WORKAROUND: `public/` static files served by the server function (AWS specific)
+#### WORKAROUND: Create one cache behavior per top-level file and folder in `public/` (AWS specific)
 
-As mentioned in the [S3 bucket](#s3-bucket) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. Ideally, requests for these files should be handled by the S3 bucket, like so:
+As mentioned in the [Asset files](#asset-files) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. And requests for these files are handled by the S3 bucket, like so:
 
 ```
-
 https://my-nextjs-app.com/favicon.ico
-
+https://my-nextjs-app.com/my-images/avatar.png
 ```
 
-This requires the CloudFront distribution to have the behavior `/favicon.ico` and set the S3 bucket as the origin. However, CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions), so it is not a scalable solution to create one behavior per file.
+Ideally, we would create a single cache behavior that routes all requests for `public/` files to the S3 bucket. Unfortunately, CloudFront does not support regex or advanced string patternss for cache behaviors (ie. `/favicon.ico|my-images\/*/` ).
 
-To work around the issue, requests for `public/` files are handled by the catch all behavior `/*`. This behavior sends the request to the server function first, and if the server fails to handle the request, it will fall back to the S3 bucket.
+To work around this limitation, we create a separate cache behavior for each top-level file and folder in `public/`. For example, if your folder structure is:
 
-During the build process, the top-level file and directory names in the `public/` folder are saved to the `.open-next/public-files.json` file within the server function bundle. At runtime, the server function checks the request URL path against the file. If the request is made to a file in the `public/` folder:
+```
+public/
+  favicon.ico
+  my-images/
+    avatar.png
+    avatar-dark.png
+  foo/
+    bar.png
+```
 
-- When deployed to a single region (Lambda), the server function returns a 503 response right away, and S3, which is configured as the failover origin on 503 status code, will serve the file. [Refer to the CloudFront setup.](#cloudfront-distribution)
-- When deployed to the edge (Lambda@Edge), the server function returns the request object. And the request will be handled by S3, which is configured as the origin. [Refer to the CloudFront setup.](#running-at-edge)
+You would create three cache behaviors: `/favicon.ico`, `/my-images/*`, and `/foo/*`. Each of these behaviors points to the S3 bucket.
 
-This means that on cache miss, the request may take slightly longer to process.
+One thing to be aware of is that CloudFront has a [default limit of 25 behaviors per distribution](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-limits.html#limits-web-distributions). If you have a lot of top-level files and folders, you may reach this limit. To avoid this, consider moving some or all files and folders into a subdirectory:
+
+```
+public/
+  files/
+    favicon.ico
+    my-images/
+      avatar.png
+      avatar-dark.png
+    foo/
+      bar.png
+```
+
+In this case, you only need to create one cache behavior: `/files/*`.
+
+Make sure to update your code accordingly to reflect the new file paths.
+
+Alternatively, you can [request an increase to the limit through AWS Support](https://console.aws.amazon.com/support/home#/case/create?issueType=service-limit-increase&limitType=service-code-cloudfront-distributions).
 
 #### WORKAROUND: Set `x-forwarded-host` header (AWS specific)
 

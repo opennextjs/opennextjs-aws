@@ -89,6 +89,9 @@ export async function handler(
   }
 
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
+  // TODO: This is no longer required if each top-level file and folder in "/public"
+  //       is handled by a separate cache behavior. Leaving here for backward compatibility.
+  //       Remove this on next major release.
   if (publicAssets.files.includes(internalEvent.rawPath)) {
     return internalEvent.type === "cf"
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
