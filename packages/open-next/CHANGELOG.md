@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.1
+
+### Patch Changes
+
+- bbd31b3: server: hash message dedup id
+
 ## 2.0.0
 
 ### Major Changes
