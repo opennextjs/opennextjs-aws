@@ -7,7 +7,7 @@ import {
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import path from "node:path";
-import { error, awsLogger } from "./logger.js";
+import { error, awsLogger, debug } from "./logger.js";
 import { loadBuildId } from "./util.js";
 
 interface CachedFetchValue {
@@ -123,7 +123,7 @@ export default class S3Cache {
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     const keys = await this.listS3Objects(key);
     if (keys.length === 0) return null;
-    console.log("keys", keys);
+    debug("keys", keys);
 
     if (keys.includes(this.buildS3Key(key, "body"))) {
       try {
@@ -177,7 +177,7 @@ export default class S3Cache {
     }
     // We check for redirect last, this way if a page has been regenerated after having been redirected, we'll get the page data
     if (keys.includes(this.buildS3Key(key, "redirect"))) {
-      console.log("redirect", key);
+      debug("redirect", key);
       try {
         const [{ Body, LastModified }] = await Promise.all([
           this.getS3Object(key, "redirect"),
