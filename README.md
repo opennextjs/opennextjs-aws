@@ -351,29 +351,23 @@ There are three components to the cost:
 
 1. EventBridge scheduler: $0.00864
 
-```
-
-Requests cost — 8,640 invocations per month x $1/million = $0.00864
-
-```
+   ```
+   Requests cost — 8,640 invocations per month x $1/million = $0.00864
+   ```
 
 1. Warmer function: $0.145728288
 
-```
-
-Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
-Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
-
-```
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 1s duration x $0.0000166667/GB-second = $0.144000288
+   ```
 
 1. Server function: $0.0161280288 per warmed instance
 
-```
-
-Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
-Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
-
-```
+   ```
+   Requests cost — 8,640 invocations per month x $0.2/million = $0.001728
+   Duration cost — 8,640 invocations per month x 1GB memory x 100ms duration x $0.0000166667/GB-second = $0.0144000288
+   ```
 
 For example, keeping 50 instances of the server function warm will cost approximately **$0.96 per month**
 
