@@ -2,6 +2,7 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  DeleteObjectCommand,
   PutObjectCommandInput,
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
@@ -113,8 +114,7 @@ export default class S3Cache {
   }
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
-    const { Contents } = await this.listS3Objects(key);
-    const keys = (Contents ?? []).map(({ Key }) => Key);
+    const keys = await this.listS3Objects(key);
 
     if (keys.includes(this.buildS3Key(key, "body"))) {
       try {
@@ -169,7 +169,7 @@ export default class S3Cache {
     return null;
   }
 
-  async set(key: string, data?: IncrementalCacheValue): Promise<void> {
+  async set(key: string, data?: IncrementalCacheValue | null): Promise<void> {
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
       await Promise.all([
@@ -189,6 +189,30 @@ export default class S3Cache {
       ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
+    } else if (data === null || data === undefined) {
+      await this.deleteS3Object(key);
+    }
+  }
+
+  private async deleteS3Object(key: string) {
+    try {
+      const keys = await this.listS3Objects(key);
+      //Regex to match all possible extensions. We don't want to delete other files accidentally.
+      const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch)$`);
+      await Promise.all(
+        keys
+          .filter((key) => regex.test(key ?? ""))
+          .map((key) => {
+            return this.client.send(
+              new DeleteObjectCommand({
+                Bucket: CACHE_BUCKET_NAME,
+                Key: key,
+              })
+            );
+          })
+      );
+    } catch (e) {
+      error("Failed to delete cache", e);
     }
   }
 
@@ -205,13 +229,16 @@ export default class S3Cache {
     return path.posix.join(CACHE_BUCKET_KEY_PREFIX ?? "", this.buildId, key);
   }
 
-  private listS3Objects(key: string) {
-    return this.client.send(
+  private async listS3Objects(key: string) {
+    const { Contents } = await this.client.send(
       new ListObjectsV2Command({
         Bucket: CACHE_BUCKET_NAME,
-        Prefix: this.buildS3KeyPrefix(key),
+        //Add a point to the key so that it only matches the key and not other key starting with the same string.
+        Prefix: `${this.buildS3KeyPrefix(key)}.`,
       })
     );
+    const keys = (Contents ?? []).map(({ Key }) => Key);
+    return keys;
   }
 
   private getS3Object(key: string, extension: Extension) {
