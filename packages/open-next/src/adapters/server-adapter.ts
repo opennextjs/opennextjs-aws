@@ -1,4 +1,5 @@
 import path from "node:path";
+import crypto from "node:crypto";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyEvent,
@@ -271,10 +272,12 @@ async function revalidateIfRequired(
   // your page will need to have a different etag to bypass the deduplication window.
   // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
   try {
+    const hash = (str: string) => crypto.createHash('md5').update(str).digest('hex')
+
     await sqsClient.send(
       new SendMessageCommand({
         QueueUrl: REVALIDATION_QUEUE_URL,
-        MessageDeduplicationId: `${rawPath}-${headers.etag}`,
+        MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
         MessageBody: JSON.stringify({ host, url: rawPath }),
         MessageGroupId: "revalidate",
       })
