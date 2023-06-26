@@ -131,9 +131,22 @@ export async function handler(
 
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
+
+  // we are sending a revalidation request that will bypass the middleware https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
+  // so we need to use the rewritten url if it was rewritten
+  let revalidateUrl = internalEvent.rawPath;
+  if (req[Symbol.for("NextInternalRequestMeta")]?._nextDidRewrite) {
+    const rewrittenUrl =
+      req[Symbol.for("NextInternalRequestMeta")]?._nextRewroteUrl;
+
+    // the rewritten url will does not include the /_next/data/ prefix so we need to add it back
+    revalidateUrl = internalEvent.rawPath.startsWith("/_next/data/")
+      ? (revalidateUrl = `/_next/data/${process.env.NEXT_BUILD_ID}${rewrittenUrl}.json`)
+      : rewrittenUrl;
+  }
   await revalidateIfRequired(
     internalEvent.headers.host,
-    internalEvent.rawPath,
+    revalidateUrl,
     headers
   );
 
@@ -272,7 +285,8 @@ async function revalidateIfRequired(
   // your page will need to have a different etag to bypass the deduplication window.
   // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
   try {
-    const hash = (str: string) => crypto.createHash('md5').update(str).digest('hex')
+    const hash = (str: string) =>
+      crypto.createHash("md5").update(str).digest("hex");
 
     await sqsClient.send(
       new SendMessageCommand({
