@@ -133,13 +133,13 @@ export async function handler(
   fixSWRCacheHeader(headers);
 
   // we are sending a revalidation request that will bypass the middleware https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
-  // so we need to use the rewritten url if it was rewritten
+  // so we need to use the rewritten url if it was rewritten, to check that we need to access next inertia meta data https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   let revalidateUrl = internalEvent.rawPath;
   if (req[Symbol.for("NextInternalRequestMeta")]?._nextDidRewrite) {
     const rewrittenUrl =
       req[Symbol.for("NextInternalRequestMeta")]?._nextRewroteUrl;
-
-    // the rewritten url will does not include the /_next/data/ prefix so we need to add it back
+    // for each page with ISR in the pages directory we will receive two requests, one for the page and one for the json data that starts with /_next/data/
+    // for the first request the rewritten url is correct and can be used directly but for the second request the rewritten url does not include the /_next/data/ prefix so we need to add it back
     revalidateUrl = internalEvent.rawPath.startsWith("/_next/data/")
       ? (revalidateUrl = `/_next/data/${process.env.NEXT_BUILD_ID}${rewrittenUrl}.json`)
       : rewrittenUrl;
