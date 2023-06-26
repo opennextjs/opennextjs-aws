@@ -23,7 +23,6 @@
   "devDependencies": {
     "aws-cdk-lib": "2.84.0",
     "constructs": "10.1.156",
-    "open-next": "^2.0.1",
     "sst": "2.16.3"
   }
 }

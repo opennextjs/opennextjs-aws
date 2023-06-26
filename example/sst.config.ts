@@ -11,7 +11,6 @@ export default {
   stacks(app) {
     app.stack(function Site({ stack }) {
       const site = new NextjsSite(stack, "site",{
-        buildCommand: "OPEN_NEXT_DEBUG=true npx --yes open-next@2.0.1 build",
         bind: [
           new Config.Secret(stack, "GITHUB_CLIENT_ID"),
           new Config.Secret(stack, "GITHUB_CLIENT_SECRET"),
