@@ -6,6 +6,13 @@ export async function middleware(request) {
     url.searchParams.set("rewritten", "true")
     return NextResponse.rewrite(url);
   }
+  if (request.nextUrl.pathname === "/middleware-rewrite-with-isr") {
+    const { nextUrl: url } = request
+    url.pathname = `/middleware-rewrite-with-isr-destination`
+    // rewrite to the current hostname under the pages/sites folder
+    // the main logic component will happen in pages/sites/[site]/index.tsx
+    return NextResponse.rewrite(url)
+  }
   if (request.nextUrl.pathname === "/middleware-redirect") {
     return NextResponse.redirect(new URL("/middleware-redirect-destination", request.url));
   }
@@ -53,5 +60,6 @@ export const config = {
     "/middleware-set-header",
     "/middleware-fetch",
     "/middleware-geolocation",
+    "/middleware-rewrite-with-isr"
   ],
 }
