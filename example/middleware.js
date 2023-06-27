@@ -6,6 +6,11 @@ export async function middleware(request) {
     url.searchParams.set("rewritten", "true")
     return NextResponse.rewrite(url);
   }
+  if (request.nextUrl.pathname === "/middleware-rewrite-with-isr") {
+    const { nextUrl: url } = request
+    url.pathname = `/middleware-rewrite-with-isr-destination`
+    return NextResponse.rewrite(url)
+  }
   if (request.nextUrl.pathname === "/middleware-redirect") {
     return NextResponse.redirect(new URL("/middleware-redirect-destination", request.url));
   }
@@ -49,6 +54,7 @@ export async function middleware(request) {
 export const config = {
   matcher: [
     "/middleware-rewrite",
+    "/middleware-rewrite-with-isr",
     "/middleware-redirect",
     "/middleware-set-header",
     "/middleware-fetch",

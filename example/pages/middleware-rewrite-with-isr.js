@@ -5,11 +5,11 @@ export default function Page() {
     <Layout>
       <article>
         <h1>
-          Middleware - redirect
+          Middleware — rewrite with Incremental Static Rendering (ISR)
         </h1>
         <hr />
         <p>
-          ❌ If you see this page, Middleware with redirect is NOT working. You should be redirected to /middleware-redirect-destination.
+          ❌ If you see this page, Middleware with rewrite is NOT working.
         </p>
       </article>
     </Layout>

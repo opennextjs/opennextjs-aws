@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "sst bind next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "deploy": "sst deploy"
   },
   "dependencies": {
-    "@next/font": "13.0.5",
+    "@next/font": "13.4.7",
     "date-fns": "^2.23.0",
     "gray-matter": "^4.0.3",
-    "next": "13.0.5",
-    "next-auth": "^4.22.0",
+    "next": "13.4.7",
+    "next-auth": "^4.22.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "remark": "^13.0.0",
@@ -20,8 +21,8 @@
     "swr": "^1.0.1"
   },
   "devDependencies": {
-    "aws-cdk-lib": "2.72.1",
+    "aws-cdk-lib": "2.84.0",
     "constructs": "10.1.156",
-    "sst": "^2.5.3"
+    "sst": "2.16.3"
   }
 }
