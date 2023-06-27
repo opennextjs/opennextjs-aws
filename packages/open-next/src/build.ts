@@ -401,6 +401,14 @@ function createCacheAssets(monorepoRoot: string) {
       (file.endsWith(".html") && htmlPages.has(file)),
   );
 
+  // Generate dynamodb data
+  // We need to traverse the cache to find every .meta file
+  const metaFiles: {
+    tag: { S: string };
+    path: { S: string };
+    revalidatedAt: { N: string };
+  }[] = [];
+
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
     appBuildOutputPath,
@@ -410,6 +418,63 @@ function createCacheAssets(monorepoRoot: string) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
     fs.mkdirSync(fetchOutputPath, { recursive: true });
     fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+
+    // Compute dynamodb cache data
+    // Traverse files inside cache to find all meta files and cache tags associated with them
+    traverseFiles(
+      outputPath,
+      (file) => file.endsWith(".meta"),
+      (filePath) => {
+        const fileContent = fs.readFileSync(filePath, "utf8");
+        const fileData = JSON.parse(fileContent);
+        if (fileData.headers?.["x-next-cache-tags"]) {
+          fileData.headers["x-next-cache-tags"]
+            .split(",")
+            .forEach((tag: string) => {
+              // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
+              metaFiles.push({
+                tag: { S: path.posix.join(buildId, tag.trim()) },
+                path: {
+                  S: path.posix.join(
+                    buildId,
+                    path.relative(outputPath, filePath).replace(".meta", "")
+                  ),
+                },
+                revalidatedAt: { N: `${Date.now()}` },
+              });
+            });
+        }
+      }
+    );
+
+    const tagsManifestPath = path.join(fetchCachePath, "tags-manifest.json");
+    if (fs.existsSync(tagsManifestPath)) {
+      // We also need to add cache tags from tags-manifest.json
+      const tagsManifestFile = fs.readFileSync(tagsManifestPath, "utf8");
+      const tagsManifest = JSON.parse(tagsManifestFile) as {
+        version: number;
+        items: {
+          [tag: string]: {
+            keys: string[];
+          };
+        };
+      };
+      Object.entries(tagsManifest.items).forEach(([tag, tagObject]) => {
+        tagObject.keys.forEach((key: string) => {
+          metaFiles.push({
+            tag: { S: path.posix.join(buildId, tag) },
+            path: { S: path.posix.join(buildId, key) },
+            revalidatedAt: { N: `${Date.now()}` },
+          });
+        });
+      });
+    }
+
+    // TODO: check if metafiles doesn't contain duplicates
+    fs.writeFileSync(
+      path.join(fetchOutputPath, "dynamodb-cache.json"),
+      JSON.stringify(metaFiles)
+    );
   }
 }
 
@@ -608,6 +673,8 @@ function addCacheHandler(outputPath: string) {
   esbuildSync({
     external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
+    // We don't need to bundle next
+    external: ["next"],
     outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
     format: "cjs",
@@ -682,16 +749,35 @@ function removeFiles(
   conditionFn: (file: string) => boolean,
   searchingDir: string = "",
 ) {
+  traverseFiles(
+    root,
+    conditionFn,
+    (filePath) => fs.rmSync(filePath, { force: true }),
+    searchingDir
+  );
+}
+
+function traverseFiles(
+  root: string,
+  conditionFn: (file: string) => boolean,
+  callbackFn: (filePath: string) => void,
+  searchingDir: string = ""
+) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const filePath = path.join(root, searchingDir, file);
 
     if (fs.statSync(filePath).isDirectory()) {
-      removeFiles(root, conditionFn, path.join(searchingDir, file));
+      traverseFiles(
+        root,
+        conditionFn,
+        callbackFn,
+        path.join(searchingDir, file)
+      );
       return;
     }
 
     if (conditionFn(path.join(searchingDir, file))) {
-      fs.rmSync(filePath, { force: true });
+      callbackFn(filePath);
     }
   });
 }
