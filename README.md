@@ -27,6 +27,7 @@ OpenNext takes the Next.js build output and converts it into a package that can 
 
 OpenNext aims to support all Next.js 13 features. Some features are work in progress. Please open a [new issue](/issues/new) to let us know!
 
+- [x] App & Pages Router
 - [x] API routes
 - [x] Dynamic routes
 - [x] Static site generation (SSG)
