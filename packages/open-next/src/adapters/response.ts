@@ -70,6 +70,7 @@ export class ServerResponse extends http.ServerResponse {
     } else {
       super.setHeader(key, value);
     }
+    return this;
   }
 
   writeHead(statusCode, reason, obj) {
@@ -85,7 +86,7 @@ export class ServerResponse extends http.ServerResponse {
       }
     }
 
-    super.writeHead(statusCode, reason, obj);
+    return super.writeHead(statusCode, reason, obj);
   }
 
   constructor({ method }) {
