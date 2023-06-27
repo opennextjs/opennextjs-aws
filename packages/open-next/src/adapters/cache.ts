@@ -2,11 +2,12 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  DeleteObjectsCommand,
   PutObjectCommandInput,
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import path from "node:path";
-import { error, awsLogger } from "./logger.js";
+import { awsLogger, debug, error } from "./logger.js";
 import { loadBuildId } from "./util.js";
 
 interface CachedFetchValue {
@@ -75,7 +76,14 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-type Extension = "json" | "html" | "rsc" | "body" | "meta" | "fetch";
+type Extension =
+  | "json"
+  | "html"
+  | "rsc"
+  | "body"
+  | "meta"
+  | "fetch"
+  | "redirect";
 
 // Expected environment variables
 const { CACHE_BUCKET_NAME, CACHE_BUCKET_KEY_PREFIX, CACHE_BUCKET_REGION } =
@@ -100,6 +108,7 @@ export default class S3Cache {
   }
 
   async getFetchCache(key: string) {
+    debug("get fetch cache", { key });
     try {
       const { Body, LastModified } = await this.getS3Object(key, "fetch");
       return {
@@ -113,10 +122,12 @@ export default class S3Cache {
   }
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
-    const { Contents } = await this.listS3Objects(key);
-    const keys = (Contents ?? []).map(({ Key }) => Key);
+    const keys = await this.listS3Object(key);
+    if (keys.length === 0) return null;
+    debug("keys", keys);
 
     if (keys.includes(this.buildS3Key(key, "body"))) {
+      debug("get body cache ", { key });
       try {
         const [{ Body, LastModified }, { Body: MetaBody }] = await Promise.all([
           this.getS3Object(key, "body"),
@@ -143,6 +154,7 @@ export default class S3Cache {
     if (keys.includes(this.buildS3Key(key, "html"))) {
       const isJson = keys.includes(this.buildS3Key(key, "json"));
       const isRsc = keys.includes(this.buildS3Key(key, "rsc"));
+      debug("get html cache ", { key, isJson, isRsc });
       if (!isJson && !isRsc) return null;
 
       try {
@@ -166,10 +178,27 @@ export default class S3Cache {
       }
       return null;
     }
+
+    // Check for redirect last. This way if a page has been regenerated
+    // after having been redirected, we'll get the page data
+    if (keys.includes(this.buildS3Key(key, "redirect"))) {
+      debug("get redirect cache", { key });
+      try {
+        const { Body, LastModified } = await this.getS3Object(key, "redirect");
+        return {
+          lastModified: LastModified?.getTime(),
+          value: JSON.parse((await Body?.transformToString()) ?? "{}"),
+        };
+      } catch (e) {
+        error("Failed to get redirect cache", e);
+      }
+      return null;
+    }
+
     return null;
   }
 
-  async set(key: string, data?: IncrementalCacheValue): Promise<void> {
+  async set(key: string, data?: IncrementalCacheValue | null): Promise<void> {
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
       await Promise.all([
@@ -189,6 +218,12 @@ export default class S3Cache {
       ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
+    } else if (data?.kind === "REDIRECT") {
+      // delete potential page data if we're redirecting
+      await this.deleteS3Objects(key);
+      await this.putS3Object(key, "redirect", JSON.stringify(data));
+    } else if (data === null || data === undefined) {
+      await this.deleteS3Objects(key);
     }
   }
 
@@ -205,13 +240,16 @@ export default class S3Cache {
     return path.posix.join(CACHE_BUCKET_KEY_PREFIX ?? "", this.buildId, key);
   }
 
-  private listS3Objects(key: string) {
-    return this.client.send(
+  private async listS3Object(key: string) {
+    const { Contents } = await this.client.send(
       new ListObjectsV2Command({
         Bucket: CACHE_BUCKET_NAME,
-        Prefix: this.buildS3KeyPrefix(key),
+        // add a point to the key so that it only matches the key and
+        // not other keys starting with the same string
+        Prefix: `${this.buildS3KeyPrefix(key)}.`,
       })
     );
+    return (Contents ?? []).map(({ Key }) => Key);
   }
 
   private getS3Object(key: string, extension: Extension) {
@@ -235,5 +273,25 @@ export default class S3Cache {
         Body: value,
       })
     );
+  }
+
+  private async deleteS3Objects(key: string) {
+    try {
+      const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch|redirect)$`);
+      const s3Keys = (await this.listS3Object(key)).filter(
+        (key) => key && regex.test(key)
+      );
+
+      await this.client.send(
+        new DeleteObjectsCommand({
+          Bucket: CACHE_BUCKET_NAME,
+          Delete: {
+            Objects: s3Keys.map((Key) => ({ Key })),
+          },
+        })
+      );
+    } catch (e) {
+      error("Failed to delete cache", e);
+    }
   }
 }
