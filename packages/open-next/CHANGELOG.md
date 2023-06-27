@@ -1,5 +1,13 @@
 # open-next
 
+## 2.0.2
+
+### Patch Changes
+
+- 22e8f70: ISR: support "notFound" and "redirect" in getStaticProps
+- d6db51f: revalidation: fix ISR revalidation for rewritten URL
+- b5a4c0c: Response: setHeader() and writeHead() return "this"
+
 ## 2.0.1
 
 ### Patch Changes
