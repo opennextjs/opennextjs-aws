@@ -39,6 +39,7 @@ const NEXT_DIR = path.join(__dirname, ".next");
 const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
+const buildId = loadBuildId(NEXT_DIR);
 setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
@@ -131,23 +132,11 @@ export async function handler(
 
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
-
-  // we are sending a revalidation request that will bypass the middleware https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
-  // so we need to use the rewritten url if it was rewritten, to check that we need to access next inertia meta data https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
-  let revalidateUrl = internalEvent.rawPath;
-  if (req[Symbol.for("NextInternalRequestMeta")]?._nextDidRewrite) {
-    const rewrittenUrl =
-      req[Symbol.for("NextInternalRequestMeta")]?._nextRewroteUrl;
-    // for each page with ISR in the pages directory we will receive two requests, one for the page and one for the json data that starts with /_next/data/
-    // for the first request the rewritten url is correct and can be used directly but for the second request the rewritten url does not include the /_next/data/ prefix so we need to add it back
-    revalidateUrl = internalEvent.rawPath.startsWith("/_next/data/")
-      ? (revalidateUrl = `/_next/data/${process.env.NEXT_BUILD_ID}${rewrittenUrl}.json`)
-      : rewrittenUrl;
-  }
   await revalidateIfRequired(
     internalEvent.headers.host,
-    revalidateUrl,
-    headers
+    internalEvent.rawPath,
+    headers,
+    req
   );
 
   return convertTo({
@@ -171,7 +160,7 @@ function setNextjsServerWorkingDirectory() {
 function setBuildIdEnv() {
   // This allows users to access the CloudFront invalidating path when doing on-demand
   // invalidations. ie. `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`
-  process.env.NEXT_BUILD_ID = loadBuildId(NEXT_DIR);
+  process.env.NEXT_BUILD_ID = buildId;
 }
 
 function setNextjsPrebundledReact(rawPath: string) {
@@ -269,7 +258,8 @@ function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
 async function revalidateIfRequired(
   host: string,
   rawPath: string,
-  headers: Record<string, string | undefined>
+  headers: Record<string, string | undefined>,
+  req: IncomingMessage
 ) {
   if (headers["x-nextjs-cache"] !== "STALE") return;
 
@@ -278,6 +268,22 @@ async function revalidateIfRequired(
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
   headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
+
+  // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
+  // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
+  // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
+  // @ts-ignore
+  const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+  const revalidateUrl = internalMeta?._nextDidRewrite
+    ? // When using Pages Router, two requests will be received:
+      // 1. one for the page: /foo
+      // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+      // The rewritten url is correct for 1, but that for the second request
+      // does not include the "/_next/data/" prefix. Need to add it.
+      rawPath.startsWith("/_next/data/")
+      ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
+      : internalMeta?._nextRewroteUrl
+    : rawPath;
 
   // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
   // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
@@ -292,7 +298,7 @@ async function revalidateIfRequired(
       new SendMessageCommand({
         QueueUrl: REVALIDATION_QUEUE_URL,
         MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
-        MessageBody: JSON.stringify({ host, url: rawPath }),
+        MessageBody: JSON.stringify({ host, url: revalidateUrl }),
         MessageGroupId: "revalidate",
       })
     );

@@ -9,8 +9,6 @@ export async function middleware(request) {
   if (request.nextUrl.pathname === "/middleware-rewrite-with-isr") {
     const { nextUrl: url } = request
     url.pathname = `/middleware-rewrite-with-isr-destination`
-    // rewrite to the current hostname under the pages/sites folder
-    // the main logic component will happen in pages/sites/[site]/index.tsx
     return NextResponse.rewrite(url)
   }
   if (request.nextUrl.pathname === "/middleware-redirect") {
@@ -56,10 +54,10 @@ export async function middleware(request) {
 export const config = {
   matcher: [
     "/middleware-rewrite",
+    "/middleware-rewrite-with-isr",
     "/middleware-redirect",
     "/middleware-set-header",
     "/middleware-fetch",
     "/middleware-geolocation",
-    "/middleware-rewrite-with-isr"
   ],
 }

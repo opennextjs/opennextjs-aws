@@ -14,7 +14,7 @@ export default function Page({ time }) {
     <Layout>
       <article>
         <h1>
-          Incremental Static Rendering (ISR)
+          Middleware — rewrite with Incremental Static Rendering (ISR)
         </h1>
         <hr />
         <p>
