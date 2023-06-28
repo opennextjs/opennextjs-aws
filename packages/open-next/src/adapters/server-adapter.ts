@@ -132,6 +132,7 @@ export async function handler(
 
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
+  addOpenNextHeader(headers);
   await revalidateIfRequired(
     internalEvent.headers.host,
     internalEvent.rawPath,
@@ -253,6 +254,10 @@ function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
       "stale-while-revalidate=2592000" // 30 days
     );
   }
+}
+
+function addOpenNextHeader(headers: Record<string, string | undefined>) {
+  headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
 }
 
 async function revalidateIfRequired(

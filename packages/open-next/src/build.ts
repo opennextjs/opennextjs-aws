@@ -71,6 +71,7 @@ function normalizeOptions(opts: BuildOptions) {
   const appPath = process.cwd();
   const outputDir = ".open-next";
   return {
+    openNextVersion: getOpenNextVersion(),
     appPath,
     appPublicPath: path.join(appPath, "public"),
     outputDir,
@@ -167,8 +168,8 @@ function printNextjsVersion() {
 }
 
 function printOpenNextVersion() {
-  const onVersion = require(path.join(__dirname, "../package.json")).version;
-  console.info(`OpenNext v${onVersion}`);
+  const { openNextVersion } = options;
+  console.info(`OpenNext v${openNextVersion}`);
 }
 
 function initOutputDir() {
@@ -526,7 +527,7 @@ function addCacheHandler(outputPath: string) {
 /********************/
 
 function esbuildSync(esbuildOptions: ESBuildOptions) {
-  const { appPath, debug } = options;
+  const { openNextVersion, debug } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -541,6 +542,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
       "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
         ? "true"
         : "false",
+      "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
     },
   });
 
@@ -600,4 +602,8 @@ function getBuildId(dotNextPath: string) {
   return fs
     .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
     .trim();
+}
+
+function getOpenNextVersion() {
+  return require(path.join(__dirname, "../package.json")).version;
 }
