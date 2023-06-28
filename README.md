@@ -84,6 +84,7 @@ The OpenNext community has contributed deployment options for a few other framew
 - CloudFormation: https://github.com/serverless-stack/open-next/issues/32
 - Serverless Framework: https://github.com/serverless-stack/open-next/issues/32
 - Terraform: https://github.com/RJPearson94/terraform-aws-open-next
+- Terraform: https://github.com/nhs-england-tools/terraform-aws-opennext#diagrams
 
 To use these, you'll need to run the following inside your Next.js app.
 
