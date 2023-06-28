@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.3
+
+### Patch Changes
+
+- 1bcb37b: server: add OpenNext response header to track version
+
 ## 2.0.2
 
 ### Patch Changes
