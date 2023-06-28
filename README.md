@@ -39,6 +39,10 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 - [x] [Running at edge](#running-at-edge)
 - [x] [No cold start](#how-warming-works)
 
+## Who is using OpenNext?
+
+[Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c)
+
 ## How does OpenNext work?
 
 When calling `open-next build`, OpenNext **runs `next build`** to build the Next.js app, and then **transforms the build output** to a format that can be deployed to AWS.
