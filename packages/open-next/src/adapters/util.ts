@@ -66,8 +66,49 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     string
   >;
   return Object.keys(appPathsManifest).map((key) => {
-    // Remove group route params and /page suffix
-    const cleanedKey = key.replace(/\/\(\w+\)|\/page$/g, "");
+    // Fix route interception
+
+    // Remove (.) as it's not useful for us here
+    let cleanedKey = key.replace(/\(\.\)/g, "");
+
+    const cleanInterceptingSegment = (_key: string, double: boolean) => {
+      const toRemoveSegment: number[] = [];
+      _key.split("/").forEach((segment, index) => {
+        if (segment.includes(double ? "(..)(..)" : "(..)")) {
+          if (index - 1 >= 0) {
+            toRemoveSegment.push(index - 1);
+          }
+          if (double && index - 2 >= 0) {
+            toRemoveSegment.push(index - 2);
+          }
+        }
+      });
+      return _key
+        .split("/")
+        .filter((_, index) => !toRemoveSegment.includes(index))
+        .join("/")
+        .replace(/\(\.\.\)/g, "");
+    };
+
+    // Fix (..)(..) to match segment two levels above
+    if (cleanedKey.includes("(..)(..)")) {
+      cleanedKey = cleanInterceptingSegment(cleanedKey, true);
+    }
+
+    // Fix (..) to match segment one level above
+    if (cleanedKey.includes("(..)")) {
+      cleanedKey = cleanInterceptingSegment(cleanedKey, false);
+    }
+
+    // Fix (...) to match segments from the root app directory
+    // Once we encounter (...) we can remove the beginning of the key
+    if (cleanedKey.includes("(...)")) {
+      cleanedKey = cleanedKey.slice(cleanedKey.indexOf("(...)"));
+      cleanedKey = cleanedKey.replace(/\(\.\.\.\)/, "");
+    }
+
+    // Remove group and parallel route params and /page suffix
+    cleanedKey = cleanedKey.replace(/\/\([^)]*\)|\/page$|\/@[^\/]+/g, "");
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
