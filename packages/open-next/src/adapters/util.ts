@@ -67,48 +67,43 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   >;
   return Object.keys(appPathsManifest).map((key) => {
     // Fix route interception
+    // The order is important here
+    // We need to remove parallel and group routes before we remove (..) since they are just here for dx and are not part of the route
 
     // Remove (.) as it's not useful for us here
     let cleanedKey = key.replace(/\(\.\)/g, "");
 
-    const cleanInterceptingSegment = (_key: string, double: boolean) => {
-      const toRemoveSegment: number[] = [];
-      _key.split("/").forEach((segment, index) => {
-        if (segment.includes(double ? "(..)(..)" : "(..)")) {
-          if (index - 1 >= 0) {
-            toRemoveSegment.push(index - 1);
-          }
-          if (double && index - 2 >= 0) {
-            toRemoveSegment.push(index - 2);
-          }
-        }
-      });
-      return _key
-        .split("/")
-        .filter((_, index) => !toRemoveSegment.includes(index))
-        .join("/")
-        .replace(/\(\.\.\)/g, "");
-    };
+    // Remove parallel route
+    cleanedKey = cleanedKey.replace(/\/@[^\/]+/g, "");
 
-    // Fix (..)(..) to match segment two levels above
-    if (cleanedKey.includes("(..)(..)")) {
-      cleanedKey = cleanInterceptingSegment(cleanedKey, true);
+    // Remove group routes
+    cleanedKey = cleanedKey.replace(/\/\((?!\.)[^\)]*\)/g, "");
+
+    /**
+    ([\w\-~]+\/)?   =>  optionally matches the parent path, with optional trailing slash, eg: (parent)/
+    \(\.{2}\)      => matches (..)
+    */
+    const replacePathRegex = /([\w\-~]+\/)?\(\.{2}\)\/?/;
+    function resolvePaths(path: string) {
+      while (path.match(/\(\.{2}\)/)) {
+        // while there's "(..)" in the path
+        path = path.replace(replacePathRegex, ""); // Consume the (..) along with its prefixed (aka parent) path
+      }
+      return path;
     }
 
-    // Fix (..) to match segment one level above
-    if (cleanedKey.includes("(..)")) {
-      cleanedKey = cleanInterceptingSegment(cleanedKey, false);
-    }
+    // Fix (..) to match segments from one or 2 levels above
+    cleanedKey = resolvePaths(cleanedKey);
 
     // Fix (...) to match segments from the root app directory
-    // Once we encounter (...) we can remove the beginning of the key
+    // Once we encounter the last (...) we can remove the beginning of the key
     if (cleanedKey.includes("(...)")) {
-      cleanedKey = cleanedKey.slice(cleanedKey.indexOf("(...)"));
+      cleanedKey = cleanedKey.slice(cleanedKey.lastIndexOf("(...)"));
       cleanedKey = cleanedKey.replace(/\(\.\.\.\)/, "");
     }
 
-    // Remove group and parallel route params and /page suffix
-    cleanedKey = cleanedKey.replace(/\/\([^)]*\)|\/page$|\/@[^\/]+/g, "");
+    // Remove /page suffix
+    cleanedKey = cleanedKey.replace(/\/page$/g, "");
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
