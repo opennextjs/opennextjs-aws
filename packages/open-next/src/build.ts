@@ -343,7 +343,6 @@ function createCacheAssets(monorepoRoot: string) {
       file.endsWith(".js.nft.json") ||
       (file.endsWith(".html") && htmlPages.has(file))
   );
-
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(appPath, ".next/cache/fetch-cache");
   if (fs.existsSync(fetchCachePath)) {
@@ -496,6 +495,9 @@ function addPublicFilesList(outputPath: string, packagePath: string) {
 function removeCachedPages(outputPath: string, packagePath: string) {
   // Pre-rendered pages will be served out from S3 by the cache handler
   const dotNextPath = path.join(outputPath, packagePath);
+  // We should not remove html files that are in the format of [param].html
+  // because they are used for `fallback:true` pages.
+  const htmlRegex = /^(?!.*\[.*\]\.html).*\.html$/;
   const htmlPages = getHtmlPages(dotNextPath);
   [".next/server/pages", ".next/server/app"]
     .map((dir) => path.join(dotNextPath, dir))
@@ -507,7 +509,7 @@ function removeCachedPages(outputPath: string, packagePath: string) {
           file.endsWith(".json") ||
           file.endsWith(".rsc") ||
           file.endsWith(".meta") ||
-          (file.endsWith(".html") && !htmlPages.has(file))
+          (htmlRegex.test(file) && !htmlPages.has(file))
       )
     );
 }
