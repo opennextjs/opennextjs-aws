@@ -497,6 +497,7 @@ function addPublicFilesList(outputPath: string, packagePath: string) {
 function removeCachedPages(outputPath: string, packagePath: string) {
   // Pre-rendered pages will be served out from S3 by the cache handler
   const dotNextPath = path.join(outputPath, packagePath);
+  const isFallbackTruePage = /\[.*\]/;
   const htmlPages = getHtmlPages(dotNextPath);
   [".next/server/pages", ".next/server/app"]
     .map((dir) => path.join(dotNextPath, dir))
@@ -508,7 +509,12 @@ function removeCachedPages(outputPath: string, packagePath: string) {
           file.endsWith(".json") ||
           file.endsWith(".rsc") ||
           file.endsWith(".meta") ||
-          (file.endsWith(".html") && !htmlPages.has(file))
+          (file.endsWith(".html") &&
+            // do not remove static HTML files
+            !htmlPages.has(file) &&
+            // do not remove HTML files with "[param].html" format
+            // b/c they are used for "fallback:true" pages
+            !isFallbackTruePage.test(file))
       )
     );
 }
