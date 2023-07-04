@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.4
+
+### Patch Changes
+
+- a468add: Fix missing HTML files for non blocking fallback pages
+
 ## 2.0.3
 
 ### Patch Changes
