@@ -41,7 +41,7 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 ## Who is using OpenNext?
 
-[NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext)
+[NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext),
 [Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c)
 
 ## How does OpenNext work?
