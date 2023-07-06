@@ -13,6 +13,7 @@ import NextServer from "next/dist/server/next-server.js";
 import { isBinaryContentType } from "./binary.js";
 import { convertFrom, convertTo } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
+import type { RouteDefinition } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import {
   applyOverride as applyNextjsRequireHooksOverride,
@@ -62,7 +63,6 @@ const serverId = `server-${generateUniqueId()}`;
 // Step 3: Apply the override after Next.js server is imported since the
 //         override that Next.js does is done at import time
 overrideNextjsRequireHooks(config);
-
 applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
@@ -118,7 +118,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(internalEvent.rawPath);
+  setNextjsPrebundledReact(internalEvent.rawPath, internalEvent.headers);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -167,16 +167,38 @@ function setBuildIdEnv() {
   process.env.NEXT_BUILD_ID = buildId;
 }
 
-function setNextjsPrebundledReact(rawPath: string) {
+function setNextjsPrebundledReact(
+  rawPath: string,
+  headers?: Record<string, string>,
+) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
-  // Get route pattern
-  const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(rawPath ?? ""),
+  // Apply rewrites first, right now only used for interception
+  const rewrite = routesManifest.rewrites.find(
+    (route) =>
+      new RegExp(route.regex).test(rawPath ?? "") &&
+      route.has.length > 0 &&
+      route.has[0].type === "header" &&
+      route.has[0].key === "Next-Url" &&
+      new RegExp(route.has[0].value ?? "").test(headers?.["next-url"] ?? ""),
   );
+  let route: RouteDefinition | undefined;
+
+  // Get route pattern
+  if (rewrite) {
+    route = {
+      page: rewrite.destination,
+      regex: rewrite.regex,
+    };
+  }
+  if (!route) {
+    route = routesManifest.routes.find((route) =>
+      new RegExp(route.regex).test(rawPath ?? ""),
+    );
+  }
 
   const isApp = appPathsManifestKeys.includes(route?.page ?? "");
-  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
+  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route, rewrite });
 
   // app routes => use prebundled React
   if (isApp) {

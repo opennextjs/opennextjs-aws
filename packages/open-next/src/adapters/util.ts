@@ -41,8 +41,13 @@ export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
-  // Static routes take precedence over dynamic routes
-  return [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes];
+
+  const rewrites = routesManifest.rewrites.beforeFiles;
+  // Rewrite routes first, then static routes then dynamic routes
+  return {
+    rewrites,
+    routes: [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes],
+  };
 }
 
 export function loadAppPathsManifestKeys(nextDir: string) {
@@ -59,41 +64,11 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     string
   >;
   return Object.keys(appPathsManifest).map((key) => {
-    // Fix route interception
-    // The order is important here
-    // We need to remove parallel and group routes before we remove (..) since they are just here for dx and are not part of the route
-
-    // Remove (.) as it's not useful for us here
-    let cleanedKey = key.replace(/\(\.\)/g, "");
-
     // Remove parallel route
-    cleanedKey = cleanedKey.replace(/\/@[^\/]+/g, "");
+    let cleanedKey = key.replace(/\/@[^\/]+/g, "");
 
     // Remove group routes
     cleanedKey = cleanedKey.replace(/\/\((?!\.)[^\)]*\)/g, "");
-
-    /**
-    ([\w\-~]+\/)?   =>  optionally matches the parent path, with optional trailing slash, eg: (parent)/
-    \(\.{2}\)      => matches (..)
-    */
-    const replacePathRegex = /([\w\-~]+\/)?\(\.{2}\)\/?/;
-    function resolvePaths(path: string) {
-      while (path.match(/\(\.{2}\)/)) {
-        // while there's "(..)" in the path
-        path = path.replace(replacePathRegex, ""); // Consume the (..) along with its prefixed (aka parent) path
-      }
-      return path;
-    }
-
-    // Fix (..) to match segments from one or 2 levels above
-    cleanedKey = resolvePaths(cleanedKey);
-
-    // Fix (...) to match segments from the root app directory
-    // Once we encounter the last (...) we can remove the beginning of the key
-    if (cleanedKey.includes("(...)")) {
-      cleanedKey = cleanedKey.slice(cleanedKey.lastIndexOf("(...)"));
-      cleanedKey = cleanedKey.replace(/\(\.\.\.\)/, "");
-    }
 
     // Remove /page suffix
     cleanedKey = cleanedKey.replace(/\/page$/g, "");
