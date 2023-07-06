@@ -12,6 +12,7 @@ import { isBinaryContentType } from "./binary.js";
 import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
 import { handler as serverHandler } from "./plugins/serverHandler.js";
+import type { RouteDefinition } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
 import {

@@ -31,15 +31,15 @@ type ImageConfig = Partial<ImageConfigComplete>;
 
 export type RouteHas =
   | {
-      type: "header" | "query" | "cookie";
-      key: string;
-      value?: string;
-    }
+    type: "header" | "query" | "cookie";
+    key: string;
+    value?: string;
+  }
   | {
-      type: "host";
-      key?: undefined;
-      value: string;
-    };
+    type: "host";
+    key?: undefined;
+    value: string;
+  };
 export type Rewrite = {
   source: string;
   destination: string;
@@ -76,10 +76,23 @@ export interface RouteDefinition {
   page: string;
   regex: string;
 }
+export interface RewriteDefinition {
+  source: string;
+  destination: string;
+  has: {
+    type: "header" | "cookie" | "query" | "host";
+    key: string;
+    value?: string;
+  }[];
+  regex: string;
+}
 
 export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
+  rewrites: {
+    beforeFiles: RewriteDefinition[];
+  };
   headers?: Header[];
 }
 
