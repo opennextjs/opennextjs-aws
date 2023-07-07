@@ -473,26 +473,29 @@ function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
 }
 
 type RouteManifest = Record<string, unknown> & {
-  basePath: string
-}
+  basePath: string;
+};
 
 function readBasePath() {
   const { appPath } = options;
   try {
-    const routesManifest = JSON.parse(fs.readFileSync(path.join(appPath, '.next', 'routes-manifest.json')).toString('utf8')) as RouteManifest
-    return routesManifest.basePath
+    const routesManifest = JSON.parse(
+      fs
+        .readFileSync(path.join(appPath, ".next", "routes-manifest.json"))
+        .toString("utf8")
+    ) as RouteManifest;
+    return routesManifest.basePath;
   } catch {
     // if the file does not exist, it will fail, so instead, we act as if the app does not have a basePath...
-    return ''
+    return "";
   }
-} 
+}
 
 function addPublicFilesList(outputPath: string, packagePath: string) {
   // Get a list of all files in /public
   const { appPublicPath } = options;
   const acc: PublicFiles = { files: [] };
   const basePath = readBasePath();
-  
 
   function processDirectory(pathInPublic: string) {
     const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
@@ -509,8 +512,6 @@ function addPublicFilesList(outputPath: string, packagePath: string) {
   if (fs.existsSync(appPublicPath)) {
     processDirectory("/");
   }
-
-  
 
   // Save the list
   const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
