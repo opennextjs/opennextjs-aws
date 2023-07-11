@@ -42,7 +42,7 @@ export function loadRoutesManifest(nextDir: string) {
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
 
-  const rewrites = routesManifest.rewrites.beforeFiles;
+  const rewrites = routesManifest.rewrites.beforeFiles ?? [];
   // Rewrite routes first, then static routes then dynamic routes
   return {
     rewrites,
