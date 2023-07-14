@@ -85,7 +85,8 @@ For more information, check out the SST docs: https://docs.sst.dev/start/nextjs
 
 The OpenNext community has contributed deployment options for a few other frameworks.
 
-- CDK: https://github.com/jetbridge/cdk-nextjs
+- CDK (TS): https://github.com/jetbridge/cdk-nextjs
+- CDK (TS, Java, Go, Py, .NET): https://github.com/datasprayio/open-next-cdk
 - CloudFormation: https://github.com/serverless-stack/open-next/issues/32
 - Serverless Framework: https://github.com/serverless-stack/open-next/issues/32
 - Terraform: https://github.com/RJPearson94/terraform-aws-open-next
