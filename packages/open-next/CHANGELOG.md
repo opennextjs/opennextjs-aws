@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.5
+
+### Patch Changes
+
+- ffb2cfd: Server: fix missing react/jsx-runtime for require-hooks
+
 ## 2.0.4
 
 ### Patch Changes
