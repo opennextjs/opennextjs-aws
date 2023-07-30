@@ -13,6 +13,7 @@ import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
 import { handler as serverHandler } from "./plugins/serverHandler.js";
 import type { RouteDefinition } from "./next-types.js";
+import type { RewriteMatcher } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
 import {
@@ -87,9 +88,11 @@ export async function handler(
       : formatAPIGatewayFailoverResponse();
   }
 
+  const { rawPath, url } = handleRewrites(internalEvent);
+
   const reqProps = {
     method: internalEvent.method,
-    url: internalEvent.url,
+    url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
