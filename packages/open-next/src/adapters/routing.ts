@@ -6,6 +6,7 @@ import {
   RewriteMatcher,
 } from './next-types.js';
 import { compile, match } from 'path-to-regexp';
+import { escapeRegex, unescapeRegex } from './util.js';
 
 const redirectMatcher =
   (
@@ -72,16 +73,19 @@ export function handleRewrites<T extends RewriteDefinition>(
   const urlQueryString = new URLSearchParams(query).toString();
   let rewrittenUrl = rawPath;
   if (rewrite) {
-    const toDestination = compile(rewrite?.destination ?? '');
-    const fromSource = match(rewrite?.source ?? '');
+    const toDestination = compile(
+      escapeRegex(rewrite?.destination ?? '') ?? ''
+    );
+    const fromSource = match(escapeRegex(rewrite?.source) ?? '');
     const _match = fromSource(rawPath);
     if (_match) {
       const { params } = _match;
       const isUsingParams = Object.keys(params).length > 0;
       if (isUsingParams) {
-        rewrittenUrl = toDestination(params);
+        rewrittenUrl = unescapeRegex(toDestination(params));
+      } else {
+        rewrittenUrl = rewrite.destination;
       }
-      rewrittenUrl = rewrite.destination;
       debug('rewrittenUrl', rewrittenUrl);
     }
   }
