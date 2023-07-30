@@ -40,14 +40,17 @@ export interface RouteDefinition {
   page: string;
   regex: string;
 }
+
+export interface RewriteMatcher {
+  type: "header" | "cookie" | "query" | "host";
+  key: string;
+  value?: string;
+}
 export interface RewriteDefinition {
   source: string;
   destination: string;
-  has: {
-    type: "header" | "cookie" | "query" | "host";
-    key: string;
-    value?: string;
-  }[];
+  has?: RewriteMatcher[];
+  missing?: RewriteMatcher[];
   regex: string;
 }
 
@@ -56,5 +59,7 @@ export interface RoutesManifest {
   staticRoutes: RouteDefinition[];
   rewrites: {
     beforeFiles: RewriteDefinition[];
+    afterFiles: RewriteDefinition[];
+    fallback: RewriteDefinition[];
   };
 }

@@ -11,9 +11,9 @@ import type {
 import NextServer from "next/dist/server/next-server.js";
 
 import { isBinaryContentType } from "./binary.js";
-import { convertFrom, convertTo } from "./event-mapper.js";
+import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
-import type { RouteDefinition } from "./next-types.js";
+import type { RewriteMatcher } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import {
   applyOverride as applyNextjsRequireHooksOverride,
@@ -63,6 +63,7 @@ const serverId = `server-${generateUniqueId()}`;
 // Step 3: Apply the override after Next.js server is imported since the
 //         override that Next.js does is done at import time
 overrideNextjsRequireHooks(config);
+
 applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
@@ -103,9 +104,11 @@ export async function handler(
       : formatAPIGatewayFailoverResponse();
   }
 
+  const { rawPath, url } = handleRewrites(internalEvent);
+
   const reqProps = {
     method: internalEvent.method,
-    url: internalEvent.url,
+    url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
@@ -118,7 +121,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(internalEvent.rawPath, internalEvent.headers);
+  setNextjsPrebundledReact(rawPath);
   await processRequest(req, res);
 
   // Format Next.js response to Lambda response
@@ -136,12 +139,7 @@ export async function handler(
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
   addOpenNextHeader(headers);
-  await revalidateIfRequired(
-    internalEvent.headers.host,
-    internalEvent.rawPath,
-    headers,
-    req,
-  );
+  await revalidateIfRequired(internalEvent.headers.host, rawPath, headers, req);
 
   return convertTo({
     type: internalEvent.type,
@@ -167,38 +165,92 @@ function setBuildIdEnv() {
   process.env.NEXT_BUILD_ID = buildId;
 }
 
-function setNextjsPrebundledReact(
-  rawPath: string,
-  headers?: Record<string, string>,
-) {
-  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+const redirectMatcher =
+  (
+    headers: Record<string, string>,
+    cookies: Record<string, string>,
+    query: Record<string, string | string[]>,
+  ) =>
+  (redirect: RewriteMatcher) => {
+    switch (redirect.type) {
+      case "header":
+        console.log(
+          "redirect-header",
+          headers?.[redirect.key.toLowerCase()],
+          redirect.value,
+        );
+        return (
+          headers?.[redirect.key.toLowerCase()] &&
+          new RegExp(redirect.value ?? "").test(
+            headers[redirect.key.toLowerCase()] ?? "",
+          )
+        );
+      case "cookie":
+        return (
+          cookies?.[redirect.key] &&
+          new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
+        );
+      case "query":
+        return query[redirect.key] && Array.isArray(redirect.value)
+          ? redirect.value.reduce(
+              (prev, current) => prev || new RegExp(current),
+              true,
+            )
+          : new RegExp(redirect.value ?? "").test(
+              (query[redirect.key] as string | undefined) ?? "",
+            );
+      case "host":
+        return (
+          headers?.host && new RegExp(redirect.value ?? "").test(headers.host)
+        );
+      default:
+        return false;
+    }
+  };
 
-  // Apply rewrites first, right now only used for interception
+function handleRewrites(internalEvent: InternalEvent) {
+  const { rawPath, headers, query, cookies } = internalEvent;
+  const matcher = redirectMatcher(headers, cookies, query);
   const rewrite = routesManifest.rewrites.find(
     (route) =>
-      new RegExp(route.regex).test(rawPath ?? "") &&
-      route.has.length > 0 &&
-      route.has[0].type === "header" &&
-      route.has[0].key === "Next-Url" &&
-      new RegExp(route.has[0].value ?? "").test(headers?.["next-url"] ?? ""),
+      new RegExp(route.regex).test(rawPath) &&
+      (route.has
+        ? route.has.reduce((acc, cur) => {
+            if (acc === false) return false;
+            return matcher(cur);
+          }, true)
+        : true) &&
+      (route.missing
+        ? route.missing.reduce((acc, cur) => {
+            if (acc === false) return false;
+            return !matcher(cur);
+          }, true)
+        : true),
   );
-  let route: RouteDefinition | undefined;
 
-  // Get route pattern
+  const urlQueryString = new URLSearchParams(query).toString();
   if (rewrite) {
-    route = {
-      page: rewrite.destination,
-      regex: rewrite.regex,
-    };
+    debug("rewrite", { rewrite, urlQueryString });
   }
-  if (!route) {
-    route = routesManifest.routes.find((route) =>
-      new RegExp(route.regex).test(rawPath ?? ""),
-    );
-  }
+  // Do we need to replace anything else here?
+  const rewrittenUrl =
+    rewrite?.destination.replace(/:[^\/]+/g, "[$1]") ?? rawPath;
+
+  return {
+    rawPath: rewrittenUrl,
+    url: `${rewrittenUrl}${urlQueryString ? `?${urlQueryString}` : ""}`,
+  };
+}
+
+function setNextjsPrebundledReact(rawPath: string) {
+  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+
+  const route = routesManifest.routes.find((route) =>
+    new RegExp(route.regex).test(rawPath ?? ""),
+  );
 
   const isApp = appPathsManifestKeys.includes(route?.page ?? "");
-  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route, rewrite });
+  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
 
   // app routes => use prebundled React
   if (isApp) {
@@ -304,6 +356,8 @@ async function revalidateIfRequired(
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
   const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+
+  //TODO: Could we remove that safely ?
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? // When using Pages Router, two requests will be received:
       // 1. one for the page: /foo
