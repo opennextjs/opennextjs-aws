@@ -85,3 +85,23 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     return cleanedKey === "" ? "/" : cleanedKey;
   });
 }
+
+export function escapeRegex(str: string) {
+  let path = str.replace(/\(\.\)/g, '_µ1_');
+
+  path = path.replace(/\(\.{2}\)/g, '_µ2_');
+
+  path = path.replace(/\(\.{3}\)/g, '_µ3_');
+
+  return path;
+}
+
+export function unescapeRegex(str: string) {
+  let path = str.replace(/_µ1_/g, '(.)');
+
+  path = path.replace(/_µ2_/g, '(..)');
+
+  path = path.replace(/_µ3_/g, '(...)');
+
+  return path;
+}
