@@ -4,8 +4,8 @@ import {
   RedirectDefinition,
   RewriteDefinition,
   RewriteMatcher,
-  RoutesManifest,
 } from './next-types.js';
+import { compile, match } from 'path-to-regexp';
 
 const redirectMatcher =
   (
@@ -16,11 +16,6 @@ const redirectMatcher =
   (redirect: RewriteMatcher) => {
     switch (redirect.type) {
       case 'header':
-        console.log(
-          'redirect-header',
-          headers?.[redirect.key.toLowerCase()],
-          redirect.value
-        );
         return (
           headers?.[redirect.key.toLowerCase()] &&
           new RegExp(redirect.value ?? '').test(
@@ -35,8 +30,9 @@ const redirectMatcher =
       case 'query':
         return query[redirect.key] && Array.isArray(redirect.value)
           ? redirect.value.reduce(
-              (prev, current) => prev || new RegExp(current),
-              true
+              (prev, current) =>
+                prev || new RegExp(current).test(query[redirect.key] as string),
+              false
             )
           : new RegExp(redirect.value ?? '').test(
               (query[redirect.key] as string | undefined) ?? ''
@@ -74,12 +70,21 @@ export function handleRewrites<T extends RewriteDefinition>(
   );
 
   const urlQueryString = new URLSearchParams(query).toString();
+  let rewrittenUrl = rawPath;
   if (rewrite) {
-    debug('rewrite', { rewrite, urlQueryString });
+    const toDestination = compile(rewrite?.destination ?? '');
+    const fromSource = match(rewrite?.source ?? '');
+    const _match = fromSource(rawPath);
+    if (_match) {
+      const { params } = _match;
+      const isUsingParams = Object.keys(params).length > 0;
+      if (isUsingParams) {
+        rewrittenUrl = toDestination(params);
+      }
+      rewrittenUrl = rewrite.destination;
+      debug('rewrittenUrl', rewrittenUrl);
+    }
   }
-  // Do we need to replace anything else here?
-  const rewrittenUrl =
-    rewrite?.destination.replace(/:[^\/]+/g, '[$1]') ?? rawPath;
 
   return {
     rawPath: rewrittenUrl,

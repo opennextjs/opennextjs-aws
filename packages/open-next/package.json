@@ -41,6 +41,7 @@
     "@node-minify/terser": "^8.0.6",
     "@tsconfig/node18": "^1.0.1",
     "esbuild": "^0.15.18",
+    "path-to-regexp": "^6.2.1",
     "promise.series": "^0.2.0"
   },
   "devDependencies": {
