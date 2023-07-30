@@ -9,13 +9,14 @@ import type {
 } from "aws-lambda";
 
 import { isBinaryContentType } from "./binary.js";
-import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
+import { convertFrom, convertTo } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
 import { handler as serverHandler } from "./plugins/serverHandler.js";
 import type { RouteDefinition } from "./next-types.js";
 import type { RewriteMatcher } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
+import { handleRedirects, handleRewrites } from "./routing.js";
 import {
   generateUniqueId,
   loadBuildId,
@@ -88,7 +89,15 @@ export async function handler(
       : formatAPIGatewayFailoverResponse();
   }
 
-  const { rawPath, url } = handleRewrites(internalEvent);
+  const redirect = handleRedirects(internalEvent, routesManifest.redirects);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { rawPath, url } = handleRewrites(
+    internalEvent,
+    routesManifest.rewrites,
+  );
 
   const reqProps = {
     method: internalEvent.method,
