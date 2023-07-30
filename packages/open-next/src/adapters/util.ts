@@ -47,6 +47,7 @@ export function loadRoutesManifest(nextDir: string) {
   // Rewrite routes first, then static routes then dynamic routes
   return {
     rewrites,
+    redirects: routesManifest.redirects,
     routes: [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes],
   };
 }

@@ -54,6 +54,11 @@ export interface RewriteDefinition {
   regex: string;
 }
 
+export interface RedirectDefinition extends RewriteDefinition {
+  internal?: boolean;
+  statusCode?: number;
+}
+
 export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
@@ -62,4 +67,5 @@ export interface RoutesManifest {
     afterFiles: RewriteDefinition[];
     fallback: RewriteDefinition[];
   };
+  redirects: RedirectDefinition[];
 }
