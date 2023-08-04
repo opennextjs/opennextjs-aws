@@ -277,8 +277,7 @@ async function handleMiddleware(req: IncomingMessage, res: ServerResponse, rawPa
   // NOTE: the header was added to `req` from above
   const rewriteUrl = req.headers["x-middleware-rewrite"] as string;
   if (rewriteUrl) {
-    const u = new URL(rewriteUrl).pathname;
-    req.url = u;
+    req.url = new URL(rewriteUrl).pathname;
   }
 
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
