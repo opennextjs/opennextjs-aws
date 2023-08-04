@@ -230,7 +230,7 @@ function createRequestHandler() {
   }).getRequestHandler();
 }
 
-// NOTE: As of Nextjs 13.3.13+, the middleware is handled outside the next-server.
+// NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
 async function handleMiddleware(
