@@ -225,6 +225,8 @@ function createRequestHandler() {
 // NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
+// @returns undefined | res.end()
+//    if res.end() is return, the parent needs to return and not process next server
 async function handleMiddleware(req: IncomingMessage, res: ServerResponse, rawPath: string) {
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return;
@@ -278,11 +280,11 @@ async function handleMiddleware(req: IncomingMessage, res: ServerResponse, rawPa
     req.url = u;
   }
 
-  console.log("~~req headers: ", req.headers);
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
   // the body immediately to the client.
   if (result.response.body) {
     await pipeReadable(result.response.body, res);
+    return res.end();
   }
 }
 async function processRequest(req: IncomingMessage, res: ServerResponse, rawPath: string) {
