@@ -70,5 +70,5 @@ export function loadAppPathsManifestKeys(nextDir: string) {
 }
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
-  return middlewareManifest.middleware["/"].matchers.map(({ regex }) => new RegExp(regex));
+  return middlewareManifest.middleware["/"].matchers.map(({ regexp }) => new RegExp(regexp));
 }

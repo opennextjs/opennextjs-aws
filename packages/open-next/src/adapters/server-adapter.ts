@@ -36,14 +36,9 @@ import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 const { run } = require("next/dist/server/web/sandbox");
 const { pipeReadable } = require("next/dist/server/pipe-readable");
-const {
-  splitCookiesString,
-  toNodeOutgoingHttpHeaders,
-} = require("next/dist/server/web/utils");
+const { splitCookiesString, toNodeOutgoingHttpHeaders } = require("next/dist/server/web/utils");
 const { getCloneableBody } = require("next/dist/server/body-streams");
-const {
-  signalFromNodeResponse,
-} = require("next/dist/server/web/spec-extension/adapters/next-request");
+const { signalFromNodeResponse } = require("next/dist/server/web/spec-extension/adapters/next-request");
 // @ts-ignor
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -197,10 +192,7 @@ function setNextjsPrebundledReact(rawPath: string) {
 
   // app routes => use prebundled React
   if (isApp) {
-    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
-      .serverActions
-      ? "experimental"
-      : "next";
+    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental.serverActions ? "experimental" : "next";
     return;
   }
 
@@ -234,21 +226,15 @@ function createRequestHandler() {
 // NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
-async function handleMiddleware(
-  req: IncomingMessage,
-  res: ServerResponse,
-  rawPath: string
-) {
-  const hasMatch = middleMatch.find((r) => r.test(rawPath));
+async function handleMiddleware(req: IncomingMessage, res: ServerResponse, rawPath: string) {
+  const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return;
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
   // structure, but as of now, the only useful property on it is the "/" key (ie root).
   const middlewareInfo = middlewareManifest.middleware["/"];
-  middlewareInfo.paths = middlewareInfo.files.map((file) =>
-    path.join(NEXT_DIR, file)
-  );
+  middlewareInfo.paths = middlewareInfo.files.map((file) => path.join(NEXT_DIR, file));
 
   const result = await run({
     distDir: NEXT_DIR,
@@ -293,17 +279,14 @@ async function handleMiddleware(
     req.url = u;
   }
 
+  console.log("~~req headers: ", req.headers);
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
   // the body immediately to the client.
   if (result.response.body) {
     await pipeReadable(result.response.body, res);
   }
 }
-async function processRequest(
-  req: IncomingMessage,
-  res: ServerResponse,
-  rawPath: string
-) {
+async function processRequest(req: IncomingMessage, res: ServerResponse, rawPath: string) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
   // https://github.com/dougmoscrop/serverless-http/issues/227
@@ -335,8 +318,7 @@ function fixCacheHeaderForHtmlPages(
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (htmlPages.includes(rawPath) && headers["cache-control"]) {
-    headers["cache-control"] =
-      "public, max-age=0, s-maxage=31536000, must-revalidate";
+    headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
 
@@ -390,8 +372,7 @@ async function revalidateIfRequired(
   // your page will need to have a different etag to bypass the deduplication window.
   // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
   try {
-    const hash = (str: string) =>
-      crypto.createHash("md5").update(str).digest("hex");
+    const hash = (str: string) => crypto.createHash("md5").update(str).digest("hex");
 
     await sqsClient.send(
       new SendMessageCommand({
