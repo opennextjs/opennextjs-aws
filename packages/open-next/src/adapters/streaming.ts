@@ -13,6 +13,7 @@ export function streamSuccess(
     result: any, // NextJS Image optimization result.
     responseStream: ResponseStream
   ) {
+    // Once headers are set via `HttpResponseStream`. We shall not call `responseStream.setContentType` as it messes up the stream.
     responseStream = awslambda.HttpResponseStream.from(responseStream, {
       statusCode: 200,
       headers: {
