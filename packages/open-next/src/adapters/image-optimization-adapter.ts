@@ -21,6 +21,8 @@ import {
 } from "next/dist/server/image-optimizer";
 import { loadConfig, setNodeEnv } from "./util.js";
 import { debug, error, awsLogger } from "./logger.js";
+import { RequestHandler } from "../types.js";
+import { streamError, streamSuccess } from "./streaming.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
@@ -47,7 +49,33 @@ debug("Init config", {
 // Handler //
 /////////////
 
-export async function handler(
+const streamHandler: RequestHandler = async (
+  event,
+  responseStream,
+  _context
+) => {
+  // Images are handled via header and query param information.
+  debug("handler event (stream)", event);
+  const { headers: rawHeaders, queryStringParameters: queryString } = event;
+
+  try {
+    const headers = normalizeHeaderKeysToLowercase(rawHeaders);
+    ensureBucketExists();
+
+    // @TODO: NextJS does not support optimizing of streams, so we need to download it, buffer in memory and then stream optimized buffer.
+    const imageParams = validateImageParams(
+      headers,
+      queryString === null ? undefined : queryString
+    );
+    const result = await optimizeImage(headers, imageParams);
+
+    streamSuccess(result, responseStream);
+  } catch (e: any) {
+    streamError(500, e, responseStream)
+  }
+}
+
+async function normalHandler(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResultV2> {
   // Images are handled via header and query param information.
@@ -68,6 +96,9 @@ export async function handler(
     return buildFailureResponse(e);
   }
 }
+
+// @TODO: Add flag to allow / disallow downloading of images.
+export const handler = !!awslambda?.streamifyResponse ? awslambda.streamifyResponse(streamHandler) : normalHandler;
 
 //////////////////////
 // Helper functions //
