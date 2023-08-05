@@ -273,6 +273,8 @@ async function handleMiddleware(req: IncomingMessage, res: ServerResponse, rawPa
     req.headers[key] = value;
   }
 
+  console.log("~~mw headers: ", result.response.headers);
+
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
   const rewriteUrl = req.headers["x-middleware-rewrite"] as string;
