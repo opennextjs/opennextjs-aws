@@ -91,28 +91,22 @@ export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   return middlewareManifest.middleware["/"].matchers.map(({ regexp }) => new RegExp(regexp));
 }
 
-let _requestHandler: any;
-export function createRequestHandler() {
-  if (!_requestHandler) {
-    _requestHandler = new NextServer.default({
-      hostname: "localhost",
-      port: 3000,
-      conf: {
-        ...config,
-        // Next.js compression should be disabled because of a bug in the bundled
-        // `compression` package — https://github.com/vercel/next.js/issues/11669
-        compress: false,
-        // By default, Next.js uses local disk to store ISR cache. We will use
-        // our own cache handler to store the cache on S3.
-        experimental: {
-          ...config.experimental,
-          incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
-        },
-      },
-      customServer: false,
-      dev: false,
-      dir: __dirname,
-    }).getRequestHandler();
-  }
-  return _requestHandler;
-}
+export const requestHandler = new NextServer.default({
+  hostname: "localhost",
+  port: 3000,
+  conf: {
+    ...config,
+    // Next.js compression should be disabled because of a bug in the bundled
+    // `compression` package — https://github.com/vercel/next.js/issues/11669
+    compress: false,
+    // By default, Next.js uses local disk to store ISR cache. We will use
+    // our own cache handler to store the cache on S3.
+    experimental: {
+      ...config.experimental,
+      incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
+    },
+  },
+  customServer: false,
+  dev: false,
+  dir: __dirname,
+}).getRequestHandler();

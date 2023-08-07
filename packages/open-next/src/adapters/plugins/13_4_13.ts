@@ -6,7 +6,7 @@ import {
   loadConfig,
   getMiddlewareMatch,
   loadMiddlewareManifest,
-  createRequestHandler,
+  requestHandler,
   NEXT_DIR,
 } from "../util.js";
 
@@ -20,7 +20,6 @@ const {
 } = require("next/dist/server/web/spec-extension/adapters/next-request");
 const config = loadConfig(NEXT_DIR);
 const middleMatch = getMiddlewareMatch(middlewareManifest);
-const requestHandler = createRequestHandler();
 
 export const handler: PluginHandler = async (
   req: IncomingMessage,
