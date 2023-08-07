@@ -1,13 +1,16 @@
 import cp from "node:child_process";
 import fs from "node:fs";
-import { createRequire as topLevelCreateRequire } from "node:module";
+
 import path from "node:path";
 import url from "node:url";
 
-import { BuildOptions as ESBuildOptions, buildSync } from "esbuild";
+
+
 
 import { minifyAll } from "./minimize-js.js";
-
+import { build as buildAsync, buildSync, BuildOptions as ESBuildOptions } from "esbuild";
+import { createRequire as topLevelCreateRequire } from "node:module";
+import openNextPlugin from "./plugin.js";
 interface BuildOptions {
   /**
    * Minify the server bundle.
@@ -60,7 +63,7 @@ export async function build(opts: BuildOptions = {}) {
   initOutputDir();
   createStaticAssets();
   createCacheAssets(monorepoRoot);
-  createServerBundle(monorepoRoot);
+  await createServerBundle(monorepoRoot);
   createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
@@ -74,6 +77,7 @@ function normalizeOptions(opts: BuildOptions) {
   const outputDir = ".open-next";
   return {
     openNextVersion: getOpenNextVersion(),
+    nextVersion: getNextVersion(appPath),
     appPath,
     appPublicPath: path.join(appPath, "public"),
     outputDir,
@@ -132,8 +136,7 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
   const { appPath } = options;
   const command =
-    options.buildCommand ??
-    (packager === "npm" ? "npm run build" : `${packager} build`);
+    options.buildCommand ?? (packager === "npm" ? "npm run build" : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
     cwd: appPath,
@@ -157,10 +160,7 @@ function printNextjsVersion() {
   const { appPath } = options;
   cp.spawnSync(
     "node",
-    [
-      "-e",
-      `"console.info('Next.js v' + require('next/package.json').version)"`,
-    ],
+    ["-e", `"console.info('Next.js v' + require('next/package.json').version)"`],
     {
       stdio: "inherit",
       cwd: appPath,
@@ -253,9 +253,7 @@ function createImageOptimizationBundle() {
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
-    entryPoints: [
-      path.join(__dirname, "adapters", "image-optimization-adapter.js"),
-    ],
+    entryPoints: [path.join(__dirname, "adapters", "image-optimization-adapter.js")],
     external: ["sharp", "next"],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -366,7 +364,7 @@ function createCacheAssets(monorepoRoot: string) {
 /* Server Helper Functions */
 /***************************/
 
-function createServerBundle(monorepoRoot: string) {
+async function createServerBundle(monorepoRoot: string) {
   console.info(`Bundling server function...`);
 
   const { appPath, outputDir } = options;
@@ -399,7 +397,17 @@ function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync({
+
+  const plugins =
+    compareSemver(options.nextVersion, "13.4.13") >= 0
+      ? [
+        openNextPlugin({
+          importPath: "./plugins/13_4_13.js",
+        }),
+      ]
+      : undefined;
+  console.log("~~plugins: ", plugins);
+  await esbuildAsync({
     entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
     external: ["next"],
     outfile: path.join(outputPath, packagePath, "index.mjs"),
@@ -411,6 +419,7 @@ function createServerBundle(monorepoRoot: string) {
         "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join(""),
     },
+    plugins,
   });
 
   if (isMonorepo) {
@@ -550,12 +559,11 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
+    external: [...(esbuildOptions.external || []), "next", "sharp", "styled-jsx", "react"],
     // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...esbuildOptions.define,
-      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
-        ? "true"
-        : "false",
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG ? "true" : "false",
       "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
     },
   });
@@ -612,11 +620,24 @@ function getHtmlPages(dotNextPath: string) {
 }
 
 function getBuildId(dotNextPath: string) {
-  return fs
-    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
-    .trim();
+  return fs.readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8").trim();
 }
 
 function getOpenNextVersion() {
   return require(path.join(__dirname, "../package.json")).version;
+}
+
+function getNextVersion(appPath: string) {
+  const version = require(path.join(appPath, "./package.json")).dependencies.next;
+  // Drop the -canary.n suffix
+  return version.split("-")[0];
+}
+
+function compareSemver(v1: string, v2: string): number {
+  const [major1, minor1, patch1] = v1.split(".").map(Number);
+  const [major2, minor2, patch2] = v2.split(".").map(Number);
+
+  if (major1 !== major2) return major1 - major2;
+  if (minor1 !== minor2) return minor1 - minor2;
+  return patch1 - patch2;
 }
