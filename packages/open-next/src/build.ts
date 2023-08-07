@@ -407,6 +407,13 @@ async function createServerBundle(monorepoRoot: string) {
       ]
       : undefined;
 
+  if (plugins) {
+    console.log(
+      `Applying plugins: [${plugins.map(({ name }) => name).join(",")}] for Next version: ${
+        options.nextVersion
+      }`
+    );
+  }
   await esbuildAsync({
     entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
     external: ["next"],
