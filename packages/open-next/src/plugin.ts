@@ -15,7 +15,7 @@ export default function openNextPlugin({ importPath }: IPluginSettings): Plugin 
   return {
     name: "opennext",
     setup(build) {
-      build.onLoad({ filter: /server-adapter.js/g }, async (args) => {
+      build.onLoad({ filter: /server-adapter\.js/g }, async (args) => {
         let contents = await fs.promises.readFile(args.path, "utf8");
         contents = contents.replace("./plugins/default.js", importPath);
         return {
