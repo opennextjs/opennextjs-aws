@@ -31,7 +31,6 @@ const s3Client = new S3Client({ logger: awsLogger });
 
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
-const config = loadConfig(nextDir);
 const nextConfig = {
   ...defaultConfig,
   images: {

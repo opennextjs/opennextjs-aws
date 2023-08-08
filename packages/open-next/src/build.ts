@@ -228,6 +228,7 @@ function createRevalidationBundle() {
 
   // Build Lambda code
   esbuildSync({
+    external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -545,6 +546,7 @@ function removeCachedPages(outputPath: string, packagePath: string) {
 
 function addCacheHandler(outputPath: string) {
   esbuildSync({
+    external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
     outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
@@ -566,7 +568,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
-    external: [...(esbuildOptions.external || []), "next", "sharp", "styled-jsx", "react"],
+    // external: [...(esbuildOptions.external || []), "next", "styled-jsx", "react"],
     // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...esbuildOptions.define,

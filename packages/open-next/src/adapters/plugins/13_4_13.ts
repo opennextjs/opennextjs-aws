@@ -2,13 +2,8 @@ import path from "node:path";
 import { PluginHandler, type Options } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
-import {
-  loadConfig,
-  getMiddlewareMatch,
-  loadMiddlewareManifest,
-  requestHandler,
-  NEXT_DIR,
-} from "../util.js";
+import { config, NEXT_DIR } from "../util.js";
+import { requestHandler, getMiddlewareMatch, loadMiddlewareManifest } from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
@@ -18,7 +13,6 @@ const { getCloneableBody } = require("next/dist/server/body-streams");
 const {
   signalFromNodeResponse,
 } = require("next/dist/server/web/spec-extension/adapters/next-request");
-const config = loadConfig(NEXT_DIR);
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
 export const handler: PluginHandler = async (
