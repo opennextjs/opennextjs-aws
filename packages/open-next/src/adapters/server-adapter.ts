@@ -20,14 +20,16 @@ import {
 } from "./require-hooks.js";
 import { ServerResponse } from "./response.js";
 import {
+  config,
   generateUniqueId,
   loadAppPathsManifestKeys,
   loadBuildId,
-  loadConfig,
   loadHtmlPages,
   loadPublicAssets,
   loadRoutesManifest,
   setNodeEnv,
+  NEXT_DIR,
+  OPEN_NEXT_DIR,
 } from "./util.js";
 <<<<<<< HEAD
 =======
@@ -48,15 +50,12 @@ const sqsClient = new SQSClient({
   logger: awsLogger,
 });
 
-const NEXT_DIR = path.join(__dirname, ".next");
-const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 const buildId = loadBuildId(NEXT_DIR);
 setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
-const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
