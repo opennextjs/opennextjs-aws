@@ -22,7 +22,7 @@ applyNextjsRequireHooksOverride();
 
 export const requestHandler = new NextServer.default({
   hostname: "localhost",
-  port: 3000,
+  // port: IMPORTANT: DO NOT SET PORT so that request.url is set to actual host
   conf: {
     ...config,
     // Next.js compression should be disabled because of a bug in the bundled
@@ -32,6 +32,9 @@ export const requestHandler = new NextServer.default({
     // our own cache handler to store the cache on S3.
     experimental: {
       ...config.experimental,
+      // This uses the request.headers.host as the URL
+      // https://github.com/vercel/next.js/blob/canary/packages/next/src/server/next-server.ts#L1749-L1754
+      trustHostHeader: true,
       incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
     },
   },
