@@ -1,26 +1,10 @@
 import http from 'node:http';
-import { ResponseStream } from './types/aws-lambda.js';
-import { debug, error } from './logger.js';
-
-const headerEnd = '\r\n\r\n';
+import type { ResponseStream } from '../types/aws-lambda.js';
+import { debug, error } from '../logger.js';
+import { getString, headerEnd } from './utils.js';
 
 const HEADERS = Symbol();
 const BODY = Symbol();
-
-function getString(data: any) {
-  // Note: use `ArrayBuffer.isView()` to check for Uint8Array. Using
-  //       `instanceof Uint8Array` returns false in some cases. For example,
-  //       when the buffer is created in middleware and passed to NextServer.
-  if (Buffer.isBuffer(data)) {
-    return data.toString('utf8');
-  } else if (ArrayBuffer.isView(data)) {
-    return Buffer.from(data as any).toString('utf8');
-  } else if (typeof data === 'string') {
-    return data;
-  } else {
-    throw new Error(`response.getString() of unexpected type: ${typeof data}`);
-  }
-}
 
 export class StreamingServerResponse extends http.ServerResponse {
   [HEADERS]: Record<string, string> = {};
@@ -80,6 +64,9 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this;
   }
 
+  // WORKAROUND: It seems that lambda streaming require the event loop to be free
+  //             to start the streaming process. So we need to give it some time
+  // TODO: Find a better way to do this
   private createListener = () => {
     this.timer = setInterval(() => {
       if (this[BODY].length) {
@@ -94,6 +81,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         debug('done', this._done);
         clearInterval(this.timer!);
         if (!this._hasWritten) {
+          // We need to send data here, otherwise the stream will not end at all
           this.responseStream.write(new Uint8Array(8));
         }
         this.responseStream.end();
@@ -114,6 +102,8 @@ export class StreamingServerResponse extends http.ServerResponse {
       this[BODY].push(chunk);
     }
     if (!this._wroteHeader) {
+      // When next directly returns with end, the writeHead is not called,
+      // so we need to call it here
       this.writeHead(200);
     }
     this._done = true;
@@ -122,7 +112,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   }
 
   constructor(
-    { method }: { method: string },
+    { method }: { method?: string },
     responseStream: ResponseStream,
     fixHeaders: (headers: Record<string, string>) => void
   ) {

@@ -6,8 +6,12 @@ import type {
   CloudFrontRequestEvent,
 } from 'aws-lambda';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-import { IncomingMessage } from './request.js';
-import { ServerResponse } from './response.js';
+import {
+  ServerResponse,
+  IncomingMessage,
+  StreamingServerResponse,
+} from './http/index.js';
+import type { ResponseStream } from './types/aws-lambda.js';
 import {
   generateUniqueId,
   loadAppPathsManifestKeys,
@@ -60,8 +64,6 @@ const serverId = `server-${generateUniqueId()}`;
 overrideNextjsRequireHooks(config);
 // @ts-ignore
 import NextServer from 'next/dist/server/next-server.js';
-import { StreamingServerResponse } from './responseStreaming.js';
-import { ResponseStream } from './types/aws-lambda.js';
 applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
@@ -70,37 +72,15 @@ const requestHandler = createRequestHandler();
 // Handler //
 /////////////
 
-export const handler = awslambda.streamifyResponse(async function (
-  event:
-    | APIGatewayProxyEventV2
-    | CloudFrontRequestEvent
-    | APIGatewayProxyEvent
-    | WarmerEvent,
-  responseStream: ResponseStream
+async function preProcess(
+  event: APIGatewayProxyEventV2 | CloudFrontRequestEvent | APIGatewayProxyEvent
 ) {
-  debug('event', event);
-
-  // Handler warmer
-  if ('type' in event) {
-    return formatWarmerResponse(event);
-  }
-
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event);
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers['x-forwarded-host']) {
     internalEvent.headers.host = internalEvent.headers['x-forwarded-host'];
-  }
-
-  // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
-  // TODO: This is no longer required if each top-level file and folder in "/public"
-  //       is handled by a separate cache behavior. Leaving here for backward compatibility.
-  //       Remove this on next major release.
-  if (publicAssets.files.includes(internalEvent.rawPath)) {
-    return internalEvent.type === 'cf'
-      ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
-      : formatAPIGatewayFailoverResponse();
   }
 
   const reqProps = {
@@ -117,17 +97,39 @@ export const handler = awslambda.streamifyResponse(async function (
   };
   debug('IncomingMessage constructor props', reqProps);
   const req = new IncomingMessage(reqProps);
+
+  setNextjsPrebundledReact(internalEvent.rawPath);
+
+  return { internalEvent, req };
+}
+
+export const handlerStreaming = awslambda.streamifyResponse(async function (
+  event:
+    | APIGatewayProxyEventV2
+    | CloudFrontRequestEvent
+    | APIGatewayProxyEvent
+    | WarmerEvent,
+  responseStream: ResponseStream
+) {
+  debug('event', event);
+
+  // Handler warmer
+  if ('type' in event) {
+    throw new Error('Warmer function are not supported with streaming');
+  }
+
+  const { internalEvent, req } = await preProcess(event);
   // const res = new ServerResponse({ method: reqProps.method });
   const res = new StreamingServerResponse(
-    { method: reqProps.method },
+    { method: req.method },
     responseStream,
+    // We need to fix the cache header before sending any response
     async (headers) => {
       fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
       fixSWRCacheHeader(headers);
       addOpenNextHeader(headers);
     }
   );
-  setNextjsPrebundledReact(internalEvent.rawPath);
 
   // @ts-ignore
   await processRequest(req, res);
@@ -138,38 +140,80 @@ export const handler = awslambda.streamifyResponse(async function (
     res.headers,
     req
   );
-  // responseStream.end()
+});
+
+export const handlerNormal = async function (
+  event:
+    | APIGatewayProxyEventV2
+    | CloudFrontRequestEvent
+    | APIGatewayProxyEvent
+    | WarmerEvent
+) {
+  debug('event', event);
+
+  // Handler warmer
+  if ('type' in event) {
+    return formatWarmerResponse(event);
+  }
+
+  const { internalEvent, req } = await preProcess(event);
+
+  // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
+  // TODO: This is no longer required if each top-level file and folder in "/public"
+  //       is handled by a separate cache behavior. Leaving here for backward compatibility.
+  //       Remove this on next major release.
+  if (publicAssets.files.includes(internalEvent.rawPath)) {
+    return internalEvent.type === 'cf'
+      ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
+      : formatAPIGatewayFailoverResponse();
+  }
+
+  const res = new ServerResponse({ method: req.method });
+
+  // @ts-ignore
+  await processRequest(req, res);
+
+  await revalidateIfRequired(
+    internalEvent.headers.host,
+    internalEvent.rawPath,
+    res.headers,
+    req
+  );
 
   // Format Next.js response to Lambda response
-  // const statusCode = res.statusCode || 200;
-  // const headers = ServerResponse.headers(res);
-  // const isBase64Encoded = isBinaryContentType(
-  //   Array.isArray(headers["content-type"])
-  //     ? headers["content-type"][0]
-  //     : headers["content-type"]
-  // );
-  // const encoding = isBase64Encoded ? "base64" : "utf8";
-  // const body = ServerResponse.body(res).toString(encoding);
-  // debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
+  const statusCode = res.statusCode || 200;
+  const headers = ServerResponse.headers(res);
+  const isBase64Encoded = isBinaryContentType(
+    Array.isArray(headers['content-type'])
+      ? headers['content-type'][0]
+      : headers['content-type']
+  );
+  const encoding = isBase64Encoded ? 'base64' : 'utf8';
+  const body = ServerResponse.body(res).toString(encoding);
+  debug('ServerResponse data', { statusCode, headers, isBase64Encoded, body });
 
-  // fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
-  // fixSWRCacheHeader(headers);
-  // addOpenNextHeader(headers);
-  // await revalidateIfRequired(
-  //   internalEvent.headers.host,
-  //   internalEvent.rawPath,
-  //   headers,
-  //   req
-  // );
+  fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
+  fixSWRCacheHeader(headers);
+  addOpenNextHeader(headers);
+  await revalidateIfRequired(
+    internalEvent.headers.host,
+    internalEvent.rawPath,
+    headers,
+    req
+  );
 
-  // return convertTo({
-  //   type: internalEvent.type,
-  //   statusCode,
-  //   headers,
-  //   isBase64Encoded,
-  //   body,
-  // });
-});
+  return convertTo({
+    type: internalEvent.type,
+    statusCode,
+    headers,
+    isBase64Encoded,
+    body,
+  });
+};
+
+export const handler = process.env.USE_STREAMING_RESPONSE
+  ? handlerStreaming
+  : handlerNormal;
 
 //////////////////////
 // Helper functions //
