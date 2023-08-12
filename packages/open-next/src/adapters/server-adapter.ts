@@ -1,17 +1,17 @@
-import path from 'node:path';
-import crypto from 'node:crypto';
+import path from "node:path";
+import crypto from "node:crypto";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyEvent,
   CloudFrontRequestEvent,
-} from 'aws-lambda';
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+} from "aws-lambda";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
   ServerResponse,
   IncomingMessage,
   StreamingServerResponse,
-} from './http/index.js';
-import type { ResponseStream } from './types/aws-lambda.js';
+} from "./http/index.js";
+import type { ResponseStream } from "./types/aws-lambda.js";
 import {
   generateUniqueId,
   loadAppPathsManifestKeys,
@@ -21,15 +21,15 @@ import {
   loadPublicAssets,
   loadRoutesManifest,
   setNodeEnv,
-} from './util.js';
-import { isBinaryContentType } from './binary.js';
-import { debug, error, awsLogger } from './logger.js';
-import { convertFrom, convertTo } from './event-mapper.js';
+} from "./util.js";
+import { isBinaryContentType } from "./binary.js";
+import { debug, error, awsLogger } from "./logger.js";
+import { convertFrom, convertTo } from "./event-mapper.js";
 import {
   overrideHooks as overrideNextjsRequireHooks,
   applyOverride as applyNextjsRequireHooksOverride,
-} from './require-hooks.js';
-import type { WarmerEvent, WarmerResponse } from './warmer-function.js';
+} from "./require-hooks.js";
+import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -39,8 +39,8 @@ const sqsClient = new SQSClient({
   logger: awsLogger,
 });
 
-const NEXT_DIR = path.join(__dirname, '.next');
-const OPEN_NEXT_DIR = path.join(__dirname, '.open-next');
+const NEXT_DIR = path.join(__dirname, ".next");
+const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 
 const buildId = loadBuildId(NEXT_DIR);
@@ -63,7 +63,7 @@ const serverId = `server-${generateUniqueId()}`;
 //         override that Next.js does is done at import time
 overrideNextjsRequireHooks(config);
 // @ts-ignore
-import NextServer from 'next/dist/server/next-server.js';
+import NextServer from "next/dist/server/next-server.js";
 applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
@@ -79,8 +79,8 @@ async function preProcess(
   const internalEvent = convertFrom(event);
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
-  if (internalEvent.headers['x-forwarded-host']) {
-    internalEvent.headers.host = internalEvent.headers['x-forwarded-host'];
+  if (internalEvent.headers["x-forwarded-host"]) {
+    internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
 
   const reqProps = {
@@ -91,11 +91,11 @@ async function preProcess(
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
     // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
     // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
-    headers: { ...internalEvent.headers, purpose: 'prefetch' },
+    headers: { ...internalEvent.headers, purpose: "prefetch" },
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,
   };
-  debug('IncomingMessage constructor props', reqProps);
+  debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
 
   setNextjsPrebundledReact(internalEvent.rawPath);
@@ -111,11 +111,11 @@ export const handlerStreaming = awslambda.streamifyResponse(async function (
     | WarmerEvent,
   responseStream: ResponseStream
 ) {
-  debug('event', event);
+  debug("event", event);
 
   // Handler warmer
-  if ('type' in event) {
-    throw new Error('Warmer function are not supported with streaming');
+  if ("type" in event) {
+    throw new Error("Warmer function are not supported with streaming");
   }
 
   const { internalEvent, req } = await preProcess(event);
@@ -149,10 +149,10 @@ export const handlerNormal = async function (
     | APIGatewayProxyEvent
     | WarmerEvent
 ) {
-  debug('event', event);
+  debug("event", event);
 
   // Handler warmer
-  if ('type' in event) {
+  if ("type" in event) {
     return formatWarmerResponse(event);
   }
 
@@ -163,7 +163,7 @@ export const handlerNormal = async function (
   //       is handled by a separate cache behavior. Leaving here for backward compatibility.
   //       Remove this on next major release.
   if (publicAssets.files.includes(internalEvent.rawPath)) {
-    return internalEvent.type === 'cf'
+    return internalEvent.type === "cf"
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatAPIGatewayFailoverResponse();
   }
@@ -184,13 +184,13 @@ export const handlerNormal = async function (
   const statusCode = res.statusCode || 200;
   const headers = ServerResponse.headers(res);
   const isBase64Encoded = isBinaryContentType(
-    Array.isArray(headers['content-type'])
-      ? headers['content-type'][0]
-      : headers['content-type']
+    Array.isArray(headers["content-type"])
+      ? headers["content-type"][0]
+      : headers["content-type"]
   );
-  const encoding = isBase64Encoded ? 'base64' : 'utf8';
+  const encoding = isBase64Encoded ? "base64" : "utf8";
   const body = ServerResponse.body(res).toString(encoding);
-  debug('ServerResponse data', { statusCode, headers, isBase64Encoded, body });
+  debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
@@ -235,18 +235,18 @@ function setNextjsPrebundledReact(rawPath: string) {
 
   // Get route pattern
   const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(rawPath ?? '')
+    new RegExp(route.regex).test(rawPath ?? "")
   );
 
-  const isApp = appPathsManifestKeys.includes(route?.page ?? '');
-  debug('setNextjsPrebundledReact', { url: rawPath, isApp, route });
+  const isApp = appPathsManifestKeys.includes(route?.page ?? "");
+  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
 
   // app routes => use prebundled React
   if (isApp) {
     process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental
       .serverActions
-      ? 'experimental'
-      : 'next';
+      ? "experimental"
+      : "next";
     return;
   }
 
@@ -256,7 +256,7 @@ function setNextjsPrebundledReact(rawPath: string) {
 
 function createRequestHandler() {
   return new NextServer.default({
-    hostname: 'localhost',
+    hostname: "localhost",
     port: 3000,
     conf: {
       ...config,
@@ -285,13 +285,13 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
   try {
     await requestHandler(req, res);
   } catch (e: any) {
-    error('NextJS request failed.', e);
+    error("NextJS request failed.", e);
 
-    res.setHeader('Content-Type', 'application/json');
+    res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify(
         {
-          message: 'Server failed to respond.',
+          message: "Server failed to respond.",
           details: e,
         },
         null,
@@ -306,24 +306,24 @@ function fixCacheHeaderForHtmlPages(
   headers: Record<string, string | undefined>
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (htmlPages.includes(rawPath) && headers['cache-control']) {
-    headers['cache-control'] =
-      'public, max-age=0, s-maxage=31536000, must-revalidate';
+  if (htmlPages.includes(rawPath) && headers["cache-control"]) {
+    headers["cache-control"] =
+      "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
 
 function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  if (headers['cache-control']?.includes('stale-while-revalidate')) {
-    headers['cache-control'] = headers['cache-control'].replace(
-      'stale-while-revalidate',
-      'stale-while-revalidate=2592000' // 30 days
+  if (headers["cache-control"]?.includes("stale-while-revalidate")) {
+    headers["cache-control"] = headers["cache-control"].replace(
+      "stale-while-revalidate",
+      "stale-while-revalidate=2592000" // 30 days
     );
   }
 }
 
 function addOpenNextHeader(headers: Record<string, string | undefined>) {
-  headers['X-OpenNext'] = process.env.OPEN_NEXT_VERSION;
+  headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
 }
 
 async function revalidateIfRequired(
@@ -332,26 +332,26 @@ async function revalidateIfRequired(
   headers: Record<string, string | undefined>,
   req: IncomingMessage
 ) {
-  if (headers['x-nextjs-cache'] !== 'STALE') return;
+  if (headers["x-nextjs-cache"] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
   // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers['cache-control'] = 's-maxage=2, stale-while-revalidate=2592000';
+  headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
 
   // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
   // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
-  const internalMeta = req[Symbol.for('NextInternalRequestMeta')];
+  const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? // When using Pages Router, two requests will be received:
       // 1. one for the page: /foo
       // 2. one for the json data: /_next/data/BUILD_ID/foo.json
       // The rewritten url is correct for 1, but that for the second request
       // does not include the "/_next/data/" prefix. Need to add it.
-      rawPath.startsWith('/_next/data/')
+      rawPath.startsWith("/_next/data/")
       ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;
@@ -363,14 +363,14 @@ async function revalidateIfRequired(
   // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
   try {
     const hash = (str: string) =>
-      crypto.createHash('md5').update(str).digest('hex');
+      crypto.createHash("md5").update(str).digest("hex");
 
     await sqsClient.send(
       new SendMessageCommand({
         QueueUrl: REVALIDATION_QUEUE_URL,
         MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
         MessageBody: JSON.stringify({ host, url: revalidateUrl }),
-        MessageGroupId: 'revalidate',
+        MessageGroupId: "revalidate",
       })
     );
   } catch (e) {

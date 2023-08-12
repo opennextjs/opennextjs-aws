@@ -3,10 +3,10 @@
 // Licensed under the MIT License
 
 // @ts-nocheck
-import http from 'node:http';
-import { getString, headerEnd } from './utils.js';
+import http from "node:http";
+import { getString, headerEnd } from "./utils.js";
 
-const headerEnd = '\r\n\r\n';
+const headerEnd = "\r\n\r\n";
 
 const BODY = Symbol();
 const HEADERS = Symbol();
@@ -15,7 +15,7 @@ function addData(stream, data) {
   if (
     Buffer.isBuffer(data) ||
     ArrayBuffer.isView(data) ||
-    typeof data === 'string'
+    typeof data === "string"
   ) {
     stream[BODY].push(Buffer.from(data));
   } else {
@@ -41,7 +41,7 @@ export class ServerResponse extends http.ServerResponse {
 
   static headers(res) {
     const headers =
-      typeof res.getHeaders === 'function' ? res.getHeaders() : res._headers;
+      typeof res.getHeaders === "function" ? res.getHeaders() : res._headers;
 
     return Object.assign(headers, res[HEADERS]);
   }
@@ -60,7 +60,7 @@ export class ServerResponse extends http.ServerResponse {
   }
 
   writeHead(statusCode, reason, obj) {
-    const headers = typeof reason === 'string' ? obj : reason;
+    const headers = typeof reason === "string" ? obj : reason;
 
     for (const name in headers) {
       this.setHeader(name, headers[name]);
@@ -83,7 +83,7 @@ export class ServerResponse extends http.ServerResponse {
 
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;
-    this._header = '';
+    this._header = "";
 
     this.assignSocket({
       _writableState: {},
@@ -94,12 +94,12 @@ export class ServerResponse extends http.ServerResponse {
       cork: Function.prototype,
       uncork: Function.prototype,
       write: (data, encoding, cb) => {
-        if (typeof encoding === 'function') {
+        if (typeof encoding === "function") {
           cb = encoding;
           encoding = null;
         }
 
-        if (this._header === '' || this._wroteHeader) {
+        if (this._header === "" || this._wroteHeader) {
           addData(this, data);
         } else {
           const string = getString(data);
@@ -116,14 +116,14 @@ export class ServerResponse extends http.ServerResponse {
           }
         }
 
-        if (typeof cb === 'function') {
+        if (typeof cb === "function") {
           cb();
         }
       },
     });
 
-    this.once('finish', () => {
-      this.emit('close');
+    this.once("finish", () => {
+      this.emit("close");
     });
   }
 }

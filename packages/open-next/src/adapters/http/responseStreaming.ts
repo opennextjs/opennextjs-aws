@@ -1,7 +1,7 @@
-import http from 'node:http';
-import type { ResponseStream } from '../types/aws-lambda.js';
-import { debug, error } from '../logger.js';
-import { getString, headerEnd } from './utils.js';
+import http from "node:http";
+import type { ResponseStream } from "../types/aws-lambda.js";
+import { debug, error } from "../logger.js";
+import { getString, headerEnd } from "./utils.js";
 
 const HEADERS = Symbol();
 const BODY = Symbol();
@@ -40,27 +40,29 @@ export class StreamingServerResponse extends http.ServerResponse {
     statusMessage?: unknown,
     headers?: unknown
   ): this {
-    if (!this._wroteHeader) {
-      this.fixHeaders(this[HEADERS]);
-      try {
-        this.responseStream = awslambda.HttpResponseStream.from(
-          this.responseStream,
-          {
-            statusCode: statusCode as number,
-            headers: this[HEADERS],
-          }
-        );
-        if (!this.timer) {
-          this.createListener();
-        }
-
-        this._wroteHeader = true;
-        debug('writeHead', this[HEADERS]);
-      } catch (e) {
-        this.responseStream.end();
-        error(e);
-      }
+    if (this._wroteHeader) {
+      return this;
     }
+    this.fixHeaders(this[HEADERS]);
+    try {
+      this.responseStream = awslambda.HttpResponseStream.from(
+        this.responseStream,
+        {
+          statusCode: statusCode as number,
+          headers: this[HEADERS],
+        }
+      );
+      if (!this.timer) {
+        this.createListener();
+      }
+
+      this._wroteHeader = true;
+      debug("writeHead", this[HEADERS]);
+    } catch (e) {
+      this.responseStream.end();
+      error(e);
+    }
+
     return this;
   }
 
@@ -71,14 +73,14 @@ export class StreamingServerResponse extends http.ServerResponse {
     this.timer = setInterval(() => {
       if (this[BODY].length) {
         const toWrite = getString(this[BODY].shift());
-        debug('write', toWrite);
+        debug("write", toWrite);
         if (this.responseStream.writableNeedDrain) return;
         this.responseStream.write(toWrite);
         this._hasWritten = true;
         return;
       }
       if (this._done) {
-        debug('done', this._done);
+        debug("done", this._done);
         clearInterval(this.timer!);
         if (!this._hasWritten) {
           // We need to send data here, otherwise the stream will not end at all
@@ -98,7 +100,7 @@ export class StreamingServerResponse extends http.ServerResponse {
     cb?: (() => void) | undefined
   ): this;
   end(chunk?: unknown, encoding?: unknown, cb?: unknown): this {
-    if (chunk && typeof chunk !== 'function') {
+    if (chunk && typeof chunk !== "function") {
       this[BODY].push(chunk);
     }
     if (!this._wroteHeader) {
@@ -107,7 +109,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       this.writeHead(200);
     }
     this._done = true;
-    debug('stream end', chunk);
+    debug("stream end", chunk);
     return this;
   }
 
@@ -143,7 +145,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       uncork: Function.prototype,
       // @ts-ignore
       write: (data, encoding, cb) => {
-        if (typeof encoding === 'function') {
+        if (typeof encoding === "function") {
           cb = encoding;
           encoding = undefined;
         }
@@ -165,17 +167,17 @@ export class StreamingServerResponse extends http.ServerResponse {
           }
         }
 
-        if (typeof cb === 'function') {
+        if (typeof cb === "function") {
           cb();
         }
         return true;
       },
     });
 
-    this.responseStream.on('error', (err) => {
-      this.emit('error', err);
+    this.responseStream.on("error", (err) => {
+      this.emit("error", err);
       this.responseStream.end();
-      error('error', err);
+      error("error", err);
     });
   }
 }

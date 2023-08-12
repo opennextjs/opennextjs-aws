@@ -1,6 +1,5 @@
-import { APIGatewayProxyEventV2, Context } from 'aws-lambda';
-import * as http from 'http';
-import { Writable } from 'stream';
+import { APIGatewayProxyEventV2, Context } from "aws-lambda";
+import { Writable } from "stream";
 
 export interface ResponseStream extends Writable {
   getBufferedData(): Buffer;
