@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import {
   BatchWriteItemCommand,
   DynamoDBClient,
@@ -11,10 +9,12 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   PutObjectCommandInput,
+  PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
 //@ts-ignore
 import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
+import path from "path";
 
 import { awsLogger, debug, error } from "./logger.js";
 import { loadBuildId } from "./util.js";
@@ -137,6 +137,10 @@ export default class S3Cache {
         key,
         LastModified?.getTime(),
       );
+      if (lastModified === -1) {
+        // If some tags are stale we need to force revalidation
+        return null;
+      }
 
       return {
         lastModified,
@@ -195,6 +199,10 @@ export default class S3Cache {
           key,
           LastModified?.getTime(),
         );
+        if (lastModified === -1) {
+          // If some tags are stale we need to force revalidation
+          return null;
+        }
         const meta = JSON.parse((await MetaBody?.transformToString()) ?? "{}");
         return {
           lastModified,
@@ -243,6 +251,15 @@ export default class S3Cache {
     } else if (data?.kind === "PAGE") {
       const { html, pageData } = data;
       const isAppPath = typeof pageData === "string";
+      let metaPromise: Promise<PutObjectCommandOutput | void> =
+        Promise.resolve();
+      if (data.status || data.headers) {
+        metaPromise = this.putS3Object(
+          key,
+          "meta",
+          JSON.stringify({ status: data.status, headers: data.headers }),
+        );
+      }
       await Promise.all([
         this.putS3Object(key, "html", html),
         this.putS3Object(
@@ -250,6 +267,7 @@ export default class S3Cache {
           isAppPath ? "rsc" : "json",
           isAppPath ? pageData : JSON.stringify(pageData),
         ),
+        metaPromise,
       ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
@@ -312,7 +330,7 @@ export default class S3Cache {
           ExpressionAttributeValues: {
             ":key": { S: this.buildDynamoKey(path) },
           },
-        })
+        }),
       );
       const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
