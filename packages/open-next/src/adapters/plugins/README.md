@@ -7,7 +7,7 @@ When defining imports, you must import `types` at the bottom, otherwise esbuild 
 //#override imports
 import { requestHandler } from "./util.js";
 
-// put the comments last
+// put the types last, otherwise the "//#override" above will be removed
 import type { PluginHandler } from "../next-types.js";
 import type { IncomingMessage } from "../request.js";
 import type { ServerResponse } from "../response.js";
