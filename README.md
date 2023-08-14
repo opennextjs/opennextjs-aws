@@ -288,19 +288,13 @@ export default async function handler(req, res) {
 If the pages router is in use, you must also invalidate the `_next/data/BUILD_ID/foo.json` path. The value for `BUILD_ID` can be found in the `.next/BUILD_ID` build output and can be accessed at runtime via the `process.env.NEXT_BUILD_ID` environment variable.
 
 ```ts
-await invalidateCloudFrontPaths([
-  "/foo",
-  `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`,
-]);
+await invalidateCloudFrontPaths(["/foo", `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`]);
 ```
 
 And here is an example of the `invalidateCloudFrontPaths()` function:
 
 ```ts
-import {
-  CloudFrontClient,
-  CreateInvalidationCommand,
-} from "@aws-sdk/client-cloudfront";
+import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
 
 const cloudFront = new CloudFrontClient({});
 
@@ -584,6 +578,15 @@ For Next.js 13.2 and later versions, you need to explicitly set the `__NEXT_PRIV
 > Require these modules with static paths to make sure they are tracked by NFT when building the app in standalone mode, as we are now conditionally aliasing them it's tricky to track them in build time.
 
 On every request, we try to detect whether the route is using the Pages Router or the App Router. If the Pages Router is being used, we set `__NEXT_PRIVATE_PREBUNDLED_REACT` to `undefined`, which means the React version from the `node_modules` is used. However, if the App Router is used, `__NEXT_PRIVATE_PREBUNDLED_REACT` is set, and the prebundled React version is used.
+
+#### WORKAROUND: 13.4.13+ breaking changes (middleware, redirect, rewrites)
+
+Nextjs 13.4.13 refactored the middleware logic so that it no longer runs in the server handler. Instead they are executed as workeres in child threads, which introduces a non-acceptable latency of ~5 seconds. In order to circumvent this issue, open-next needs to implement the middleware handler before processing the server handler ourselves.
+
+We've introduced a custom esbuild plugin to conditionally inject and override code to properly handle the breaking changes.
+
+The default request handler is in `adapters/plugins/default.ts`
+When open-next needs to override that implementation due to NextJs breaking compatibility, the `createServerBundle` in `build.ts` determines the proper overrides to replace the code of the `default.ts` file.
 
 ## Example
 

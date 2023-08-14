@@ -1,3 +1,4 @@
+//#override imports
 import path from "node:path";
 import { PluginHandler, type Options } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
@@ -14,7 +15,9 @@ const {
   signalFromNodeResponse,
 } = require("next/dist/server/web/spec-extension/adapters/next-request");
 const middleMatch = getMiddlewareMatch(middlewareManifest);
+//#endOverride
 
+//#override handler
 export const handler: PluginHandler = async (
   req: IncomingMessage,
   res: ServerResponse,
@@ -118,3 +121,4 @@ async function handleMiddleware(
     return res.end();
   }
 }
+//#endOverride

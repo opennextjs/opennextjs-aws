@@ -403,15 +403,15 @@ async function createServerBundle(monorepoRoot: string) {
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
         openNextPlugin({
-          importPath: "./plugins/13_4_13.js",
+          target: /plugins\/default\.js/g,
+          replacements: ["./13_4_13.js"],
         }),
       ]
       : undefined;
 
   if (plugins) {
     console.log(
-      `Applying plugins: [${plugins.map(({ name }) => name).join(",")}] for Next version: ${
-        options.nextVersion
+      `Applying plugins: [${plugins.map(({ name }) => name).join(",")}] for Next version: ${options.nextVersion
       }`
     );
   }
