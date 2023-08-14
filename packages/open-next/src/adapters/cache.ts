@@ -269,13 +269,13 @@ export default class S3Cache {
         ? getDerivedTags(data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
         : [];
     debug("derivedTags", derivedTags);
-    if (derivedTags.length > 0) {
-      // Maybe we should not override the tag revalidateAt if it is already set
-      // With our current implementation it should not matter, every time we update the cache
-      // it is because of a revalidation and every ISR is considered as on demand revalidation
-      // so effectively skipping the fetch cache
+    // Get all tags stored in dynamodb for the given key
+    // If any of the derived tags are not stored in dynamodb for the given key, write them
+    const storedTags = await this.getTagsByPath(key);
+    const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
+    if (tagsToWrite.length > 0) {
       await this.batchWriteDynamoItem(
-        derivedTags.map((tag) => ({
+        tagsToWrite.map((tag) => ({
           path: key,
           tag: tag,
         })),
@@ -298,6 +298,30 @@ export default class S3Cache {
   }
 
   // DynamoDB handling
+
+  private async getTagsByPath(path: string) {
+    try {
+      const result = await this.dynamoClient.send(
+        new QueryCommand({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression: "#key = :key",
+          ExpressionAttributeNames: {
+            "#key": "path",
+          },
+          ExpressionAttributeValues: {
+            ":key": { S: this.buildDynamoKey(path) },
+          },
+        })
+      );
+      const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
+      debug("tags for path", path, tags);
+      return tags;
+    } catch (e) {
+      error("Failed to get tags by path", e);
+      return [];
+    }
+  }
 
   //TODO: Figure out a better name for this function since it returns the lastModified
   private async getHasRevalidatedTags(key: string, lastModified?: number) {
