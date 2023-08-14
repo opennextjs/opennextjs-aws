@@ -1,6 +1,7 @@
+import type { PluginHandler, Options } from "../next-types.js";
+
 //#override imports
 import path from "node:path";
-import { PluginHandler, type Options } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
 import { config, NEXT_DIR } from "../util.js";
