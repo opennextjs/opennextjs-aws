@@ -1,0 +1,10 @@
+{
+  "files.exclude": {
+    "**/.turbo": true
+  },
+  "tailwindCSS.classAttributes": [
+    "class",
+    "className",
+    "tw"
+  ],
+}

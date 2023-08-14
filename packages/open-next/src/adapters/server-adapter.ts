@@ -195,6 +195,7 @@ function createRequestHandler() {
   return new NextServer.default({
     hostname: "localhost",
     port: 3000,
+    // @ts-ignore
     conf: {
       ...config,
       // Next.js compression should be disabled because of a bug in the bundled
@@ -220,6 +221,7 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
   delete req.body;
 
   try {
+    // @ts-ignore
     await requestHandler(req, res);
   } catch (e: any) {
     error("NextJS request failed.", e);
@@ -284,11 +286,11 @@ async function revalidateIfRequired(
   const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? // When using Pages Router, two requests will be received:
-      // 1. one for the page: /foo
-      // 2. one for the json data: /_next/data/BUILD_ID/foo.json
-      // The rewritten url is correct for 1, but that for the second request
-      // does not include the "/_next/data/" prefix. Need to add it.
-      rawPath.startsWith("/_next/data/")
+    // 1. one for the page: /foo
+    // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+    // The rewritten url is correct for 1, but that for the second request
+    // does not include the "/_next/data/" prefix. Need to add it.
+    rawPath.startsWith("/_next/data/")
       ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;

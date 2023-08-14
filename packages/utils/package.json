@@ -1,0 +1,29 @@
+{
+  "name": "@open-next/utils",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./dist/index.js",
+    "./binary": "./dist/binary.js",
+    "./logger": "./dist/logger.js"
+  },
+  "typesVersions": {
+    "*": {
+      "types": ["./dist/*.d.ts"]
+    }
+  },
+  "scripts": {
+    "build": "tsup ./src/*.ts --format cjs --dts",
+    "dev": "tsup ./src/*.ts --format cjs --dts --watch",
+    "lint": "TIMING=1 eslint \"**/*.ts*\"",
+    "clean": "rm -rf .turbo && rm -rf node_modules"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "tsup": "7.2.0",
+    "@types/node": "20.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

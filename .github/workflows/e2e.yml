@@ -1,0 +1,94 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  PLAYWRIGHT_BROWSERS_PATH: 0
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment:
+      name: ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.5
+
+      - name: Set up NodeJS v18
+        uses: actions/setup-node@v3
+        with:
+          cache: pnpm # cache pnpm store
+          node-version: 18.16.1
+
+      - name: Install packages
+        run: pnpm install
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm ls @playwright/test | grep @playwright | sed 's/.*@//' | sed 's/ .*//' )"
+
+      - name: Cache Playwright
+        uses: actions/cache@v3
+        id: playwright-cache
+        with:
+          path: "~/.cache/ms-playwright"
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      # Cache turbo runs
+      - name: Cache Turbo
+        uses: actions/cache@v3
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      # Build all the packages
+      - name: Build
+        run: pnpm run build
+
+      # Deploy e2e stage
+      - name: Deploy NextjsSite
+        cwd: example
+        run: npx sst deploy --stage e2e
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "us-east-1"
+
+      # Load app urls from .sst/output.json file
+      - name: Set environments
+        run: |
+          APP_DIR_ONLY_URL=$(jq -r '.["e2e-example-AppDirOnly"].url' .sst/outputs.json)
+          echo "APP_DIR_ONLY_URL=$APP_DIR_ONLY_URL" >> $GITHUB_ENV
+          PAGES_ONLY_URL=$(jq -r '.["e2e-example-PagesOnly"].url' .sst/outputs.json)
+          echo "PAGES_ONLY_URL=$PAGES_ONLY_URL" >> $GITHUB_ENV
+          APP_DIR_AND_PAGES_URL=$(jq -r '.["e2e-example-AppDirAndPages"].url' .sst/outputs.json)
+          echo "APP_DIR_AND_PAGES_URL=$APP_DIR_AND_PAGES_URL" >> $GITHUB_ENV
+
+      - name: Run e2e Test
+        run: npm run e2e:test
+
+      - name: Archive
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sst
+          path: |
+            .sst/
+            .next/
