@@ -1,9 +1,9 @@
-//#override imports
-import { requestHandler } from "./util.js";
-
 import type { PluginHandler } from "../next-types.js";
 import type { IncomingMessage } from "../request.js";
 import type { ServerResponse } from "../response.js";
+
+//#override imports
+import { requestHandler } from "./util.js";
 //#endOverride
 
 //#override handler

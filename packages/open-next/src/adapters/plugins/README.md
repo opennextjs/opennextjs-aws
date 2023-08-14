@@ -1,15 +1,17 @@
 ### Known issues
 
-When defining imports, you must import `types` at the bottom, otherwise esbuild will remove the head comment, eg
-`//#override id1` will be omitted from build.
+Do not include `types` in #override and #imports, as esbuild will remove preceeding comments (ie it removes //#override id)when it builds.
+
+Instead, put the `import type` outside like:
 
 ```
-//#override imports
-import { requestHandler } from "./util.js";
-
-// put the types last, otherwise the "//#override" above will be removed
 import type { PluginHandler } from "../next-types.js";
 import type { IncomingMessage } from "../request.js";
 import type { ServerResponse } from "../response.js";
+
+//#override imports
+import { requestHandler } from "./util.js";
 //#endOverride
 ```
+
+The types are removed in the final output anyways.

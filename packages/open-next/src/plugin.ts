@@ -66,7 +66,6 @@ export default function openNextPlugin({ target, replacements }: IPluginSettings
           }
         }
 
-        console.log("\n\n~~", contents);
         return {
           contents,
         };
