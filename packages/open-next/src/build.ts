@@ -554,6 +554,7 @@ async function createServerBundle(monorepoRoot: string) {
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
   addCacheHandler(outputPath);
+  patchFetch(outputPath);
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -671,6 +672,25 @@ function addCacheHandler(outputPath: string) {
     target: ["node18"],
     format: "cjs",
   });
+}
+
+function patchFetch(outputPath: string) {
+  //TODO: handle monorepo case
+  const toOverridePath = path.join(
+    outputPath,
+    "node_modules",
+    "next",
+    "dist",
+    "server",
+    "lib",
+    "patch-fetch.js"
+  );
+  const content = fs.readFileSync(toOverridePath, "utf-8");
+  const patchedContent = content.replace(
+    "staticGenerationStore.isOnDemandRevalidate",
+    "(staticGenerationStore.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true'))"
+  );
+  fs.writeFileSync(toOverridePath, patchedContent);
 }
 
 /********************/
