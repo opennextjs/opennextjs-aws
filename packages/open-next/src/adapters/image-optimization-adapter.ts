@@ -22,7 +22,7 @@ import {
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
 import { awsLogger, debug, error } from "./logger.js";
-import { loadConfig, setNodeEnv } from "./util.js";
+import { config, setNodeEnv } from "./util.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
