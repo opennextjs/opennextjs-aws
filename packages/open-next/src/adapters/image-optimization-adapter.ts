@@ -95,6 +95,7 @@ function validateImageParams(
   // Next.js checks if external image URL matches the
   // `images.remotePatterns`
   const imageParams = ImageOptimizerCache.validateParams(
+    // @ts-ignore
     { headers },
     queryString,
     nextConfig,
@@ -112,6 +113,7 @@ async function optimizeImage(
   imageParams: any,
 ) {
   const result = await imageOptimizer(
+    // @ts-ignore
     { headers },
     {}, // res object is not necessary as it's not actually used.
     imageParams,
