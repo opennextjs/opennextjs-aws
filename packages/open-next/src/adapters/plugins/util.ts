@@ -54,9 +54,9 @@ export const requestHandler = new NextServer.default({
 }).getRequestHandler();
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
-  return middlewareManifest.middleware["/"].matchers.map(
-    ({ regexp }) => new RegExp(regexp)
-  );
+  const rootMiddleware = middlewareManifest.middleware["/"];
+  if (!rootMiddleware?.matchers) return [];
+  return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
 }
 
 export function loadMiddlewareManifest(nextDir: string) {
