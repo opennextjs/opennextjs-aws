@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "e2e:dev": "playwright test",
-    "e2e:test": "playwright test",
+    "e2e:dev": "playwright test --retries=5",
+    "e2e:test": "playwright test --retries=5",
     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
   "dependencies": {

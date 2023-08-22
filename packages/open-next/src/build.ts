@@ -44,7 +44,6 @@ export async function build(opts: BuildOptions = {}) {
   // Initialize options
   options = normalizeOptions(opts);
 
-  console.log("~~hi");
   // Pre-build validation
   checkRunningInsideNextjsApp();
   printNextjsVersion();

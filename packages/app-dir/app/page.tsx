@@ -30,6 +30,9 @@ export default function Home() {
         <Nav href={"/api"} title='API'>
           Calls an API endpoint defined in app/api/hello/route and middleware
         </Nav>
+        <Nav href={"/parallel"} title='Parallel'>
+          Parallel routing
+        </Nav>
       </main>
     </>
   )
