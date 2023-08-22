@@ -58,7 +58,10 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")
     : "{}";
-  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<string, string>;
+  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<
+    string,
+    string
+  >;
   return Object.keys(appPathsManifest).map((key) => {
     // Remove group route params and /page suffix
     const cleanedKey = key.replace(/\/\(\w+\)|\/page$/g, "");

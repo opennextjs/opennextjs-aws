@@ -31,13 +31,6 @@ import {
   NEXT_DIR,
   OPEN_NEXT_DIR,
 } from "./util.js";
-<<<<<<< HEAD
-=======
-import { isBinaryContentType } from "./binary.js";
-import { debug, error, awsLogger } from "./logger.js";
-import { InternalEvent, convertFrom, convertTo } from "./event-mapper.js";
-
->>>>>>> 92b34c7 (Add plugins)
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 import { handler as serverHandler } from "./plugins/default.js";
@@ -57,8 +50,7 @@ setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
 const htmlPages = loadHtmlPages(NEXT_DIR);
-const routesManifest = loadRoutesManifest(NEXT_DIR);
-const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
+
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 // Generate a 6 letter unique server ID
 const serverId = `server-${generateUniqueId()}`;
@@ -114,7 +106,6 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(rawPath);
   await processRequest(req, res, internalEvent);
 
   // Format Next.js response to Lambda response
@@ -222,7 +213,8 @@ function fixCacheHeaderForHtmlPages(
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (htmlPages.includes(rawPath) && headers["cache-control"]) {
-    headers["cache-control"] = "public, max-age=0, s-maxage=31536000, must-revalidate";
+    headers["cache-control"] =
+      "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
 
@@ -276,7 +268,8 @@ async function revalidateIfRequired(
   // your page will need to have a different etag to bypass the deduplication window.
   // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
   try {
-    const hash = (str: string) => crypto.createHash("md5").update(str).digest("hex");
+    const hash = (str: string) =>
+      crypto.createHash("md5").update(str).digest("hex");
 
     await sqsClient.send(
       new SendMessageCommand({

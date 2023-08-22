@@ -5,7 +5,12 @@ import path from "node:path";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
 import { config, NEXT_DIR } from "../util.js";
-import { requestHandler, getMiddlewareMatch, loadMiddlewareManifest } from "./util.js";
+import {
+  requestHandler,
+  getMiddlewareMatch,
+  loadMiddlewareManifest,
+  setNextjsPrebundledReact,
+} from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
@@ -30,7 +35,7 @@ export const handler: PluginHandler = async (
   // Middleware
   const ended = await handleMiddleware(req, res, rawPath);
   if (ended) return;
-
+  setNextjsPrebundledReact(rawPath);
   // Next Server
   return requestHandler(req, res);
 };
@@ -52,7 +57,9 @@ async function handleMiddleware(
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
   // structure, but as of now, the only useful property on it is the "/" key (ie root).
   const middlewareInfo = middlewareManifest.middleware["/"];
-  middlewareInfo.paths = middlewareInfo.files.map((file) => path.join(NEXT_DIR, file));
+  middlewareInfo.paths = middlewareInfo.files.map((file) =>
+    path.join(NEXT_DIR, file)
+  );
 
   const result = await run({
     distDir: NEXT_DIR,
