@@ -39,9 +39,13 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  *
  * @param opts.target - the target file to replace
  * @param opts.replacements - list of files used to replace the imports/overrides in the target
+ *                          - the path is relative to the target path
  * @returns
  */
-export default function openNextPlugin({ target, replacements }: IPluginSettings): Plugin {
+export default function openNextPlugin({
+  target,
+  replacements,
+}: IPluginSettings): Plugin {
   return {
     name: "opennext",
     setup(build) {
@@ -61,7 +65,9 @@ export default function openNextPlugin({ target, replacements }: IPluginSettings
           for (const match of matches) {
             const replacement = match[2];
             const id = match[1];
-            const pattern = new RegExp(`\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`);
+            const pattern = new RegExp(
+              `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`
+            );
             contents = contents.replace(pattern, replacement);
           }
         }

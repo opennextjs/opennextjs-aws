@@ -8,7 +8,11 @@ import url from "node:url";
 
 
 import { minifyAll } from "./minimize-js.js";
-import { build as buildAsync, buildSync, BuildOptions as ESBuildOptions } from "esbuild";
+import {
+  build as buildAsync,
+  buildSync,
+  BuildOptions as ESBuildOptions,
+} from "esbuild";
 import { createRequire as topLevelCreateRequire } from "node:module";
 import openNextPlugin from "./plugin.js";
 interface BuildOptions {
@@ -136,7 +140,8 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
   const { appPath } = options;
   const command =
-    options.buildCommand ?? (packager === "npm" ? "npm run build" : `${packager} build`);
+    options.buildCommand ??
+    (packager === "npm" ? "npm run build" : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
     cwd: appPath,
@@ -160,7 +165,10 @@ function printNextjsVersion() {
   const { appPath } = options;
   cp.spawnSync(
     "node",
-    ["-e", `"console.info('Next.js v' + require('next/package.json').version)"`],
+    [
+      "-e",
+      `"console.info('Next.js v' + require('next/package.json').version)"`,
+    ],
     {
       stdio: "inherit",
       cwd: appPath,
@@ -254,7 +262,9 @@ function createImageOptimizationBundle() {
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
   esbuildSync({
-    entryPoints: [path.join(__dirname, "adapters", "image-optimization-adapter.js")],
+    entryPoints: [
+      path.join(__dirname, "adapters", "image-optimization-adapter.js"),
+    ],
     external: ["sharp", "next"],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -403,16 +413,21 @@ async function createServerBundle(monorepoRoot: string) {
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
         openNextPlugin({
-          target: /plugins\/default\.js/g,
-          replacements: ["./13_4_13.js"],
+          target: /plugins\/serverHandler\.js/g,
+          replacements: ["./serverHandler.replacement.js"],
+        }),
+        openNextPlugin({
+          target: /plugins\/util\.js/g,
+          replacements: ["./util.replacement.js"],
         }),
       ]
       : undefined;
 
   if (plugins) {
     console.log(
-      `Applying plugins: [${plugins.map(({ name }) => name).join(",")}] for Next version: ${options.nextVersion
-      }`
+      `Applying plugins:: [${plugins
+        .map(({ name }) => name)
+        .join(",")}] for Next version: ${options.nextVersion}`
     );
   }
   await esbuildAsync({
@@ -572,7 +587,9 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...esbuildOptions.define,
-      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG ? "true" : "false",
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
+        ? "true"
+        : "false",
       "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
     },
   });
@@ -581,7 +598,36 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
       `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
-      }.`,
+      }.`
+    );
+  }
+}
+
+async function esbuildAsync(esbuildOptions: ESBuildOptions) {
+  const { openNextVersion, debug } = options;
+  const result = await buildAsync({
+    target: "esnext",
+    format: "esm",
+    platform: "node",
+    bundle: true,
+    minify: debug ? false : true,
+    sourcemap: debug ? "inline" : false,
+    ...esbuildOptions,
+    // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
+    define: {
+      ...esbuildOptions.define,
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
+        ? "true"
+        : "false",
+      "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
+    },
+  });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(
+      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      }.`
     );
   }
 }
@@ -629,7 +675,9 @@ function getHtmlPages(dotNextPath: string) {
 }
 
 function getBuildId(dotNextPath: string) {
-  return fs.readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8").trim();
+  return fs
+    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
+    .trim();
 }
 
 function getOpenNextVersion() {
@@ -637,7 +685,8 @@ function getOpenNextVersion() {
 }
 
 function getNextVersion(appPath: string) {
-  const version = require(path.join(appPath, "./package.json")).dependencies.next;
+  const version = require(path.join(appPath, "./package.json")).dependencies
+    .next;
   // Drop the -canary.n suffix
   return version.split("-")[0];
 }
