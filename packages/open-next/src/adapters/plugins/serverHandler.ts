@@ -13,7 +13,6 @@ export const handler: PluginHandler = async (
   options: Options
 ) => {
   setNextjsPrebundledReact(options.internalEvent.rawPath);
-
   return requestHandler(req, res);
 };
 //#endOverride

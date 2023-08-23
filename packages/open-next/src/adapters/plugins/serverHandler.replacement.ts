@@ -10,6 +10,7 @@ import {
   getMiddlewareMatch,
   loadMiddlewareManifest,
   setNextjsPrebundledReact,
+  fixDataPage,
 } from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
@@ -29,7 +30,8 @@ export const handler: PluginHandler = async (
   res: ServerResponse,
   options: Options
 ) => {
-  const { internalEvent } = options;
+  let { internalEvent } = options;
+
   const { rawPath } = internalEvent;
 
   // Middleware
@@ -61,6 +63,7 @@ async function handleMiddleware(
     path.join(NEXT_DIR, file)
   );
 
+  console.log("~~Running 13.4.13 middleware:", rawPath);
   const result = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",

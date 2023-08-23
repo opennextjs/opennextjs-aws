@@ -17,6 +17,7 @@ export type InternalEvent = {
   readonly url: string;
   readonly body: Buffer;
   readonly headers: Record<string, string>;
+  readonly query: Record<string, string | string[]>;
   readonly remoteAddress: string;
 };
 
@@ -46,17 +47,44 @@ export function isCloudFrontRequestEvent(
   return event.Records !== undefined;
 }
 
+export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
+  const { rawPath, query } = internalEvent;
+  const dataPattern = `/_next/data/${buildId}`;
+
+  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
+    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    query.__nextDataReq = "1";
+    const urlQuery: Record<string, string> = {};
+    Object.keys(query).forEach((k) => {
+      const v = query[k];
+      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
+    });
+    return {
+      ...internalEvent,
+      rawPath: newPath,
+      query,
+      url: `${newPath}${query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
+        }`,
+    };
+  }
+  return internalEvent;
+}
+
 export function convertFrom(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
+  buildId: string
 ): InternalEvent {
+  let internalEvent: InternalEvent;
   if (isCloudFrontRequestEvent(event)) {
-    return convertFromCloudFrontRequestEvent(event);
+    internalEvent = convertFromCloudFrontRequestEvent(event);
   } else if (isAPIGatewayProxyEventV2(event)) {
-    return convertFromAPIGatewayProxyEventV2(event);
+    internalEvent = convertFromAPIGatewayProxyEventV2(event);
   } else if (isAPIGatewayProxyEvent(event)) {
-    return convertFromAPIGatewayProxyEvent(event);
-  }
-  throw new Error("Unsupported event type");
+    internalEvent = convertFromAPIGatewayProxyEvent(event);
+  } else throw new Error("Unsupported event type");
+
+  // return internalEvent;
+  return fixDataPage(internalEvent, buildId);
 }
 
 export function convertTo(
@@ -72,8 +100,19 @@ export function convertTo(
   throw new Error("Unsupported event type");
 }
 
+function removeUndefinedFromQuery(
+  query: Record<string, string | string[] | undefined>
+) {
+  const newQuery: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      newQuery[key] = value;
+    }
+  }
+  return newQuery;
+}
 function convertFromAPIGatewayProxyEvent(
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEvent
 ): InternalEvent {
   const { path, body, httpMethod, requestContext, isBase64Encoded } = event;
   return {
@@ -84,6 +123,9 @@ function convertFromAPIGatewayProxyEvent(
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
     headers: normalizeAPIGatewayProxyEventHeaders(event),
     remoteAddress: requestContext.identity.sourceIp,
+    query: removeUndefinedFromQuery(
+      event.multiValueQueryStringParameters ?? {}
+    ),
   };
 }
 
@@ -99,6 +141,7 @@ function convertFromAPIGatewayProxyEventV2(
     body: normalizeAPIGatewayProxyEventV2Body(event),
     headers: normalizeAPIGatewayProxyEventV2Headers(event),
     remoteAddress: requestContext.http.sourceIp,
+    query: removeUndefinedFromQuery(event.queryStringParameters ?? {}),
   };
 }
 
@@ -118,6 +161,13 @@ function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
+    query: querystring.split("&").reduce((acc, cur) => {
+      const [key, value] = cur.split("=");
+      return {
+        ...acc,
+        [key]: value,
+      };
+    }, {}),
   };
 }
 

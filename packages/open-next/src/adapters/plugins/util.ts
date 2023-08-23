@@ -27,12 +27,14 @@ import {
 overrideNextjsRequireHooks(config);
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
+import { InternalEvent } from "../event-mapper.js";
 applyNextjsRequireHooksOverride();
 
+//#override requestHandler
 // @ts-ignore
 export const requestHandler = new NextServer.default({
   hostname: "localhost",
-  // port: IMPORTANT: DO NOT SET PORT so that request.url is set to actual host
+  port: 3000,
   conf: {
     ...config,
     // Next.js compression should be disabled because of a bug in the bundled
@@ -42,9 +44,6 @@ export const requestHandler = new NextServer.default({
     // our own cache handler to store the cache on S3.
     experimental: {
       ...config.experimental,
-      // This uses the request.headers.host as the URL
-      // https://github.com/vercel/next.js/blob/canary/packages/next/src/server/next-server.ts#L1749-L1754
-      trustHostHeader: true,
       incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
     },
   },
@@ -52,6 +51,7 @@ export const requestHandler = new NextServer.default({
   dev: false,
   dir: __dirname,
 }).getRequestHandler();
+//#endOverride
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   const rootMiddleware = middlewareManifest.middleware["/"];
@@ -86,4 +86,29 @@ export function setNextjsPrebundledReact(rawPath: string) {
 
   // page routes => use node_modules React
   process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
+}
+
+export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
+  const { rawPath, query } = internalEvent;
+  const dataPattern = `/_next/data/${buildId}`;
+  console.log("~~dataPattern: ", rawPath, dataPattern);
+  console.log("~~query: ", query);
+  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
+    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    query.__nextDataReq = "1";
+    const urlQuery: Record<string, string> = {};
+    Object.keys(query).forEach((k) => {
+      const v = query[k];
+      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
+    });
+    return {
+      ...internalEvent,
+      rawPath: newPath,
+      query,
+      url: `${newPath}${
+        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
+      }`,
+    };
+  }
+  return internalEvent;
 }

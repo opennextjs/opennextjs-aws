@@ -33,7 +33,7 @@ import {
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
-import { handler as serverHandler } from "./plugins/default.js";
+import { handler as serverHandler } from "./plugins/serverHandler.js";
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -73,7 +73,7 @@ export async function handler(
   }
 
   // Parse Lambda event and create Next.js request
-  const internalEvent = convertFrom(event);
+  const internalEvent = convertFrom(event, buildId);
   const rawPath = internalEvent.rawPath;
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
@@ -103,7 +103,7 @@ export async function handler(
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,
   };
-  debug("IncomingMessage constructor props", reqProps);
+  console.log("~~IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
   await processRequest(req, res, internalEvent);
@@ -188,12 +188,9 @@ async function processRequest(
   delete req.body;
 
   try {
-    // Middleware
-    const ended = await handleMiddleware(req, res, rawPath);
-    if (ended) return;
-    // Next Server
-    // @ts-ignore
-    await requestHandler(req, res);
+    // `serverHandler` is replaced at build time depending on user's
+    // nextjs version to patch Nextjs 13.4.x and future breaking changes.
+    await serverHandler(req, res, { internalEvent, buildId });
   } catch (e: any) {
     error("NextJS request failed.", e);
 
