@@ -42,13 +42,24 @@ export function loadRoutesManifest(nextDir: string) {
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
 
-  // TODO: do we need to include rewrites.afterFiles and rewrites.fallback here?
-  const rewrites = routesManifest.rewrites.beforeFiles ?? [];
-  // Rewrite routes first, then static routes then dynamic routes
+  const _dataRoutes = routesManifest.dataRoutes ?? [];
+  const dataRoutes = {
+    static: _dataRoutes.filter((r) => r.routeKeys === undefined),
+    dynamic: _dataRoutes.filter((r) => r.routeKeys !== undefined),
+  };
+
   return {
-    rewrites,
-    redirects: routesManifest.redirects,
-    routes: [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes],
+    rewrites: {
+      beforeFiles: routesManifest.rewrites.beforeFiles ?? [],
+      afterFiles: routesManifest.rewrites.afterFiles ?? [],
+      fallback: routesManifest.rewrites.fallback ?? [],
+    },
+    redirects: routesManifest.redirects ?? [],
+    routes: {
+      static: routesManifest.staticRoutes ?? [],
+      dynamic: routesManifest.dynamicRoutes ?? [],
+      data: dataRoutes,
+    },
   };
 }
 

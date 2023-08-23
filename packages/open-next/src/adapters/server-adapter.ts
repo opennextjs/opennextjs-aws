@@ -94,14 +94,45 @@ export async function handler(
     return redirect;
   }
 
-  const { rawPath, url, isExternalRewrite } = handleRewrites(
+  let isExternalRewrite = false;
+  // First rewrite to be applied
+  const beforeRewrites = handleRewrites(
     internalEvent,
-    routesManifest.rewrites,
+    routesManifest.rewrites.beforeFiles,
   );
+  internalEvent = beforeRewrites.internalEvent;
+  isExternalRewrite = beforeRewrites.isExternalRewrite;
+
+  const isStaticRoute = routesManifest.routes.static.some((route) =>
+    new RegExp(route.regex).test(internalEvent.rawPath),
+  );
+
+  if (!isStaticRoute && !isExternalRewrite) {
+    // Second rewrite to be applied
+    const afterRewrites = handleRewrites(
+      internalEvent,
+      routesManifest.rewrites.afterFiles,
+    );
+    internalEvent = afterRewrites.internalEvent;
+    isExternalRewrite = afterRewrites.isExternalRewrite;
+  }
+
+  const isDynamicRoute = routesManifest.routes.dynamic.some((route) =>
+    new RegExp(route.regex).test(internalEvent.rawPath),
+  );
+  if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
+    // Fallback rewrite to be applied
+    const fallbackRewrites = handleRewrites(
+      internalEvent,
+      routesManifest.rewrites.fallback,
+    );
+    internalEvent = fallbackRewrites.internalEvent;
+    isExternalRewrite = fallbackRewrites.isExternalRewrite;
+  }
 
   const reqProps = {
     method: internalEvent.method,
-    url,
+    url: internalEvent.url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable

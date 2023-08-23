@@ -77,6 +77,12 @@ export interface RouteDefinition {
   regex: string;
 }
 
+export interface DataRouteDefinition {
+  page: string;
+  dataRouteRegex: string;
+  routeKeys?: string;
+}
+
 export interface RewriteMatcher {
   type: "header" | "cookie" | "query" | "host";
   key: string;
@@ -98,6 +104,7 @@ export interface RedirectDefinition extends RewriteDefinition {
 export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
+  dataRoutes: DataRouteDefinition[];
   rewrites: {
     beforeFiles: RewriteDefinition[];
     afterFiles: RewriteDefinition[];
