@@ -16,7 +16,7 @@ import type { RouteDefinition } from "./next-types.js";
 import type { RewriteMatcher } from "./next-types.js";
 import { IncomingMessage } from "./request.js";
 import { ServerResponse } from "./response.js";
-import { handleRedirects, handleRewrites } from "./routing.js";
+import { handleRedirects, handleRewrites, proxyRequest } from "./routing.js";
 import {
   generateUniqueId,
   loadBuildId,
@@ -94,7 +94,7 @@ export async function handler(
     return redirect;
   }
 
-  const { rawPath, url } = handleRewrites(
+  const { rawPath, url, isExternalRewrite } = handleRewrites(
     internalEvent,
     routesManifest.rewrites,
   );
