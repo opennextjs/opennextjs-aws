@@ -3,12 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "e2e:dev": "playwright test --retries=5",
+    "e2e:dev": "playwright test --retries=5 --headed",
     "e2e:test": "playwright test --retries=5",
     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@playwright/test": "1.37.0",
     "@open-next/utils": "workspace:*",
