@@ -19,7 +19,7 @@ import {
   overrideHooks as overrideNextjsRequireHooks,
 } from "./require-hooks.js";
 import { ServerResponse } from "./response.js";
-import { handleRedirects, handleRewrites } from "./routing.js";
+import { handleRedirects, handleRewrites, proxyRequest } from "./routing.js";
 import {
   generateUniqueId,
   loadAppPathsManifestKeys,
@@ -109,7 +109,7 @@ export async function handler(
     return redirect;
   }
 
-  const { rawPath, url } = handleRewrites(
+  const { rawPath, url, isExternalRewrite } = handleRewrites(
     internalEvent,
     routesManifest.rewrites,
   );
@@ -130,7 +130,11 @@ export async function handler(
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
   setNextjsPrebundledReact(rawPath);
-  await processRequest(req, res);
+  if (isExternalRewrite) {
+    await proxyRequest(req, res);
+  } else {
+    await processRequest(req, res);
+  }
 
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
