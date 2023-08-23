@@ -123,8 +123,11 @@ export function handleRewrites<T extends RewriteDefinition>(
   }
 
   return {
-    rawPath: rewrittenUrl,
-    url: `${rewrittenUrl}${urlQueryString ? `?${urlQueryString}` : ""}`,
+    internalEvent: {
+      ...internalEvent,
+      rawPath: rewrittenUrl,
+      url: `${rewrittenUrl}${urlQueryString ? `?${urlQueryString}` : ""}`,
+    },
     __rewrite: rewrite,
     isExternalRewrite,
   };
@@ -134,12 +137,15 @@ export function handleRedirects(
   internalEvent: InternalEvent,
   redirects: RedirectDefinition[],
 ) {
-  const { url, __rewrite } = handleRewrites(internalEvent, redirects);
+  const { internalEvent: _internalEvent, __rewrite } = handleRewrites(
+    internalEvent,
+    redirects,
+  );
   if (__rewrite && !__rewrite.internal) {
     return {
       statusCode: __rewrite.statusCode ?? 308,
       headers: {
-        Location: url,
+        Location: _internalEvent.url,
       },
     };
   }

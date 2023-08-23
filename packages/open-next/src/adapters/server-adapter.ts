@@ -87,7 +87,7 @@ export async function handler(
   }
 
   // Parse Lambda event and create Next.js request
-  const internalEvent = convertFrom(event);
+  let internalEvent = convertFrom(event);
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers["x-forwarded-host"]) {
@@ -109,14 +109,45 @@ export async function handler(
     return redirect;
   }
 
-  const { rawPath, url, isExternalRewrite } = handleRewrites(
+  let isExternalRewrite = false;
+  // First rewrite to be applied
+  const beforeRewrites = handleRewrites(
     internalEvent,
-    routesManifest.rewrites,
+    routesManifest.rewrites.beforeFiles,
   );
+  internalEvent = beforeRewrites.internalEvent;
+  isExternalRewrite = beforeRewrites.isExternalRewrite;
+
+  const isStaticRoute = routesManifest.routes.static.some((route) =>
+    new RegExp(route.regex).test(internalEvent.rawPath),
+  );
+
+  if (!isStaticRoute && !isExternalRewrite) {
+    // Second rewrite to be applied
+    const afterRewrites = handleRewrites(
+      internalEvent,
+      routesManifest.rewrites.afterFiles,
+    );
+    internalEvent = afterRewrites.internalEvent;
+    isExternalRewrite = afterRewrites.isExternalRewrite;
+  }
+
+  const isDynamicRoute = routesManifest.routes.dynamic.some((route) =>
+    new RegExp(route.regex).test(internalEvent.rawPath),
+  );
+  if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
+    // Fallback rewrite to be applied
+    const fallbackRewrites = handleRewrites(
+      internalEvent,
+      routesManifest.rewrites.fallback,
+    );
+    internalEvent = fallbackRewrites.internalEvent;
+    isExternalRewrite = fallbackRewrites.isExternalRewrite;
+  }
 
   const reqProps = {
     method: internalEvent.method,
-    url,
+    url: internalEvent.url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
@@ -129,7 +160,7 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(rawPath);
+  setNextjsPrebundledReact(internalEvent.rawPath);
   if (isExternalRewrite) {
     await proxyRequest(req, res);
   } else {
@@ -148,10 +179,17 @@ export async function handler(
   const body = ServerResponse.body(res).toString(encoding);
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
-  fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
-  fixSWRCacheHeader(headers);
-  addOpenNextHeader(headers);
-  await revalidateIfRequired(internalEvent.headers.host, rawPath, headers, req);
+  if (!isExternalRewrite) {
+    fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
+    fixSWRCacheHeader(headers);
+    addOpenNextHeader(headers);
+    await revalidateIfRequired(
+      internalEvent.headers.host,
+      internalEvent.rawPath,
+      headers,
+      req,
+    );
+  }
 
   return convertTo({
     type: internalEvent.type,
@@ -180,7 +218,12 @@ function setBuildIdEnv() {
 function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
-  const route = routesManifest.routes.find((route) =>
+  const routes = [
+    ...routesManifest.routes.static,
+    ...routesManifest.routes.dynamic,
+  ];
+
+  const route = routes.find((route) =>
     new RegExp(route.regex).test(rawPath ?? ""),
   );
 
