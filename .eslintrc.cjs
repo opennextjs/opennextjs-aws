@@ -13,5 +13,8 @@ module.exports = {
         // This resets rules to prettier's defaults
       },
     ],
+    "sonarjs/elseif-without-else": "warn",
+    "sonarjs/no-duplicate-string": "warn",
+    "sonarjs/cognitive-complexity": "warn",
   },
 };
