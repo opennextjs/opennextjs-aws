@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+
 import { SITE } from "../config";
 import styles from "../styles/404.module.css";
 

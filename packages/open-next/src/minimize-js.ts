@@ -4,13 +4,25 @@
 // @ts-nocheck
 import fs from "node:fs/promises";
 import path from "node:path";
-import promiseSeries from "promise.series";
+
 import minify from "@node-minify/core";
 import terser from "@node-minify/terser";
 
 var failed_files = [];
 var total_files = 0;
 var options = {};
+
+const promiseSeries = async (tasks, initial) => {
+  if (!Array.isArray(tasks)) {
+    return Promise.reject(
+      new TypeError("promise.series only accepts an array of functions"),
+    );
+  }
+
+  return tasks.reduce((current, next) => {
+    return current.then(next);
+  }, Promise.resolve(initial));
+};
 
 const minifyJS = async (file) => {
   total_files++;

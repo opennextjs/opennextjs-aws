@@ -316,7 +316,7 @@ function invalidateCFPaths(paths: string[]) {
           Items: paths,
         },
       },
-    })
+    }),
   );
 }
 ```

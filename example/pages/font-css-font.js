@@ -5,9 +5,13 @@ export default function Page() {
     <Layout>
       <article>
         <h1>Font — CSS Font</h1>
-        <p><b>Test 1:</b></p>
+        <p>
+          <b>Test 1:</b>
+        </p>
         <p>This uses default font.</p>
-        <p style={{ fontFamily: 'MuseoModerno' }}>This uses MuseoModerno font.</p>
+        <p style={{ fontFamily: "MuseoModerno" }}>
+          This uses MuseoModerno font.
+        </p>
       </article>
     </Layout>
   );

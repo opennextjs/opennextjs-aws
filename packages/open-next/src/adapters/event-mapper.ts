@@ -1,12 +1,13 @@
 import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
   APIGatewayProxyEvent,
+  APIGatewayProxyEventV2,
   APIGatewayProxyResult,
+  APIGatewayProxyResultV2,
+  CloudFrontHeaders,
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
-  CloudFrontHeaders,
 } from "aws-lambda";
+
 import { debug } from "./logger.js";
 
 type InternalEvent = {
@@ -28,25 +29,25 @@ type InternalResult = {
 };
 
 export function isAPIGatewayProxyEventV2(
-  event: any
+  event: any,
 ): event is APIGatewayProxyEventV2 {
   return event.version === "2.0";
 }
 
 export function isAPIGatewayProxyEvent(
-  event: any
+  event: any,
 ): event is APIGatewayProxyEvent {
   return event.version === undefined && !isCloudFrontRequestEvent(event);
 }
 
 export function isCloudFrontRequestEvent(
-  event: any
+  event: any,
 ): event is CloudFrontRequestEvent {
   return event.Records !== undefined;
 }
 
 export function convertFrom(
-  event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent
+  event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
 ): InternalEvent {
   if (isCloudFrontRequestEvent(event)) {
     return convertFromCloudFrontRequestEvent(event);
@@ -59,7 +60,7 @@ export function convertFrom(
 }
 
 export function convertTo(
-  result: InternalResult
+  result: InternalResult,
 ): APIGatewayProxyResultV2 | APIGatewayProxyResult | CloudFrontRequestResult {
   if (result.type === "v2") {
     return convertToApiGatewayProxyResultV2(result);
@@ -72,7 +73,7 @@ export function convertTo(
 }
 
 function convertFromAPIGatewayProxyEvent(
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): InternalEvent {
   const { path, body, httpMethod, requestContext, isBase64Encoded } = event;
   return {
@@ -87,7 +88,7 @@ function convertFromAPIGatewayProxyEvent(
 }
 
 function convertFromAPIGatewayProxyEventV2(
-  event: APIGatewayProxyEventV2
+  event: APIGatewayProxyEventV2,
 ): InternalEvent {
   const { rawPath, rawQueryString, requestContext } = event;
   return {
@@ -102,7 +103,7 @@ function convertFromAPIGatewayProxyEventV2(
 }
 
 function convertFromCloudFrontRequestEvent(
-  event: CloudFrontRequestEvent
+  event: CloudFrontRequestEvent,
 ): InternalEvent {
   const { method, uri, querystring, body, headers, clientIp } =
     event.Records[0].cf.request;
@@ -113,7 +114,7 @@ function convertFromCloudFrontRequestEvent(
     url: uri + (querystring ? `?${querystring}` : ""),
     body: Buffer.from(
       body?.data ?? "",
-      body?.encoding === "base64" ? "base64" : "utf8"
+      body?.encoding === "base64" ? "base64" : "utf8",
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
@@ -121,7 +122,7 @@ function convertFromCloudFrontRequestEvent(
 }
 
 function convertToApiGatewayProxyResult(
-  result: InternalResult
+  result: InternalResult,
 ): APIGatewayProxyResult {
   const headers: Record<string, string> = {};
   const multiValueHeaders: Record<string, string[]> = {};
@@ -148,7 +149,7 @@ function convertToApiGatewayProxyResult(
 }
 
 function convertToApiGatewayProxyResultV2(
-  result: InternalResult
+  result: InternalResult,
 ): APIGatewayProxyResultV2 {
   const headers: Record<string, string> = {};
   Object.entries(result.headers)
@@ -172,7 +173,7 @@ function convertToApiGatewayProxyResultV2(
 }
 
 function convertToCloudFrontRequestResult(
-  result: InternalResult
+  result: InternalResult,
 ): CloudFrontRequestResult {
   const headers: CloudFrontHeaders = {};
   Object.entries(result.headers)
@@ -197,7 +198,7 @@ function convertToCloudFrontRequestResult(
 }
 
 function normalizeAPIGatewayProxyEventV2Headers(
-  event: APIGatewayProxyEventV2
+  event: APIGatewayProxyEventV2,
 ): Record<string, string> {
   const { headers: rawHeaders, cookies } = event;
 
@@ -215,7 +216,7 @@ function normalizeAPIGatewayProxyEventV2Headers(
 }
 
 function normalizeAPIGatewayProxyEventV2Body(
-  event: APIGatewayProxyEventV2
+  event: APIGatewayProxyEventV2,
 ): Buffer {
   const { body, isBase64Encoded } = event;
   if (Buffer.isBuffer(body)) {
@@ -229,7 +230,7 @@ function normalizeAPIGatewayProxyEventV2Body(
 }
 
 function normalizeAPIGatewayProxyEventQueryParams(
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): string {
   // Note that the same query string values are returned in both
   // "multiValueQueryStringParameters" and "queryStringParameters".
@@ -244,7 +245,7 @@ function normalizeAPIGatewayProxyEventQueryParams(
   //   }
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(
-    event.multiValueQueryStringParameters || {}
+    event.multiValueQueryStringParameters || {},
   )) {
     if (value !== undefined) {
       for (const v of value) {
@@ -257,7 +258,7 @@ function normalizeAPIGatewayProxyEventQueryParams(
 }
 
 function normalizeAPIGatewayProxyEventHeaders(
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Record<string, string> {
   event.multiValueHeaders;
   const headers: Record<string, string> = {};
@@ -276,7 +277,7 @@ function normalizeAPIGatewayProxyEventHeaders(
 }
 
 function normalizeCloudFrontRequestEventHeaders(
-  rawHeaders: CloudFrontHeaders
+  rawHeaders: CloudFrontHeaders,
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
