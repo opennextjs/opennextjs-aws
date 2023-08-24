@@ -1,12 +1,14 @@
-import {
-  S3Client,
-  GetObjectCommand,
-  PutObjectCommand,
-  DeleteObjectsCommand,
-  PutObjectCommandInput,
-  ListObjectsV2Command,
-} from "@aws-sdk/client-s3";
 import path from "node:path";
+
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  PutObjectCommandInput,
+  S3Client,
+} from "@aws-sdk/client-s3";
+
 import { awsLogger, debug, error } from "./logger.js";
 import { loadBuildId } from "./util.js";
 
@@ -99,7 +101,7 @@ export default class S3Cache {
       logger: awsLogger,
     });
     this.buildId = loadBuildId(
-      path.dirname(_ctx.serverDistDir ?? ".next/server")
+      path.dirname(_ctx.serverDistDir ?? ".next/server"),
     );
   }
 
@@ -213,7 +215,7 @@ export default class S3Cache {
         this.putS3Object(
           key,
           isAppPath ? "rsc" : "json",
-          isAppPath ? pageData : JSON.stringify(pageData)
+          isAppPath ? pageData : JSON.stringify(pageData),
         ),
       ]);
     } else if (data?.kind === "FETCH") {
@@ -232,7 +234,7 @@ export default class S3Cache {
       CACHE_BUCKET_KEY_PREFIX ?? "",
       extension === "fetch" ? "__fetch" : "",
       this.buildId,
-      extension === "fetch" ? key : `${key}.${extension}`
+      extension === "fetch" ? key : `${key}.${extension}`,
     );
   }
 
@@ -247,7 +249,7 @@ export default class S3Cache {
         // add a point to the key so that it only matches the key and
         // not other keys starting with the same string
         Prefix: `${this.buildS3KeyPrefix(key)}.`,
-      })
+      }),
     );
     return (Contents ?? []).map(({ Key }) => Key);
   }
@@ -257,21 +259,21 @@ export default class S3Cache {
       new GetObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
         Key: this.buildS3Key(key, extension),
-      })
+      }),
     );
   }
 
   private putS3Object(
     key: string,
     extension: Extension,
-    value: PutObjectCommandInput["Body"]
+    value: PutObjectCommandInput["Body"],
   ) {
     return this.client.send(
       new PutObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
         Key: this.buildS3Key(key, extension),
         Body: value,
-      })
+      }),
     );
   }
 
@@ -279,7 +281,7 @@ export default class S3Cache {
     try {
       const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch|redirect)$`);
       const s3Keys = (await this.listS3Object(key)).filter(
-        (key) => key && regex.test(key)
+        (key) => key && regex.test(key),
       );
 
       await this.client.send(
@@ -288,7 +290,7 @@ export default class S3Cache {
           Delete: {
             Objects: s3Keys.map((Key) => ({ Key })),
           },
-        })
+        }),
       );
     } catch (e) {
       error("Failed to delete cache", e);

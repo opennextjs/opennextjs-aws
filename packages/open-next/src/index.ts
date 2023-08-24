@@ -14,18 +14,21 @@ build({
 });
 
 function parseArgs() {
-  return process.argv.slice(2).reduce((acc, key, ind, self) => {
-    if (key.startsWith("--")) {
-      if (self[ind + 1] && self[ind + 1].startsWith("-")) {
-        acc[key] = undefined;
-      } else if (self[ind + 1]) {
-        acc[key] = self[ind + 1];
-      } else if (!self[ind + 1]) {
-        acc[key] = undefined;
+  return process.argv.slice(2).reduce(
+    (acc, key, ind, self) => {
+      if (key.startsWith("--")) {
+        if (self[ind + 1] && self[ind + 1].startsWith("-")) {
+          acc[key] = undefined;
+        } else if (self[ind + 1]) {
+          acc[key] = self[ind + 1];
+        } else if (!self[ind + 1]) {
+          acc[key] = undefined;
+        }
       }
-    }
-    return acc;
-  }, {} as Record<string, string | undefined>);
+      return acc;
+    },
+    {} as Record<string, string | undefined>,
+  );
 }
 
 function printHelp() {

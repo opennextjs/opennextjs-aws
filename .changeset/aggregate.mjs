@@ -5,7 +5,7 @@ import { execSync } from "node:child_process";
 const THANKLESS_COMMITTERS = ["thdxr", "fwang", "jayair"];
 
 const { version } = JSON.parse(
-  await fs.readFile("./packages/open-next/package.json")
+  await fs.readFile("./packages/open-next/package.json"),
 );
 
 const changesets = JSON.parse(await fs.readFile(".changeset/config.json"));
@@ -16,7 +16,7 @@ for (const pkg of packages) {
   const changelog = path.join(
     "packages",
     pkg.split("/").at(-1),
-    "CHANGELOG.md"
+    "CHANGELOG.md",
   );
   const lines = (await fs.readFile(changelog)).toString().split("\n");
   let start = false;
@@ -36,7 +36,7 @@ for (const pkg of packages) {
         for (const user of THANKLESS_COMMITTERS) {
           line = line.replace(
             `Thanks [@${user}](https://github.com/${user})! `,
-            ""
+            "",
           );
         }
         changes.add(line);

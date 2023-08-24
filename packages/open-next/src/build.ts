@@ -1,10 +1,12 @@
-import fs from "node:fs";
-import url from "node:url";
-import path from "node:path";
 import cp from "node:child_process";
-import { minifyAll } from "./minimize-js.js";
-import { buildSync, BuildOptions as ESBuildOptions } from "esbuild";
+import fs from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
+import path from "node:path";
+import url from "node:url";
+
+import { BuildOptions as ESBuildOptions, buildSync } from "esbuild";
+
+import { minifyAll } from "./minimize-js.js";
 
 interface BuildOptions {
   /**
@@ -85,11 +87,11 @@ function normalizeOptions(opts: BuildOptions) {
 function checkRunningInsideNextjsApp() {
   const { appPath } = options;
   const extension = ["js", "cjs", "mjs"].find((ext) =>
-    fs.existsSync(path.join(appPath, `next.config.${ext}`))
+    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
   if (!extension) {
     console.error(
-      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app."
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
     );
     process.exit(1);
   }
@@ -147,7 +149,7 @@ function printHeader(header: string) {
       `│ ${header} │`,
       "└" + "─".repeat(header.length + 2) + "┘",
       "",
-    ].join("\n")
+    ].join("\n"),
   );
 }
 
@@ -163,7 +165,7 @@ function printNextjsVersion() {
       stdio: "inherit",
       cwd: appPath,
       shell: true,
-    }
+    },
   );
 }
 
@@ -233,7 +235,7 @@ function createRevalidationBundle() {
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
     path.join(appPath, ".next", "prerender-manifest.json"),
-    path.join(outputPath, "prerender-manifest.json")
+    path.join(outputPath, "prerender-manifest.json"),
   );
 }
 
@@ -281,7 +283,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
     path.join(appPath, ".next/required-server-files.json"),
-    path.join(outputPath, ".next/required-server-files.json")
+    path.join(outputPath, ".next/required-server-files.json"),
   );
 
   // Sharp provides pre-build binaries for all platforms. https://github.com/lovell/sharp/blob/main/docs/install.md#cross-platform
@@ -309,12 +311,12 @@ function createStaticAssets() {
   // - public/*       => *
   fs.copyFileSync(
     path.join(appPath, ".next/BUILD_ID"),
-    path.join(outputPath, "BUILD_ID")
+    path.join(outputPath, "BUILD_ID"),
   );
   fs.cpSync(
     path.join(appPath, ".next/static"),
     path.join(outputPath, "_next", "static"),
-    { recursive: true }
+    { recursive: true },
   );
   if (fs.existsSync(appPublicPath)) {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
@@ -343,7 +345,7 @@ function createCacheAssets(monorepoRoot: string) {
     (file) =>
       file.endsWith(".js") ||
       file.endsWith(".js.nft.json") ||
-      (file.endsWith(".html") && htmlPages.has(file))
+      (file.endsWith(".html") && htmlPages.has(file)),
   );
 
   // Copy fetch-cache to cache folder
@@ -426,7 +428,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
   fs.writeFileSync(
     path.join(outputPath, "index.mjs"),
-    [`export * from "./${packagePosixPath}/index.mjs";`].join("")
+    [`export * from "./${packagePosixPath}/index.mjs";`].join(""),
   );
 }
 
@@ -459,8 +461,8 @@ function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
         latitude: this.headers.get("cloudfront-viewer-latitude"),
         longitude: this.headers.get("cloudfront-viewer-longitude"),
         metroCode: this.headers.get("cloudfront-viewer-metro-code"),
-      }`
-      )
+      }`,
+      ),
     );
   }
 }
@@ -491,7 +493,7 @@ function addPublicFilesList(outputPath: string, packagePath: string) {
   fs.mkdirSync(outputOpenNextPath, { recursive: true });
   fs.writeFileSync(
     path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(acc)
+    JSON.stringify(acc),
   );
 }
 
@@ -515,8 +517,8 @@ function removeCachedPages(outputPath: string, packagePath: string) {
             !htmlPages.has(file) &&
             // do not remove HTML files with "[param].html" format
             // b/c they are used for "fallback:true" pages
-            !isFallbackTruePage.test(file))
-      )
+            !isFallbackTruePage.test(file)),
+      ),
     );
 }
 
@@ -558,7 +560,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
-      }.`
+      }.`,
     );
   }
 }
@@ -566,7 +568,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
 function removeFiles(
   root: string,
   conditionFn: (file: string) => boolean,
-  searchingDir: string = ""
+  searchingDir: string = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const filePath = path.join(root, searchingDir, file);
@@ -593,7 +595,7 @@ function getHtmlPages(dotNextPath: string) {
   // ])
   const manifestPath = path.join(
     dotNextPath,
-    ".next/server/pages-manifest.json"
+    ".next/server/pages-manifest.json",
   );
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   return Object.entries(JSON.parse(manifest))

@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { NextConfig, RoutesManifest } from "./next-types.js";
+
 import type { PublicFiles } from "../build.js";
+import type { NextConfig, RoutesManifest } from "./next-types.js";
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -48,7 +49,7 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestPath = path.join(
     nextDir,
     "server",
-    "app-paths-manifest.json"
+    "app-paths-manifest.json",
   );
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")

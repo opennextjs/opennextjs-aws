@@ -1,12 +1,23 @@
-import path from "node:path";
 import crypto from "node:crypto";
+import path from "node:path";
+
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type {
-  APIGatewayProxyEventV2,
   APIGatewayProxyEvent,
+  APIGatewayProxyEventV2,
   CloudFrontRequestEvent,
 } from "aws-lambda";
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+// @ts-ignore
+import NextServer from "next/dist/server/next-server.js";
+
+import { isBinaryContentType } from "./binary.js";
+import { convertFrom, convertTo } from "./event-mapper.js";
+import { awsLogger, debug, error } from "./logger.js";
 import { IncomingMessage } from "./request.js";
+import {
+  applyOverride as applyNextjsRequireHooksOverride,
+  overrideHooks as overrideNextjsRequireHooks,
+} from "./require-hooks.js";
 import { ServerResponse } from "./response.js";
 import {
   generateUniqueId,
@@ -18,13 +29,6 @@ import {
   loadRoutesManifest,
   setNodeEnv,
 } from "./util.js";
-import { isBinaryContentType } from "./binary.js";
-import { debug, error, awsLogger } from "./logger.js";
-import { convertFrom, convertTo } from "./event-mapper.js";
-import {
-  overrideHooks as overrideNextjsRequireHooks,
-  applyOverride as applyNextjsRequireHooksOverride,
-} from "./require-hooks.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
 // Expected environment variables
@@ -58,8 +62,7 @@ const serverId = `server-${generateUniqueId()}`;
 // Step 3: Apply the override after Next.js server is imported since the
 //         override that Next.js does is done at import time
 overrideNextjsRequireHooks(config);
-// @ts-ignore
-import NextServer from "next/dist/server/next-server.js";
+
 applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
@@ -73,7 +76,7 @@ export async function handler(
     | APIGatewayProxyEventV2
     | CloudFrontRequestEvent
     | APIGatewayProxyEvent
-    | WarmerEvent
+    | WarmerEvent,
 ) {
   debug("event", event);
 
@@ -124,7 +127,7 @@ export async function handler(
   const isBase64Encoded = isBinaryContentType(
     Array.isArray(headers["content-type"])
       ? headers["content-type"][0]
-      : headers["content-type"]
+      : headers["content-type"],
   );
   const encoding = isBase64Encoded ? "base64" : "utf8";
   const body = ServerResponse.body(res).toString(encoding);
@@ -137,7 +140,7 @@ export async function handler(
     internalEvent.headers.host,
     internalEvent.rawPath,
     headers,
-    req
+    req,
   );
 
   return convertTo({
@@ -169,7 +172,7 @@ function setNextjsPrebundledReact(rawPath: string) {
 
   // Get route pattern
   const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(rawPath ?? "")
+    new RegExp(route.regex).test(rawPath ?? ""),
   );
 
   const isApp = appPathsManifestKeys.includes(route?.page ?? "");
@@ -229,15 +232,15 @@ async function processRequest(req: IncomingMessage, res: ServerResponse) {
           details: e,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
   }
 }
 
 function fixCacheHeaderForHtmlPages(
   rawPath: string,
-  headers: Record<string, string | undefined>
+  headers: Record<string, string | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (htmlPages.includes(rawPath) && headers["cache-control"]) {
@@ -251,7 +254,7 @@ function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
   if (headers["cache-control"]?.includes("stale-while-revalidate")) {
     headers["cache-control"] = headers["cache-control"].replace(
       "stale-while-revalidate",
-      "stale-while-revalidate=2592000" // 30 days
+      "stale-while-revalidate=2592000", // 30 days
     );
   }
 }
@@ -264,7 +267,7 @@ async function revalidateIfRequired(
   host: string,
   rawPath: string,
   headers: Record<string, string | undefined>,
-  req: IncomingMessage
+  req: IncomingMessage,
 ) {
   if (headers["x-nextjs-cache"] !== "STALE") return;
 
@@ -305,7 +308,7 @@ async function revalidateIfRequired(
         MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
         MessageBody: JSON.stringify({ host, url: revalidateUrl }),
         MessageGroupId: "revalidate",
-      })
+      }),
     );
   } catch (e) {
     debug(`Failed to revalidate stale page ${rawPath}`);

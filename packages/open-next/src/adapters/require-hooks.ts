@@ -2,12 +2,13 @@
 // This is needed for userland plugins to attach to the same webpack instance as Next.js'.
 // Individually compiled modules are as defined for the compilation in bundles/webpack/packages/*.
 
-import type { NextConfig } from "./next-types.js";
 import { error } from "./logger.js";
+import type { NextConfig } from "./next-types.js";
 
 // This module will only be loaded once per process.
 
 const mod = require("module");
+
 const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
 const hookPropertyMapPage = new Map();
@@ -24,7 +25,7 @@ export function overrideHooks(config: NextConfig) {
 
 function addHookAliases(
   aliases: [string, string][] = [],
-  type: "app" | "page"
+  type: "app" | "page",
 ) {
   for (const [key, value] of aliases) {
     type === "app"
@@ -89,7 +90,7 @@ function overrideDefault() {
       ["styled-jsx", require.resolve("styled-jsx")],
       ["styled-jsx/style", require.resolve("styled-jsx/style")],
     ],
-    "app"
+    "app",
   );
 }
 
@@ -105,11 +106,11 @@ function overrideReact(config: NextConfig) {
   try {
     addHookAliases(
       [["react/jsx-runtime", require.resolve(`react/jsx-runtime`)]],
-      "page"
+      "page",
     );
     addHookAliases(
       [["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)]],
-      "page"
+      "page",
     );
   } catch (e) {}
 
@@ -137,7 +138,7 @@ export function applyOverride() {
     request: string,
     parent: any,
     isMain: boolean,
-    options: any
+    options: any,
   ) {
     const hookResolved = isApp()
       ? requestMapApp.get(request)

@@ -1,7 +1,9 @@
-import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import type { Context } from "aws-lambda";
-import { generateUniqueId } from "./util.js";
+
 import { debug, error } from "./logger.js";
+import { generateUniqueId } from "./util.js";
+
 const lambda = new LambdaClient({});
 const FUNCTION_NAME = process.env.FUNCTION_NAME!;
 const CONCURRENCY = parseInt(process.env.CONCURRENCY!);
@@ -42,15 +44,15 @@ export async function handler(_event: any, context: Context) {
                 index: i,
                 concurrency: CONCURRENCY,
                 delay: 75,
-              } satisfies WarmerEvent)
+              } satisfies WarmerEvent),
             ),
-          })
+          }),
         );
       } catch (e) {
         error(`failed to warm up #${i}`, e);
         // ignore error
       }
-    })
+    }),
   );
 
   // Print status
@@ -61,7 +63,7 @@ export async function handler(_event: any, context: Context) {
       return;
     }
     const payload = JSON.parse(
-      Buffer.from(r.Payload).toString()
+      Buffer.from(r.Payload).toString(),
     ) as WarmerResponse;
     warmedServerIds.push(payload.serverId);
   });

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 
-let basePath = undefined
-let assetPrefix = undefined
+let basePath = undefined;
+let assetPrefix = undefined;
 
 ///** Deploys as a directory through GitHub Actions **/
 //const isGithubActions = process.env.GITHUB_ACTIONS || false
@@ -25,6 +25,6 @@ const nextConfig = {
 
   basePath: basePath,
   assetPrefix: assetPrefix,
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

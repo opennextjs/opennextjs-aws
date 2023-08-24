@@ -1,4 +1,5 @@
 import useSWR from "swr";
+
 import Layout from "../components/layout";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
@@ -8,9 +9,7 @@ export default function Page() {
   return (
     <Layout>
       <article>
-        <h1>
-          API Route
-        </h1>
+        <h1>API Route</h1>
         <hr />
         <p>
           <b>Test 1:</b>
