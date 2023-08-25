@@ -23,7 +23,7 @@ function main (args) {
   // Check js files that change on unstaged file
   const fileUnStaged = spawn(
     'git',
-    ['diff', '--name-only', FORMAT_START, filesToCheck],
+    ['diff', '--name-only', '--diff-filter=d', FORMAT_START, filesToCheck],
     {
       encoding: 'utf-8'
     }
@@ -32,7 +32,7 @@ function main (args) {
   // Check js files that change on staged file
   const fileStaged = spawn(
     'git',
-    ['diff', '--name-only', '--cached', FORMAT_START, filesToCheck],
+    ['diff', '--name-only', '--cached', '--diff-filter=d', FORMAT_START, filesToCheck],
     {
       encoding: 'utf-8'
     }

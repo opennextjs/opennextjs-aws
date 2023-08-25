@@ -5,6 +5,52 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.8](https://github.com/minimistjs/minimist/compare/v1.2.7...v1.2.8) - 2023-02-09
+
+### Merged
+
+- [Fix] Fix long option followed by single dash [`#17`](https://github.com/minimistjs/minimist/pull/17)
+- [Tests] Remove duplicate test [`#12`](https://github.com/minimistjs/minimist/pull/12)
+- [Fix] opt.string works with multiple aliases [`#10`](https://github.com/minimistjs/minimist/pull/10)
+
+### Fixed
+
+- [Fix] Fix long option followed by single dash (#17) [`#15`](https://github.com/minimistjs/minimist/issues/15)
+- [Tests] Remove duplicate test (#12) [`#8`](https://github.com/minimistjs/minimist/issues/8)
+- [Fix] Fix long option followed by single dash [`#15`](https://github.com/minimistjs/minimist/issues/15)
+- [Fix] opt.string works with multiple aliases (#10) [`#9`](https://github.com/minimistjs/minimist/issues/9)
+- [Fix] Fix handling of short option with non-trivial equals [`#5`](https://github.com/minimistjs/minimist/issues/5)
+- [Tests] Remove duplicate test [`#8`](https://github.com/minimistjs/minimist/issues/8)
+- [Fix] opt.string works with multiple aliases [`#9`](https://github.com/minimistjs/minimist/issues/9)
+
+### Commits
+
+- Merge tag 'v0.2.3' [`a026794`](https://github.com/minimistjs/minimist/commit/a0267947c7870fc5847cf2d437fbe33f392767da)
+- [eslint] fix indentation and whitespace [`5368ca4`](https://github.com/minimistjs/minimist/commit/5368ca4147e974138a54cc0dc4cea8f756546b70)
+- [eslint] fix indentation and whitespace [`e5f5067`](https://github.com/minimistjs/minimist/commit/e5f5067259ceeaf0b098d14bec910f87e58708c7)
+- [eslint] more cleanup [`62fde7d`](https://github.com/minimistjs/minimist/commit/62fde7d935f83417fb046741531a9e2346a36976)
+- [eslint] more cleanup [`36ac5d0`](https://github.com/minimistjs/minimist/commit/36ac5d0d95e4947d074e5737d94814034ca335d1)
+- [meta] add `auto-changelog` [`73923d2`](https://github.com/minimistjs/minimist/commit/73923d223553fca08b1ba77e3fbc2a492862ae4c)
+- [actions] add reusable workflows [`d80727d`](https://github.com/minimistjs/minimist/commit/d80727df77bfa9e631044d7f16368d8f09242c91)
+- [eslint] add eslint; rules to enable later are warnings [`48bc06a`](https://github.com/minimistjs/minimist/commit/48bc06a1b41f00e9cdf183db34f7a51ba70e98d4)
+- [eslint] fix indentation [`34b0f1c`](https://github.com/minimistjs/minimist/commit/34b0f1ccaa45183c3c4f06a91f9b405180a6f982)
+- [readme] rename and add badges [`5df0fe4`](https://github.com/minimistjs/minimist/commit/5df0fe49211bd09a3636f8686a7cb3012c3e98f0)
+- [Dev Deps] switch from `covert` to `nyc` [`a48b128`](https://github.com/minimistjs/minimist/commit/a48b128fdb8d427dfb20a15273f83e38d97bef07)
+- [Dev Deps] update `covert`, `tape`; remove unnecessary `tap` [`f0fb958`](https://github.com/minimistjs/minimist/commit/f0fb958e9a1fe980cdffc436a211b0bda58f621b)
+- [meta] create FUNDING.yml; add `funding` in package.json [`3639e0c`](https://github.com/minimistjs/minimist/commit/3639e0c819359a366387e425ab6eabf4c78d3caa)
+- [meta] use `npmignore` to autogenerate an npmignore file [`be2e038`](https://github.com/minimistjs/minimist/commit/be2e038c342d8333b32f0fde67a0026b79c8150e)
+- Only apps should have lockfiles [`282b570`](https://github.com/minimistjs/minimist/commit/282b570e7489d01b03f2d6d3dabf79cd3e5f84cf)
+- isConstructorOrProto adapted from PR [`ef9153f`](https://github.com/minimistjs/minimist/commit/ef9153fc52b6cea0744b2239921c5dcae4697f11)
+- [Dev Deps] update `@ljharb/eslint-config`, `aud` [`098873c`](https://github.com/minimistjs/minimist/commit/098873c213cdb7c92e55ae1ef5aa1af3a8192a79)
+- [Dev Deps] update `@ljharb/eslint-config`, `aud` [`3124ed3`](https://github.com/minimistjs/minimist/commit/3124ed3e46306301ebb3c834874ce0241555c2c4)
+- [meta] add `safe-publish-latest` [`4b927de`](https://github.com/minimistjs/minimist/commit/4b927de696d561c636b4f43bf49d4597cb36d6d6)
+- [Tests] add `aud` in `posttest` [`b32d9bd`](https://github.com/minimistjs/minimist/commit/b32d9bd0ab340f4e9f8c3a97ff2a4424f25fab8c)
+- [meta] update repo URLs [`f9fdfc0`](https://github.com/minimistjs/minimist/commit/f9fdfc032c54884d9a9996a390c63cd0719bbe1a)
+- [actions] Avoid 0.6 tests due to build failures [`ba92fe6`](https://github.com/minimistjs/minimist/commit/ba92fe6ebbdc0431cca9a2ea8f27beb492f5e4ec)
+- [Dev Deps] update `tape` [`950eaa7`](https://github.com/minimistjs/minimist/commit/950eaa74f112e04d23e9c606c67472c46739b473)
+- [Dev Deps] add missing `npmignore` dev dep [`3226afa`](https://github.com/minimistjs/minimist/commit/3226afaf09e9d127ca369742437fe6e88f752d6b)
+- Merge tag 'v0.2.2' [`980d7ac`](https://github.com/minimistjs/minimist/commit/980d7ac61a0b4bd552711251ac107d506b23e41f)
+
 ## [v1.2.7](https://github.com/minimistjs/minimist/compare/v1.2.6...v1.2.7) - 2022-10-10
 
 ### Commits
@@ -109,12 +155,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - coverage script [`e5531ba`](https://github.com/minimistjs/minimist/commit/e5531ba0479da3b8138d3d8cac545d84ccb1c8df)
 - extra fn to get 100% coverage again [`a6972da`](https://github.com/minimistjs/minimist/commit/a6972da89e56bf77642f8ec05a13b6558db93498)
 
-## [v1.0.0](https://github.com/minimistjs/minimist/compare/v0.2.1...v1.0.0) - 2014-08-10
+## [v1.0.0](https://github.com/minimistjs/minimist/compare/v0.2.3...v1.0.0) - 2014-08-10
 
 ### Commits
 
 - added stopEarly option [`471c7e4`](https://github.com/minimistjs/minimist/commit/471c7e4a7e910fc7ad8f9df850a186daf32c64e9)
 - fix list [`fef6ae7`](https://github.com/minimistjs/minimist/commit/fef6ae79c38b9dc1c49569abb7cd04eb965eac5e)
+
+## [v0.2.3](https://github.com/minimistjs/minimist/compare/v0.2.2...v0.2.3) - 2023-02-09
+
+### Merged
+
+- [Fix] Fix long option followed by single dash [`#17`](https://github.com/minimistjs/minimist/pull/17)
+- [Tests] Remove duplicate test [`#12`](https://github.com/minimistjs/minimist/pull/12)
+- [Fix] opt.string works with multiple aliases [`#10`](https://github.com/minimistjs/minimist/pull/10)
+
+### Fixed
+
+- [Fix] Fix long option followed by single dash (#17) [`#15`](https://github.com/minimistjs/minimist/issues/15)
+- [Tests] Remove duplicate test (#12) [`#8`](https://github.com/minimistjs/minimist/issues/8)
+- [Fix] opt.string works with multiple aliases (#10) [`#9`](https://github.com/minimistjs/minimist/issues/9)
+
+### Commits
+
+- [eslint] fix indentation and whitespace [`e5f5067`](https://github.com/minimistjs/minimist/commit/e5f5067259ceeaf0b098d14bec910f87e58708c7)
+- [eslint] more cleanup [`36ac5d0`](https://github.com/minimistjs/minimist/commit/36ac5d0d95e4947d074e5737d94814034ca335d1)
+- [eslint] fix indentation [`34b0f1c`](https://github.com/minimistjs/minimist/commit/34b0f1ccaa45183c3c4f06a91f9b405180a6f982)
+- isConstructorOrProto adapted from PR [`ef9153f`](https://github.com/minimistjs/minimist/commit/ef9153fc52b6cea0744b2239921c5dcae4697f11)
+- [Dev Deps] update `@ljharb/eslint-config`, `aud` [`098873c`](https://github.com/minimistjs/minimist/commit/098873c213cdb7c92e55ae1ef5aa1af3a8192a79)
+- [Dev Deps] add missing `npmignore` dev dep [`3226afa`](https://github.com/minimistjs/minimist/commit/3226afaf09e9d127ca369742437fe6e88f752d6b)
+
+## [v0.2.2](https://github.com/minimistjs/minimist/compare/v0.2.1...v0.2.2) - 2022-10-10
+
+### Commits
+
+- [meta] add `auto-changelog` [`73923d2`](https://github.com/minimistjs/minimist/commit/73923d223553fca08b1ba77e3fbc2a492862ae4c)
+- [actions] add reusable workflows [`d80727d`](https://github.com/minimistjs/minimist/commit/d80727df77bfa9e631044d7f16368d8f09242c91)
+- [eslint] add eslint; rules to enable later are warnings [`48bc06a`](https://github.com/minimistjs/minimist/commit/48bc06a1b41f00e9cdf183db34f7a51ba70e98d4)
+- [readme] rename and add badges [`5df0fe4`](https://github.com/minimistjs/minimist/commit/5df0fe49211bd09a3636f8686a7cb3012c3e98f0)
+- [Dev Deps] switch from `covert` to `nyc` [`a48b128`](https://github.com/minimistjs/minimist/commit/a48b128fdb8d427dfb20a15273f83e38d97bef07)
+- [Dev Deps] update `covert`, `tape`; remove unnecessary `tap` [`f0fb958`](https://github.com/minimistjs/minimist/commit/f0fb958e9a1fe980cdffc436a211b0bda58f621b)
+- [meta] create FUNDING.yml; add `funding` in package.json [`3639e0c`](https://github.com/minimistjs/minimist/commit/3639e0c819359a366387e425ab6eabf4c78d3caa)
+- [meta] use `npmignore` to autogenerate an npmignore file [`be2e038`](https://github.com/minimistjs/minimist/commit/be2e038c342d8333b32f0fde67a0026b79c8150e)
+- Only apps should have lockfiles [`282b570`](https://github.com/minimistjs/minimist/commit/282b570e7489d01b03f2d6d3dabf79cd3e5f84cf)
+- [meta] add `safe-publish-latest` [`4b927de`](https://github.com/minimistjs/minimist/commit/4b927de696d561c636b4f43bf49d4597cb36d6d6)
+- [Tests] add `aud` in `posttest` [`b32d9bd`](https://github.com/minimistjs/minimist/commit/b32d9bd0ab340f4e9f8c3a97ff2a4424f25fab8c)
+- [meta] update repo URLs [`f9fdfc0`](https://github.com/minimistjs/minimist/commit/f9fdfc032c54884d9a9996a390c63cd0719bbe1a)
 
 ## [v0.2.1](https://github.com/minimistjs/minimist/compare/v0.2.0...v0.2.1) - 2020-03-12
 

@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const color = require('color');
@@ -8,7 +11,7 @@ const is = require('./is');
  * or auto-orient based on the EXIF `Orientation` tag.
  *
  * If an angle is provided, it is converted to a valid positive degree rotation.
- * For example, `-450` will produce a 270deg rotation.
+ * For example, `-450` will produce a 270 degree rotation.
  *
  * When rotating by an angle other than a multiple of 90,
  * the background colour can be provided with the `background` option.
@@ -77,8 +80,12 @@ function rotate (angle, options) {
 }
 
 /**
- * Flip the image about the vertical Y axis. This always occurs before rotation, if any.
+ * Mirror the image vertically (up-down) about the x-axis.
+ * This always occurs before rotation, if any.
+ *
  * The use of `flip` implies the removal of the EXIF `Orientation` tag, if any.
+ *
+ * This operation does not work correctly with multi-page images.
  *
  * @example
  * const output = await sharp(input).flip().toBuffer();
@@ -92,7 +99,9 @@ function flip (flip) {
 }
 
 /**
- * Flop the image about the horizontal X axis. This always occurs before rotation, if any.
+ * Mirror the image horizontally (left-right) about the y-axis.
+ * This always occurs before rotation, if any.
+ *
  * The use of `flop` implies the removal of the EXIF `Orientation` tag, if any.
  *
  * @example
@@ -111,7 +120,7 @@ function flop (flop) {
  *
  * You must provide an array of length 4 or a 2x2 affine transformation matrix.
  * By default, new pixels are filled with a black background. You can provide a background color with the `background` option.
- * A particular interpolator may also be specified. Set the `interpolator` option to an attribute of the `sharp.interpolator` Object e.g. `sharp.interpolator.nohalo`.
+ * A particular interpolator may also be specified. Set the `interpolator` option to an attribute of the `sharp.interpolators` Object e.g. `sharp.interpolators.nohalo`.
  *
  * In the case of a 2x2 matrix, the transform is:
  * - X = `matrix[0, 0]` \* (x + `idx`) + `matrix[0, 1]` \* (y + `idy`) + `odx`
@@ -128,7 +137,7 @@ function flop (flop) {
  * const pipeline = sharp()
  *   .affine([[1, 0.3], [0.1, 0.7]], {
  *      background: 'white',
- *      interpolate: sharp.interpolators.nohalo
+ *      interpolator: sharp.interpolators.nohalo
  *   })
  *   .toBuffer((err, outputBuffer, info) => {
  *      // outputBuffer contains the transformed image
@@ -232,7 +241,7 @@ function affine (matrix, options) {
  *   .toBuffer();
  *
  * @param {Object|number} [options] - if present, is an Object with attributes
- * @param {number} [options.sigma] - the sigma of the Gaussian mask, where `sigma = 1 + radius / 2`, between 0.000001 and 10000
+ * @param {number} [options.sigma] - the sigma of the Gaussian mask, where `sigma = 1 + radius / 2`, between 0.000001 and 10
  * @param {number} [options.m1=1.0] - the level of sharpening to apply to "flat" areas, between 0 and 1000000
  * @param {number} [options.m2=2.0] - the level of sharpening to apply to "jagged" areas, between 0 and 1000000
  * @param {number} [options.x1=2.0] - threshold between "flat" and "jagged", between 0 and 1000000
@@ -270,10 +279,10 @@ function sharpen (options, flat, jagged) {
       }
     }
   } else if (is.plainObject(options)) {
-    if (is.number(options.sigma) && is.inRange(options.sigma, 0.000001, 10000)) {
+    if (is.number(options.sigma) && is.inRange(options.sigma, 0.000001, 10)) {
       this.options.sharpenSigma = options.sigma;
     } else {
-      throw is.invalidParameterError('options.sigma', 'number between 0.000001 and 10000', options.sigma);
+      throw is.invalidParameterError('options.sigma', 'number between 0.000001 and 10', options.sigma);
     }
     if (is.defined(options.m1)) {
       if (is.number(options.m1) && is.inRange(options.m1, 0, 1000000)) {
@@ -403,6 +412,32 @@ function flatten (options) {
 }
 
 /**
+ * Ensure the image has an alpha channel
+ * with all white pixel values made fully transparent.
+ *
+ * Existing alpha channel values for non-white pixels remain unchanged.
+ *
+ * This feature is experimental and the API may change.
+ *
+ * @since 0.32.1
+ *
+ * @example
+ * await sharp(rgbInput)
+ *   .unflatten()
+ *   .toBuffer();
+ *
+ * @example
+ * await sharp(rgbInput)
+ *   .threshold(128, { grayscale: false }) // converter bright pixels to white
+ *   .unflatten()
+ *   .toBuffer();
+ */
+function unflatten () {
+  this.options.unflatten = true;
+  return this;
+}
+
+/**
  * Apply a gamma correction by reducing the encoding (darken) pre-resize at a factor of `1/gamma`
  * then increasing the encoding (brighten) post-resize at a factor of `gamma`.
  * This can improve the perceived brightness of a resized image in non-linear colour spaces.
@@ -466,16 +501,50 @@ function negate (options) {
 }
 
 /**
- * Enhance output image contrast by stretching its luminance to cover the full dynamic range.
+ * Enhance output image contrast by stretching its luminance to cover a full dynamic range.
+ *
+ * Uses a histogram-based approach, taking a default range of 1% to 99% to reduce sensitivity to noise at the extremes.
+ *
+ * Luminance values below the `lower` percentile will be underexposed by clipping to zero.
+ * Luminance values above the `upper` percentile will be overexposed by clipping to the max pixel value.
  *
  * @example
- * const output = await sharp(input).normalise().toBuffer();
+ * const output = await sharp(input)
+ *   .normalise()
+ *   .toBuffer();
  *
- * @param {Boolean} [normalise=true]
+ * @example
+ * const output = await sharp(input)
+ *   .normalise({ lower: 0, upper: 100 })
+ *   .toBuffer();
+ *
+ * @param {Object} [options]
+ * @param {number} [options.lower=1] - Percentile below which luminance values will be underexposed.
+ * @param {number} [options.upper=99] - Percentile above which luminance values will be overexposed.
  * @returns {Sharp}
  */
-function normalise (normalise) {
-  this.options.normalise = is.bool(normalise) ? normalise : true;
+function normalise (options) {
+  if (is.plainObject(options)) {
+    if (is.defined(options.lower)) {
+      if (is.number(options.lower) && is.inRange(options.lower, 0, 99)) {
+        this.options.normaliseLower = options.lower;
+      } else {
+        throw is.invalidParameterError('lower', 'number between 0 and 99', options.lower);
+      }
+    }
+    if (is.defined(options.upper)) {
+      if (is.number(options.upper) && is.inRange(options.upper, 1, 100)) {
+        this.options.normaliseUpper = options.upper;
+      } else {
+        throw is.invalidParameterError('upper', 'number between 1 and 100', options.upper);
+      }
+    }
+  }
+  if (this.options.normaliseLower >= this.options.normaliseUpper) {
+    throw is.invalidParameterError('range', 'lower to be less than upper',
+      `${this.options.normaliseLower} >= ${this.options.normaliseUpper}`);
+  }
+  this.options.normalise = true;
   return this;
 }
 
@@ -483,13 +552,17 @@ function normalise (normalise) {
  * Alternative spelling of normalise.
  *
  * @example
- * const output = await sharp(input).normalize().toBuffer();
+ * const output = await sharp(input)
+ *   .normalize()
+ *   .toBuffer();
  *
- * @param {Boolean} [normalize=true]
+ * @param {Object} [options]
+ * @param {number} [options.lower=1] - Percentile below which luminance values will be underexposed.
+ * @param {number} [options.upper=99] - Percentile above which luminance values will be overexposed.
  * @returns {Sharp}
  */
-function normalize (normalize) {
-  return this.normalise(normalize);
+function normalize (options) {
+  return this.normalise(options);
 }
 
 /**
@@ -509,34 +582,33 @@ function normalize (normalize) {
  *   .toBuffer();
  *
  * @param {Object} options
- * @param {number} options.width - integer width of the region in pixels.
- * @param {number} options.height - integer height of the region in pixels.
- * @param {number} [options.maxSlope=3] - maximum value for the slope of the
- *  cumulative histogram. A value of 0 disables contrast limiting. Valid values
- *  are integers in the range 0-100 (inclusive)
+ * @param {number} options.width - Integral width of the search window, in pixels.
+ * @param {number} options.height - Integral height of the search window, in pixels.
+ * @param {number} [options.maxSlope=3] - Integral level of brightening, between 0 and 100, where 0 disables contrast limiting.
  * @returns {Sharp}
  * @throws {Error} Invalid parameters
  */
 function clahe (options) {
-  if (!is.plainObject(options)) {
+  if (is.plainObject(options)) {
+    if (is.integer(options.width) && options.width > 0) {
+      this.options.claheWidth = options.width;
+    } else {
+      throw is.invalidParameterError('width', 'integer greater than zero', options.width);
+    }
+    if (is.integer(options.height) && options.height > 0) {
+      this.options.claheHeight = options.height;
+    } else {
+      throw is.invalidParameterError('height', 'integer greater than zero', options.height);
+    }
+    if (is.defined(options.maxSlope)) {
+      if (is.integer(options.maxSlope) && is.inRange(options.maxSlope, 0, 100)) {
+        this.options.claheMaxSlope = options.maxSlope;
+      } else {
+        throw is.invalidParameterError('maxSlope', 'integer between 0 and 100', options.maxSlope);
+      }
+    }
+  } else {
     throw is.invalidParameterError('options', 'plain object', options);
-  }
-  if (!('width' in options) || !is.integer(options.width) || options.width <= 0) {
-    throw is.invalidParameterError('width', 'integer above zero', options.width);
-  } else {
-    this.options.claheWidth = options.width;
-  }
-  if (!('height' in options) || !is.integer(options.height) || options.height <= 0) {
-    throw is.invalidParameterError('height', 'integer above zero', options.height);
-  } else {
-    this.options.claheHeight = options.height;
-  }
-  if (!is.defined(options.maxSlope)) {
-    this.options.claheMaxSlope = 3;
-  } else if (!is.integer(options.maxSlope) || options.maxSlope < 0 || options.maxSlope > 100) {
-    throw is.invalidParameterError('maxSlope', 'integer 0-100', options.maxSlope);
-  } else {
-    this.options.claheMaxSlope = options.maxSlope;
   }
   return this;
 }
@@ -700,7 +772,7 @@ function linear (a, b) {
 }
 
 /**
- * Recomb the image with the specified matrix.
+ * Recombine the image with the specified matrix.
  *
  * @since 0.21.1
  *
@@ -713,7 +785,7 @@ function linear (a, b) {
  *   ])
  *   .raw()
  *   .toBuffer(function(err, data, info) {
- *     // data contains the raw pixel data after applying the recomb
+ *     // data contains the raw pixel data after applying the matrix
  *     // With this example input, a sepia filter has been applied
  *   });
  *
@@ -770,7 +842,7 @@ function recomb (inputMatrix) {
  *   .toBuffer();
  *
  * @example
- * // decreate brightness and saturation while also hue-rotating by 90 degrees
+ * // decrease brightness and saturation while also hue-rotating by 90 degrees
  * const output = await sharp(input)
  *   .modulate({
  *     brightness: 0.5,
@@ -835,6 +907,7 @@ module.exports = function (Sharp) {
     median,
     blur,
     flatten,
+    unflatten,
     gamma,
     negate,
     normalise,

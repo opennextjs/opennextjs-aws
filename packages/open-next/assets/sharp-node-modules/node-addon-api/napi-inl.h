@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <cstring>
+#if NAPI_HAS_THREADS
 #include <mutex>
+#endif  // NAPI_HAS_THREADS
 #include <type_traits>
 #include <utility>
 
@@ -22,8 +24,12 @@ namespace Napi {
 namespace NAPI_CPP_CUSTOM_NAMESPACE {
 #endif
 
-// Helpers to handle functions exposed from C++.
+// Helpers to handle functions exposed from C++ and internal constants.
 namespace details {
+
+// New napi_status constants not yet available in all supported versions of
+// Node.js releases. Only necessary when they are used in napi.h and napi-inl.h.
+constexpr int napi_no_external_buffers_allowed = 22;
 
 // Attach a data item to an object and delete it when the object gets
 // garbage-collected.
@@ -201,7 +207,7 @@ struct FinalizeData {
   Hint* hint;
 };
 
-#if (NAPI_VERSION > 3 && !defined(__wasm32__))
+#if (NAPI_VERSION > 3 && NAPI_HAS_THREADS)
 template <typename ContextType = void,
           typename Finalizer = std::function<void(Env, void*, ContextType*)>,
           typename FinalizerDataType = void>
@@ -295,7 +301,7 @@ napi_value DefaultCallbackWrapper(napi_env env, Napi::Function cb) {
   return cb;
 }
 #endif  // NAPI_VERSION > 4
-#endif  // NAPI_VERSION > 3 && !defined(__wasm32__)
+#endif  // NAPI_VERSION > 3 && NAPI_HAS_THREADS
 
 template <typename Getter, typename Setter>
 struct AccessorCallbackData {
@@ -736,6 +742,9 @@ inline bool Value::IsExternal() const {
 
 template <typename T>
 inline T Value::As() const {
+#ifdef NODE_ADDON_API_ENABLE_TYPE_CHECK_ON_AS
+  T::CheckCast(_env, _value);
+#endif
   return T(_env, _value);
 }
 
@@ -778,6 +787,16 @@ inline Boolean Boolean::New(napi_env env, bool val) {
   return Boolean(env, value);
 }
 
+inline void Boolean::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Boolean::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Boolean::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_boolean, "Boolean::CheckCast", "value is not napi_boolean");
+}
+
 inline Boolean::Boolean() : Napi::Value() {}
 
 inline Boolean::Boolean(napi_env env, napi_value value)
@@ -803,6 +822,16 @@ inline Number Number::New(napi_env env, double val) {
   napi_status status = napi_create_double(env, val, &value);
   NAPI_THROW_IF_FAILED(env, status, Number());
   return Number(env, value);
+}
+
+inline void Number::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Number::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Number::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_number, "Number::CheckCast", "value is not napi_number");
 }
 
 inline Number::Number() : Value() {}
@@ -891,6 +920,16 @@ inline BigInt BigInt::New(napi_env env,
   return BigInt(env, value);
 }
 
+inline void BigInt::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "BigInt::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "BigInt::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_bigint, "BigInt::CheckCast", "value is not napi_bigint");
+}
+
 inline BigInt::BigInt() : Value() {}
 
 inline BigInt::BigInt(napi_env env, napi_value value) : Value(env, value) {}
@@ -940,6 +979,15 @@ inline Date Date::New(napi_env env, double val) {
   return Date(env, value);
 }
 
+inline void Date::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Date::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_date(env, value, &result);
+  NAPI_CHECK(status == napi_ok, "Date::CheckCast", "napi_is_date failed");
+  NAPI_CHECK(result, "Date::CheckCast", "value is not date");
+}
+
 inline Date::Date() : Value() {}
 
 inline Date::Date(napi_env env, napi_value value) : Value(env, value) {}
@@ -959,6 +1007,16 @@ inline double Date::ValueOf() const {
 ////////////////////////////////////////////////////////////////////////////////
 // Name class
 ////////////////////////////////////////////////////////////////////////////////
+inline void Name::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Name::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Name::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(type == napi_string || type == napi_symbol,
+             "Name::CheckCast",
+             "value is not napi_string or napi_symbol");
+}
 
 inline Name::Name() : Value() {}
 
@@ -1016,6 +1074,16 @@ inline String String::New(napi_env env, const char16_t* val, size_t length) {
   napi_status status = napi_create_string_utf16(env, val, length, &value);
   NAPI_THROW_IF_FAILED(env, status, String());
   return String(env, value);
+}
+
+inline void String::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "String::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "String::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_string, "String::CheckCast", "value is not napi_string");
 }
 
 inline String::String() : Name() {}
@@ -1145,6 +1213,16 @@ inline MaybeOrValue<Symbol> Symbol::For(napi_env env, napi_value description) {
 #endif
 }
 
+inline void Symbol::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Symbol::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Symbol::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_symbol, "Symbol::CheckCast", "value is not napi_symbol");
+}
+
 inline Symbol::Symbol() : Name() {}
 
 inline Symbol::Symbol(napi_env env, napi_value value) : Name(env, value) {}
@@ -1243,6 +1321,32 @@ String String::From(napi_env env, const T& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// TypeTaggable class
+////////////////////////////////////////////////////////////////////////////////
+
+inline TypeTaggable::TypeTaggable() : Value() {}
+
+inline TypeTaggable::TypeTaggable(napi_env _env, napi_value _value)
+    : Value(_env, _value) {}
+
+#if NAPI_VERSION >= 8
+
+inline void TypeTaggable::TypeTag(const napi_type_tag* type_tag) const {
+  napi_status status = napi_type_tag_object(_env, _value, type_tag);
+  NAPI_THROW_IF_FAILED_VOID(_env, status);
+}
+
+inline bool TypeTaggable::CheckTypeTag(const napi_type_tag* type_tag) const {
+  bool result;
+  napi_status status =
+      napi_check_object_type_tag(_env, _value, type_tag, &result);
+  NAPI_THROW_IF_FAILED(_env, status, false);
+  return result;
+}
+
+#endif  // NAPI_VERSION >= 8
+
+////////////////////////////////////////////////////////////////////////////////
 // Object class
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1281,9 +1385,20 @@ inline Object Object::New(napi_env env) {
   return Object(env, value);
 }
 
-inline Object::Object() : Value() {}
+inline void Object::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Object::CheckCast", "empty value");
 
-inline Object::Object(napi_env env, napi_value value) : Value(env, value) {}
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Object::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(
+      type == napi_object, "Object::CheckCast", "value is not napi_object");
+}
+
+inline Object::Object() : TypeTaggable() {}
+
+inline Object::Object(napi_env env, napi_value value)
+    : TypeTaggable(env, value) {}
 
 inline Object::PropertyLValue<std::string> Object::operator[](
     const char* utf8name) {
@@ -1687,11 +1802,23 @@ inline External<T> External<T>::New(napi_env env,
 }
 
 template <typename T>
-inline External<T>::External() : Value() {}
+inline void External<T>::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "External::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "External::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(type == napi_external,
+             "External::CheckCast",
+             "value is not napi_external");
+}
+
+template <typename T>
+inline External<T>::External() : TypeTaggable() {}
 
 template <typename T>
 inline External<T>::External(napi_env env, napi_value value)
-    : Value(env, value) {}
+    : TypeTaggable(env, value) {}
 
 template <typename T>
 inline T* External<T>::Data() const {
@@ -1719,6 +1846,15 @@ inline Array Array::New(napi_env env, size_t length) {
   return Array(env, value);
 }
 
+inline void Array::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Array::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_array(env, value, &result);
+  NAPI_CHECK(status == napi_ok, "Array::CheckCast", "napi_is_array failed");
+  NAPI_CHECK(result, "Array::CheckCast", "value is not array");
+}
+
 inline Array::Array() : Object() {}
 
 inline Array::Array(napi_env env, napi_value value) : Object(env, value) {}
@@ -1743,6 +1879,7 @@ inline ArrayBuffer ArrayBuffer::New(napi_env env, size_t byteLength) {
   return ArrayBuffer(env, value);
 }
 
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
 inline ArrayBuffer ArrayBuffer::New(napi_env env,
                                     void* externalData,
                                     size_t byteLength) {
@@ -1801,6 +1938,18 @@ inline ArrayBuffer ArrayBuffer::New(napi_env env,
   }
 
   return ArrayBuffer(env, value);
+}
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+
+inline void ArrayBuffer::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "ArrayBuffer::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_arraybuffer(env, value, &result);
+  NAPI_CHECK(status == napi_ok,
+             "ArrayBuffer::CheckCast",
+             "napi_is_arraybuffer failed");
+  NAPI_CHECK(result, "ArrayBuffer::CheckCast", "value is not arraybuffer");
 }
 
 inline ArrayBuffer::ArrayBuffer() : Object() {}
@@ -1868,6 +2017,16 @@ inline DataView DataView::New(napi_env env,
       napi_create_dataview(env, byteLength, arrayBuffer, byteOffset, &value);
   NAPI_THROW_IF_FAILED(env, status, DataView());
   return DataView(env, value);
+}
+
+inline void DataView::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "DataView::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_dataview(env, value, &result);
+  NAPI_CHECK(
+      status == napi_ok, "DataView::CheckCast", "napi_is_dataview failed");
+  NAPI_CHECK(result, "DataView::CheckCast", "value is not dataview");
 }
 
 inline DataView::DataView() : Object() {}
@@ -2004,6 +2163,15 @@ inline void DataView::WriteData(size_t byteOffset, T value) const {
 ////////////////////////////////////////////////////////////////////////////////
 // TypedArray class
 ////////////////////////////////////////////////////////////////////////////////
+inline void TypedArray::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "TypedArray::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_typedarray(env, value, &result);
+  NAPI_CHECK(
+      status == napi_ok, "TypedArray::CheckCast", "napi_is_typedarray failed");
+  NAPI_CHECK(result, "TypedArray::CheckCast", "value is not typedarray");
+}
 
 inline TypedArray::TypedArray()
     : Object(), _type(napi_typedarray_type::napi_int8_array), _length(0) {}
@@ -2086,6 +2254,23 @@ inline Napi::ArrayBuffer TypedArray::ArrayBuffer() const {
 ////////////////////////////////////////////////////////////////////////////////
 // TypedArrayOf<T> class
 ////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+inline void TypedArrayOf<T>::CheckCast(napi_env env, napi_value value) {
+  TypedArray::CheckCast(env, value);
+  napi_typedarray_type type;
+  napi_status status = napi_get_typedarray_info(
+      env, value, &type, nullptr, nullptr, nullptr, nullptr);
+  NAPI_CHECK(status == napi_ok,
+             "TypedArrayOf::CheckCast",
+             "napi_is_typedarray failed");
+
+  NAPI_CHECK(
+      (type == TypedArrayTypeForPrimitiveType<T>() ||
+       (type == napi_uint8_clamped_array && std::is_same<T, uint8_t>::value)),
+      "TypedArrayOf::CheckCast",
+      "Array type must match the template parameter. (Uint8 arrays may "
+      "optionally have the \"clamped\" array type.)");
+}
 
 template <typename T>
 inline TypedArrayOf<T> TypedArrayOf<T>::New(napi_env env,
@@ -2259,6 +2444,17 @@ inline Function Function::New(napi_env env,
   return New(env, cb, utf8name.c_str(), data);
 }
 
+inline void Function::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Function::CheckCast", "empty value");
+
+  napi_valuetype type;
+  napi_status status = napi_typeof(env, value, &type);
+  NAPI_CHECK(status == napi_ok, "Function::CheckCast", "napi_typeof failed");
+  NAPI_CHECK(type == napi_function,
+             "Function::CheckCast",
+             "value is not napi_function");
+}
+
 inline Function::Function() : Object() {}
 
 inline Function::Function(napi_env env, napi_value value)
@@ -2405,6 +2601,15 @@ inline void Promise::Deferred::Reject(napi_value value) const {
   NAPI_THROW_IF_FAILED_VOID(_env, status);
 }
 
+inline void Promise::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Promise::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_promise(env, value, &result);
+  NAPI_CHECK(status == napi_ok, "Promise::CheckCast", "napi_is_promise failed");
+  NAPI_CHECK(result, "Promise::CheckCast", "value is not promise");
+}
+
 inline Promise::Promise(napi_env env, napi_value value) : Object(env, value) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2421,6 +2626,7 @@ inline Buffer<T> Buffer<T>::New(napi_env env, size_t length) {
   return Buffer(env, value, length, static_cast<T*>(data));
 }
 
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
 template <typename T>
 inline Buffer<T> Buffer<T>::New(napi_env env, T* data, size_t length) {
   napi_value value;
@@ -2478,6 +2684,94 @@ inline Buffer<T> Buffer<T>::New(napi_env env,
   }
   return Buffer(env, value, length, data);
 }
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+
+template <typename T>
+inline Buffer<T> Buffer<T>::NewOrCopy(napi_env env, T* data, size_t length) {
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  napi_value value;
+  napi_status status = napi_create_external_buffer(
+      env, length * sizeof(T), data, nullptr, nullptr, &value);
+  if (status == details::napi_no_external_buffers_allowed) {
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+    // If we can't create an external buffer, we'll just copy the data.
+    return Buffer<T>::Copy(env, data, length);
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  }
+  NAPI_THROW_IF_FAILED(env, status, Buffer<T>());
+  return Buffer(env, value, length, data);
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+}
+
+template <typename T>
+template <typename Finalizer>
+inline Buffer<T> Buffer<T>::NewOrCopy(napi_env env,
+                                      T* data,
+                                      size_t length,
+                                      Finalizer finalizeCallback) {
+  details::FinalizeData<T, Finalizer>* finalizeData =
+      new details::FinalizeData<T, Finalizer>(
+          {std::move(finalizeCallback), nullptr});
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  napi_value value;
+  napi_status status =
+      napi_create_external_buffer(env,
+                                  length * sizeof(T),
+                                  data,
+                                  details::FinalizeData<T, Finalizer>::Wrapper,
+                                  finalizeData,
+                                  &value);
+  if (status == details::napi_no_external_buffers_allowed) {
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+    // If we can't create an external buffer, we'll just copy the data.
+    Buffer<T> ret = Buffer<T>::Copy(env, data, length);
+    details::FinalizeData<T, Finalizer>::Wrapper(env, data, finalizeData);
+    return ret;
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  }
+  if (status != napi_ok) {
+    delete finalizeData;
+    NAPI_THROW_IF_FAILED(env, status, Buffer());
+  }
+  return Buffer(env, value, length, data);
+#endif  // NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+}
+
+template <typename T>
+template <typename Finalizer, typename Hint>
+inline Buffer<T> Buffer<T>::NewOrCopy(napi_env env,
+                                      T* data,
+                                      size_t length,
+                                      Finalizer finalizeCallback,
+                                      Hint* finalizeHint) {
+  details::FinalizeData<T, Finalizer, Hint>* finalizeData =
+      new details::FinalizeData<T, Finalizer, Hint>(
+          {std::move(finalizeCallback), finalizeHint});
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  napi_value value;
+  napi_status status = napi_create_external_buffer(
+      env,
+      length * sizeof(T),
+      data,
+      details::FinalizeData<T, Finalizer, Hint>::WrapperWithHint,
+      finalizeData,
+      &value);
+  if (status == details::napi_no_external_buffers_allowed) {
+#endif
+    // If we can't create an external buffer, we'll just copy the data.
+    Buffer<T> ret = Buffer<T>::Copy(env, data, length);
+    details::FinalizeData<T, Finalizer, Hint>::WrapperWithHint(
+        env, data, finalizeData);
+    return ret;
+#ifndef NODE_API_NO_EXTERNAL_BUFFERS_ALLOWED
+  }
+  if (status != napi_ok) {
+    delete finalizeData;
+    NAPI_THROW_IF_FAILED(env, status, Buffer());
+  }
+  return Buffer(env, value, length, data);
+#endif
+}
 
 template <typename T>
 inline Buffer<T> Buffer<T>::Copy(napi_env env, const T* data, size_t length) {
@@ -2486,6 +2780,16 @@ inline Buffer<T> Buffer<T>::Copy(napi_env env, const T* data, size_t length) {
       napi_create_buffer_copy(env, length * sizeof(T), data, nullptr, &value);
   NAPI_THROW_IF_FAILED(env, status, Buffer<T>());
   return Buffer<T>(env, value);
+}
+
+template <typename T>
+inline void Buffer<T>::CheckCast(napi_env env, napi_value value) {
+  NAPI_CHECK(value != nullptr, "Buffer::CheckCast", "empty value");
+
+  bool result;
+  napi_status status = napi_is_buffer(env, value, &result);
+  NAPI_CHECK(status == napi_ok, "Buffer::CheckCast", "napi_is_buffer failed");
+  NAPI_CHECK(result, "Buffer::CheckCast", "value is not buffer");
 }
 
 template <typename T>
@@ -4720,6 +5024,8 @@ inline Napi::Env AsyncContext::Env() const {
 // AsyncWorker class
 ////////////////////////////////////////////////////////////////////////////////
 
+#if NAPI_HAS_THREADS
+
 inline AsyncWorker::AsyncWorker(const Function& callback)
     : AsyncWorker(callback, "generic") {}
 
@@ -4799,29 +5105,6 @@ inline AsyncWorker::~AsyncWorker() {
 
 inline void AsyncWorker::Destroy() {
   delete this;
-}
-
-inline AsyncWorker::AsyncWorker(AsyncWorker&& other) {
-  _env = other._env;
-  other._env = nullptr;
-  _work = other._work;
-  other._work = nullptr;
-  _receiver = std::move(other._receiver);
-  _callback = std::move(other._callback);
-  _error = std::move(other._error);
-  _suppress_destruct = other._suppress_destruct;
-}
-
-inline AsyncWorker& AsyncWorker::operator=(AsyncWorker&& other) {
-  _env = other._env;
-  other._env = nullptr;
-  _work = other._work;
-  other._work = nullptr;
-  _receiver = std::move(other._receiver);
-  _callback = std::move(other._callback);
-  _error = std::move(other._error);
-  _suppress_destruct = other._suppress_destruct;
-  return *this;
 }
 
 inline AsyncWorker::operator napi_async_work() const {
@@ -4921,7 +5204,9 @@ inline void AsyncWorker::OnWorkComplete(Napi::Env /*env*/, napi_status status) {
   }
 }
 
-#if (NAPI_VERSION > 3 && !defined(__wasm32__))
+#endif  // NAPI_HAS_THREADS
+
+#if (NAPI_VERSION > 3 && NAPI_HAS_THREADS)
 ////////////////////////////////////////////////////////////////////////////////
 // TypedThreadSafeFunction<ContextType,DataType,CallJs> class
 ////////////////////////////////////////////////////////////////////////////////
@@ -6170,7 +6455,7 @@ inline void AsyncProgressQueueWorker<T>::ExecutionProgress::Send(
     const T* data, size_t count) const {
   _worker->SendProgress_(data, count);
 }
-#endif  // NAPI_VERSION > 3 && !defined(__wasm32__)
+#endif  // NAPI_VERSION > 3 && NAPI_HAS_THREADS
 
 ////////////////////////////////////////////////////////////////////////////////
 // Memory Management class

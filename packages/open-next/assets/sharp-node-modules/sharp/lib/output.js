@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const path = require('path');
@@ -26,7 +29,7 @@ const formats = new Map([
   ['jxl', 'jxl']
 ]);
 
-const jp2Regex = /\.jp[2x]|j2[kc]$/i;
+const jp2Regex = /\.(jp[2x]|j2[kc])$/i;
 
 const errJp2Save = () => new Error('JP2 output requires libvips with support for OpenJPEG');
 
@@ -40,7 +43,7 @@ const bitdepthFromColourCount = (colours) => 1 << 31 - Math.clz32(Math.ceil(Math
  * Note that raw pixel data is only supported for buffer output.
  *
  * By default all metadata will be removed, which includes EXIF-based orientation.
- * See {@link withMetadata} for control over this.
+ * See {@link #withmetadata|withMetadata} for control over this.
  *
  * The caller is responsible for ensuring directory structures and permissions exist.
  *
@@ -61,6 +64,7 @@ const bitdepthFromColourCount = (colours) => 1 << 31 - Math.clz32(Math.ceil(Math
  * `info` contains the output image `format`, `size` (bytes), `width`, `height`,
  * `channels` and `premultiplied` (indicating if premultiplication was used).
  * When using a crop strategy also contains `cropOffsetLeft` and `cropOffsetTop`.
+ * When using the attention crop strategy also contains `attentionX` and `attentionY`, the focal point of the cropped region.
  * May also contain `textAutofitDpi` (dpi the font was rendered at) if image was created from text.
  * @returns {Promise<Object>} - when no callback is provided
  * @throws {Error} Invalid parameters
@@ -71,7 +75,7 @@ function toFile (fileOut, callback) {
     err = new Error('Missing output file path');
   } else if (is.string(this.options.input.file) && path.resolve(this.options.input.file) === path.resolve(fileOut)) {
     err = new Error('Cannot use same file for input and output');
-  } else if (jp2Regex.test(fileOut) && !this.constructor.format.jp2k.output.file) {
+  } else if (jp2Regex.test(path.extname(fileOut)) && !this.constructor.format.jp2k.output.file) {
     err = errJp2Save();
   }
   if (err) {
@@ -91,12 +95,12 @@ function toFile (fileOut, callback) {
  * Write output to a Buffer.
  * JPEG, PNG, WebP, AVIF, TIFF, GIF and raw pixel data output are supported.
  *
- * Use {@link toFormat} or one of the format-specific functions such as {@link jpeg}, {@link png} etc. to set the output format.
+ * Use {@link #toformat|toFormat} or one of the format-specific functions such as {@link jpeg}, {@link png} etc. to set the output format.
  *
  * If no explicit format is set, the output format will match the input image, except SVG input which becomes PNG output.
  *
  * By default all metadata will be removed, which includes EXIF-based orientation.
- * See {@link withMetadata} for control over this.
+ * See {@link #withmetadata|withMetadata} for control over this.
  *
  * `callback`, if present, gets three arguments `(err, data, info)` where:
  * - `err` is an error, if any.
@@ -173,12 +177,18 @@ function toBuffer (options, callback) {
  *   .then(info => { ... });
  *
  * @example
- * // Set "IFD0-Copyright" in output EXIF metadata
+ * // Set output EXIF metadata
  * const data = await sharp(input)
  *   .withMetadata({
  *     exif: {
  *       IFD0: {
- *         Copyright: 'Wernham Hogg'
+ *         Copyright: 'The National Gallery'
+ *       },
+ *       IFD3: {
+ *         GPSLatitudeRef: 'N',
+ *         GPSLatitude: '51/1 30/1 3230/100',
+ *         GPSLongitudeRef: 'W',
+ *         GPSLongitude: '0/1 7/1 4366/100'
  *       }
  *     }
  *   })
@@ -192,7 +202,7 @@ function toBuffer (options, callback) {
  *
  * @param {Object} [options]
  * @param {number} [options.orientation] value between 1 and 8, used to update the EXIF `Orientation` tag.
- * @param {string} [options.icc] filesystem path to output ICC profile, defaults to sRGB.
+ * @param {string} [options.icc='srgb'] Filesystem path to output ICC profile, relative to `process.cwd()`, defaults to built-in sRGB.
  * @param {Object<Object>} [options.exif={}] Object keyed by IFD0, IFD1 etc. of key/value string pairs to write as EXIF data.
  * @param {number} [options.density] Number of pixels per inch (DPI).
  * @returns {Sharp}
@@ -473,6 +483,7 @@ function png (options) {
  * @param {boolean} [options.lossless=false] - use lossless compression mode
  * @param {boolean} [options.nearLossless=false] - use near_lossless compression mode
  * @param {boolean} [options.smartSubsample=false] - use high quality chroma subsampling
+ * @param {string} [options.preset='default'] - named preset for preprocessing/filtering, one of: default, photo, picture, drawing, icon, text
  * @param {number} [options.effort=4] - CPU effort, between 0 (fastest) and 6 (slowest)
  * @param {number} [options.loop=0] - number of animation iterations, use 0 for infinite animation
  * @param {number|number[]} [options.delay] - delay(s) between animation frames (in milliseconds)
@@ -506,6 +517,13 @@ function webp (options) {
     }
     if (is.defined(options.smartSubsample)) {
       this._setBooleanOption('webpSmartSubsample', options.smartSubsample);
+    }
+    if (is.defined(options.preset)) {
+      if (is.string(options.preset) && is.inArray(options.preset, ['default', 'photo', 'picture', 'drawing', 'icon', 'text'])) {
+        this.options.webpPreset = options.preset;
+      } else {
+        throw is.invalidParameterError('preset', 'one of: default, photo, picture, drawing, icon, text', options.preset);
+      }
     }
     if (is.defined(options.effort)) {
       if (is.integer(options.effort) && is.inRange(options.effort, 0, 6)) {
@@ -559,8 +577,8 @@ function webp (options) {
  *   .toFile('optim.gif');
  *
  * @param {Object} [options] - output options
- * @param {boolean} [options.reoptimise=false] - always generate new palettes (slow), re-use existing by default
- * @param {boolean} [options.reoptimize=false] - alternative spelling of `options.reoptimise`
+ * @param {boolean} [options.reuse=true] - re-use existing palette, otherwise generate new (slow)
+ * @param {boolean} [options.progressive=false] - use progressive (interlace) scan
  * @param {number} [options.colours=256] - maximum number of palette entries, including transparency, between 2 and 256
  * @param {number} [options.colors=256] - alternative spelling of `options.colours`
  * @param {number} [options.effort=7] - CPU effort, between 1 (fastest) and 10 (slowest)
@@ -575,10 +593,11 @@ function webp (options) {
  */
 function gif (options) {
   if (is.object(options)) {
-    if (is.defined(options.reoptimise)) {
-      this._setBooleanOption('gifReoptimise', options.reoptimise);
-    } else if (is.defined(options.reoptimize)) {
-      this._setBooleanOption('gifReoptimise', options.reoptimize);
+    if (is.defined(options.reuse)) {
+      this._setBooleanOption('gifReuse', options.reuse);
+    }
+    if (is.defined(options.progressive)) {
+      this._setBooleanOption('gifProgressive', options.progressive);
     }
     const colours = options.colours || options.colors;
     if (is.defined(colours)) {
@@ -621,6 +640,7 @@ function gif (options) {
   return this._updateFormatOut('gif', options);
 }
 
+/* istanbul ignore next */
 /**
  * Use these JP2 options for output image.
  *
@@ -654,7 +674,6 @@ function gif (options) {
  * @returns {Sharp}
  * @throws {Error} Invalid options
  */
-/* istanbul ignore next */
 function jp2 (options) {
   if (!this.constructor.format.jp2k.output.buffer) {
     throw errJp2Save();
@@ -690,7 +709,7 @@ function jp2 (options) {
     }
     if (is.defined(options.chromaSubsampling)) {
       if (is.string(options.chromaSubsampling) && is.inArray(options.chromaSubsampling, ['4:2:0', '4:4:4'])) {
-        this.options.heifChromaSubsampling = options.chromaSubsampling;
+        this.options.jp2ChromaSubsampling = options.chromaSubsampling;
       } else {
         throw is.invalidParameterError('chromaSubsampling', 'one of: 4:2:0, 4:4:4', options.chromaSubsampling);
       }
@@ -735,7 +754,8 @@ function trySetAnimationOptions (source, target) {
 /**
  * Use these TIFF options for output image.
  *
- * The `density` can be set in pixels/inch via {@link withMetadata} instead of providing `xres` and `yres` in pixels/mm.
+ * The `density` can be set in pixels/inch via {@link #withmetadata|withMetadata}
+ * instead of providing `xres` and `yres` in pixels/mm.
  *
  * @example
  * // Convert SVG input to LZW-compressed, 1 bit per pixel TIFF output
@@ -1050,6 +1070,10 @@ function raw (options) {
  * Use a `.zip` or `.szi` file extension with `toFile` to write to a compressed archive file format.
  *
  * The container will be set to `zip` when the output is a Buffer or Stream, otherwise it will default to `fs`.
+ *
+ * Requires libvips compiled with support for libgsf.
+ * The prebuilt binaries do not include this - see
+ * {@link https://sharp.pixelplumbing.com/install#custom-libvips installing a custom libvips}.
  *
  * @example
  *  sharp('input.tiff')

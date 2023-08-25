@@ -75,6 +75,16 @@
     "abi": "111"
   },
   {
+    "runtime": "node",
+    "target": "20.0.0",
+    "lts": [
+      "2023-10-24",
+      "2024-10-22"
+    ],
+    "future": false,
+    "abi": "115"
+  },
+  {
     "abi": "70",
     "future": false,
     "lts": false,
@@ -100,14 +110,14 @@
     "future": false,
     "lts": false,
     "runtime": "electron",
-    "target": "8.0.0-beta.1"
+    "target": "9.0.0-beta.1"
   },
   {
     "abi": "76",
     "future": false,
     "lts": false,
     "runtime": "electron",
-    "target": "9.0.0-beta.1"
+    "target": "8.0.0-beta.1"
   },
   {
     "abi": "80",
@@ -121,14 +131,14 @@
     "future": false,
     "lts": false,
     "runtime": "electron",
-    "target": "10.0.0-beta.1"
+    "target": "11.0.0-beta.1"
   },
   {
     "abi": "82",
     "future": false,
     "lts": false,
     "runtime": "electron",
-    "target": "11.0.0-beta.1"
+    "target": "10.0.0-beta.1"
   },
   {
     "abi": "85",
@@ -149,13 +159,6 @@
     "future": false,
     "lts": false,
     "runtime": "electron",
-    "target": "13.0.0-beta.2"
-  },
-  {
-    "abi": "89",
-    "future": false,
-    "lts": false,
-    "runtime": "electron",
     "target": "15.0.0-alpha.1"
   },
   {
@@ -164,6 +167,13 @@
     "lts": false,
     "runtime": "electron",
     "target": "14.0.0-beta.1"
+  },
+  {
+    "abi": "89",
+    "future": false,
+    "lts": false,
+    "runtime": "electron",
+    "target": "13.0.0-beta.2"
   },
   {
     "abi": "97",
@@ -230,9 +240,37 @@
   },
   {
     "abi": "113",
-    "future": true,
+    "future": false,
     "lts": false,
     "runtime": "electron",
     "target": "23.0.0-alpha.1"
+  },
+  {
+    "abi": "114",
+    "future": false,
+    "lts": false,
+    "runtime": "electron",
+    "target": "24.0.0-alpha.1"
+  },
+  {
+    "abi": "116",
+    "future": false,
+    "lts": false,
+    "runtime": "electron",
+    "target": "26.0.0-alpha.1"
+  },
+  {
+    "abi": "116",
+    "future": false,
+    "lts": false,
+    "runtime": "electron",
+    "target": "25.0.0-alpha.1"
+  },
+  {
+    "abi": "118",
+    "future": true,
+    "lts": false,
+    "runtime": "electron",
+    "target": "27.0.0-alpha.1"
   }
 ]

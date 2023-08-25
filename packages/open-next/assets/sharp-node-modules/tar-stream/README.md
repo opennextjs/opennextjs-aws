@@ -1,6 +1,6 @@
 # tar-stream
 
-tar-stream is a streaming tar parser and generator and nothing else. It is streams2 and operates purely using streams which means you can easily extract/parse tarballs without ever hitting the file system.
+tar-stream is a streaming tar parser and generator and nothing else. It operates purely using streams which means you can easily extract/parse tarballs without ever hitting the file system.
 
 Note that you still need to gunzip your data if you have a `.tar.gz`. We recommend using [gunzip-maybe](https://github.com/mafintosh/gunzip-maybe) in conjunction with this.
 
@@ -27,14 +27,14 @@ If you want to pack/unpack directories on the file system check out [tar-fs](htt
 To create a pack stream use `tar.pack()` and call `pack.entry(header, [callback])` to add tar entries.
 
 ``` js
-var tar = require('tar-stream')
-var pack = tar.pack() // pack is a streams2 stream
+const tar = require('tar-stream')
+const pack = tar.pack() // pack is a stream
 
 // add a file called my-test.txt with the content "Hello World!"
 pack.entry({ name: 'my-test.txt' }, 'Hello World!')
 
 // add a file called my-stream-test.txt from a stream
-var entry = pack.entry({ name: 'my-stream-test.txt', size: 11 }, function(err) {
+const entry = pack.entry({ name: 'my-stream-test.txt', size: 11 }, function(err) {
   // the stream was added
   // no more entries
   pack.finalize()
@@ -54,21 +54,21 @@ pack.pipe(process.stdout)
 To extract a stream use `tar.extract()` and listen for `extract.on('entry', (header, stream, next) )`
 
 ``` js
-var extract = tar.extract()
+const extract = tar.extract()
 
-extract.on('entry', function(header, stream, next) {
+extract.on('entry', function (header, stream, next) {
   // header is the tar header
   // stream is the content body (might be an empty stream)
   // call next when you are done with this entry
 
-  stream.on('end', function() {
+  stream.on('end', function () {
     next() // ready for next entry
   })
 
   stream.resume() // just auto drain the stream
 })
 
-extract.on('finish', function() {
+extract.on('finish', function () {
   // all entries read
 })
 
@@ -76,6 +76,21 @@ pack.pipe(extract)
 ```
 
 The tar archive is streamed sequentially, meaning you **must** drain each entry's stream as you get them or else the main extract stream will receive backpressure and stop reading.
+
+## Extracting as an async iterator
+
+The extraction stream in addition to being a writable stream is also an async iterator
+
+``` js
+const extract = tar.extract()
+
+someStream.pipe(extract)
+
+for await (const entry of extract) {
+  entry.header // the tar header
+  entry.resume() // the entry is the stream also
+}
+```
 
 ## Headers
 
@@ -106,18 +121,18 @@ Most of these values can be found by stat'ing a file.
 Using tar-stream it is easy to rewrite paths / change modes etc in an existing tarball.
 
 ``` js
-var extract = tar.extract()
-var pack = tar.pack()
-var path = require('path')
+const extract = tar.extract()
+const pack = tar.pack()
+const path = require('path')
 
-extract.on('entry', function(header, stream, callback) {
+extract.on('entry', function (header, stream, callback) {
   // let's prefix all names with 'tmp'
   header.name = path.join('tmp', header.name)
   // write the new entry to the pack stream
   stream.pipe(pack.entry(header, callback))
 })
 
-extract.on('finish', function() {
+extract.on('finish', function () {
   // all entries done - lets finalize it
   pack.finalize()
 })
@@ -133,15 +148,15 @@ pack.pipe(newTarballStream)
 
 
 ``` js
-var fs = require('fs')
-var tar = require('tar-stream')
+const fs = require('fs')
+const tar = require('tar-stream')
 
-var pack = tar.pack() // pack is a streams2 stream
-var path = 'YourTarBall.tar'
-var yourTarball = fs.createWriteStream(path)
+const pack = tar.pack() // pack is a stream
+const path = 'YourTarBall.tar'
+const yourTarball = fs.createWriteStream(path)
 
 // add a file called YourFile.txt with the content "Hello World!"
-pack.entry({name: 'YourFile.txt'}, 'Hello World!', function (err) {
+pack.entry({ name: 'YourFile.txt' }, 'Hello World!', function (err) {
   if (err) throw err
   pack.finalize()
 })

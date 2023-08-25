@@ -1,9 +1,11 @@
 # Node.js ABI
 
-[![Build Status](https://travis-ci.org/lgeiger/node-abi.svg?branch=v1.0.0)](https://travis-ci.org/lgeiger/node-abi) [![Greenkeeper badge](https://badges.greenkeeper.io/lgeiger/node-abi.svg)](https://greenkeeper.io/)
+[![Build Status](https://circleci.com/gh/electron/node-abi/tree/main.svg?style=shield)](https://circleci.com/gh/electron/node-abi/tree/main)
+[![Auto-update ABI JSON file](https://github.com/electron/node-abi/actions/workflows/update-abi.yml/badge.svg)](https://github.com/electron/node-abi/actions/workflows/update-abi.yml)
+[![Snyk badge](https://snyk.io/test/github/electron/node-abi/badge.svg)](https://snyk.io/test/github/electron/node-abi)
+[![npm version](http://img.shields.io/npm/v/node-abi.svg)](https://npmjs.org/package/node-abi)
 
-
-Get the Node ABI for a given target and runtime, and vice versa.
+Get the Node ABI (application binary interface) for a given target and runtime, and vice versa.
 
 ## Installation
 ```

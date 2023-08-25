@@ -1,0 +1,31 @@
+{
+  "name": "streamx",
+  "version": "2.15.1",
+  "description": "An iteration of the Node.js core streams with a series of improvements",
+  "main": "index.js",
+  "dependencies": {
+    "fast-fifo": "^1.1.0",
+    "queue-tick": "^1.0.1"
+  },
+  "devDependencies": {
+    "brittle": "^3.1.1",
+    "end-of-stream": "^1.4.4",
+    "standard": "^17.0.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "test": "standard && brittle test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafintosh/streamx.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mafintosh/streamx/issues"
+  },
+  "homepage": "https://github.com/mafintosh/streamx"
+}

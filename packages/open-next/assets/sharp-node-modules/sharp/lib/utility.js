@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const fs = require('fs');
@@ -43,7 +46,7 @@ const interpolators = {
 };
 
 /**
- * An Object containing the version numbers of libvips and its dependencies.
+ * An Object containing the version numbers of sharp, libvips and its dependencies.
  * @member
  * @example
  * console.log(sharp.versions);
@@ -54,6 +57,7 @@ let versions = {
 try {
   versions = require(`../vendor/${versions.vips}/${platformAndArch}/versions.json`);
 } catch (_err) { /* ignore */ }
+versions.sharp = require('../package.json').version;
 
 /**
  * An Object containing the platform and architecture
@@ -199,6 +203,72 @@ function simd (simd) {
 simd(true);
 
 /**
+ * Block libvips operations at runtime.
+ *
+ * This is in addition to the `VIPS_BLOCK_UNTRUSTED` environment variable,
+ * which when set will block all "untrusted" operations.
+ *
+ * @since 0.32.4
+ *
+ * @example <caption>Block all TIFF input.</caption>
+ * sharp.block({
+ *   operation: ['VipsForeignLoadTiff']
+ * });
+ *
+ * @param {Object} options
+ * @param {Array<string>} options.operation - List of libvips low-level operation names to block.
+ */
+function block (options) {
+  if (is.object(options)) {
+    if (Array.isArray(options.operation) && options.operation.every(is.string)) {
+      sharp.block(options.operation, true);
+    } else {
+      throw is.invalidParameterError('operation', 'Array<string>', options.operation);
+    }
+  } else {
+    throw is.invalidParameterError('options', 'object', options);
+  }
+}
+
+/**
+ * Unblock libvips operations at runtime.
+ *
+ * This is useful for defining a list of allowed operations.
+ *
+ * @since 0.32.4
+ *
+ * @example <caption>Block all input except WebP from the filesystem.</caption>
+ * sharp.block({
+ *   operation: ['VipsForeignLoad']
+ * });
+ * sharp.unblock({
+ *   operation: ['VipsForeignLoadWebpFile']
+ * });
+ *
+ * @example <caption>Block all input except JPEG and PNG from a Buffer or Stream.</caption>
+ * sharp.block({
+ *   operation: ['VipsForeignLoad']
+ * });
+ * sharp.unblock({
+ *   operation: ['VipsForeignLoadJpegBuffer', 'VipsForeignLoadPngBuffer']
+ * });
+ *
+ * @param {Object} options
+ * @param {Array<string>} options.operation - List of libvips low-level operation names to unblock.
+ */
+function unblock (options) {
+  if (is.object(options)) {
+    if (Array.isArray(options.operation) && options.operation.every(is.string)) {
+      sharp.block(options.operation, false);
+    } else {
+      throw is.invalidParameterError('operation', 'Array<string>', options.operation);
+    }
+  } else {
+    throw is.invalidParameterError('options', 'object', options);
+  }
+}
+
+/**
  * Decorate the Sharp class with utility-related functions.
  * @private
  */
@@ -212,4 +282,6 @@ module.exports = function (Sharp) {
   Sharp.versions = versions;
   Sharp.vendor = vendor;
   Sharp.queue = queue;
+  Sharp.block = block;
+  Sharp.unblock = unblock;
 };

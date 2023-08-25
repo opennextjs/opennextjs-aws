@@ -248,6 +248,10 @@
       "url": "https://github.com/mathiask88"
     },
     {
+      "name": "Mathias Stearn",
+      "url": "https://github.com/RedBeard0531"
+    },
+    {
       "name": "Matteo Collina",
       "url": "https://github.com/mcollina"
     },
@@ -356,6 +360,10 @@
       "url": "https://github.com/todoroff"
     },
     {
+      "name": "Toyo Li",
+      "url": "https://github.com/toyobayashi"
+    },
+    {
       "name": "Tux3",
       "url": "https://github.com/tux3"
     },
@@ -451,6 +459,6 @@
     "lint:fix": "node tools/clang-format --fix && node tools/eslint-format --fix"
   },
   "pre-commit": "lint",
-  "version": "5.1.0",
+  "version": "6.1.0",
   "support": true
 }

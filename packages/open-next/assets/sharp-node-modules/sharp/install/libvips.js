@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const fs = require('fs');
@@ -8,6 +11,7 @@ const zlib = require('zlib');
 const { createHash } = require('crypto');
 
 const detectLibc = require('detect-libc');
+const semverCoerce = require('semver/functions/coerce');
 const semverLessThan = require('semver/functions/lt');
 const semverSatisfies = require('semver/functions/satisfies');
 const simpleGet = require('simple-get');
@@ -74,7 +78,11 @@ const verifyIntegrity = function (platformAndArch) {
     flush: function (done) {
       const digest = `sha512-${hash.digest('base64')}`;
       if (expected !== digest) {
-        libvips.removeVendoredLibvips();
+        try {
+          libvips.removeVendoredLibvips();
+        } catch (err) {
+          libvips.log(err.message);
+        }
         libvips.log(`Integrity expected: ${expected}`);
         libvips.log(`Integrity received: ${digest}`);
         done(new Error(`Integrity check failed for ${platformAndArch}`));
@@ -128,24 +136,23 @@ try {
     if (arch === 'ia32' && !platformAndArch.startsWith('win32')) {
       throw new Error(`Intel Architecture 32-bit systems require manual installation of libvips >= ${minimumLibvipsVersion}`);
     }
-    if (platformAndArch === 'darwin-arm64') {
-      throw new Error("Please run 'brew install vips' to install libvips on Apple M1 (ARM64) systems");
-    }
     if (platformAndArch === 'freebsd-x64' || platformAndArch === 'openbsd-x64' || platformAndArch === 'sunos-x64') {
       throw new Error(`BSD/SunOS systems require manual installation of libvips >= ${minimumLibvipsVersion}`);
     }
     // Linux libc version check
-    const libcFamily = detectLibc.familySync();
-    const libcVersion = detectLibc.versionSync();
-    if (libcFamily === detectLibc.GLIBC && libcVersion && minimumGlibcVersionByArch[arch]) {
-      const libcVersionWithoutPatch = libcVersion.split('.').slice(0, 2).join('.');
-      if (semverLessThan(`${libcVersionWithoutPatch}.0`, `${minimumGlibcVersionByArch[arch]}.0`)) {
-        handleError(new Error(`Use with glibc ${libcVersion} requires manual installation of libvips >= ${minimumLibvipsVersion}`));
+    const libcVersionRaw = detectLibc.versionSync();
+    if (libcVersionRaw) {
+      const libcFamily = detectLibc.familySync();
+      const libcVersion = semverCoerce(libcVersionRaw).version;
+      if (libcFamily === detectLibc.GLIBC && minimumGlibcVersionByArch[arch]) {
+        if (semverLessThan(libcVersion, semverCoerce(minimumGlibcVersionByArch[arch]).version)) {
+          handleError(new Error(`Use with glibc ${libcVersionRaw} requires manual installation of libvips >= ${minimumLibvipsVersion}`));
+        }
       }
-    }
-    if (libcFamily === detectLibc.MUSL && libcVersion) {
-      if (semverLessThan(libcVersion, '1.1.24')) {
-        handleError(new Error(`Use with musl ${libcVersion} requires manual installation of libvips >= ${minimumLibvipsVersion}`));
+      if (libcFamily === detectLibc.MUSL) {
+        if (semverLessThan(libcVersion, '1.1.24')) {
+          handleError(new Error(`Use with musl ${libcVersionRaw} requires manual installation of libvips >= ${minimumLibvipsVersion}`));
+        }
       }
     }
     // Node.js minimum version check
@@ -153,7 +160,6 @@ try {
     if (!semverSatisfies(process.versions.node, supportedNodeVersion)) {
       handleError(new Error(`Expected Node.js version ${supportedNodeVersion} but found ${process.versions.node}`));
     }
-
     // Download to per-process temporary file
     const tarFilename = ['libvips', minimumLibvipsVersionLabelled, platformAndArch].join('-') + '.tar.br';
     const tarPathCache = path.join(libvips.cachePath(), tarFilename);

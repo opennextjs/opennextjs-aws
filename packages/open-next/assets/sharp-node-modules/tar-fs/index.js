@@ -1,78 +1,27 @@
-var chownr = require('chownr')
-var tar = require('tar-stream')
-var pump = require('pump')
-var mkdirp = require('mkdirp-classic')
-var fs = require('fs')
-var path = require('path')
-var os = require('os')
+const tar = require('tar-stream')
+const pump = require('pump')
+const mkdirp = require('mkdirp-classic')
+const fs = require('fs')
+const path = require('path')
 
-var win32 = os.platform() === 'win32'
+const win32 = process.platform === 'win32'
 
-var noop = function () {}
-
-var echo = function (name) {
-  return name
-}
-
-var normalize = !win32 ? echo : function (name) {
-  return name.replace(/\\/g, '/').replace(/[:?<>|]/g, '_')
-}
-
-var statAll = function (fs, stat, cwd, ignore, entries, sort) {
-  var queue = entries || ['.']
-
-  return function loop (callback) {
-    if (!queue.length) return callback()
-    var next = queue.shift()
-    var nextAbs = path.join(cwd, next)
-
-    stat.call(fs, nextAbs, function (err, stat) {
-      if (err) return callback(err)
-
-      if (!stat.isDirectory()) return callback(null, next, stat)
-
-      fs.readdir(nextAbs, function (err, files) {
-        if (err) return callback(err)
-
-        if (sort) files.sort()
-        for (var i = 0; i < files.length; i++) {
-          if (!ignore(path.join(cwd, next, files[i]))) queue.push(path.join(next, files[i]))
-        }
-
-        callback(null, next, stat)
-      })
-    })
-  }
-}
-
-var strip = function (map, level) {
-  return function (header) {
-    header.name = header.name.split('/').slice(level).join('/')
-
-    var linkname = header.linkname
-    if (linkname && (header.type === 'link' || path.isAbsolute(linkname))) {
-      header.linkname = linkname.split('/').slice(level).join('/')
-    }
-
-    return map(header)
-  }
-}
-
-exports.pack = function (cwd, opts) {
+exports.pack = function pack (cwd, opts) {
   if (!cwd) cwd = '.'
   if (!opts) opts = {}
 
-  var xfs = opts.fs || fs
-  var ignore = opts.ignore || opts.filter || noop
-  var map = opts.map || noop
-  var mapStream = opts.mapStream || echo
-  var statNext = statAll(xfs, opts.dereference ? xfs.stat : xfs.lstat, cwd, ignore, opts.entries, opts.sort)
-  var strict = opts.strict !== false
-  var umask = typeof opts.umask === 'number' ? ~opts.umask : ~processUmask()
-  var dmode = typeof opts.dmode === 'number' ? opts.dmode : 0
-  var fmode = typeof opts.fmode === 'number' ? opts.fmode : 0
-  var pack = opts.pack || tar.pack()
-  var finish = opts.finish || noop
+  const xfs = opts.fs || fs
+  const ignore = opts.ignore || opts.filter || noop
+  const mapStream = opts.mapStream || echo
+  const statNext = statAll(xfs, opts.dereference ? xfs.stat : xfs.lstat, cwd, ignore, opts.entries, opts.sort)
+  const strict = opts.strict !== false
+  const umask = typeof opts.umask === 'number' ? ~opts.umask : ~processUmask()
+  const pack = opts.pack || tar.pack()
+  const finish = opts.finish || noop
+
+  let map = opts.map || noop
+  let dmode = typeof opts.dmode === 'number' ? opts.dmode : 0
+  let fmode = typeof opts.fmode === 'number' ? opts.fmode : 0
 
   if (opts.strip) map = strip(map, opts.strip)
 
@@ -85,7 +34,9 @@ exports.pack = function (cwd, opts) {
     fmode |= parseInt(222, 8)
   }
 
-  var onsymlink = function (filename, header) {
+  onnextentry()
+
+  function onsymlink (filename, header) {
     xfs.readlink(path.join(cwd, filename), function (err, linkname) {
       if (err) return pack.destroy(err)
       header.linkname = normalize(linkname)
@@ -93,7 +44,7 @@ exports.pack = function (cwd, opts) {
     })
   }
 
-  var onstat = function (err, filename, stat) {
+  function onstat (err, filename, stat) {
     if (err) return pack.destroy(err)
     if (!filename) {
       if (opts.finalize !== false) pack.finalize()
@@ -102,7 +53,7 @@ exports.pack = function (cwd, opts) {
 
     if (stat.isSocket()) return onnextentry() // tar does not support sockets...
 
-    var header = {
+    let header = {
       name: normalize(filename),
       mode: (stat.mode | (stat.isDirectory() ? dmode : fmode)) & umask,
       mtime: stat.mtime,
@@ -135,10 +86,8 @@ exports.pack = function (cwd, opts) {
       return onnextentry()
     }
 
-    var entry = pack.entry(header, onnextentry)
-    if (!entry) return
-
-    var rs = mapStream(xfs.createReadStream(path.join(cwd, filename), { start: 0, end: header.size > 0 ? header.size - 1 : header.size }), header)
+    const entry = pack.entry(header, onnextentry)
+    const rs = mapStream(xfs.createReadStream(path.join(cwd, filename), { start: 0, end: header.size > 0 ? header.size - 1 : header.size }), header)
 
     rs.on('error', function (err) { // always forward errors on destroy
       entry.destroy(err)
@@ -147,44 +96,43 @@ exports.pack = function (cwd, opts) {
     pump(rs, entry)
   }
 
-  var onnextentry = function (err) {
+  function onnextentry (err) {
     if (err) return pack.destroy(err)
     statNext(onstat)
   }
 
-  onnextentry()
-
   return pack
 }
 
-var head = function (list) {
+function head (list) {
   return list.length ? list[list.length - 1] : null
 }
 
-var processGetuid = function () {
+function processGetuid () {
   return process.getuid ? process.getuid() : -1
 }
 
-var processUmask = function () {
+function processUmask () {
   return process.umask ? process.umask() : 0
 }
 
-exports.extract = function (cwd, opts) {
+exports.extract = function extract (cwd, opts) {
   if (!cwd) cwd = '.'
   if (!opts) opts = {}
 
-  var xfs = opts.fs || fs
-  var ignore = opts.ignore || opts.filter || noop
-  var map = opts.map || noop
-  var mapStream = opts.mapStream || echo
-  var own = opts.chown !== false && !win32 && processGetuid() === 0
-  var extract = opts.extract || tar.extract()
-  var stack = []
-  var now = new Date()
-  var umask = typeof opts.umask === 'number' ? ~opts.umask : ~processUmask()
-  var dmode = typeof opts.dmode === 'number' ? opts.dmode : 0
-  var fmode = typeof opts.fmode === 'number' ? opts.fmode : 0
-  var strict = opts.strict !== false
+  const xfs = opts.fs || fs
+  const ignore = opts.ignore || opts.filter || noop
+  const mapStream = opts.mapStream || echo
+  const own = opts.chown !== false && !win32 && processGetuid() === 0
+  const extract = opts.extract || tar.extract()
+  const stack = []
+  const now = new Date()
+  const umask = typeof opts.umask === 'number' ? ~opts.umask : ~processUmask()
+  const strict = opts.strict !== false
+
+  let map = opts.map || noop
+  let dmode = typeof opts.dmode === 'number' ? opts.dmode : 0
+  let fmode = typeof opts.fmode === 'number' ? opts.fmode : 0
 
   if (opts.strip) map = strip(map, opts.strip)
 
@@ -197,118 +145,49 @@ exports.extract = function (cwd, opts) {
     fmode |= parseInt(222, 8)
   }
 
-  var utimesParent = function (name, cb) { // we just set the mtime on the parent dir again everytime we write an entry
-    var top
-    while ((top = head(stack)) && name.slice(0, top[0].length) !== top[0]) stack.pop()
-    if (!top) return cb()
-    xfs.utimes(top[0], now, top[1], cb)
-  }
+  extract.on('entry', onentry)
 
-  var utimes = function (name, header, cb) {
-    if (opts.utimes === false) return cb()
+  if (opts.finish) extract.on('finish', opts.finish)
 
-    if (header.type === 'directory') return xfs.utimes(name, now, header.mtime, cb)
-    if (header.type === 'symlink') return utimesParent(name, cb) // TODO: how to set mtime on link?
+  return extract
 
-    xfs.utimes(name, now, header.mtime, function (err) {
-      if (err) return cb(err)
-      utimesParent(name, cb)
-    })
-  }
-
-  var chperm = function (name, header, cb) {
-    var link = header.type === 'symlink'
-
-    /* eslint-disable node/no-deprecated-api */
-    var chmod = link ? xfs.lchmod : xfs.chmod
-    var chown = link ? xfs.lchown : xfs.chown
-    /* eslint-enable node/no-deprecated-api */
-
-    if (!chmod) return cb()
-
-    var mode = (header.mode | (header.type === 'directory' ? dmode : fmode)) & umask
-
-    if (chown && own) chown.call(xfs, name, header.uid, header.gid, onchown)
-    else onchown(null)
-
-    function onchown (err) {
-      if (err) return cb(err)
-      if (!chmod) return cb()
-      chmod.call(xfs, name, mode, cb)
-    }
-  }
-
-  extract.on('entry', function (header, stream, next) {
+  function onentry (header, stream, next) {
     header = map(header) || header
     header.name = normalize(header.name)
-    var name = path.join(cwd, path.join('/', header.name))
+
+    const name = path.join(cwd, path.join('/', header.name))
 
     if (ignore(name, header)) {
       stream.resume()
       return next()
     }
 
-    var stat = function (err) {
-      if (err) return next(err)
-      utimes(name, header, function (err) {
-        if (err) return next(err)
-        if (win32) return next()
-        chperm(name, header, next)
-      })
-    }
-
-    var onsymlink = function () {
-      if (win32) return next() // skip symlinks on win for now before it can be tested
-      xfs.unlink(name, function () {
-        xfs.symlink(header.linkname, name, stat)
-      })
-    }
-
-    var onlink = function () {
-      if (win32) return next() // skip links on win for now before it can be tested
-      xfs.unlink(name, function () {
-        var srcpath = path.join(cwd, path.join('/', header.linkname))
-
-        xfs.link(srcpath, name, function (err) {
-          if (err && err.code === 'EPERM' && opts.hardlinkAsFilesFallback) {
-            stream = xfs.createReadStream(srcpath)
-            return onfile()
-          }
-
-          stat(err)
-        })
-      })
-    }
-
-    var onfile = function () {
-      var ws = xfs.createWriteStream(name)
-      var rs = mapStream(stream, header)
-
-      ws.on('error', function (err) { // always forward errors on destroy
-        rs.destroy(err)
-      })
-
-      pump(rs, ws, function (err) {
-        if (err) return next(err)
-        ws.on('close', stat)
-      })
-    }
-
     if (header.type === 'directory') {
       stack.push([name, header.mtime])
       return mkdirfix(name, {
-        fs: xfs, own: own, uid: header.uid, gid: header.gid
+        fs: xfs,
+        own,
+        uid: header.uid,
+        gid: header.gid,
+        mode: header.mode
       }, stat)
     }
 
-    var dir = path.dirname(name)
+    const dir = path.dirname(name)
 
     validate(xfs, dir, path.join(cwd, '.'), function (err, valid) {
       if (err) return next(err)
       if (!valid) return next(new Error(dir + ' is not a valid path'))
 
       mkdirfix(dir, {
-        fs: xfs, own: own, uid: header.uid, gid: header.gid
+        fs: xfs,
+        own,
+        uid: header.uid,
+        gid: header.gid,
+        // normally, the folders with rights and owner should be part of the TAR file
+        // if this is not the case, create folder for same user as file and with
+        // standard permissions of 0o755 (rwxr-xr-x)
+        mode: 0o755
       }, function (err) {
         if (err) return next(err)
 
@@ -324,28 +203,168 @@ exports.extract = function (cwd, opts) {
         next()
       })
     })
-  })
 
-  if (opts.finish) extract.on('finish', opts.finish)
+    function stat (err) {
+      if (err) return next(err)
+      utimes(name, header, function (err) {
+        if (err) return next(err)
+        if (win32) return next()
+        chperm(name, header, next)
+      })
+    }
 
-  return extract
+    function onsymlink () {
+      if (win32) return next() // skip symlinks on win for now before it can be tested
+      xfs.unlink(name, function () {
+        xfs.symlink(header.linkname, name, stat)
+      })
+    }
+
+    function onlink () {
+      if (win32) return next() // skip links on win for now before it can be tested
+      xfs.unlink(name, function () {
+        const srcpath = path.join(cwd, path.join('/', header.linkname))
+
+        xfs.link(srcpath, name, function (err) {
+          if (err && err.code === 'EPERM' && opts.hardlinkAsFilesFallback) {
+            stream = xfs.createReadStream(srcpath)
+            return onfile()
+          }
+
+          stat(err)
+        })
+      })
+    }
+
+    function onfile () {
+      const ws = xfs.createWriteStream(name)
+      const rs = mapStream(stream, header)
+
+      ws.on('error', function (err) { // always forward errors on destroy
+        rs.destroy(err)
+      })
+
+      pump(rs, ws, function (err) {
+        if (err) return next(err)
+        ws.on('close', stat)
+      })
+    }
+  }
+
+  function utimesParent (name, cb) { // we just set the mtime on the parent dir again everytime we write an entry
+    let top
+    while ((top = head(stack)) && name.slice(0, top[0].length) !== top[0]) stack.pop()
+    if (!top) return cb()
+    xfs.utimes(top[0], now, top[1], cb)
+  }
+
+  function utimes (name, header, cb) {
+    if (opts.utimes === false) return cb()
+
+    if (header.type === 'directory') return xfs.utimes(name, now, header.mtime, cb)
+    if (header.type === 'symlink') return utimesParent(name, cb) // TODO: how to set mtime on link?
+
+    xfs.utimes(name, now, header.mtime, function (err) {
+      if (err) return cb(err)
+      utimesParent(name, cb)
+    })
+  }
+
+  function chperm (name, header, cb) {
+    const link = header.type === 'symlink'
+
+    /* eslint-disable n/no-deprecated-api */
+    const chmod = link ? xfs.lchmod : xfs.chmod
+    const chown = link ? xfs.lchown : xfs.chown
+    /* eslint-enable n/no-deprecated-api */
+
+    if (!chmod) return cb()
+
+    const mode = (header.mode | (header.type === 'directory' ? dmode : fmode)) & umask
+
+    if (chown && own) chown.call(xfs, name, header.uid, header.gid, onchown)
+    else onchown(null)
+
+    function onchown (err) {
+      if (err) return cb(err)
+      if (!chmod) return cb()
+      chmod.call(xfs, name, mode, cb)
+    }
+  }
+
+  function mkdirfix (name, opts, cb) {
+    // when mkdir is called on an existing directory, the permissions
+    // will be overwritten (?), to avoid this we check for its existance first
+    xfs.stat(name, function (err) {
+      if (!err) return cb(null)
+      if (err.code !== 'ENOENT') return cb(err)
+      mkdirp(name, { fs: opts.fs, mode: opts.mode }, function (err, made) {
+        if (err) return cb(err)
+        chperm(name, opts, cb)
+      })
+    })
+  }
 }
 
 function validate (fs, name, root, cb) {
   if (name === root) return cb(null, true)
   fs.lstat(name, function (err, st) {
-    if (err && err.code !== 'ENOENT') return cb(err)
-    if (err || st.isDirectory()) return validate(fs, path.join(name, '..'), root, cb)
-    cb(null, false)
+    if (err && err.code === 'ENOENT') return validate(fs, path.join(name, '..'), root, cb)
+    else if (err) return cb(err)
+    cb(null, st.isDirectory())
   })
 }
 
-function mkdirfix (name, opts, cb) {
-  mkdirp(name, { fs: opts.fs }, function (err, made) {
-    if (!err && made && opts.own) {
-      chownr(made, opts.uid, opts.gid, cb)
-    } else {
-      cb(err)
+function noop () {}
+
+function echo (name) {
+  return name
+}
+
+function normalize (name) {
+  return win32 ? name.replace(/\\/g, '/').replace(/[:?<>|]/g, '_') : name
+}
+
+function statAll (fs, stat, cwd, ignore, entries, sort) {
+  if (!entries) entries = ['.']
+  const queue = entries.slice(0)
+
+  return function loop (callback) {
+    if (!queue.length) return callback(null)
+
+    const next = queue.shift()
+    const nextAbs = path.join(cwd, next)
+
+    stat.call(fs, nextAbs, function (err, stat) {
+      // ignore errors if the files were deleted while buffering
+      if (err) return callback(entries.indexOf(next) === -1 && err.code === 'ENOENT' ? null : err)
+
+      if (!stat.isDirectory()) return callback(null, next, stat)
+
+      fs.readdir(nextAbs, function (err, files) {
+        if (err) return callback(err)
+
+        if (sort) files.sort()
+
+        for (let i = 0; i < files.length; i++) {
+          if (!ignore(path.join(cwd, next, files[i]))) queue.push(path.join(next, files[i]))
+        }
+
+        callback(null, next, stat)
+      })
+    })
+  }
+}
+
+function strip (map, level) {
+  return function (header) {
+    header.name = header.name.split('/').slice(level).join('/')
+
+    const linkname = header.linkname
+    if (linkname && (header.type === 'link' || path.isAbsolute(linkname))) {
+      header.linkname = linkname.split('/').slice(level).join('/')
     }
-  })
+
+    return map(header)
+  }
 }

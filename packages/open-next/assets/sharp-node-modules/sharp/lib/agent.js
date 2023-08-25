@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const url = require('url');
@@ -27,7 +30,7 @@ module.exports = function (log) {
     const proxyAuth = proxy.username && proxy.password
       ? `${decodeURIComponent(proxy.username)}:${decodeURIComponent(proxy.password)}`
       : null;
-    log(`Via proxy ${proxy.protocol}://${proxy.hostname}:${proxy.port} ${proxyAuth ? 'with' : 'no'} credentials`);
+    log(`Via proxy ${proxy.protocol}//${proxy.hostname}:${proxy.port} ${proxyAuth ? 'with' : 'no'} credentials`);
     return tunnel({
       proxy: {
         port: Number(proxy.port),

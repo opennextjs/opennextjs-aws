@@ -1,16 +1,5 @@
-// Copyright 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Lovell Fuller and contributors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <cstdlib>
 #include <string>
@@ -76,14 +65,6 @@ namespace sharp {
     }
     return vector;
   }
-  Napi::Buffer<char> NewOrCopyBuffer(Napi::Env env, char* data, size_t len) {
-    try {
-      return Napi::Buffer<char>::New(env, data, len, FreeCallback);
-    } catch (Napi::Error const &err) {}
-    Napi::Buffer<char> buf = Napi::Buffer<char>::Copy(env, data, len);
-    FreeCallback(nullptr, data);
-    return buf;
-  }
 
   // Create an InputDescriptor instance from a Napi::Object describing an input image
   InputDescriptor* CreateInputDescriptor(Napi::Object input) {
@@ -100,6 +81,10 @@ namespace sharp {
     // Density for vector-based input
     if (HasAttr(input, "density")) {
       descriptor->density = AttrAsDouble(input, "density");
+    }
+    // Should we ignore any embedded ICC profile
+    if (HasAttr(input, "ignoreIcc")) {
+      descriptor->ignoreIcc = AttrAsBool(input, "ignoreIcc");
     }
     // Raw pixel input
     if (HasAttr(input, "rawChannels")) {
@@ -167,6 +152,9 @@ namespace sharp {
       if (HasAttr(input, "textSpacing")) {
         descriptor->textSpacing = AttrAsUint32(input, "textSpacing");
       }
+      if (HasAttr(input, "textWrap")) {
+        descriptor->textWrap = AttrAsEnum<VipsTextWrap>(input, "textWrap", VIPS_TYPE_TEXT_WRAP);
+      }
     }
     // Limit input images to a given number of pixels, where pixels = width * height
     descriptor->limitInputPixels = static_cast<uint64_t>(AttrAsInt64(input, "limitInputPixels"));
@@ -226,6 +214,13 @@ namespace sharp {
   }
   bool IsV(std::string const &str) {
     return EndsWith(str, ".v") || EndsWith(str, ".V") || EndsWith(str, ".vips") || EndsWith(str, ".VIPS");
+  }
+
+  /*
+    Trim space from end of string.
+  */
+  std::string TrimEnd(std::string const &str) {
+    return str.substr(0, str.find_last_not_of(" \n\r\f") + 1);
   }
 
   /*
@@ -454,6 +449,7 @@ namespace sharp {
           ->set("justify", descriptor->textJustify)
           ->set("rgba", descriptor->textRgba)
           ->set("spacing", descriptor->textSpacing)
+          ->set("wrap", descriptor->textWrap)
           ->set("autofit_dpi", &descriptor->textAutofitDpi);
         if (descriptor->textWidth > 0) {
           textOptions->set("width", descriptor->textWidth);
@@ -613,6 +609,15 @@ namespace sharp {
   }
 
   /*
+    Remove GIF palette from image.
+  */
+  VImage RemoveGifPalette(VImage image) {
+    VImage copy = image.copy();
+    copy.remove("gif-palette");
+    return copy;
+  }
+
+  /*
     Does this image have a non-default density?
   */
   bool HasDensity(VImage image) {
@@ -663,6 +668,10 @@ namespace sharp {
     } else if (imageType == ImageType::GIF) {
       if (image.width() > 65535 || height > 65535) {
         throw vips::VError("Processed image is too large for the GIF format");
+      }
+    } else if (imageType == ImageType::HEIF) {
+      if (image.width() > 16384 || height > 16384) {
+        throw vips::VError("Processed image is too large for the HEIF format");
       }
     }
   }
@@ -955,12 +964,7 @@ namespace sharp {
   }
 
   std::pair<double, double> ResolveShrink(int width, int height, int targetWidth, int targetHeight,
-    Canvas canvas, bool swap, bool withoutEnlargement, bool withoutReduction) {
-    if (swap && canvas != Canvas::IGNORE_ASPECT) {
-      // Swap input width and height when requested.
-      std::swap(width, height);
-    }
-
+    Canvas canvas, bool withoutEnlargement, bool withoutReduction) {
     double hshrink = 1.0;
     double vshrink = 1.0;
 
@@ -1026,4 +1030,13 @@ namespace sharp {
     return std::make_pair(hshrink, vshrink);
   }
 
+  /*
+    Ensure decoding remains sequential.
+  */
+  VImage StaySequential(VImage image, VipsAccess access, bool condition) {
+    if (access == VIPS_ACCESS_SEQUENTIAL && condition) {
+      return image.copy_memory();
+    }
+    return image;
+  }
 }  // namespace sharp

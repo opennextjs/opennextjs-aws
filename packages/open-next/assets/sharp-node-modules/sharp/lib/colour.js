@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const color = require('color');
@@ -67,7 +70,8 @@ function grayscale (grayscale) {
  * Set the pipeline colourspace.
  *
  * The input image will be converted to the provided colourspace at the start of the pipeline.
- * All operations will use this colourspace before converting to the output colourspace, as defined by {@link toColourspace}.
+ * All operations will use this colourspace before converting to the output colourspace,
+ * as defined by {@link #tocolourspace|toColourspace}.
  *
  * This feature is experimental and has not yet been fully-tested with all operations.
  *

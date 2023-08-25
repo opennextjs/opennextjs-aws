@@ -1,3 +1,6 @@
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 const fs = require('fs');
@@ -85,8 +88,7 @@ const hasVendoredLibvips = function () {
 
 /* istanbul ignore next */
 const removeVendoredLibvips = function () {
-  const rm = fs.rmSync ? fs.rmSync : fs.rmdirSync;
-  rm(vendorPath, { recursive: true, maxRetries: 3, force: true });
+  fs.rmSync(vendorPath, { recursive: true, maxRetries: 3, force: true });
 };
 
 /* istanbul ignore next */
@@ -115,6 +117,7 @@ const useGlobalLibvips = function () {
   }
   /* istanbul ignore next */
   if (isRosetta()) {
+    log('Detected Rosetta, skipping search for globally-installed libvips');
     return false;
   }
   const globalVipsVersion = globalLibvipsVersion();

@@ -1,24 +1,266 @@
-var constants = require('fs-constants')
-var eos = require('end-of-stream')
-var inherits = require('inherits')
-var alloc = Buffer.alloc
+const { Readable, Writable, getStreamError } = require('streamx')
+const b4a = require('b4a')
 
-var Readable = require('readable-stream').Readable
-var Writable = require('readable-stream').Writable
-var StringDecoder = require('string_decoder').StringDecoder
+const constants = require('./constants')
+const headers = require('./headers')
 
-var headers = require('./headers')
+const DMODE = 0o755
+const FMODE = 0o644
 
-var DMODE = parseInt('755', 8)
-var FMODE = parseInt('644', 8)
+const END_OF_TAR = b4a.alloc(1024)
 
-var END_OF_TAR = alloc(1024)
+class Sink extends Writable {
+  constructor (pack, header, callback) {
+    super({ mapWritable, eagerOpen: true })
 
-var noop = function () {}
+    this.written = 0
+    this.header = header
 
-var overflow = function (self, size) {
-  size &= 511
-  if (size) self.push(END_OF_TAR.slice(0, 512 - size))
+    this._callback = callback
+    this._linkname = null
+    this._isLinkname = header.type === 'symlink' && !header.linkname
+    this._isVoid = header.type !== 'file' && header.type !== 'contiguous-file'
+    this._finished = false
+    this._pack = pack
+    this._openCallback = null
+
+    if (this._pack._stream === null) this._pack._stream = this
+    else this._pack._pending.push(this)
+  }
+
+  _open (cb) {
+    this._openCallback = cb
+    if (this._pack._stream === this) this._continueOpen()
+  }
+
+  _continuePack (err) {
+    if (this._callback === null) return
+
+    const callback = this._callback
+    this._callback = null
+
+    callback(err)
+  }
+
+  _continueOpen () {
+    if (this._pack._stream === null) this._pack._stream = this
+
+    const cb = this._openCallback
+    this._openCallback = null
+    if (cb === null) return
+
+    if (this._pack.destroying) return cb(new Error('pack stream destroyed'))
+    if (this._pack._finalized) return cb(new Error('pack stream is already finalized'))
+
+    this._pack._stream = this
+
+    if (!this._isLinkname) {
+      this._pack._encode(this.header)
+    }
+
+    if (this._isVoid) {
+      this._finish()
+      this._continuePack(null)
+    }
+
+    cb(null)
+  }
+
+  _write (data, cb) {
+    if (this._isLinkname) {
+      this._linkname = this._linkname ? b4a.concat([this._linkname, data]) : data
+      return cb(null)
+    }
+
+    if (this._isVoid) {
+      if (data.byteLength > 0) {
+        return cb(new Error('No body allowed for this entry'))
+      }
+      return cb()
+    }
+
+    this.written += data.byteLength
+    if (this._pack.push(data)) return cb()
+    this._pack._drain = cb
+  }
+
+  _finish () {
+    if (this._finished) return
+    this._finished = true
+
+    if (this._isLinkname) {
+      this.header.linkname = this._linkname ? b4a.toString(this._linkname, 'utf-8') : ''
+      this._pack._encode(this.header)
+    }
+
+    overflow(this._pack, this.header.size)
+
+    this._pack._done(this)
+  }
+
+  _final (cb) {
+    if (this.written !== this.header.size) { // corrupting tar
+      return cb(new Error('Size mismatch'))
+    }
+
+    this._finish()
+    cb(null)
+  }
+
+  _getError () {
+    return getStreamError(this) || new Error('tar entry destroyed')
+  }
+
+  _predestroy () {
+    this._pack.destroy(this._getError())
+  }
+
+  _destroy (cb) {
+    this._pack._done(this)
+
+    this._continuePack(this._finished ? null : this._getError())
+
+    cb()
+  }
+}
+
+class Pack extends Readable {
+  constructor (opts) {
+    super(opts)
+    this._drain = noop
+    this._finalized = false
+    this._finalizing = false
+    this._pending = []
+    this._stream = null
+  }
+
+  entry (header, buffer, callback) {
+    if (this._finalized || this.destroying) throw new Error('already finalized or destroyed')
+
+    if (typeof buffer === 'function') {
+      callback = buffer
+      buffer = null
+    }
+
+    if (!callback) callback = noop
+
+    if (!header.size || header.type === 'symlink') header.size = 0
+    if (!header.type) header.type = modeToType(header.mode)
+    if (!header.mode) header.mode = header.type === 'directory' ? DMODE : FMODE
+    if (!header.uid) header.uid = 0
+    if (!header.gid) header.gid = 0
+    if (!header.mtime) header.mtime = new Date()
+
+    if (typeof buffer === 'string') buffer = b4a.from(buffer)
+
+    const sink = new Sink(this, header, callback)
+
+    if (b4a.isBuffer(buffer)) {
+      header.size = buffer.byteLength
+      sink.write(buffer)
+      sink.end()
+      return sink
+    }
+
+    if (sink._isVoid) {
+      return sink
+    }
+
+    return sink
+  }
+
+  finalize () {
+    if (this._stream || this._pending.length > 0) {
+      this._finalizing = true
+      return
+    }
+
+    if (this._finalized) return
+    this._finalized = true
+
+    this.push(END_OF_TAR)
+    this.push(null)
+  }
+
+  _done (stream) {
+    if (stream !== this._stream) return
+
+    this._stream = null
+
+    if (this._finalizing) this.finalize()
+    if (this._pending.length) this._pending.shift()._continueOpen()
+  }
+
+  _encode (header) {
+    if (!header.pax) {
+      const buf = headers.encode(header)
+      if (buf) {
+        this.push(buf)
+        return
+      }
+    }
+    this._encodePax(header)
+  }
+
+  _encodePax (header) {
+    const paxHeader = headers.encodePax({
+      name: header.name,
+      linkname: header.linkname,
+      pax: header.pax
+    })
+
+    const newHeader = {
+      name: 'PaxHeader',
+      mode: header.mode,
+      uid: header.uid,
+      gid: header.gid,
+      size: paxHeader.byteLength,
+      mtime: header.mtime,
+      type: 'pax-header',
+      linkname: header.linkname && 'PaxHeader',
+      uname: header.uname,
+      gname: header.gname,
+      devmajor: header.devmajor,
+      devminor: header.devminor
+    }
+
+    this.push(headers.encode(newHeader))
+    this.push(paxHeader)
+    overflow(this, paxHeader.byteLength)
+
+    newHeader.size = header.size
+    newHeader.type = header.type
+    this.push(headers.encode(newHeader))
+  }
+
+  _doDrain () {
+    const drain = this._drain
+    this._drain = noop
+    drain()
+  }
+
+  _predestroy () {
+    const err = getStreamError(this)
+
+    if (this._stream) this._stream.destroy(err)
+
+    while (this._pending.length) {
+      const stream = this._pending.shift()
+      stream.destroy(err)
+      stream._continueOpen()
+    }
+
+    this._doDrain()
+  }
+
+  _read (cb) {
+    this._doDrain()
+    cb()
+  }
+}
+
+module.exports = function pack (opts) {
+  return new Pack(opts)
 }
 
 function modeToType (mode) {
@@ -33,223 +275,13 @@ function modeToType (mode) {
   return 'file'
 }
 
-var Sink = function (to) {
-  Writable.call(this)
-  this.written = 0
-  this._to = to
-  this._destroyed = false
+function noop () {}
+
+function overflow (self, size) {
+  size &= 511
+  if (size) self.push(END_OF_TAR.subarray(0, 512 - size))
 }
 
-inherits(Sink, Writable)
-
-Sink.prototype._write = function (data, enc, cb) {
-  this.written += data.length
-  if (this._to.push(data)) return cb()
-  this._to._drain = cb
+function mapWritable (buf) {
+  return b4a.isBuffer(buf) ? buf : b4a.from(buf)
 }
-
-Sink.prototype.destroy = function () {
-  if (this._destroyed) return
-  this._destroyed = true
-  this.emit('close')
-}
-
-var LinkSink = function () {
-  Writable.call(this)
-  this.linkname = ''
-  this._decoder = new StringDecoder('utf-8')
-  this._destroyed = false
-}
-
-inherits(LinkSink, Writable)
-
-LinkSink.prototype._write = function (data, enc, cb) {
-  this.linkname += this._decoder.write(data)
-  cb()
-}
-
-LinkSink.prototype.destroy = function () {
-  if (this._destroyed) return
-  this._destroyed = true
-  this.emit('close')
-}
-
-var Void = function () {
-  Writable.call(this)
-  this._destroyed = false
-}
-
-inherits(Void, Writable)
-
-Void.prototype._write = function (data, enc, cb) {
-  cb(new Error('No body allowed for this entry'))
-}
-
-Void.prototype.destroy = function () {
-  if (this._destroyed) return
-  this._destroyed = true
-  this.emit('close')
-}
-
-var Pack = function (opts) {
-  if (!(this instanceof Pack)) return new Pack(opts)
-  Readable.call(this, opts)
-
-  this._drain = noop
-  this._finalized = false
-  this._finalizing = false
-  this._destroyed = false
-  this._stream = null
-}
-
-inherits(Pack, Readable)
-
-Pack.prototype.entry = function (header, buffer, callback) {
-  if (this._stream) throw new Error('already piping an entry')
-  if (this._finalized || this._destroyed) return
-
-  if (typeof buffer === 'function') {
-    callback = buffer
-    buffer = null
-  }
-
-  if (!callback) callback = noop
-
-  var self = this
-
-  if (!header.size || header.type === 'symlink') header.size = 0
-  if (!header.type) header.type = modeToType(header.mode)
-  if (!header.mode) header.mode = header.type === 'directory' ? DMODE : FMODE
-  if (!header.uid) header.uid = 0
-  if (!header.gid) header.gid = 0
-  if (!header.mtime) header.mtime = new Date()
-
-  if (typeof buffer === 'string') buffer = Buffer.from(buffer)
-  if (Buffer.isBuffer(buffer)) {
-    header.size = buffer.length
-    this._encode(header)
-    var ok = this.push(buffer)
-    overflow(self, header.size)
-    if (ok) process.nextTick(callback)
-    else this._drain = callback
-    return new Void()
-  }
-
-  if (header.type === 'symlink' && !header.linkname) {
-    var linkSink = new LinkSink()
-    eos(linkSink, function (err) {
-      if (err) { // stream was closed
-        self.destroy()
-        return callback(err)
-      }
-
-      header.linkname = linkSink.linkname
-      self._encode(header)
-      callback()
-    })
-
-    return linkSink
-  }
-
-  this._encode(header)
-
-  if (header.type !== 'file' && header.type !== 'contiguous-file') {
-    process.nextTick(callback)
-    return new Void()
-  }
-
-  var sink = new Sink(this)
-
-  this._stream = sink
-
-  eos(sink, function (err) {
-    self._stream = null
-
-    if (err) { // stream was closed
-      self.destroy()
-      return callback(err)
-    }
-
-    if (sink.written !== header.size) { // corrupting tar
-      self.destroy()
-      return callback(new Error('size mismatch'))
-    }
-
-    overflow(self, header.size)
-    if (self._finalizing) self.finalize()
-    callback()
-  })
-
-  return sink
-}
-
-Pack.prototype.finalize = function () {
-  if (this._stream) {
-    this._finalizing = true
-    return
-  }
-
-  if (this._finalized) return
-  this._finalized = true
-  this.push(END_OF_TAR)
-  this.push(null)
-}
-
-Pack.prototype.destroy = function (err) {
-  if (this._destroyed) return
-  this._destroyed = true
-
-  if (err) this.emit('error', err)
-  this.emit('close')
-  if (this._stream && this._stream.destroy) this._stream.destroy()
-}
-
-Pack.prototype._encode = function (header) {
-  if (!header.pax) {
-    var buf = headers.encode(header)
-    if (buf) {
-      this.push(buf)
-      return
-    }
-  }
-  this._encodePax(header)
-}
-
-Pack.prototype._encodePax = function (header) {
-  var paxHeader = headers.encodePax({
-    name: header.name,
-    linkname: header.linkname,
-    pax: header.pax
-  })
-
-  var newHeader = {
-    name: 'PaxHeader',
-    mode: header.mode,
-    uid: header.uid,
-    gid: header.gid,
-    size: paxHeader.length,
-    mtime: header.mtime,
-    type: 'pax-header',
-    linkname: header.linkname && 'PaxHeader',
-    uname: header.uname,
-    gname: header.gname,
-    devmajor: header.devmajor,
-    devminor: header.devminor
-  }
-
-  this.push(headers.encode(newHeader))
-  this.push(paxHeader)
-  overflow(this, paxHeader.length)
-
-  newHeader.size = header.size
-  newHeader.type = header.type
-  this.push(headers.encode(newHeader))
-}
-
-Pack.prototype._read = function (n) {
-  var drain = this._drain
-  this._drain = noop
-  drain()
-}
-
-module.exports = Pack

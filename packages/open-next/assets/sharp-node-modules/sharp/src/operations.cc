@@ -1,23 +1,11 @@
-// Copyright 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020 Lovell Fuller and contributors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2013 Lovell Fuller and others.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <tuple>
 #include <vector>
-
 #include <vips/vips8>
 
 #include "common.h"
@@ -57,7 +45,7 @@ namespace sharp {
   /*
    * Stretch luminance to cover full dynamic range.
    */
-  VImage Normalise(VImage image) {
+  VImage Normalise(VImage image, int const lower, int const upper) {
     // Get original colourspace
     VipsInterpretation typeBeforeNormalize = image.interpretation();
     if (typeBeforeNormalize == VIPS_INTERPRETATION_RGB) {
@@ -67,9 +55,11 @@ namespace sharp {
     VImage lab = image.colourspace(VIPS_INTERPRETATION_LAB);
     // Extract luminance
     VImage luminance = lab[0];
+
     // Find luminance range
-    int const min = luminance.percent(1);
-    int const max = luminance.percent(99);
+    int const min = lower == 0 ? luminance.min() : luminance.percent(lower);
+    int const max = upper == 100 ? luminance.max() : luminance.percent(upper);
+
     if (std::abs(max - min) > 1) {
       // Extract chroma
       VImage chroma = lab.extract_band(1, VImage::option()->set("n", 2));
@@ -196,6 +186,7 @@ namespace sharp {
 
   VImage Modulate(VImage image, double const brightness, double const saturation,
                   int const hue, double const lightness) {
+    VipsInterpretation colourspaceBeforeModulate = image.interpretation();
     if (HasAlpha(image)) {
       // Separate alpha channel
       VImage alpha = image[image.bands() - 1];
@@ -205,7 +196,7 @@ namespace sharp {
           { brightness, saturation, 1},
           { lightness, 0.0, static_cast<double>(hue) }
         )
-        .colourspace(VIPS_INTERPRETATION_sRGB)
+        .colourspace(colourspaceBeforeModulate)
         .bandjoin(alpha);
     } else {
       return image
@@ -214,7 +205,7 @@ namespace sharp {
           { brightness, saturation, 1 },
           { lightness, 0.0, static_cast<double>(hue) }
         )
-        .colourspace(VIPS_INTERPRETATION_sRGB);
+        .colourspace(colourspaceBeforeModulate);
     }
   }
 
@@ -278,30 +269,20 @@ namespace sharp {
     if (image.width() < 3 && image.height() < 3) {
       throw VError("Image to trim must be at least 3x3 pixels");
     }
-
-    // Scale up 8-bit values to match 16-bit input image
-    double multiplier = sharp::Is16Bit(image.interpretation()) ? 256.0 : 1.0;
-    threshold *= multiplier;
-
-    std::vector<double> backgroundAlpha(1);
     if (background.size() == 0) {
       // Top-left pixel provides the default background colour if none is given
       background = image.extract_area(0, 0, 1, 1)(0, 0);
-      multiplier = 1.0;
+    } else if (sharp::Is16Bit(image.interpretation())) {
+      for (size_t i = 0; i < background.size(); i++) {
+        background[i] *= 256.0;
+      }
+      threshold *= 256.0;
     }
-    if (HasAlpha(image) && background.size() == 4) {
-      // Just discard the alpha because flattening the background colour with
-      // itself (effectively what find_trim() does) gives the same result
-      backgroundAlpha[0] = background[3] * multiplier;
-    }
-    if (image.bands() > 2) {
-      background = {
-        background[0] * multiplier,
-        background[1] * multiplier,
-        background[2] * multiplier
-      };
+    std::vector<double> backgroundAlpha({ background.back() });
+    if (HasAlpha(image)) {
+      background.pop_back();
     } else {
-      background[0] = background[0] * multiplier;
+      background.resize(image.bands());
     }
     int left, top, width, height;
     left = image.find_trim(&top, &width, &height, VImage::option()
@@ -342,12 +323,26 @@ namespace sharp {
     if (a.size() > bands) {
       throw VError("Band expansion using linear is unsupported");
     }
+    bool const uchar = !Is16Bit(image.interpretation());
     if (HasAlpha(image) && a.size() != bands && (a.size() == 1 || a.size() == bands - 1 || bands - 1 == 1)) {
       // Separate alpha channel
       VImage alpha = image[bands - 1];
-      return RemoveAlpha(image).linear(a, b, VImage::option()->set("uchar", TRUE)).bandjoin(alpha);
+      return RemoveAlpha(image).linear(a, b, VImage::option()->set("uchar", uchar)).bandjoin(alpha);
     } else {
-      return image.linear(a, b, VImage::option()->set("uchar", TRUE));
+      return image.linear(a, b, VImage::option()->set("uchar", uchar));
+    }
+  }
+
+  /*
+   * Unflatten
+   */
+  VImage Unflatten(VImage image) {
+    if (HasAlpha(image)) {
+      VImage alpha = image[image.bands() - 1];
+      VImage noAlpha = RemoveAlpha(image);
+      return noAlpha.bandjoin(alpha & (noAlpha.colourspace(VIPS_INTERPRETATION_B_W) < 255));
+    } else {
+      return image.bandjoin(image.colourspace(VIPS_INTERPRETATION_B_W) < 255);
     }
   }
 
@@ -395,11 +390,11 @@ namespace sharp {
    * Split into frames, embed each frame, reassemble, and update pageHeight.
    */
   VImage EmbedMultiPage(VImage image, int left, int top, int width, int height,
-                        std::vector<double> background, int nPages, int *pageHeight) {
+                        VipsExtend extendWith, std::vector<double> background, int nPages, int *pageHeight) {
     if (top == 0 && height == *pageHeight) {
       // Fast path; no need to adjust the height of the multi-page image
       return image.embed(left, 0, width, image.height(), VImage::option()
-        ->set("extend", VIPS_EXTEND_BACKGROUND)
+        ->set("extend", extendWith)
         ->set("background", background));
     } else if (left == 0 && width == image.width()) {
       // Fast path; no need to adjust the width of the multi-page image
@@ -411,7 +406,7 @@ namespace sharp {
 
       // Do the embed on the wide image
       image = image.embed(0, top, image.width(), height, VImage::option()
-        ->set("extend", VIPS_EXTEND_BACKGROUND)
+        ->set("extend", extendWith)
         ->set("background", background));
 
       // Split the wide image into frames
@@ -441,7 +436,7 @@ namespace sharp {
       // Embed each frame in the target size
       for (int i = 0; i < nPages; i++) {
         pages[i] = pages[i].embed(left, top, width, height, VImage::option()
-          ->set("extend", VIPS_EXTEND_BACKGROUND)
+          ->set("extend", extendWith)
           ->set("background", background));
       }
 
