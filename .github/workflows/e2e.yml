@@ -16,8 +16,7 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    environment:
-      name: ci
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
