@@ -53,6 +53,9 @@ export default function openNextPlugin({
         let contents = await readFile(args.path, "utf-8");
 
         for (const fp of replacements) {
+
+        }
+        await Promise.all(replacements.map(async (fp) => {
           const p = path.join(args.path, "..", fp);
           const replacementFile = await readFile(p, "utf-8");
           const matches = replacementFile.matchAll(overridePattern);
@@ -70,7 +73,7 @@ export default function openNextPlugin({
             );
             contents = contents.replace(pattern, replacement);
           }
-        }
+        }))
 
         return {
           contents,
