@@ -4,6 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   PLAYWRIGHT_BROWSERS_PATH: 0
@@ -17,6 +21,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::918074996169:role/GitHub
+          aws-region: us-east-1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
