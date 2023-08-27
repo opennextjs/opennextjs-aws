@@ -284,12 +284,13 @@ function createImageOptimizationBundle() {
     path.join(outputPath, ".next/required-server-files.json")
   );
 
-  // Copy over sharp node modules
-  fs.cpSync(
-    path.join(__dirname, "../assets/sharp-node-modules"),
-    path.join(outputPath, "node_modules"),
-    { recursive: true }
-  );
+  // Sharp provides pre-build binaries for all platforms. https://github.com/lovell/sharp/blob/main/docs/install.md#cross-platform
+  // Target should be same as used by Lambda, see https://github.com/sst/sst/blob/ca6f763fdfddd099ce2260202d0ce48c72e211ea/packages/sst/src/constructs/NextjsSite.ts#L114
+  // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
+  cp.execSync(`SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix=${path.resolve(outputPath)} sharp@0.32.5`, {
+    stdio: "inherit",
+    cwd: appPath
+  })
 }
 
 function createStaticAssets() {
