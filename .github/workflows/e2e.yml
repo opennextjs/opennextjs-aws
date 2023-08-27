@@ -74,7 +74,7 @@ jobs:
 
       # Deploy e2e stage
       - name: Deploy NextjsSite
-        cwd: example
+        working-directory: example
         run: npx sst deploy --stage e2e
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
