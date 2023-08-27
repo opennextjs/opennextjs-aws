@@ -4,9 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize]
 
-permissions:
-  id-token: write   # This is required for requesting the JWT
-  contents: read    # This is required for actions/checkout
+
 
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
@@ -16,7 +14,9 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-
+    permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read    # This is required for actions/checkout
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
