@@ -68,7 +68,7 @@ export default function Home({}) {
         <br />
         <Link href={`/font-css-font`}>Font — CSS Font</Link>
         <br />
-        <Link href={`/font-next-font`}>Font — @next/font</Link>
+        <Link href={`/font-next-font`}>Font — next/font</Link>
         <br />
         <Link href={`/page-does-not-exist`}>404 Page not found</Link>
         <br />

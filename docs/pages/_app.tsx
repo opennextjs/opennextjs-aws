@@ -1,8 +1,8 @@
 import "../styles/normalize.css";
 import "../styles/globals.css";
 
-import { Open_Sans } from "@next/font/google";
 import type { AppProps } from "next/app";
+import { Open_Sans } from "next/font/google";
 
 import Layout from "../components/Layout";
 
