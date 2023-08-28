@@ -1,6 +1,5 @@
 import { SSTConfig } from "sst";
 
-
 import { AppDirOnly } from "./stacks/AppDirOnly";
 import { PagesOnly } from "./stacks/PagesOnly";
 
@@ -12,8 +11,6 @@ export default {
     };
   },
   stacks(app) {
-    app
-      .stack(AppDirOnly)
-      .stack(PagesOnly);
+    app.stack(AppDirOnly).stack(PagesOnly);
   },
 } satisfies SSTConfig;
