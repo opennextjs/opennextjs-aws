@@ -9,10 +9,10 @@
     "deploy": "sst deploy"
   },
   "dependencies": {
-    "@next/font": "13.4.7",
+    "@next/font": "13.4.12",
     "dayjs": "^1.11.9",
     "gray-matter": "^4.0.3",
-    "next": "13.4.7",
+    "next": "13.4.12",
     "next-auth": "^4.22.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
