@@ -1,6 +1,9 @@
 {
   "name": "@open-next/core",
   "version": "0.0.0",
+  "scripts": {
+    "clean": "rm -rf .turbo && rm -rf node_modules"
+  },
   "dependencies": {
     "react":"18.2.0"
   },

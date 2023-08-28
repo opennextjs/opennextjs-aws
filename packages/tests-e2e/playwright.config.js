@@ -6,7 +6,7 @@ export default defineConfig({
       name: "appDirOnly",
       testMatch: ["tests/appDirOnly/*.test.ts"],
       use: {
-        baseURL: process.env.APP_DIR_ONLY_URL || "http://localhost:3000",
+        baseURL: process.env.APP_DIR_ONLY_URL || "http://localhost:3001",
       },
     },
     {
@@ -14,7 +14,7 @@ export default defineConfig({
       testMatch: ["tests/pagesOnly/*.test.ts"],
       // Other configurations specific to folder1
       use: {
-        baseURL: process.env.PAGES_ONLY_URL || "http://localhost:3001",
+        baseURL: process.env.PAGES_ONLY_URL || "http://localhost:3002",
       },
     },
     {
@@ -22,7 +22,7 @@ export default defineConfig({
       testMatch: ["tests/appDirAndPages/*.test.ts"],
       // Other configurations specific to folder1
       use: {
-        baseURL: process.env.APP_DIR_AND_PAGES_URL || "http://localhost:3002",
+        baseURL: process.env.APP_DIR_AND_PAGES_URL || "http://localhost:3003",
       },
     },
   ],

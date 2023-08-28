@@ -17,7 +17,7 @@
     "isolatedModules": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "preserveWatchOutput": true,
@@ -29,7 +29,7 @@
     "baseUrl": ".",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
-    "module": "ESNext",
+    "module": "NodeNext",
     "target": "ESNext",
     "paths": {
       "~/*": ["./*"]

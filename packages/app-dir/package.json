@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "openbuild": "node ../open-next/dist/index.js build",
-    "dev": "next dev",
+    "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start --port 3001",
+    "lint": "next lint",
+     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
   "dependencies": {
     "open-next": "workspace:*",

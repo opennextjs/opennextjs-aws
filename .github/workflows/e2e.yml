@@ -73,7 +73,7 @@ jobs:
 
       # Deploy e2e stage
       - name: Deploy NextjsSite
-        working-directory: example
+        working-directory: example_sst
         run: npx sst deploy --stage e2e
 
       # Load app urls from .sst/output.json file

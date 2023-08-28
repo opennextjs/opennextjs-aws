@@ -1,1 +1,1 @@
-/// <reference path="../../example/.sst/types/index.ts" />
+/// <reference path="../../example_sst/.sst/types/index.ts" />
