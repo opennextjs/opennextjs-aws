@@ -1,0 +1,15 @@
+name: Build Example
+description: Build example page inside /example directory, this is used for validation
+
+runs:
+    using: 'composite'
+    steps:
+        - name: Install dependencies
+          run: pnpm install
+          shell: bash
+          working-directory: example
+
+        - name: Build with Next.js
+          run: pnpm next build
+          shell: bash
+          working-directory: example

@@ -1,0 +1,20 @@
+name: Build Docs
+description: Build docs pages inside /docs directory
+
+runs:
+    using: 'composite'
+    steps:
+        - name: Install dependencies
+          run: pnpm install
+          shell: bash
+          working-directory: docs
+
+        - name: Build with Next.js
+          run: pnpm next build
+          shell: bash
+          working-directory: docs
+
+        - name: Export static HTML with Next.js
+          run: pnpm next export
+          shell: bash
+          working-directory: docs
