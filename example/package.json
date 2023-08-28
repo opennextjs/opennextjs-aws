@@ -9,7 +9,6 @@
     "deploy": "sst deploy"
   },
   "dependencies": {
-    "@next/font": "13.4.12",
     "dayjs": "^1.11.9",
     "gray-matter": "^4.0.3",
     "next": "13.4.12",

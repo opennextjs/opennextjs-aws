@@ -1,4 +1,4 @@
-import { MuseoModerno } from "@next/font/google";
+import { MuseoModerno } from "next/font/google";
 
 import Layout from "../components/layout";
 
@@ -11,7 +11,7 @@ export default function Page() {
   return (
     <Layout>
       <article>
-        <h1>Font — @next/font</h1>
+        <h1>Font — next/font</h1>
         <p>
           <b>Test 1:</b>
         </p>

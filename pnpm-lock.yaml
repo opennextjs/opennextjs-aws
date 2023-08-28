@@ -23,9 +23,6 @@ importers:
 
   docs:
     dependencies:
-      '@next/font':
-        specifier: ^13.4.12
-        version: 13.4.12
       '@types/node':
         specifier: 18.11.9
         version: 18.11.9
@@ -50,9 +47,6 @@ importers:
 
   example:
     dependencies:
-      '@next/font':
-        specifier: 13.4.12
-        version: 13.4.12
       dayjs:
         specifier: ^1.11.9
         version: 1.11.9
@@ -2838,10 +2832,6 @@ packages:
     dependencies:
       glob: 7.1.7
     dev: true
-
-  /@next/font@13.4.12:
-    resolution: {integrity: sha512-w/ygNFuscvvFKFTMoIqhU8Kaq1wM6x4XEu9bwzJaj8G7aloH866TUPeCgiKf+M/ACpMKfRahQa06REcg6T3CyA==}
-    dev: false
 
   /@next/swc-darwin-arm64@13.4.12:
     resolution: {integrity: sha512-deUrbCXTMZ6ZhbOoloqecnUeNpUOupi8SE2tx4jPfNS9uyUR9zK4iXBvH65opVcA/9F5I/p8vDXSYbUlbmBjZg==}
