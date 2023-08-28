@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import Logo from "../components/Logo.svg";
 import { SITE } from "../config";
 import styles from "../styles/Home.module.css";
@@ -189,10 +190,10 @@ export default function Home() {
               <code>.open-next</code> directory.
             </p>
             <p>
-              This contains a directory for your app that can be either
-              run in a Lambda function or Lambda@Edge, a directory for an image
-              optimization Lambda function, and another directory for your static
-              assets that'll be uploaded to S3.
+              This contains a directory for your app that can be either run in a
+              Lambda function or Lambda@Edge, a directory for an image
+              optimization Lambda function, and another directory for your
+              static assets that'll be uploaded to S3.
             </p>
           </li>
           <li>
@@ -220,10 +221,7 @@ export default function Home() {
         <p>
           Note that, if you are not a library author and are just looking for a
           way to deploy your serverless Next.js app to AWS,{" "}
-          <a href="https://docs.sst.dev/start/nextjs">
-            follow this tutorial
-          </a>
-          .
+          <a href="https://docs.sst.dev/start/nextjs">follow this tutorial</a>.
         </p>
       </section>
     </>

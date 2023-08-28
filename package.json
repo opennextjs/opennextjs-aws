@@ -9,7 +9,8 @@
   ],
   "scripts": {
     "build": "pnpm -r build",
-    "prettier": "prettier --cache -w --loglevel=error .",
+    "lint": "eslint --ext .js,.ts,.tsx .",
+    "lint:fix": "eslint --fix --ext .js,.ts,.tsx .",
     "version": "./.changeset/version",
     "release": "./.changeset/release",
     "release-snapshot": "./.changeset/snapshot"
@@ -17,6 +18,10 @@
   "devDependencies": {
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "prettier": "^2.8.4"
+    "@sladg/eslint-config-base": "1.4.1",
+    "eslint": "^8.47.0"
+  },
+  "engines": {
+    "node": ">=16"
   }
 }

@@ -1,8 +1,10 @@
 import fs from "node:fs";
-import path from "node:path";
-import https from "node:https";
 import type { IncomingMessage } from "node:http";
+import https from "node:https";
+import path from "node:path";
+
 import type { SQSEvent } from "aws-lambda";
+
 import { debug } from "./logger.js";
 
 const prerenderManifest = loadPrerenderManifest();
@@ -37,7 +39,7 @@ export const handler = async (event: SQSEvent) => {
             "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
           },
         },
-        (res) => resolve(res)
+        (res) => resolve(res),
       );
       req.on("error", (err) => reject(err));
       req.end();

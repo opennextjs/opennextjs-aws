@@ -12,9 +12,7 @@ export default function Page({ qs }) {
   return (
     <Layout>
       <article>
-        <h1>
-          Middleware - geolocation
-        </h1>
+        <h1>Middleware - geolocation</h1>
         <hr />
         <p>
           <b>Test 1:</b>

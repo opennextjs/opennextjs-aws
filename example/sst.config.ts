@@ -10,7 +10,7 @@ export default {
   },
   stacks(app) {
     app.stack(function Site({ stack }) {
-      const site = new NextjsSite(stack, "site",{
+      const site = new NextjsSite(stack, "site", {
         bind: [
           new Config.Secret(stack, "GITHUB_CLIENT_ID"),
           new Config.Secret(stack, "GITHUB_CLIENT_SECRET"),
@@ -18,7 +18,7 @@ export default {
         ],
         environment: {
           NEXTAUTH_URL: "https://d1gwt3w78t4dm3.cloudfront.net",
-        }
+        },
       });
 
       stack.addOutputs({

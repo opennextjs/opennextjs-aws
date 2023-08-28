@@ -4,9 +4,7 @@ export default function Page() {
   return (
     <Layout>
       <article>
-        <h1>
-          Middleware - redirect
-        </h1>
+        <h1>Middleware - redirect</h1>
         <hr />
         <p>
           <b>Test 1:</b>

@@ -14,7 +14,8 @@ export default function Page() {
         <hr />
         <p>
           <b>Test 1:</b>
-          If you see this page, SSR with redirect is NOT working. You should be redirected to /ssr-redirect-destination.
+          If you see this page, SSR with redirect is NOT working. You should be
+          redirected to /ssr-redirect-destination.
         </p>
       </article>
     </Layout>

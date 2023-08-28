@@ -1,5 +1,6 @@
+import { signIn, signOut, useSession } from "next-auth/react";
+
 import Layout from "../components/layout";
-import { useSession, signIn, signOut } from "next-auth/react";
 
 function LoginButton() {
   const { data: session } = useSession();
@@ -23,9 +24,7 @@ export default function Page() {
   return (
     <Layout>
       <article>
-        <h1>
-          NextAuth
-        </h1>
+        <h1>NextAuth</h1>
         <hr />
         <LoginButton />
         <br />

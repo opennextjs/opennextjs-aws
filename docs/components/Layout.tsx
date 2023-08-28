@@ -1,4 +1,5 @@
 import Head from "next/head";
+
 import { SITE } from "../config";
 import styles from "../styles/Layout.module.css";
 

@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@next/font": "13.4.7",
-    "date-fns": "^2.23.0",
+    "dayjs": "^1.11.9",
     "gray-matter": "^4.0.3",
     "next": "13.4.7",
     "next-auth": "^4.22.1",

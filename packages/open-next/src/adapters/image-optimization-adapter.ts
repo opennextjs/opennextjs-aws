@@ -1,26 +1,28 @@
-import path from "node:path";
-import https from "node:https";
-import { Writable } from "node:stream";
 import { IncomingMessage, ServerResponse } from "node:http";
+import https from "node:https";
+import path from "node:path";
+import { Writable } from "node:stream";
+
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type {
   APIGatewayProxyEvent,
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResultV2,
   APIGatewayProxyEventHeaders,
   APIGatewayProxyEventQueryStringParameters,
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
 } from "aws-lambda";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
-// @ts-ignore
-import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 import {
   imageOptimizer,
   ImageOptimizerCache,
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
+// @ts-ignore
+import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
+
+import { awsLogger, debug, error } from "./logger.js";
 import { loadConfig, setNodeEnv } from "./util.js";
-import { debug, error, awsLogger } from "./logger.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
@@ -48,7 +50,7 @@ debug("Init config", {
 /////////////
 
 export async function handler(
-  event: APIGatewayProxyEventV2 | APIGatewayProxyEvent
+  event: APIGatewayProxyEventV2 | APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResultV2> {
   // Images are handled via header and query param information.
   debug("handler event", event);
@@ -59,7 +61,7 @@ export async function handler(
     ensureBucketExists();
     const imageParams = validateImageParams(
       headers,
-      queryString === null ? undefined : queryString
+      queryString === null ? undefined : queryString,
     );
     const result = await optimizeImage(headers, imageParams);
 
@@ -77,7 +79,7 @@ function normalizeHeaderKeysToLowercase(headers: APIGatewayProxyEventHeaders) {
   // Make header keys lowercase to ensure integrity
   return Object.entries(headers).reduce(
     (acc, [key, value]) => ({ ...acc, [key.toLowerCase()]: value }),
-    {} as APIGatewayProxyEventHeaders
+    {} as APIGatewayProxyEventHeaders,
   );
 }
 
@@ -89,7 +91,7 @@ function ensureBucketExists() {
 
 function validateImageParams(
   headers: APIGatewayProxyEventHeaders,
-  queryString?: APIGatewayProxyEventQueryStringParameters
+  queryString?: APIGatewayProxyEventQueryStringParameters,
 ) {
   // Next.js checks if external image URL matches the
   // `images.remotePatterns`
@@ -97,7 +99,7 @@ function validateImageParams(
     { headers },
     queryString,
     nextConfig,
-    false
+    false,
   );
   debug("image params", imageParams);
   if ("errorMessage" in imageParams) {
@@ -108,7 +110,7 @@ function validateImageParams(
 
 async function optimizeImage(
   headers: APIGatewayProxyEventHeaders,
-  imageParams: any
+  imageParams: any,
 ) {
   const result = await imageOptimizer(
     { headers },
@@ -116,7 +118,7 @@ async function optimizeImage(
     imageParams,
     nextConfig,
     false, // not in dev mode
-    downloadHandler
+    downloadHandler,
   );
   debug("optimized result", result);
   return result;
@@ -152,7 +154,7 @@ function buildFailureResponse(e: any) {
 async function downloadHandler(
   _req: IncomingMessage,
   res: ServerResponse,
-  url: NextUrlWithParsedQuery
+  url: NextUrlWithParsedQuery,
 ) {
   // downloadHandler is called by Next.js. We don't call this function
   // directly.
@@ -188,7 +190,7 @@ async function downloadHandler(
           Key: keyPrefix
             ? keyPrefix + "/" + url.href.replace(/^\//, "")
             : url.href.replace(/^\//, ""),
-        })
+        }),
       );
 
       if (!response.Body) {
