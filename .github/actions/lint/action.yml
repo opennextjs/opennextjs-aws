@@ -1,0 +1,13 @@
+name: Lint codebase
+description: Run eslint to lint codebase and ensure code quality
+
+runs:
+    using: 'composite'
+    steps:
+        - name: Install dependencies
+          run: pnpm install
+          shell: bash
+
+        - name: Run eslint
+          run: pnpm lint
+          shell: bash

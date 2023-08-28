@@ -12,5 +12,6 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v3
             - uses: ./.github/actions/pnpm-setup
+            - uses: ./.github/actions/lint
             - uses: ./.github/actions/build-example
             - uses: ./.github/actions/build-docs
