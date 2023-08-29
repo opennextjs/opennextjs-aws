@@ -1,14 +1,10 @@
 name: AWS Tests
 
-on:
-  push
-
-env:
-  AWS_REGION : "us-east-1"
+on: push
 
 permissions:
-  id-token: write   # This is required for requesting the JWT
-  contents: read    # This is required for actions/checkout
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
 
 jobs:
   S3PackageUpload:
@@ -20,7 +16,6 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::918074996169:role/GitHub
-          role-session-name: samplerolesession
-          aws-region: ${{ env.AWS_REGION }}
-      - name:  List s3 buckets
+          aws-region: us-east-1
+      - name: List s3 buckets
         run: aws s3 ls
