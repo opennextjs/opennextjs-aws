@@ -13,37 +13,57 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 permissions:
-  id-token: write   # This is required for requesting the JWT
-  contents: read    # This is required for actions/checkout
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
 
 jobs:
+  check_next_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Latest Next Version
+        id: get_latest_version
+        run: |
+          latest_version=$(curl -s https://api.github.com/repos/vercel/next.js/releases/latest | jq -r '.tag_name')
+          echo "Latest version: $latest_version"
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_OUTPUT
+
+      - name: Restore Cache Previous Version
+        id: cache-previous
+        uses: actions/cache/restore@v3
+        with:
+          path: previous_version.txt
+          key: ${{ runner.os }}-previous-${{ steps.get_latest_version.outputs.LATEST_VERSION }}
+
+      - name: Compare Versions
+        id: compare_versions
+        run: |
+          latest_version=$LATEST_VERSION
+          if [ -f previous_version.txt ]; then
+            previous_version=$(cat previous_version.txt)
+            echo "pv: $previous_version"
+          else
+            previous_version=""
+          fi
+          
+          if [ "$latest_version" != "$previous_version" ]; then
+            echo "Versions are different. Continuing the pipeline."
+          else
+            echo "Versions are the same. Exiting with success."
+            echo "SKIP=true" >> $GITHUB_OUTPUT
+          fi
+
+    outputs:
+      skip: ${{ steps.compare_versions.outputs.SKIP }}
+      previousNextVersion: ${{ steps.get_latest_version.outputs.LATEST_VERSION }}
+      cacheKey: ${{ steps.cache-previous.outputs.cache-primary-key }}
+
   e2e:
+    needs: check_next_version
+    if: needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
-
-      - name: Get Latest Release
-        id: get_release
-        run: |
-          latest_release=$(curl -s https://api.github.com/repos/vercel/next.js/releases/latest | jq -r '.tag_name')
-          echo "Latest release: $latest_release"
-          echo "::set-output name=latest_release::$latest_release"
-
-      - name: Get Previous Release
-        id: get_previous_release
-        run: echo "::set-output name=previous_release::$(cat previous_release.txt)"
-
-      - name: Compare Releases
-        id: compare_releases
-        run: |
-          latest_release="${{ steps.get_release.outputs.latest_release }}"
-          previous_release="${{ steps.get_previous_release.outputs.previous_release }}"
-
-          if [ "$latest_release" != "$previous_release" ]; then
-            echo "Releases are different. Continuing the pipeline."
-          else
-            echo "Releases are the same. Exiting with success."
-            exit 0
-          fi
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -51,7 +71,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::918074996169:role/GitHub
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
       - name: Setup pnpm
@@ -117,10 +138,6 @@ jobs:
       - name: Run e2e Test
         run: npm run e2e:test
 
-
-      - name: Store Latest Release
-        run: echo "${{ steps.get_release.outputs.latest_release }}" > previous_release.txt
-
       - name: Archive
         if: failure()
         uses: actions/upload-artifact@v3
@@ -129,3 +146,13 @@ jobs:
           path: |
             .sst/
             .next/
+
+      - name: Store Latest Version
+        run: |
+          echo "${{ needs.check_next_version.outputs.previousNextVersion }}" > previous_version.txt
+      
+      - name: Cache Previous Version
+        uses: actions/cache/save@v3
+        with:
+          path: previous_version.txt
+          key: ${{ needs.check_next_version.outputs.cacheKey }}
