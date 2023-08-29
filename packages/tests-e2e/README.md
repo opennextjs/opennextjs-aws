@@ -4,9 +4,9 @@ This e2e testing suite tries to cover different permutations and features that N
 
 The 3 permutations are:
 
-1. App Dir only project
-2. Pages only project
-3. App Dir + Pages mixed project
+1. App Router project
+2. Pages Router project
+3. App + Pages Router project
 
 Their respective `tests/` folders are:
 
@@ -16,9 +16,9 @@ Their respective `tests/` folders are:
 
 Their respective `packages/` are located at:
 
-1. [appDirOnly](/packages/app-dir)
-2. [pagesOnly](/packages/pages-only)
-3. [appDirAndPages](/packages/app-dir)
+1. [appRouter](/examples/app-router)
+2. [pagesRouter](/examples/pages-router)
+3. [appPagesRouter](/examples/app-pages-router)
 
 The GitHub actions will trigger the [e2e test](/.github/workflows//e2e.yml), which deploys the app in the [Example](/example/) folder. The deploy command is:
 

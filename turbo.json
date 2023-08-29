@@ -1,9 +1,9 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalEnv": [
-    "APP_DIR_ONLY_URL",
-    "PAGES_ONLY_URL",
-    "APP_DIR_AND_PAGES_URL"
+    "APP_ROUTER_URL",
+    "PAGES_ROUTER_URL",
+    "APP_PAGES_ROUTER_URL"
   ],
   "pipeline": {
     "build": {

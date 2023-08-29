@@ -21,3 +21,7 @@ next-env.d.ts
 # Tests
 tests-unit/coverage
 test-results
+
+.sst/
+.next/
+.open-next/
