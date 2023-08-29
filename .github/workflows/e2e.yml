@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize]
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: "us-east-1"
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   PLAYWRIGHT_BROWSERS_PATH: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
