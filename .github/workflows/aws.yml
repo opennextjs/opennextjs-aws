@@ -11,10 +11,5 @@ jobs:
     steps:
       - name: Git clone the repository
         uses: actions/checkout@v3
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::918074996169:role/GitHub
-          aws-region: us-east-1
       - name: List s3 buckets
         run: aws s3 ls
