@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { PublicFiles } from "../build.js";
-import type { NextConfig, RoutesManifest } from "./next-types.js";
+import type { NextConfig, RoutesManifest, MiddlewareManifest } from "./next-types.js";
+import { Readable } from "node:stream";
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -36,6 +37,11 @@ export function loadPublicAssets(openNextDir: string) {
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as PublicFiles;
 }
+export function loadMiddlewareManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as MiddlewareManifest;
+}
 
 export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");
@@ -54,14 +60,15 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")
     : "{}";
-  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<
-    string,
-    string
-  >;
+  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<string, string>;
   return Object.keys(appPathsManifest).map((key) => {
     // Remove group route params and /page suffix
     const cleanedKey = key.replace(/\/\(\w+\)|\/page$/g, "");
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
+}
+
+export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
+  return middlewareManifest.middleware["/"].matchers.map(({ regex }) => new RegExp(regex));
 }

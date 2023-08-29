@@ -10,7 +10,7 @@ import type {
 
 import { debug } from "./logger.js";
 
-type InternalEvent = {
+export type InternalEvent = {
   readonly type: "v1" | "v2" | "cf";
   readonly method: string;
   readonly rawPath: string;

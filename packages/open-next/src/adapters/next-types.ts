@@ -1,5 +1,9 @@
 // NOTE: add more next config typings as they become relevant
 
+import { InternalEvent } from "./event-mapper.js";
+import { IncomingMessage } from "./request.js";
+import { ServerResponse } from "./response.js";
+
 type RemotePattern = {
   protocol?: "http" | "https";
   hostname: string;
@@ -26,6 +30,8 @@ type ImageConfigComplete = {
 type ImageConfig = Partial<ImageConfigComplete>;
 
 export interface NextConfig {
+  basePath?: string;
+  trailingSlash?: string;
   i18n?: {
     locales: string[];
   };
@@ -44,4 +50,36 @@ export interface RouteDefinition {
 export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
+}
+
+export interface MiddlewareManifest {
+  sortedMiddleware: string[];
+  middleware: {
+    [key: string]: {
+      files: string[];
+      paths?: string[];
+      name: string;
+      page: string;
+      matchers: {
+        regexp: string;
+        originalSource: string;
+      }[];
+      wasm: string[];
+      assets: string[];
+    };
+  };
+  functions: { [key: string]: any };
+  version: number;
+}
+
+export type Options = {
+  internalEvent: InternalEvent;
+  buildId: string;
+};
+export interface PluginHandler {
+  (
+    req: IncomingMessage,
+    res: ServerResponse,
+    options: Options,
+  ): Promise<ServerResponse | undefined>;
 }
