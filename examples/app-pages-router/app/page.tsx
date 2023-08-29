@@ -33,7 +33,6 @@ export default function Home() {
         <Nav href={"/parallel"} title="Parallel">
           Parallel routing
         </Nav>
-
       </main>
       <h1>Pages Router</h1>
       <main className="grid grid-cols-2 gap-4 p-10 [&>a]:border">
