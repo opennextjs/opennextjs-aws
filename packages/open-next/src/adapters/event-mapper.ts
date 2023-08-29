@@ -63,8 +63,9 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
       ...internalEvent,
       rawPath: newPath,
       query,
-      url: `${newPath}${query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-        }`,
+      url: `${newPath}${
+        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
+      }`,
     };
   }
   return internalEvent;
@@ -72,7 +73,7 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
 
 export function convertFrom(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
-  buildId: string
+  buildId: string,
 ): InternalEvent {
   let internalEvent: InternalEvent;
   if (isCloudFrontRequestEvent(event)) {
@@ -101,7 +102,7 @@ export function convertTo(
 }
 
 function removeUndefinedFromQuery(
-  query: Record<string, string | string[] | undefined>
+  query: Record<string, string | string[] | undefined>,
 ) {
   const newQuery: Record<string, string | string[]> = {};
   for (const [key, value] of Object.entries(query)) {
@@ -112,7 +113,7 @@ function removeUndefinedFromQuery(
   return newQuery;
 }
 function convertFromAPIGatewayProxyEvent(
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): InternalEvent {
   const { path, body, httpMethod, requestContext, isBase64Encoded } = event;
   return {
@@ -124,7 +125,7 @@ function convertFromAPIGatewayProxyEvent(
     headers: normalizeAPIGatewayProxyEventHeaders(event),
     remoteAddress: requestContext.identity.sourceIp,
     query: removeUndefinedFromQuery(
-      event.multiValueQueryStringParameters ?? {}
+      event.multiValueQueryStringParameters ?? {},
     ),
   };
 }

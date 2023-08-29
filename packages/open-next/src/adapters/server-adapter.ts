@@ -1,39 +1,28 @@
 import crypto from "node:crypto";
-import path from "node:path";
 
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-
 import type {
   APIGatewayProxyEvent,
   APIGatewayProxyEventV2,
   CloudFrontRequestEvent,
 } from "aws-lambda";
 
-
 import { isBinaryContentType } from "./binary.js";
-import { InternalEvent, convertFrom, convertTo } from "./event-mapper.js";
+import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
 import { awsLogger, debug, error } from "./logger.js";
+import { handler as serverHandler } from "./plugins/serverHandler.js";
 import { IncomingMessage } from "./request.js";
-import {
-  applyOverride as applyNextjsRequireHooksOverride,
-  overrideHooks as overrideNextjsRequireHooks,
-} from "./require-hooks.js";
 import { ServerResponse } from "./response.js";
 import {
-  config,
   generateUniqueId,
-  loadAppPathsManifestKeys,
   loadBuildId,
   loadHtmlPages,
   loadPublicAssets,
-  loadRoutesManifest,
-  setNodeEnv,
   NEXT_DIR,
   OPEN_NEXT_DIR,
+  setNodeEnv,
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
-
-import { handler as serverHandler } from "./plugins/serverHandler.js";
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -103,7 +92,7 @@ export async function handler(
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,
   };
-  console.log("~~IncomingMessage constructor props", reqProps);
+  debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
   await processRequest(req, res, internalEvent);
@@ -155,32 +144,10 @@ function setBuildIdEnv() {
   process.env.NEXT_BUILD_ID = buildId;
 }
 
-function setNextjsPrebundledReact(rawPath: string) {
-  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
-
-  const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(rawPath ?? ""),
-  );
-
-  const isApp = appPathsManifestKeys.includes(route?.page ?? "");
-  debug("setNextjsPrebundledReact", { url: rawPath, isApp, route });
-
-  // app routes => use prebundled React
-  if (isApp) {
-    process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = config.experimental.serverActions
-      ? "experimental"
-      : "next";
-    return;
-  }
-
-  // page routes => use node_modules React
-  process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
-}
-
 async function processRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  internalEvent: InternalEvent
+  internalEvent: InternalEvent,
 ) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists

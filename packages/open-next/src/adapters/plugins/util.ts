@@ -1,21 +1,25 @@
 import fs from "node:fs";
 import path from "node:path";
+
+// @ts-ignore
+import NextServer from "next/dist/server/next-server.js";
+
+import { InternalEvent } from "../event-mapper.js";
+import { debug } from "../logger.js";
+import { MiddlewareManifest } from "../next-types.js";
+import {
+  applyOverride as applyNextjsRequireHooksOverride,
+  overrideHooks as overrideNextjsRequireHooks,
+} from "../require-hooks.js";
 import {
   config,
-  loadRoutesManifest,
   loadAppPathsManifestKeys,
+  loadRoutesManifest,
   NEXT_DIR,
 } from "../util.js";
-import { debug } from "../logger.js";
-
-import { MiddlewareManifest } from "../next-types.js";
 
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
-import {
-  overrideHooks as overrideNextjsRequireHooks,
-  applyOverride as applyNextjsRequireHooksOverride,
-} from "../require-hooks.js";
 
 // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 // Step 1: Need to override the require hooks for React before Next.js server
@@ -25,9 +29,6 @@ import {
 //         override that Next.js does is done at import time
 
 overrideNextjsRequireHooks(config);
-// @ts-ignore
-import NextServer from "next/dist/server/next-server.js";
-import { InternalEvent } from "../event-mapper.js";
 applyNextjsRequireHooksOverride();
 
 //#override requestHandler
@@ -69,7 +70,7 @@ export function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
   const route = routesManifest.find((route) =>
-    new RegExp(route.regex).test(rawPath ?? "")
+    new RegExp(route.regex).test(rawPath ?? ""),
   );
 
   const isApp = appPathsManifestKeys.includes(route?.page ?? "");
