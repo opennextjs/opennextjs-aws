@@ -1,20 +1,18 @@
 import cp from "node:child_process";
 import fs from "node:fs";
-
+import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
-
-
-
-import { minifyAll } from "./minimize-js.js";
 import {
   build as buildAsync,
-  buildSync,
   BuildOptions as ESBuildOptions,
+  buildSync,
 } from "esbuild";
-import { createRequire as topLevelCreateRequire } from "node:module";
+
+import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
+
 interface BuildOptions {
   /**
    * Minify the server bundle.
@@ -408,26 +406,25 @@ async function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-
   const plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
-        openNextPlugin({
-          target: /plugins\/serverHandler\.js/g,
-          replacements: ["./serverHandler.replacement.js"],
-        }),
-        openNextPlugin({
-          target: /plugins\/util\.js/g,
-          replacements: ["./util.replacement.js"],
-        }),
-      ]
+          openNextPlugin({
+            target: /plugins\/serverHandler\.js/g,
+            replacements: ["./serverHandler.replacement.js"],
+          }),
+          openNextPlugin({
+            target: /plugins\/util\.js/g,
+            replacements: ["./util.replacement.js"],
+          }),
+        ]
       : undefined;
 
   if (plugins) {
     console.log(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)
-        .join(",")}] for Next version: ${options.nextVersion}`
+        .join(",")}] for Next version: ${options.nextVersion}`,
     );
   }
   await esbuildAsync({
@@ -583,8 +580,6 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
-    // external: [...(esbuildOptions.external || []), "next", "styled-jsx", "react"],
-    // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
     define: {
       ...esbuildOptions.define,
       "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
@@ -597,8 +592,9 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
-      }.`
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
+      }.`,
     );
   }
 }
@@ -626,8 +622,9 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
-      }.`
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
+      }.`,
     );
   }
 }

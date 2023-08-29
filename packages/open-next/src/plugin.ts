@@ -1,5 +1,6 @@
-import path from "node:path";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { Plugin } from "esbuild";
 
 export interface IPluginSettings {
@@ -53,27 +54,28 @@ export default function openNextPlugin({
         let contents = await readFile(args.path, "utf-8");
 
         for (const fp of replacements) {
-
         }
-        await Promise.all(replacements.map(async (fp) => {
-          const p = path.join(args.path, "..", fp);
-          const replacementFile = await readFile(p, "utf-8");
-          const matches = replacementFile.matchAll(overridePattern);
+        await Promise.all(
+          replacements.map(async (fp) => {
+            const p = path.join(args.path, "..", fp);
+            const replacementFile = await readFile(p, "utf-8");
+            const matches = replacementFile.matchAll(overridePattern);
 
-          const importMatch = replacementFile.match(importPattern);
-          const addedImport = importMatch ? importMatch[0] : "";
+            const importMatch = replacementFile.match(importPattern);
+            const addedImport = importMatch ? importMatch[0] : "";
 
-          contents = `${addedImport}\n${contents}`;
+            contents = `${addedImport}\n${contents}`;
 
-          for (const match of matches) {
-            const replacement = match[2];
-            const id = match[1];
-            const pattern = new RegExp(
-              `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`
-            );
-            contents = contents.replace(pattern, replacement);
-          }
-        }))
+            for (const match of matches) {
+              const replacement = match[2];
+              const id = match[1];
+              const pattern = new RegExp(
+                `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`,
+              );
+              contents = contents.replace(pattern, replacement);
+            }
+          }),
+        );
 
         return {
           contents,

@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import type { PublicFiles } from "../build.js";
+import type { NextConfig, RoutesManifest } from "./next-types.js";
+
 export const NEXT_DIR = path.join(__dirname, ".next");
 export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 export const config = loadConfig(NEXT_DIR);
-
-import type { NextConfig, RoutesManifest } from "./next-types.js";
-import type { PublicFiles } from "../build.js";
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";

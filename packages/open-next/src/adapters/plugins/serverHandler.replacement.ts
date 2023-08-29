@@ -1,16 +1,15 @@
-import type { PluginHandler, Options } from "../next-types.js";
-
 //#override imports
 import path from "node:path";
+
+import type { Options, PluginHandler } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
 import { config, NEXT_DIR } from "../util.js";
 import {
-  requestHandler,
   getMiddlewareMatch,
   loadMiddlewareManifest,
+  requestHandler,
   setNextjsPrebundledReact,
-  fixDataPage,
 } from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
@@ -21,6 +20,7 @@ const { getCloneableBody } = require("next/dist/server/body-streams");
 const {
   signalFromNodeResponse,
 } = require("next/dist/server/web/spec-extension/adapters/next-request");
+
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 //#endOverride
 
@@ -28,7 +28,7 @@ const middleMatch = getMiddlewareMatch(middlewareManifest);
 export const handler: PluginHandler = async (
   req: IncomingMessage,
   res: ServerResponse,
-  options: Options
+  options: Options,
 ) => {
   let { internalEvent } = options;
 
@@ -50,7 +50,7 @@ export const handler: PluginHandler = async (
 async function handleMiddleware(
   req: IncomingMessage,
   res: ServerResponse,
-  rawPath: string
+  rawPath: string,
 ): Promise<ServerResponse | undefined> {
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return;
@@ -60,7 +60,7 @@ async function handleMiddleware(
   // structure, but as of now, the only useful property on it is the "/" key (ie root).
   const middlewareInfo = middlewareManifest.middleware["/"];
   middlewareInfo.paths = middlewareInfo.files.map((file) =>
-    path.join(NEXT_DIR, file)
+    path.join(NEXT_DIR, file),
   );
 
   console.log("~~Running 13.4.13 middleware:", rawPath);
