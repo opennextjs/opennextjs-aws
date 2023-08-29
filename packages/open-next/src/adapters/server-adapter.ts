@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+
 import type {
   APIGatewayProxyEvent,
   APIGatewayProxyEventV2,
@@ -21,16 +22,29 @@ import {
 import { ServerResponse } from "./response.js";
 import {
   generateUniqueId,
+  getMiddlewareMatch,
   loadAppPathsManifestKeys,
   loadBuildId,
   loadConfig,
   loadHtmlPages,
+  loadMiddlewareManifest,
   loadPublicAssets,
   loadRoutesManifest,
   setNodeEnv,
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 
+const { run } = require("next/dist/server/web/sandbox");
+const { pipeReadable } = require("next/dist/server/pipe-readable");
+const {
+  splitCookiesString,
+  toNodeOutgoingHttpHeaders,
+} = require("next/dist/server/web/utils");
+const { getCloneableBody } = require("next/dist/server/body-streams");
+const {
+  signalFromNodeResponse,
+} = require("next/dist/server/web/spec-extension/adapters/next-request");
+// @ts-ignor
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
 
@@ -50,6 +64,7 @@ setNextjsServerWorkingDirectory();
 const config = loadConfig(NEXT_DIR);
 const htmlPages = loadHtmlPages(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
+const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 // Generate a 6 letter unique server ID
@@ -67,6 +82,8 @@ applyNextjsRequireHooksOverride();
 
 const requestHandler = createRequestHandler();
 
+const middleMatch = getMiddlewareMatch(middlewareManifest);
+
 /////////////
 // Handler //
 /////////////
@@ -79,7 +96,6 @@ export async function handler(
     | WarmerEvent,
 ) {
   debug("event", event);
-
   // Handler warmer
   if ("type" in event) {
     return formatWarmerResponse(event);
@@ -87,6 +103,7 @@ export async function handler(
 
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event);
+  const rawPath = internalEvent.rawPath;
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers["x-forwarded-host"]) {
@@ -118,8 +135,8 @@ export async function handler(
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  setNextjsPrebundledReact(internalEvent.rawPath);
-  await processRequest(req, res);
+  setNextjsPrebundledReact(rawPath);
+  await processRequest(req, res, rawPath);
 
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
@@ -131,6 +148,7 @@ export async function handler(
   );
   const encoding = isBase64Encoded ? "base64" : "utf8";
   const body = ServerResponse.body(res).toString(encoding);
+
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
@@ -170,7 +188,6 @@ function setBuildIdEnv() {
 function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
-  // Get route pattern
   const route = routesManifest.find((route) =>
     new RegExp(route.regex).test(rawPath ?? ""),
   );
@@ -213,13 +230,90 @@ function createRequestHandler() {
   }).getRequestHandler();
 }
 
-async function processRequest(req: IncomingMessage, res: ServerResponse) {
+// NOTE: As of Nextjs 13.3.13+, the middleware is handled outside the next-server.
+// OpenNext will run the middleware in a sandbox and set the appropriate req headers
+// and res.body prior to processing the next-server.
+async function handleMiddleware(
+  req: IncomingMessage,
+  res: ServerResponse,
+  rawPath: string
+) {
+  const hasMatch = middleMatch.find((r) => r.test(rawPath));
+  if (!hasMatch) return;
+
+  // NOTE: Next middleware was originally developed to support nested middlewares
+  // but that was discarded for simplicity. The MiddlewareInfo type still has the original
+  // structure, but as of now, the only useful property on it is the "/" key (ie root).
+  const middlewareInfo = middlewareManifest.middleware["/"];
+  middlewareInfo.paths = middlewareInfo.files.map((file) =>
+    path.join(NEXT_DIR, file)
+  );
+
+  const result = await run({
+    distDir: NEXT_DIR,
+    name: middlewareInfo.name || "/",
+    paths: middlewareInfo.paths || [],
+    edgeFunctionEntry: middlewareInfo,
+    request: {
+      headers: req.headers,
+      method: req.method || "GET",
+      nextConfig: {
+        basePath: config.basePath,
+        i18n: config.i18n,
+        trailingSlash: config.trailingSlash,
+      },
+      url: `http://localhost:3000${rawPath}`, // internal host
+      body: getCloneableBody(req),
+      signal: signalFromNodeResponse(res),
+    },
+    useCache: true,
+    onWarning: console.warn,
+  });
+  res.statusCode = result.response.status;
+  // If the middleware returned a Redirect, we set the `Location` header with
+  // the redirected url and end the response.
+  if (res.statusCode >= 300 && res.statusCode < 400) {
+    const location = result.response.headers
+      .get("location")
+      ?.replace("http://localhost:3000", `https://${req.headers.host}`);
+    res.setHeader("Location", location);
+    return res.end();
+  }
+  // Apply the headers from the middleware to the `req` to be processed by the server
+  for (let [key, value] of result.response.headers) {
+    req.headers[key] = value;
+  }
+
+  // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
+  // NOTE: the header was added to `req` from above
+  const rewriteUrl = req.headers["x-middleware-rewrite"] as string;
+  if (rewriteUrl) {
+    const u = new URL(rewriteUrl).pathname;
+    req.url = u;
+  }
+
+  // If the middleware returned a `NextResponse`, pipe the body to res. This will return
+  // the body immediately to the client.
+  if (result.response.body) {
+    await pipeReadable(result.response.body, res);
+  }
+}
+async function processRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  rawPath: string
+) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
   // https://github.com/dougmoscrop/serverless-http/issues/227
   delete req.body;
 
   try {
+    // Middleware
+    const ended = await handleMiddleware(req, res, rawPath);
+    if (ended) return;
+    // Next Server
+    // @ts-ignore
     await requestHandler(req, res);
   } catch (e: any) {
     error("NextJS request failed.", e);
@@ -282,13 +376,14 @@ async function revalidateIfRequired(
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
   const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? // When using Pages Router, two requests will be received:
-      // 1. one for the page: /foo
-      // 2. one for the json data: /_next/data/BUILD_ID/foo.json
-      // The rewritten url is correct for 1, but that for the second request
-      // does not include the "/_next/data/" prefix. Need to add it.
-      rawPath.startsWith("/_next/data/")
+    // 1. one for the page: /foo
+    // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+    // The rewritten url is correct for 1, but that for the second request
+    // does not include the "/_next/data/" prefix. Need to add it.
+    rawPath.startsWith("/_next/data/")
       ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;
