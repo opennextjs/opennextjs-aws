@@ -1,3 +1,3 @@
 export default function RewriteDestination() {
-  return <div>Rewritten Destination</div>
+  return <div>Rewritten Destination</div>;
 }

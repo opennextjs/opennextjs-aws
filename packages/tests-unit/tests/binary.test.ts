@@ -15,7 +15,10 @@ describe("isBinaryContentType", () => {
       type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       binary: true,
     },
-    { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", binary: true },
+    {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      binary: true,
+    },
     {
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       binary: true,

@@ -563,7 +563,8 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }

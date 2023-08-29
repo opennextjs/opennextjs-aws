@@ -1,7 +1,8 @@
-import Head from 'next/head'
-import { Inter } from '@next/font/google'
-import Nav from '@open-next/core/components/Nav'
-const inter = Inter({ subsets: ['latin'] })
+import { Inter } from "@next/font/google";
+import Nav from "@open-next/core/components/Nav";
+import Head from "next/head";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export default function Home() {
   return (
@@ -13,15 +14,15 @@ export default function Home() {
       </Head>
       <main>
         <h1>Nextjs Pages Only</h1>
-        <div className='grid grid-cols-2 mt-2 [&>*]:mx-4'>
-          <Nav href="/isr" title='/ISR' icon='/static/frank.webp'>
+        <div className="grid grid-cols-2 mt-2 [&>*]:mx-4">
+          <Nav href="/isr" title="/ISR" icon="/static/frank.webp">
             revalidates every 10 seconds
           </Nav>
-          <Nav href="/ssr" title='/SSR' icon='/static/frank.webp'>
+          <Nav href="/ssr" title="/SSR" icon="/static/frank.webp">
             revalidates every 10 seconds
           </Nav>
         </div>
       </main>
     </>
-  )
+  );
 }

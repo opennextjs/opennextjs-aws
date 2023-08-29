@@ -1,3 +1,3 @@
 export default function BPage() {
-  return <div>B Page</div>
+  return <div>B Page</div>;
 }

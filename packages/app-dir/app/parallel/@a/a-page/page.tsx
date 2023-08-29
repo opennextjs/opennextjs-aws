@@ -1,3 +1,3 @@
 export default function APage() {
-  return <div>A Page</div>
+  return <div>A Page</div>;
 }

@@ -284,13 +284,13 @@ async function revalidateIfRequired(
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
   const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+  // When using Pages Router, two requests will be received:
+  // 1. one for the page: /foo
+  // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+  // The rewritten url is correct for 1, but that for the second request
+  // does not include the "/_next/data/" prefix. Need to add it.
   const revalidateUrl = internalMeta?._nextDidRewrite
-    ? // When using Pages Router, two requests will be received:
-    // 1. one for the page: /foo
-    // 2. one for the json data: /_next/data/BUILD_ID/foo.json
-    // The rewritten url is correct for 1, but that for the second request
-    // does not include the "/_next/data/" prefix. Need to add it.
-    rawPath.startsWith("/_next/data/")
+    ? rawPath.startsWith("/_next/data/")
       ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;

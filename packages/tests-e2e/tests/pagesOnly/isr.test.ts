@@ -1,5 +1,5 @@
-import { test, expect } from "@playwright/test";
 import { wait } from "@open-next/utils";
+import { expect, test } from "@playwright/test";
 
 test("Incremental Static Regeneration", async ({ page }) => {
   test.setTimeout(45000);

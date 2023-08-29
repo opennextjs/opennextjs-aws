@@ -1,9 +1,9 @@
 async function getTime() {
-  return new Date().toISOString()
+  return new Date().toISOString();
 }
 
-export const revalidate = 10
+export const revalidate = 10;
 export default async function ISR() {
-  const time = getTime()
-  return <div>ISR: {time}</div>
+  const time = getTime();
+  return <div>ISR: {time}</div>;
 }

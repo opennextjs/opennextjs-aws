@@ -5,7 +5,6 @@ on:
     types: [opened, synchronize]
 
 env:
-  AWS_REGION: "us-east-1"
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   PLAYWRIGHT_BROWSERS_PATH: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -25,8 +24,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::918074996169:role/GitHub
-          role-session-name: github-e2e-session
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-1
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2

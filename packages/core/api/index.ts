@@ -34,6 +34,6 @@ export async function getSong(album: string, title: string) {
   return data.songs.find(
     (song) =>
       song.album === decodeURIComponent(album) &&
-      song.title === decodeURIComponent(title)
+      song.title === decodeURIComponent(title),
   );
 }

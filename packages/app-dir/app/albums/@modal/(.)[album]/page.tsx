@@ -1,11 +1,10 @@
+import Modal from "@open-next/core/components/Modal";
 
-import Modal from '@open-next/core/components/Modal'
 type Props = {
   params: {
-    artist: string
-  }
-}
+    artist: string;
+  };
+};
 export default function ArtistPage({ params }: Props) {
-
-  return <Modal>Artists {params.artist}</Modal>
+  return <Modal>Artists {params.artist}</Modal>;
 }

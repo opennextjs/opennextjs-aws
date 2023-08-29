@@ -1,4 +1,5 @@
-import { InferGetStaticPropsType } from 'next'
+import { InferGetStaticPropsType } from "next";
+
 export async function getStaticProps() {
   return {
     props: {
@@ -8,8 +9,8 @@ export async function getStaticProps() {
   };
 }
 
-export default function Page({ time }: InferGetStaticPropsType<typeof getStaticProps>) {
-  return <div className='flex'>
-    ISR: {time}
-  </div>
+export default function Page({
+  time,
+}: InferGetStaticPropsType<typeof getStaticProps>) {
+  return <div className="flex">ISR: {time}</div>;
 }
