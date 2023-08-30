@@ -1,8 +1,11 @@
 name: E2E Tests
 
 on:
-  pull_request:
-    types: [opened, synchronize]
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+    branches:
+      - main
 
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
@@ -17,6 +20,31 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     steps:
+
+      - name: Get Latest Release
+        id: get_release
+        run: |
+          latest_release=$(curl -s https://api.github.com/repos/vercel/next.js/releases/latest | jq -r '.tag_name')
+          echo "Latest release: $latest_release"
+          echo "::set-output name=latest_release::$latest_release"
+
+      - name: Get Previous Release
+        id: get_previous_release
+        run: echo "::set-output name=previous_release::$(cat previous_release.txt)"
+
+      - name: Compare Releases
+        id: compare_releases
+        run: |
+          latest_release="${{ steps.get_release.outputs.latest_release }}"
+          previous_release="${{ steps.get_previous_release.outputs.previous_release }}"
+
+          if [ "$latest_release" != "$previous_release" ]; then
+            echo "Releases are different. Continuing the pipeline."
+          else
+            echo "Releases are the same. Exiting with success."
+            exit 0
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -29,7 +57,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 8.6.5
+          version: 8
 
       - name: Set up NodeJS v18
         uses: actions/setup-node@v3
@@ -88,6 +116,10 @@ jobs:
 
       - name: Run e2e Test
         run: npm run e2e:test
+
+
+      - name: Store Latest Release
+        run: echo "${{ steps.get_release.outputs.latest_release }}" > previous_release.txt
 
       - name: Archive
         if: failure()
