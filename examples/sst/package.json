@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "aws-cdk-lib": "2.91.0",
-    "constructs": "10.1.156",
-    "sst": "2.24.17"
+    "constructs": "10.2.69",
+    "sst": "2.24.20"
   }
 }
