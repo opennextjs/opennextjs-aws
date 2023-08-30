@@ -188,6 +188,7 @@ function convertToApiGatewayProxyResult(
       headers[key] = value;
     }
   });
+
   const response: APIGatewayProxyResult = {
     statusCode: result.statusCode,
     headers,
@@ -212,6 +213,7 @@ function convertToApiGatewayProxyResultV2(
       }
       headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
     });
+
   const response: APIGatewayProxyResultV2 = {
     statusCode: result.statusCode,
     headers,
@@ -237,6 +239,7 @@ function convertToCloudFrontRequestResult(
           : [{ key, value: value.toString() }]),
       ];
     });
+
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
     statusDescription: "OK",
