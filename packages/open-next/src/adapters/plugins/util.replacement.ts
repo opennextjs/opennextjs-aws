@@ -1,5 +1,10 @@
-import { config } from "../util.js";
+import path from "node:path";
 
+import { loadConfig } from "../util.js";
+
+const NEXT_DIR = path.join(__dirname, ".next");
+
+const config = loadConfig(NEXT_DIR);
 //#override requestHandler
 // @ts-ignore
 export const requestHandler = new NextServer.default({

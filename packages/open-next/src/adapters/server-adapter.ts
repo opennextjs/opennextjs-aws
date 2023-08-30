@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import path from "node:path";
 
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type {
@@ -16,13 +17,16 @@ import { ServerResponse } from "./response.js";
 import {
   generateUniqueId,
   loadBuildId,
+  loadConfig,
   loadHtmlPages,
   loadPublicAssets,
-  NEXT_DIR,
-  OPEN_NEXT_DIR,
   setNodeEnv,
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+
+export const NEXT_DIR = path.join(__dirname, ".next");
+export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
+export const config = loadConfig(NEXT_DIR);
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -63,7 +67,6 @@ export async function handler(
 
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event, buildId);
-  const rawPath = internalEvent.rawPath;
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers["x-forwarded-host"]) {
@@ -220,13 +223,13 @@ async function revalidateIfRequired(
   // @ts-ignore
   const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
 
+  // When using Pages Router, two requests will be received:
+  // 1. one for the page: /foo
+  // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+  // The rewritten url is correct for 1, but that for the second request
+  // does not include the "/_next/data/" prefix. Need to add it.
   const revalidateUrl = internalMeta?._nextDidRewrite
-    ? // When using Pages Router, two requests will be received:
-      // 1. one for the page: /foo
-      // 2. one for the json data: /_next/data/BUILD_ID/foo.json
-      // The rewritten url is correct for 1, but that for the second request
-      // does not include the "/_next/data/" prefix. Need to add it.
-      rawPath.startsWith("/_next/data/")
+    ? rawPath.startsWith("/_next/data/")
       ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;
