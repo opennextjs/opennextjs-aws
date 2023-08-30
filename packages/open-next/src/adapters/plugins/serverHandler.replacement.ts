@@ -1,6 +1,7 @@
 //#override imports
 import path from "node:path";
 
+import { InternalEvent } from "../event-mapper.js";
 import type { Options, PluginHandler } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
@@ -39,7 +40,7 @@ export const handler: PluginHandler = async (
   const { rawPath } = internalEvent;
 
   // Middleware
-  const ended = await handleMiddleware(req, res, rawPath);
+  const ended = await handleMiddleware(req, res, internalEvent);
   if (ended) return;
   setNextjsPrebundledReact(rawPath);
   // Next Server
@@ -54,8 +55,9 @@ export const handler: PluginHandler = async (
 async function handleMiddleware(
   req: IncomingMessage,
   res: ServerResponse,
-  rawPath: string,
+  internalEvent: InternalEvent,
 ): Promise<ServerResponse | undefined> {
+  const { rawPath, query } = internalEvent;
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return;
 
@@ -67,6 +69,13 @@ async function handleMiddleware(
     path.join(NEXT_DIR, file),
   );
 
+  const urlQuery: Record<string, string> = {};
+  Object.keys(query).forEach((k) => {
+    const v = query[k];
+    urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
+  });
+
+  const search = new URLSearchParams(urlQuery).toString();
   const result = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",
@@ -80,7 +89,7 @@ async function handleMiddleware(
         i18n: config.i18n,
         trailingSlash: config.trailingSlash,
       },
-      url: `http://localhost:3000${rawPath}`, // internal host
+      url: `http://localhost:3000${rawPath}?${search || ""}`, // internal host
       body: getCloneableBody(req),
       signal: signalFromNodeResponse(res),
     },
