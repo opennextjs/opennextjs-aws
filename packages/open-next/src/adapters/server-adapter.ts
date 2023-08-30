@@ -18,6 +18,7 @@ import {
   generateUniqueId,
   loadBuildId,
   loadConfig,
+  loadConfigHeaders,
   loadHtmlPages,
   loadPublicAssets,
   setNodeEnv,
@@ -27,6 +28,8 @@ import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
 export const NEXT_DIR = path.join(__dirname, ".next");
 export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 export const config = loadConfig(NEXT_DIR);
+
+const configHeaders = loadConfigHeaders(NEXT_DIR);
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -95,6 +98,7 @@ export async function handler(
     body: internalEvent.body,
     remoteAddress: internalEvent.remoteAddress,
   };
+  addNextConfigHeaders(reqProps.url, reqProps.headers);
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
@@ -113,9 +117,12 @@ export async function handler(
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
+  // Load the headers in next.config.js to the response.
+  addNextConfigHeaders(reqProps.url, headers);
   fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
   fixSWRCacheHeader(headers);
   addOpenNextHeader(headers);
+
   await revalidateIfRequired(
     internalEvent.headers.host,
     internalEvent.rawPath,
@@ -201,6 +208,21 @@ function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
 
 function addOpenNextHeader(headers: Record<string, string | undefined>) {
   headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
+}
+
+function addNextConfigHeaders(
+  url: string,
+  requestHeaders: Record<string, string | undefined>,
+) {
+  if (!configHeaders) return;
+
+  for (const { source, headers } of configHeaders) {
+    if (new RegExp(source).test(url)) {
+      headers.forEach((h) => {
+        requestHeaders[h.key] = h.value;
+      });
+    }
+  }
 }
 
 async function revalidateIfRequired(

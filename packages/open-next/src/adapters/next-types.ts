@@ -29,6 +29,36 @@ type ImageConfigComplete = {
 };
 type ImageConfig = Partial<ImageConfigComplete>;
 
+export type RouteHas =
+  | {
+      type: "header" | "query" | "cookie";
+      key: string;
+      value?: string;
+    }
+  | {
+      type: "host";
+      key?: undefined;
+      value: string;
+    };
+export type Rewrite = {
+  source: string;
+  destination: string;
+  basePath?: false;
+  locale?: false;
+  has?: RouteHas[];
+  missing?: RouteHas[];
+};
+export type Header = {
+  source: string;
+  basePath?: false;
+  locale?: false;
+  headers: Array<{
+    key: string;
+    value: string;
+  }>;
+  has?: RouteHas[];
+  missing?: RouteHas[];
+};
 export interface NextConfig {
   basePath?: string;
   trailingSlash?: string;
@@ -50,6 +80,7 @@ export interface RouteDefinition {
 export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
+  headers?: Header[];
 }
 
 export interface MiddlewareManifest {

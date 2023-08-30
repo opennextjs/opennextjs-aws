@@ -45,6 +45,13 @@ export function loadRoutesManifest(nextDir: string) {
   return [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes];
 }
 
+export function loadConfigHeaders(nextDir: string) {
+  const filePath = path.join(nextDir, "routes-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  const routesManifest = JSON.parse(json) as RoutesManifest;
+  return routesManifest.headers;
+}
+
 export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestPath = path.join(
     nextDir,
