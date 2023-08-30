@@ -120,13 +120,15 @@ async function handleMiddleware(
     x-middleware-request- to set the req headers
   */
   const responseHeaders = result.response.headers as Headers;
+
   responseHeaders.delete("x-middleware-override-headers");
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
     if (key.startsWith(xMiddlewareKey)) {
-      req.headers[key.substring(xMiddlewareKey.length)] = value;
+      const k = key.substring(xMiddlewareKey.length);
+      res.headers[k] = req.headers[k] = value;
     } else {
-      req.headers[key] = value;
+      res.headers[key] = req.headers[key] = value;
     }
   });
 
