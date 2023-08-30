@@ -4,13 +4,17 @@ import path from "node:path";
 import type { Options, PluginHandler } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
-import { config, NEXT_DIR } from "../util.js";
+import { loadConfig } from "../util.js";
 import {
   getMiddlewareMatch,
   loadMiddlewareManifest,
   requestHandler,
   setNextjsPrebundledReact,
 } from "./util.js";
+
+const NEXT_DIR = path.join(__dirname, ".next");
+
+const config = loadConfig(NEXT_DIR);
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
@@ -63,7 +67,6 @@ async function handleMiddleware(
     path.join(NEXT_DIR, file),
   );
 
-  console.log("~~Running 13.4.13 middleware:", rawPath);
   const result = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",

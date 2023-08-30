@@ -22,7 +22,7 @@ import {
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
 import { awsLogger, debug, error } from "./logger.js";
-import { config, setNodeEnv } from "./util.js";
+import { loadConfig, setNodeEnv } from "./util.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
@@ -31,6 +31,7 @@ const s3Client = new S3Client({ logger: awsLogger });
 
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
+const config = loadConfig(nextDir);
 const nextConfig = {
   ...defaultConfig,
   images: {

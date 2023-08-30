@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import path from "node:path";
 
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import type {
@@ -16,13 +17,16 @@ import { ServerResponse } from "./response.js";
 import {
   generateUniqueId,
   loadBuildId,
+  loadConfig,
   loadHtmlPages,
   loadPublicAssets,
-  NEXT_DIR,
-  OPEN_NEXT_DIR,
   setNodeEnv,
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
+
+export const NEXT_DIR = path.join(__dirname, ".next");
+export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
+export const config = loadConfig(NEXT_DIR);
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
@@ -63,7 +67,6 @@ export async function handler(
 
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event, buildId);
-  const rawPath = internalEvent.rawPath;
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers["x-forwarded-host"]) {

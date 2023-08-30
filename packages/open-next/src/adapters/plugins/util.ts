@@ -12,14 +12,17 @@ import {
   overrideHooks as overrideNextjsRequireHooks,
 } from "../require-hooks.js";
 import {
-  config,
   loadAppPathsManifestKeys,
+  loadConfig,
   loadRoutesManifest,
-  NEXT_DIR,
 } from "../util.js";
+
+const NEXT_DIR = path.join(__dirname, ".next");
 
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const appPathsManifestKeys = loadAppPathsManifestKeys(NEXT_DIR);
+
+const config = loadConfig(NEXT_DIR);
 
 // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 // Step 1: Need to override the require hooks for React before Next.js server
@@ -92,8 +95,7 @@ export function setNextjsPrebundledReact(rawPath: string) {
 export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
   const { rawPath, query } = internalEvent;
   const dataPattern = `/_next/data/${buildId}`;
-  console.log("~~dataPattern: ", rawPath, dataPattern);
-  console.log("~~query: ", query);
+
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
     const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
     query.__nextDataReq = "1";
