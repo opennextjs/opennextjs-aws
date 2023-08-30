@@ -126,9 +126,9 @@ async function handleMiddleware(
   responseHeaders.forEach((value, key) => {
     if (key.startsWith(xMiddlewareKey)) {
       const k = key.substring(xMiddlewareKey.length);
-      res.headers[k] = req.headers[k] = value;
+      res.headers[k] = value;
     } else {
-      res.headers[key] = req.headers[key] = value;
+      res.headers[key] = value;
     }
   });
 

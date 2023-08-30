@@ -689,6 +689,12 @@ function getNextVersion(appPath: string) {
 }
 
 function compareSemver(v1: string, v2: string): number {
+  if (/^[^\d]/.test(v1)) {
+    v1 = v1.substring(1);
+  }
+  if (/^[^\d]/.test(v2)) {
+    v2 = v2.substring(1);
+  }
   const [major1, minor1, patch1] = v1.split(".").map(Number);
   const [major2, minor2, patch2] = v2.split(".").map(Number);
 

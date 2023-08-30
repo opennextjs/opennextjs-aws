@@ -53,8 +53,6 @@ export default function openNextPlugin({
       build.onLoad({ filter: target }, async (args) => {
         let contents = await readFile(args.path, "utf-8");
 
-        for (const fp of replacements) {
-        }
         await Promise.all(
           replacements.map(async (fp) => {
             const p = path.join(args.path, "..", fp);
