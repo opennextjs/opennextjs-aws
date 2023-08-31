@@ -118,7 +118,7 @@ export function handleRewrites<T extends RewriteDefinition>(
         const rewrittenPath = unescapeRegex(toDestination(params));
         rewrittenUrl = isExternalRewrite
           ? `${protocol}//${hostname}${rewrittenPath}`
-          : `/${rewrittenPath}`;
+          : `${rewrittenPath}`;
       } else {
         rewrittenUrl = rewrite.destination;
       }
