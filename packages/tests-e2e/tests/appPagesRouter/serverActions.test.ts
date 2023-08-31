@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("Server Actions", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Server Actions" }).click();
+  await page.locator('[href="/server-actions"]').click();
 
   await page.waitForURL("/server-actions");
   let el = page.getByText("Song: I'm never gonna give you up");

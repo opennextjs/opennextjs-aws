@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("Middleware Redirect", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "/Redirect" }).click();
+  await page.locator('[href="/redirect"]').click();
 
   // URL is immediately redirected
   await page.waitForURL(`/redirect-destination`);
