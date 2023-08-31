@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { isBinaryContentType } from "../binary";
+import { MiddlewareManifest } from "../next-types";
 import { ServerResponse } from "../response";
 
 export function isExternal(url?: string) {
@@ -49,4 +53,16 @@ export function convertQuery(query: Record<string, string | string[]>) {
     urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
   });
   return urlQuery;
+}
+
+export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
+  const rootMiddleware = middlewareManifest.middleware["/"];
+  if (!rootMiddleware?.matchers) return [];
+  return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
+}
+
+export function loadMiddlewareManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as MiddlewareManifest;
 }

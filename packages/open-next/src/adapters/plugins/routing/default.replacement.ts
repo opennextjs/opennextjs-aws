@@ -20,6 +20,7 @@ import {
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
+import { handleMiddleware } from "../../routing/middleware";
 
 const NEXT_DIR = path.join(__dirname, ".next");
 const routesManifest = loadRoutesManifest(NEXT_DIR);
@@ -27,10 +28,9 @@ const configHeaders = loadConfigHeaders(NEXT_DIR);
 //#endOverride
 
 //#override processInternalEvent
-export function processInternalEvent(
+export async function processInternalEvent(
   event: InternalEvent,
-  //@ts-expect-error - This is a hack to get around the fact that we are not using the correct types for the response
-): ProcessInternalEventResult<IncomingMessage, ServerResponse> {
+): Promise<ProcessInternalEventResult> {
   addNextConfigHeaders(event, event.headers, configHeaders);
 
   let internalEvent = event;
@@ -38,6 +38,13 @@ export function processInternalEvent(
   const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {
     return redirect;
+  }
+
+  const middleware = await handleMiddleware(internalEvent);
+  if ("statusCode" in middleware) {
+    return middleware;
+  } else {
+    internalEvent = middleware;
   }
 
   let isExternalRewrite = false;

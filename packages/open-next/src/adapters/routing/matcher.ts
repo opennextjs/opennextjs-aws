@@ -133,6 +133,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   }
 
   const queryString = urlQueryString ? `?${urlQueryString}` : "";
+  console.log("queryString", queryString);
 
   return {
     internalEvent: {
