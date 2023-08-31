@@ -74,7 +74,7 @@ export async function handler(
       : formatAPIGatewayFailoverResponse();
   }
 
-  const preprocessResult = processInternalEvent(internalEvent);
+  const preprocessResult = await processInternalEvent(internalEvent);
   if ("type" in preprocessResult) {
     return convertTo(preprocessResult);
   } else {

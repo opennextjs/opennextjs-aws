@@ -54,6 +54,7 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
 
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
     const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    console.log("newPath", newPath);
     query.__nextDataReq = "1";
     const urlQuery: Record<string, string> = {};
     Object.keys(query).forEach((k) => {

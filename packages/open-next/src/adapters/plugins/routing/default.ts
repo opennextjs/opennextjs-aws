@@ -15,9 +15,9 @@ import { convertRes } from "../../routing/util";
 //#endOverride
 
 //#override processInternalEvent
-export function processInternalEvent(
+export async function processInternalEvent(
   internalEvent: InternalEvent,
-): ProcessInternalEventResult {
+): Promise<ProcessInternalEventResult> {
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,
