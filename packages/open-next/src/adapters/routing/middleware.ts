@@ -59,7 +59,13 @@ export async function handleMiddleware(
     urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
   });
 
-  const search = new URLSearchParams(urlQuery).toString();
+  const host = req.headers.host
+    ? `https://${req.headers.host}`
+    : "http://localhost:3000";
+  const initialUrl = new URL(rawPath, host);
+  initialUrl.search = new URLSearchParams(urlQuery).toString();
+  const url = initialUrl.toString();
+
   const result = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",
@@ -73,7 +79,7 @@ export async function handleMiddleware(
         i18n: config.i18n,
         trailingSlash: config.trailingSlash,
       },
-      url: `http://localhost:3000${rawPath}?${search || ""}`, // internal host
+      url,
       body: getCloneableBody(req),
       signal: signalFromNodeResponse(res),
     },
