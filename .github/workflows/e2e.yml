@@ -17,6 +17,8 @@ permissions:
   contents: read # This is required for actions/checkout
 
 jobs:
+  # Checks the latest Nextjs Version, if it's not been tested before, it will
+  # Continue to the next job where it does the actual Playwright tests
   check_next_version:
     runs-on: ubuntu-latest
 
@@ -59,9 +61,11 @@ jobs:
       previousNextVersion: ${{ steps.get_latest_version.outputs.LATEST_VERSION }}
       cacheKey: ${{ steps.cache-previous.outputs.cache-primary-key }}
 
+  # If the event is push (merged and pushed into main) or if 
+  # the latest Nextjs version hasn't been tested, run the Playwright tests
   e2e:
     needs: check_next_version
-    if: needs.check_next_version.outputs.skip != 'true'
+    if: github.event_name == 'push' || needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
 
@@ -115,9 +119,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      # Build all the packages
+      # Build only the open-next package + its monorepo dependencies
       - name: Build
-        run: pnpm run build
+        run: pnpm --filter open-next... run build
 
       # Deploy e2e stage
       - name: Deploy NextjsSite
