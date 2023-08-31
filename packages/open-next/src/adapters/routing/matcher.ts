@@ -99,12 +99,6 @@ export function handleRewrites<T extends RewriteDefinition>(
       checkHas(matcher, route.missing, true),
   );
 
-  const urlQuery: Record<string, string> = {};
-  Object.keys(query).forEach((k) => {
-    const v = query[k];
-    urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-  });
-
   const urlQueryString = new URLSearchParams(convertQuery(query)).toString();
   let rewrittenUrl = rawPath;
   const isExternalRewrite = isExternal(rewrite?.destination);
@@ -133,7 +127,6 @@ export function handleRewrites<T extends RewriteDefinition>(
   }
 
   const queryString = urlQueryString ? `?${urlQueryString}` : "";
-  console.log("queryString", queryString);
 
   return {
     internalEvent: {
@@ -162,4 +155,28 @@ export function handleRedirects(
       isBase64Encoded: false,
     };
   }
+}
+
+export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
+  const { rawPath, query } = internalEvent;
+  const dataPattern = `/_next/data/${buildId}`;
+
+  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
+    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    query.__nextDataReq = "1";
+    const urlQuery: Record<string, string> = {};
+    Object.keys(query).forEach((k) => {
+      const v = query[k];
+      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
+    });
+    return {
+      ...internalEvent,
+      rawPath: newPath,
+      query,
+      url: `${newPath}${
+        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
+      }`,
+    };
+  }
+  return internalEvent;
 }

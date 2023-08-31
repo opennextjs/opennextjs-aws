@@ -156,7 +156,7 @@ export async function handleMiddleware(
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,
     method: internalEvent.method,
-    query: {},
+    query: internalEvent.query,
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
   };

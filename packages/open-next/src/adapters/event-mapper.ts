@@ -48,34 +48,8 @@ export function isCloudFrontRequestEvent(
   return event.Records !== undefined;
 }
 
-export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
-  const { rawPath, query } = internalEvent;
-  const dataPattern = `/_next/data/${buildId}`;
-
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
-    console.log("newPath", newPath);
-    query.__nextDataReq = "1";
-    const urlQuery: Record<string, string> = {};
-    Object.keys(query).forEach((k) => {
-      const v = query[k];
-      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-    });
-    return {
-      ...internalEvent,
-      rawPath: newPath,
-      query,
-      url: `${newPath}${
-        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-      }`,
-    };
-  }
-  return internalEvent;
-}
-
 export function convertFrom(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
-  buildId: string,
 ): InternalEvent {
   let internalEvent: InternalEvent;
   if (isCloudFrontRequestEvent(event)) {
@@ -86,8 +60,8 @@ export function convertFrom(
     internalEvent = convertFromAPIGatewayProxyEvent(event);
   } else throw new Error("Unsupported event type");
 
-  // return internalEvent;
-  return fixDataPage(internalEvent, buildId);
+  return internalEvent;
+  // return fixDataPage(internalEvent, buildId);
 }
 
 export function convertTo(

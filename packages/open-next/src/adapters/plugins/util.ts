@@ -4,7 +4,6 @@ import path from "node:path";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
 
-import { InternalEvent } from "../event-mapper.js";
 import { debug } from "../logger.js";
 import { MiddlewareManifest } from "../next-types.js";
 import {
@@ -98,27 +97,3 @@ export function setNextjsPrebundledReact(rawPath: string) {
   process.env.__NEXT_PRIVATE_PREBUNDLED_REACT = undefined;
 }
 //#endOverride
-
-export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
-  const { rawPath, query } = internalEvent;
-  const dataPattern = `/_next/data/${buildId}`;
-
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
-    query.__nextDataReq = "1";
-    const urlQuery: Record<string, string> = {};
-    Object.keys(query).forEach((k) => {
-      const v = query[k];
-      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-    });
-    return {
-      ...internalEvent,
-      rawPath: newPath,
-      query,
-      url: `${newPath}${
-        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-      }`,
-    };
-  }
-  return internalEvent;
-}
