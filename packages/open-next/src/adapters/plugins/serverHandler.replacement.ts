@@ -6,6 +6,7 @@ import type { Options, PluginHandler } from "../next-types.js";
 import { IncomingMessage } from "../request.js";
 import { ServerResponse } from "../response.js";
 import { loadConfig } from "../util.js";
+import { proxyRequest } from "./routing/util.js";
 import {
   getMiddlewareMatch,
   loadMiddlewareManifest,
@@ -40,11 +41,16 @@ export const handler: PluginHandler = async (
   const { rawPath } = internalEvent;
 
   // Middleware
+  // TODO: handle external rewrites in middleware
   const ended = await handleMiddleware(req, res, internalEvent);
   if (ended) return;
-  setNextjsPrebundledReact(rawPath);
-  // Next Server
-  return requestHandler(req, res);
+  if (options.isExternalRewrite) {
+    return proxyRequest(req, res);
+  } else {
+    setNextjsPrebundledReact(rawPath);
+    // Next Server
+    return requestHandler(req, res);
+  }
 };
 
 // NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.

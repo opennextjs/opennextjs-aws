@@ -8,9 +8,12 @@ import type {
   CloudFrontRequestEvent,
 } from "aws-lambda";
 
-import { isBinaryContentType } from "./binary.js";
-import { convertFrom, convertTo } from "./event-mapper.js";
-import { awsLogger, debug, error } from "./logger.js";
+import { convertFrom, convertTo, InternalEvent } from "./event-mapper.js";
+import { debug, error } from "./logger.js";
+import {
+  postProcessResponse,
+  processInternalEvent,
+} from "./plugins/routing/default.js";
 import { handler as serverHandler } from "./plugins/serverHandler.js";
 import type { RouteDefinition } from "./next-types.js";
 import type { RewriteMatcher } from "./next-types.js";
@@ -202,6 +205,7 @@ async function processRequest(
   req: IncomingMessage,
   res: ServerResponse,
   internalEvent: InternalEvent,
+  isExternalRewrite?: boolean,
 ) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
@@ -211,7 +215,11 @@ async function processRequest(
   try {
     // `serverHandler` is replaced at build time depending on user's
     // nextjs version to patch Nextjs 13.4.x and future breaking changes.
-    await serverHandler(req, res, { internalEvent, buildId });
+    await serverHandler(req, res, {
+      internalEvent,
+      buildId,
+      isExternalRewrite,
+    });
   } catch (e: any) {
     error("NextJS request failed.", e);
 
