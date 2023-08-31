@@ -75,7 +75,7 @@ export async function handler(
   }
 
   // Parse Lambda event and create Next.js request
-  const internalEvent = convertFrom(event, buildId);
+  const internalEvent = convertFrom(event);
 
   // WORKAROUND: Set `x-forwarded-host` header (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-x-forwarded-host-header-aws-specific
   if (internalEvent.headers["x-forwarded-host"]) {

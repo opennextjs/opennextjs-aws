@@ -9,10 +9,11 @@ import { IncomingMessage } from "../../request";
 import { ServerResponse } from "../../response";
 import {
   addNextConfigHeaders,
+  fixDataPage,
   handleRedirects,
   handleRewrites,
 } from "../../routing/matcher";
-import { loadConfigHeaders, loadRoutesManifest } from "../../util";
+import { loadBuildId, loadConfigHeaders, loadRoutesManifest } from "../../util";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
@@ -23,6 +24,7 @@ import { convertRes } from "../../routing/util";
 import { handleMiddleware } from "../../routing/middleware";
 
 const NEXT_DIR = path.join(__dirname, ".next");
+const buildId = loadBuildId(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const configHeaders = loadConfigHeaders(NEXT_DIR);
 //#endOverride
@@ -33,7 +35,7 @@ export async function processInternalEvent(
 ): Promise<ProcessInternalEventResult> {
   addNextConfigHeaders(event, event.headers, configHeaders);
 
-  let internalEvent = event;
+  let internalEvent = fixDataPage(event, buildId);
 
   const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {

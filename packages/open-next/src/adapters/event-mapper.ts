@@ -74,7 +74,6 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
 
 export function convertFrom(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
-  buildId: string,
 ): InternalEvent {
   let internalEvent: InternalEvent;
   if (isCloudFrontRequestEvent(event)) {
@@ -85,8 +84,8 @@ export function convertFrom(
     internalEvent = convertFromAPIGatewayProxyEvent(event);
   } else throw new Error("Unsupported event type");
 
-  // return internalEvent;
-  return fixDataPage(internalEvent, buildId);
+  return internalEvent;
+  // return fixDataPage(internalEvent, buildId);
 }
 
 export function convertTo(
