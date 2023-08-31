@@ -17,6 +17,7 @@ export default function App({ Component, pageProps }: AppProps) {
         }
       `}</style>
       <Layout>
+        {/* @ts-ignore */}
         <Component {...pageProps} />
       </Layout>
     </>

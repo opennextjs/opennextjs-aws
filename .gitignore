@@ -16,3 +16,13 @@ docs/out/
 
 # typescript
 next-env.d.ts
+
+.turbo
+# Tests
+tests-unit/coverage
+test-results
+
+.sst/
+.sst.config*
+.next/
+.open-next/

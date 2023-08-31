@@ -1,0 +1,158 @@
+name: E2E Tests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  push:
+    branches:
+      - main
+
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  PLAYWRIGHT_BROWSERS_PATH: 0
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read # This is required for actions/checkout
+
+jobs:
+  check_next_version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get Latest Next Version
+        id: get_latest_version
+        run: |
+          latest_version=$(curl -s https://api.github.com/repos/vercel/next.js/releases/latest | jq -r '.tag_name')
+          echo "Latest version: $latest_version"
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
+          echo "LATEST_VERSION=$latest_version" >> $GITHUB_OUTPUT
+
+      - name: Restore Cache Previous Version
+        id: cache-previous
+        uses: actions/cache/restore@v3
+        with:
+          path: previous_version.txt
+          key: ${{ runner.os }}-previous-${{ steps.get_latest_version.outputs.LATEST_VERSION }}
+
+      - name: Compare Versions
+        id: compare_versions
+        run: |
+          latest_version=$LATEST_VERSION
+          if [ -f previous_version.txt ]; then
+            previous_version=$(cat previous_version.txt)
+            echo "pv: $previous_version"
+          else
+            previous_version=""
+          fi
+          
+          if [ "$latest_version" != "$previous_version" ]; then
+            echo "Versions are different. Continuing the pipeline."
+          else
+            echo "Versions are the same. Exiting with success."
+            echo "SKIP=true" >> $GITHUB_OUTPUT
+          fi
+
+    outputs:
+      skip: ${{ steps.compare_versions.outputs.SKIP }}
+      previousNextVersion: ${{ steps.get_latest_version.outputs.LATEST_VERSION }}
+      cacheKey: ${{ steps.cache-previous.outputs.cache-primary-key }}
+
+  e2e:
+    needs: check_next_version
+    if: needs.check_next_version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Set up NodeJS v18
+        uses: actions/setup-node@v3
+        with:
+          cache: pnpm # cache pnpm store
+          node-version: 18.16.1
+
+      - name: Install packages
+        run: pnpm install
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(npm ls @playwright/test | grep @playwright | sed 's/.*@//' | sed 's/ .*//' )"
+
+      - name: Cache Playwright
+        uses: actions/cache@v3
+        id: playwright-cache
+        with:
+          path: "~/.cache/ms-playwright"
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install chromium --with-deps
+
+      # Cache turbo runs
+      - name: Cache Turbo
+        uses: actions/cache@v3
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      # Build all the packages
+      - name: Build
+        run: pnpm run build
+
+      # Deploy e2e stage
+      - name: Deploy NextjsSite
+        working-directory: examples/sst
+        run: npx sst deploy --stage e2e
+
+      # Load app urls from .sst/output.json file
+      - name: Set environments
+        working-directory: examples/sst
+        run: |
+          APP_ROUTER_URL=$(jq -r '.["e2e-example-AppRouter"].url' .sst/outputs.json)
+          echo "APP_ROUTER_URL=$APP_ROUTER_URL" >> $GITHUB_ENV
+          PAGES_ROUTER_URL=$(jq -r '.["e2e-example-PagesRouter"].url' .sst/outputs.json)
+          echo "PAGES_ROUTER_URL=$PAGES_ROUTER_URL" >> $GITHUB_ENV
+          APP_PAGES_ROUTER_URL=$(jq -r '.["e2e-example-AppPagesRouter"].url' .sst/outputs.json)
+          echo "APP_PAGES_ROUTER_URL=$APP_PAGES_ROUTER_URL" >> $GITHUB_ENV
+
+      - name: Run e2e Test
+        run: npm run e2e:test
+
+      - name: Archive
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: sst
+          path: |
+            .sst/
+            .next/
+
+      - name: Store Latest Version
+        run: |
+          echo "${{ needs.check_next_version.outputs.previousNextVersion }}" > previous_version.txt
+      
+      - name: Cache Previous Version
+        uses: actions/cache/save@v3
+        with:
+          path: previous_version.txt
+          key: ${{ needs.check_next_version.outputs.cacheKey }}

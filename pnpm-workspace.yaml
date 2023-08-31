@@ -1,4 +1,6 @@
 packages:
   - 'packages/*'
   - 'example'
+  - 'example_sst'
   - 'docs'
+  - 'examples/*'

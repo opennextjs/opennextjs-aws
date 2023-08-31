@@ -34,9 +34,9 @@
     "README.md"
   ],
   "dependencies": {
-    "@aws-sdk/client-lambda": "^3.312.0",
-    "@aws-sdk/client-s3": "^3.312.0",
-    "@aws-sdk/client-sqs": "^3.312.0",
+    "@aws-sdk/client-lambda": "^3.398.0",
+    "@aws-sdk/client-s3": "^3.398.0",
+    "@aws-sdk/client-sqs": "^3.398.0",
     "@node-minify/core": "^8.0.6",
     "@node-minify/terser": "^8.0.6",
     "@tsconfig/node18": "^1.0.1",
