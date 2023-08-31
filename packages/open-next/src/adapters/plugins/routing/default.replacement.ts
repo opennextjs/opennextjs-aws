@@ -1,22 +1,25 @@
+/* eslint-disable simple-import-sort/imports */
+import type { PostProcessOptions, ProcessInternalEventResult } from "./types";
+import type { InternalEvent, InternalResult } from "../../event-mapper";
 //#override imports
 import path from "node:path";
 
-import { isBinaryContentType } from "../../binary";
-import { InternalEvent, InternalResult } from "../../event-mapper";
 import { debug } from "../../logger";
 import { IncomingMessage } from "../../request";
 import { ServerResponse } from "../../response";
-import { loadConfigHeaders, loadRoutesManifest } from "../../util";
-import type { PostProcessOptions, ProcessInternalEventResult } from "./types";
 import {
   addNextConfigHeaders,
+  handleRedirects,
+  handleRewrites,
+} from "../../routing/matcher";
+import { loadConfigHeaders, loadRoutesManifest } from "../../util";
+import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
   fixSWRCacheHeader,
-  handleRedirects,
-  handleRewrites,
   revalidateIfRequired,
 } from "./util";
+import { convertRes } from "../../routing/util";
 
 const NEXT_DIR = path.join(__dirname, ".next");
 const routesManifest = loadRoutesManifest(NEXT_DIR);
@@ -25,14 +28,14 @@ const configHeaders = loadConfigHeaders(NEXT_DIR);
 
 //#override processInternalEvent
 export function processInternalEvent(
-  internalEvent: InternalEvent,
+  event: InternalEvent,
   //@ts-expect-error - This is a hack to get around the fact that we are not using the correct types for the response
 ): ProcessInternalEventResult<IncomingMessage, ServerResponse> {
-  addNextConfigHeaders(internalEvent.url, internalEvent.headers, configHeaders);
+  addNextConfigHeaders(event, event.headers, configHeaders);
 
-  let _internalEvent = internalEvent;
+  let internalEvent = event;
 
-  const redirect = handleRedirects(_internalEvent, routesManifest.redirects);
+  const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {
     return redirect;
   }
@@ -40,55 +43,55 @@ export function processInternalEvent(
   let isExternalRewrite = false;
   // First rewrite to be applied
   const beforeRewrites = handleRewrites(
-    _internalEvent,
+    internalEvent,
     routesManifest.rewrites.beforeFiles,
   );
-  _internalEvent = beforeRewrites.internalEvent;
+  internalEvent = beforeRewrites.internalEvent;
   isExternalRewrite = beforeRewrites.isExternalRewrite;
 
   const isStaticRoute = routesManifest.routes.static.some((route) =>
-    new RegExp(route.regex).test(internalEvent.rawPath),
+    new RegExp(route.regex).test(event.rawPath),
   );
 
   if (!isStaticRoute && !isExternalRewrite) {
     // Second rewrite to be applied
     const afterRewrites = handleRewrites(
-      _internalEvent,
+      internalEvent,
       routesManifest.rewrites.afterFiles,
     );
-    _internalEvent = afterRewrites.internalEvent;
+    internalEvent = afterRewrites.internalEvent;
     isExternalRewrite = afterRewrites.isExternalRewrite;
   }
 
   const isDynamicRoute = routesManifest.routes.dynamic.some((route) =>
-    new RegExp(route.regex).test(internalEvent.rawPath),
+    new RegExp(route.regex).test(event.rawPath),
   );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
-      _internalEvent,
+      internalEvent,
       routesManifest.rewrites.fallback,
     );
-    _internalEvent = fallbackRewrites.internalEvent;
+    internalEvent = fallbackRewrites.internalEvent;
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
   }
 
   const reqProps = {
-    method: _internalEvent.method,
-    url: _internalEvent.url,
+    method: internalEvent.method,
+    url: internalEvent.url,
     //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
     // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
     // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
-    headers: { ..._internalEvent.headers, purpose: "prefetch" },
-    body: _internalEvent.body,
-    remoteAddress: _internalEvent.remoteAddress,
+    headers: { ...internalEvent.headers, purpose: "prefetch" },
+    body: internalEvent.body,
+    remoteAddress: internalEvent.remoteAddress,
   };
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({ method: reqProps.method });
-  return { internalEvent: _internalEvent, req, res, isExternalRewrite };
+  return { internalEvent: internalEvent, req, res, isExternalRewrite };
 }
 //#endOverride
 
@@ -99,22 +102,13 @@ export async function postProcessResponse({
   res,
   isExternalRewrite,
 }: PostProcessOptions): Promise<InternalResult> {
-  // Format Next.js response to Lambda response
-  const statusCode = res.statusCode || 200;
-  const headers = ServerResponse.headers(res);
-  const isBase64Encoded = isBinaryContentType(
-    Array.isArray(headers["content-type"])
-      ? headers["content-type"][0]
-      : headers["content-type"],
-  );
-  const encoding = isBase64Encoded ? "base64" : "utf8";
-  const body = ServerResponse.body(res).toString(encoding);
+  const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   if (!isExternalRewrite) {
     // Load the headers in next.config.js to the response.
-    addNextConfigHeaders(internalEvent.url, headers);
+    addNextConfigHeaders(internalEvent, headers);
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);

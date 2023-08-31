@@ -83,16 +83,11 @@ export interface DataRouteDefinition {
   routeKeys?: string;
 }
 
-export interface RewriteMatcher {
-  type: "header" | "cookie" | "query" | "host";
-  key: string;
-  value?: string;
-}
 export interface RewriteDefinition {
   source: string;
   destination: string;
-  has?: RewriteMatcher[];
-  missing?: RewriteMatcher[];
+  has?: RouteHas[];
+  missing?: RouteHas[];
   regex: string;
 }
 
@@ -137,6 +132,7 @@ export interface MiddlewareManifest {
 export type Options = {
   internalEvent: InternalEvent;
   buildId: string;
+  isExternalRewrite?: boolean;
 };
 export interface PluginHandler {
   (

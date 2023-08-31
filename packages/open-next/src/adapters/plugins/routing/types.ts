@@ -1,16 +1,13 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-
 import type { InternalEvent, InternalResult } from "../../event-mapper";
+import { IncomingMessage } from "../../request";
+import { ServerResponse } from "../../response";
 
-export type ProcessInternalEventResult<
-  Req extends IncomingMessage,
-  Res extends ServerResponse,
-> =
+export type ProcessInternalEventResult =
   | {
       internalEvent: InternalEvent;
-      req: Req;
-      res: Res;
-      isExternalRewrite?: boolean;
+      req: IncomingMessage;
+      res: ServerResponse;
+      isExternalRewrite: boolean;
     }
   | InternalResult;
 
