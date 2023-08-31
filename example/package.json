@@ -20,8 +20,8 @@
     "swr": "^1.0.1"
   },
   "devDependencies": {
-    "aws-cdk-lib": "2.91.0",
-    "constructs": "10.2.69",
-    "sst": "2.24.20"
+    "aws-cdk-lib": "2.84.0",
+    "constructs": "10.1.156",
+    "sst": "2.16.3"
   }
 }
