@@ -1,5 +1,5 @@
 import Nav from "@example/shared/components/Nav";
-import { Inter } from "@next/font/google";
+import { Inter } from "next/font/google";
 import Head from "next/head";
 
 const inter = Inter({ subsets: ["latin"] });
