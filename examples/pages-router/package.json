@@ -16,10 +16,10 @@
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.15",
-    "next": "13.4.12",
+    "next": "latest",
     "postcss": "8.4.27",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
+    "react": "latest",
+    "react-dom": "latest",
     "tailwindcss": "3.3.3",
     "typescript": "^4.9.3"
   }

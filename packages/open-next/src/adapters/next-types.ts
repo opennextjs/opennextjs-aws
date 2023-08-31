@@ -105,6 +105,7 @@ export interface RoutesManifest {
     afterFiles: RewriteDefinition[];
     fallback: RewriteDefinition[];
   };
+  redirects: RedirectDefinition[];
   headers?: Header[];
 }
 

@@ -4,11 +4,11 @@ import { ServerResponse } from "../../response";
 
 export type ProcessInternalEventResult =
   | {
-      internalEvent: InternalEvent;
-      req: IncomingMessage;
-      res: ServerResponse;
-      isExternalRewrite: boolean;
-    }
+    internalEvent: InternalEvent;
+    req: IncomingMessage;
+    res: ServerResponse;
+    isExternalRewrite: boolean;
+  }
   | InternalResult;
 
 export interface PostProcessOptions {

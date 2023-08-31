@@ -22,7 +22,7 @@ export type InternalEvent = {
   readonly remoteAddress: string;
 };
 
-type InternalResult = {
+export type InternalResult = {
   readonly type: "v1" | "v2" | "cf";
   statusCode: number;
   headers: Record<string, string | string[]>;
@@ -46,30 +46,6 @@ export function isCloudFrontRequestEvent(
   event: any,
 ): event is CloudFrontRequestEvent {
   return event.Records !== undefined;
-}
-
-export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
-  const { rawPath, query } = internalEvent;
-  const dataPattern = `/_next/data/${buildId}`;
-
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
-    console.log("newPath", newPath);
-    query.__nextDataReq = "1";
-    const urlQuery: Record<string, string> = {};
-    Object.keys(query).forEach((k) => {
-      const v = query[k];
-      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-    });
-    return {
-      ...internalEvent,
-      rawPath: newPath,
-      query,
-      url: `${newPath}${query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-        }`,
-    };
-  }
-  return internalEvent;
 }
 
 export function convertFrom(
@@ -112,10 +88,6 @@ function removeUndefinedFromQuery(
   }
   return newQuery;
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> dd5d60f (fix: handle rewrites internally)
 function convertFromAPIGatewayProxyEvent(
   event: APIGatewayProxyEvent,
 ): InternalEvent {

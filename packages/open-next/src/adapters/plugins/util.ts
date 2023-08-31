@@ -68,10 +68,16 @@ export function loadMiddlewareManifest(nextDir: string) {
   return JSON.parse(json) as MiddlewareManifest;
 }
 
+//#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
-  const route = routesManifest.find((route) =>
+  const routes = [
+    ...routesManifest.routes.static,
+    ...routesManifest.routes.dynamic,
+  ];
+
+  const route = routes.find((route) =>
     new RegExp(route.regex).test(rawPath ?? ""),
   );
 
