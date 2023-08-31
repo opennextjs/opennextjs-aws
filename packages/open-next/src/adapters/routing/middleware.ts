@@ -60,7 +60,7 @@ export async function handleMiddleware(
   });
 
   const host = req.headers.host
-    ? "http://localhost:3000"
+    ? `https://${req.headers.host}`
     : "http://localhost:3000";
   const initialUrl = new URL(rawPath, host);
   initialUrl.search = new URLSearchParams(urlQuery).toString();
@@ -113,6 +113,7 @@ export async function handleMiddleware(
     })
     Nextjs will set `x-middleware-override-headers` as a comma separated list of keys.
     All the keys will be prefixed with `x-middleware-request-<key>`
+
     We can delete `x-middleware-override-headers` and check if the key starts with
     x-middleware-request- to set the req headers
   */
