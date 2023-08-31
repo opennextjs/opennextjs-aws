@@ -2,6 +2,7 @@
 const nextConfig = {
   transpilePackages: ["@example/shared"],
   reactStrictMode: true,
+  output: "standalone",
   outputFileTracing: "../sst",
 };
 

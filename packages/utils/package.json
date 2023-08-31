@@ -1,6 +1,7 @@
 {
   "name": "@open-next/utils",
   "version": "0.0.0",
+  "private": true,
   "exports": {
     ".": "./dist/index.js",
     "./binary": "./dist/binary.js",
