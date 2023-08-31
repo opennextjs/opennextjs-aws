@@ -409,19 +409,19 @@ async function createServerBundle(monorepoRoot: string) {
   const plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
-        openNextPlugin({
-          target: /plugins\/serverHandler\.js/g,
-          replacements: ["./serverHandler.replacement.js"],
-        }),
-        openNextPlugin({
-          target: /plugins\/util\.js/g,
-          replacements: ["./util.replacement.js"],
-        }),
-        openNextPlugin({
-          target: /plugins\/routing\/default\.js/g,
-          replacements: ["./default.replacement.js"],
-        }),
-      ]
+          openNextPlugin({
+            target: /plugins\/serverHandler\.js/g,
+            replacements: ["./serverHandler.replacement.js"],
+          }),
+          openNextPlugin({
+            target: /plugins\/util\.js/g,
+            replacements: ["./util.replacement.js"],
+          }),
+          openNextPlugin({
+            target: /plugins\/routing\/default\.js/g,
+            replacements: ["./default.replacement.js"],
+          }),
+        ]
       : undefined;
 
   if (plugins) {
@@ -596,7 +596,8 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -625,7 +626,8 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => console.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -691,7 +693,7 @@ function getNextVersion(appPath: string) {
 }
 
 function compareSemver(v1: string, v2: string): number {
-  if (v1 === 'latest') return 1;
+  if (v1 === "latest") return 1;
   if (/^[^\d]/.test(v1)) {
     v1 = v1.substring(1);
   }

@@ -31,15 +31,15 @@ type ImageConfig = Partial<ImageConfigComplete>;
 
 export type RouteHas =
   | {
-    type: "header" | "query" | "cookie";
-    key: string;
-    value?: string;
-  }
+      type: "header" | "query" | "cookie";
+      key: string;
+      value?: string;
+    }
   | {
-    type: "host";
-    key?: undefined;
-    value: string;
-  };
+      type: "host";
+      key?: undefined;
+      value: string;
+    };
 export type Rewrite = {
   source: string;
   destination: string;
