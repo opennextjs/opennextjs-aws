@@ -18,10 +18,11 @@ export type InternalEvent = {
   readonly body: Buffer;
   readonly headers: Record<string, string>;
   readonly query: Record<string, string | string[]>;
+  readonly cookies: Record<string, string>;
   readonly remoteAddress: string;
 };
 
-type InternalResult = {
+export type InternalResult = {
   readonly type: "v1" | "v2" | "cf";
   statusCode: number;
   headers: Record<string, string | string[]>;
@@ -127,6 +128,11 @@ function convertFromAPIGatewayProxyEvent(
     query: removeUndefinedFromQuery(
       event.multiValueQueryStringParameters ?? {},
     ),
+    cookies:
+      event.multiValueHeaders?.cookie?.reduce((acc, cur) => {
+        const [key, value] = cur.split("=");
+        return { ...acc, [key]: value };
+      }, {}) ?? {},
   };
 }
 
@@ -143,6 +149,11 @@ function convertFromAPIGatewayProxyEventV2(
     headers: normalizeAPIGatewayProxyEventV2Headers(event),
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(event.queryStringParameters ?? {}),
+    cookies:
+      event.cookies?.reduce((acc, cur) => {
+        const [key, value] = cur.split("=");
+        return { ...acc, [key]: value };
+      }, {}) ?? {},
   };
 }
 
@@ -162,12 +173,16 @@ function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
-    query: querystring.split("&").reduce((acc, cur) => {
-      const [key, value] = cur.split("=");
-      return {
+    query: querystring.split("&").reduce(
+      (acc, cur) => ({
         ...acc,
-        [key]: value,
-      };
+        [cur.split("=")[0]]: cur.split("=")[1],
+      }),
+      {},
+    ),
+    cookies: headers.cookie.reduce((acc, cur) => {
+      const { key, value } = cur;
+      return { ...acc, [key ?? ""]: value };
     }, {}),
   };
 }

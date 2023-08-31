@@ -74,6 +74,7 @@ export default function openNextPlugin({
             }
           }),
         );
+        console.log(contents);
 
         return {
           contents,
