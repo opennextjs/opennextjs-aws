@@ -22,18 +22,21 @@ test("Incremental Static Regeneration", async ({ page }) => {
   } while (time !== newTime);
   await page.reload();
 
+  await wait(1000);
   el = page.getByText("ISR");
-  newTime = await el.textContent();
+  const midTime = await el.textContent();
+  // Expect that the time is still stale
+  expect(midTime).toEqual(newTime);
 
-  // Wait 10 seconds for ISR to regenerate time
-  await wait(15000);
-  await page.reload();
-  await wait(5000);
-  await page.reload();
-  await wait(5000);
-  await page.reload();
-  el = page.getByText("ISR");
-  newTime = await el.textContent();
+  // Wait 10 + 1 seconds for ISR to regenerate time
+  await wait(11000);
+  let finalTime = newTime;
+  do {
+    await wait(2000);
+    el = page.getByText("ISR");
+    finalTime = await el.textContent();
+    await page.reload();
+  } while (newTime === finalTime);
 
-  expect(time).not.toEqual(newTime);
+  expect(newTime).not.toEqual(finalTime);
 });
