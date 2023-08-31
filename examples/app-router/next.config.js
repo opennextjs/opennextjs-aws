@@ -3,6 +3,7 @@ const nextConfig = {
   poweredByHeader: false,
   output: "standalone",
   transpilePackages: ["@example/shared"],
+  outputFileTracing: "../sst",
   experimental: {
     serverActions: true,
   },
