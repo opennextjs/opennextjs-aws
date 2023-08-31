@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("API call from client", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "/API" }).click();
+  await page.locator('[href="/api"]').click();
 
   await page.waitForURL("/api");
 

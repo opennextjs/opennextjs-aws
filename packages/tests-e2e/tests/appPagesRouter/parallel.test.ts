@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("Parallel routes", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: "Parallel" }).click();
+  await page.locator('[href="/parallel"]').click();
 
   await page.waitForURL(`/parallel`);
 

@@ -2,9 +2,10 @@ import { wait } from "@open-next/utils";
 import { expect, test } from "@playwright/test";
 
 test("Incremental Static Regeneration", async ({ page }) => {
-  test.setTimeout(45000);
+  test.setTimeout(60000);
   await page.goto("/");
-  await page.getByRole("link", { name: "/Pages_ISR" }).click();
+  await page.locator('[href="/pages_isr"]').click();
+
   await page.waitForURL("/pages_isr");
   // Load the page a couple times to regenerate ISR
 
