@@ -31,7 +31,7 @@ export async function processInternalEvent(
     remoteAddress: internalEvent.remoteAddress,
   };
   const req = new IncomingMessage(reqProps);
-  const res = new ServerResponse({ method: reqProps.method });
+  const res = new ServerResponse({ method: reqProps.method, headers: {} });
   return { internalEvent, req, res, isExternalRewrite: false };
 }
 //#endOverride

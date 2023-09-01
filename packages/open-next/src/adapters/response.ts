@@ -89,11 +89,11 @@ export class ServerResponse extends http.ServerResponse {
     return super.writeHead(statusCode, reason, obj);
   }
 
-  constructor({ method }) {
-    super({ method });
+  constructor({ method, headers }) {
+    super({ method, headers });
 
     this[BODY] = [];
-    this[HEADERS] = {};
+    this[HEADERS] = headers || {};
 
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;

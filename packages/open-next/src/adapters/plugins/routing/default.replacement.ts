@@ -43,9 +43,11 @@ export async function processInternalEvent(
   }
 
   const middleware = await handleMiddleware(internalEvent);
+  let middlewareResponseHeaders: Record<string, string | string[]> = {};
   if ("statusCode" in middleware) {
     return middleware;
   } else {
+    middlewareResponseHeaders = middleware.responseHeaders || {};
     internalEvent = middleware;
   }
 
@@ -99,7 +101,11 @@ export async function processInternalEvent(
   };
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
-  const res = new ServerResponse({ method: reqProps.method });
+  const res = new ServerResponse({
+    method: reqProps.method,
+    headers: middlewareResponseHeaders,
+  });
+
   return { internalEvent: internalEvent, req, res, isExternalRewrite };
 }
 //#endOverride
