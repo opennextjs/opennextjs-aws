@@ -255,6 +255,9 @@ importers:
       '@node-minify/terser':
         specifier: ^8.0.6
         version: 8.0.6
+      '@open-next/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@tsconfig/node18':
         specifier: ^1.0.1
         version: 1.0.3
@@ -456,6 +459,9 @@ packages:
   /@aws-cdk/cloud-assembly-schema@2.84.0:
     resolution: {integrity: sha512-TLQMexYkev8T1WSevwCibW4Dc9bvm89MUOdv1rJykCg4Vskmmw9WkWBRxW8S4nLgRAsQ0Uw8503sg5FIGjQ7rQ==}
     engines: {node: '>= 14.15.0'}
+    dependencies:
+      jsonschema: 1.4.1
+      semver: 7.5.4
     dev: true
     bundledDependencies:
       - jsonschema
@@ -500,6 +506,7 @@ packages:
       '@aws-cdk/cloud-assembly-schema': 2.84.0
     dependencies:
       '@aws-cdk/cloud-assembly-schema': 2.84.0
+      semver: 7.5.4
     dev: true
     bundledDependencies:
       - semver
@@ -4553,7 +4560,17 @@ packages:
       '@aws-cdk/asset-awscli-v1': 2.2.200
       '@aws-cdk/asset-kubectl-v20': 2.1.2
       '@aws-cdk/asset-node-proxy-agent-v5': 2.0.166
+      '@balena/dockerignore': 1.0.2
+      case: 1.6.3
       constructs: 10.1.156
+      fs-extra: 11.1.1
+      ignore: 5.2.4
+      jsonschema: 1.4.1
+      minimatch: 3.1.2
+      punycode: 2.3.0
+      semver: 7.5.4
+      table: 6.8.1
+      yaml: 1.10.2
     dev: true
     bundledDependencies:
       - '@balena/dockerignore'
