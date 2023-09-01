@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 /**
  * Tests that query params are available in middleware and RSC
  */
-test.only("SearchQuery", async ({ page }) => {
+test("SearchQuery", async ({ page }) => {
   await page.goto("/search-query?searchParams=e2etest");
 
   let propsEl = page.getByText(`Search Params via Props: e2etest`);
