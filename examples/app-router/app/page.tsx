@@ -38,7 +38,7 @@ export default function Home() {
           Headers from middleware should be available via headers()
         </Nav>
         <Nav href={"/search-query"} title="Search Query">
-          Search Query Params
+          Search Query Params should be available in middleware
         </Nav>
       </main>
     </>
