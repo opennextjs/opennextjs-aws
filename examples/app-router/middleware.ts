@@ -20,10 +20,18 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  const rHeaders = new Headers(request.headers);
+  const requestHeaders = new Headers();
+  requestHeaders.set("request-header", "request-header");
+  requestHeaders.set(
+    "search-params",
+    `mw/${request.nextUrl.searchParams.get("searchParams") || ""}`,
+  );
+  const responseHeaders = new Headers();
+  responseHeaders.set("response-header", "response-header");
   const r = NextResponse.next({
+    headers: responseHeaders,
     request: {
-      headers: rHeaders,
+      headers: requestHeaders,
     },
   });
   return r;
