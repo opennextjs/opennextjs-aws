@@ -43,7 +43,7 @@ export async function handleMiddleware(
   if (!hasMatch) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
-  const res = new ServerResponse({ method: req.method });
+  const res = new ServerResponse({ method: req.method, headers: {} });
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
@@ -126,10 +126,11 @@ export async function handleMiddleware(
   responseHeaders.forEach((value, key) => {
     if (key.startsWith(xMiddlewareKey)) {
       const k = key.substring(xMiddlewareKey.length);
-      reqHeaders[k] = resHeaders[k] = value;
-      res.headers[k] = req.headers[k] = value;
+      reqHeaders[k] = value;
+      req.headers[k] = value;
     } else {
-      res.headers[key] = req.headers[key] = value;
+      resHeaders[key] = value;
+      res.setHeader(key, value);
     }
   });
 
