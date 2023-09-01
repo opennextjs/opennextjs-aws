@@ -1,10 +1,5 @@
 import path from "node:path";
 
-<<<<<<< HEAD
-=======
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { fixSWRCacheHeader } from "@open-next/utils";
->>>>>>> ac02bb8 (Rebase main and add unit tests)
 import type {
   APIGatewayProxyEvent,
   APIGatewayProxyEventV2,
@@ -28,15 +23,10 @@ import {
   setNodeEnv,
 } from "./util.js";
 import type { WarmerEvent, WarmerResponse } from "./warmer-function.js";
-<<<<<<< HEAD
 
 export const NEXT_DIR = path.join(__dirname, ".next");
 export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 export const config = loadConfig(NEXT_DIR);
-=======
-// Expected environment variables
-const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
->>>>>>> ac02bb8 (Rebase main and add unit tests)
 
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
 

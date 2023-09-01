@@ -11,7 +11,6 @@ describe("Utils", () => {
       expect(headers).toEqual({
         "cache-control": "maxage=69,stale-while-revalidate=11",
       });
-      console.log(headers);
     });
 
     it("Does not add swr if not exists", () => {
@@ -23,7 +22,6 @@ describe("Utils", () => {
       expect(headers).toEqual({
         "cache-control": "maxage=69",
       });
-      console.log(headers);
     });
 
     it("Sets time on swf if not defined", () => {
@@ -35,7 +33,6 @@ describe("Utils", () => {
       expect(headers).toEqual({
         "cache-control": "maxage=69,stale-while-revalidate=2592000",
       });
-      console.log(headers);
     });
   });
 });
