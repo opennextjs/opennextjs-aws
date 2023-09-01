@@ -33,7 +33,8 @@ const configHeaders = loadConfigHeaders(NEXT_DIR);
 export async function processInternalEvent(
   event: InternalEvent,
 ): Promise<ProcessInternalEventResult> {
-  addNextConfigHeaders(event, event.headers, configHeaders);
+  const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
+  debug("nextHeaders", nextHeaders);
 
   let internalEvent = fixDataPage(event, buildId);
 
@@ -103,7 +104,11 @@ export async function processInternalEvent(
   const req = new IncomingMessage(reqProps);
   const res = new ServerResponse({
     method: reqProps.method,
-    headers: middlewareResponseHeaders,
+    // Next headers should be added first in case middleware modifies headers
+    headers: {
+      ...nextHeaders,
+      ...middlewareResponseHeaders,
+    },
   });
 
   return { internalEvent: internalEvent, req, res, isExternalRewrite };
@@ -122,8 +127,6 @@ export async function postProcessResponse({
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   if (!isExternalRewrite) {
-    // Load the headers in next.config.js to the response.
-    addNextConfigHeaders(internalEvent, headers);
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);

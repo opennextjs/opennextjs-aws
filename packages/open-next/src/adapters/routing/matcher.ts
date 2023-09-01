@@ -1,4 +1,4 @@
-import { compile, match } from "path-to-regexp";
+import { compile, Match, match, PathFunction } from "path-to-regexp";
 
 import { InternalEvent, InternalResult } from "../event-mapper";
 import { debug } from "../logger";
@@ -64,26 +64,50 @@ function checkHas(
     : true;
 }
 
+function convertMatch(
+  match: Match,
+  toDestination: PathFunction,
+  destination: string,
+) {
+  if (match) {
+    const { params } = match;
+    const isUsingParams = Object.keys(params).length > 0;
+    if (isUsingParams) {
+      return toDestination(params);
+    } else {
+      return destination;
+    }
+  } else {
+    return destination;
+  }
+}
+
 export function addNextConfigHeaders(
   event: InternalEvent,
-  requestHeaders: Record<string, string | undefined>,
   configHeaders?: Header[] | undefined,
 ) {
   if (!configHeaders) return;
   const { rawPath, headers, query, cookies } = event;
   const matcher = routeHasMatcher(headers, cookies, query);
 
-  for (const { source, headers, has, missing } of configHeaders) {
+  const requestHeaders: Record<string, string> = {};
+
+  for (const { headers, has, missing, regex, source } of configHeaders) {
     if (
-      new RegExp(source).test(rawPath) &&
+      new RegExp(regex).test(rawPath) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
+      const fromSource = match(source);
+      const _match = fromSource(rawPath);
       headers.forEach((h) => {
-        requestHeaders[h.key] = h.value;
+        const key = convertMatch(_match, compile(h.key), h.key);
+        const value = convertMatch(_match, compile(h.value), h.value);
+        requestHeaders[key] = value;
       });
     }
   }
+  return requestHeaders;
 }
 
 export function handleRewrites<T extends RewriteDefinition>(

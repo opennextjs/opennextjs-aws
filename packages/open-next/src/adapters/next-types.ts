@@ -50,6 +50,7 @@ export type Rewrite = {
 };
 export type Header = {
   source: string;
+  regex: string;
   basePath?: false;
   locale?: false;
   headers: Array<{
