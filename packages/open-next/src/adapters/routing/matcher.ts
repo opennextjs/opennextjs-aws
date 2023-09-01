@@ -86,7 +86,9 @@ export function addNextConfigHeaders(
   event: InternalEvent,
   configHeaders?: Header[] | undefined,
 ) {
-  if (!configHeaders) return;
+  const addedHeaders: Record<string, string | undefined> = {};
+
+  if (!configHeaders) return addedHeaders;
   const { rawPath, headers, query, cookies } = event;
   const matcher = routeHasMatcher(headers, cookies, query);
 

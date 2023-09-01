@@ -48,8 +48,6 @@ export async function postProcessResponse({
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
   if (!isExternalRewrite) {
-    // Load the headers in next.config.js to the response.
-    // addNextConfigHeaders(internalEvent.url, headers);
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);
