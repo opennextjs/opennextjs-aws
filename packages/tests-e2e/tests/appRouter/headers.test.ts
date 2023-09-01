@@ -4,11 +4,11 @@ import { expect, test } from "@playwright/test";
  * Tests that the headers are available in RSC and response headers
  */
 test("Headers", async ({ page }) => {
-  await page.goto("/");
-  await page.locator('[href="/headers"]').click();
-  const response = await page.waitForResponse(
-    (response) => !!response.status(),
-  );
+  // Don't await here so we can wait for response in next line
+  page.goto("/headers");
+  const response = await page.waitForResponse((response) => {
+    return response.status() === 200;
+  });
 
   // Response header should be set
   const headers = response.headers();
