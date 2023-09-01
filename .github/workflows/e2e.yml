@@ -2,7 +2,7 @@ name: E2E Tests
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   push:
     branches:
       - main
@@ -11,6 +11,7 @@ env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   PLAYWRIGHT_BROWSERS_PATH: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
 permissions:
   id-token: write # This is required for requesting the JWT
@@ -48,7 +49,7 @@ jobs:
           else
             previous_version=""
           fi
-          
+
           if [ "$latest_version" != "$previous_version" ]; then
             echo "Versions are different. Continuing the pipeline."
           else
@@ -61,14 +62,13 @@ jobs:
       previousNextVersion: ${{ steps.get_latest_version.outputs.LATEST_VERSION }}
       cacheKey: ${{ steps.cache-previous.outputs.cache-primary-key }}
 
-  # If the event is push (merged and pushed into main) or if 
+  # If the event is push (merged and pushed into main) or if
   # the latest Nextjs version hasn't been tested, run the Playwright tests
   e2e:
     needs: check_next_version
     if: github.event_name == 'push' || needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -154,9 +154,52 @@ jobs:
       - name: Store Latest Version
         run: |
           echo "${{ needs.check_next_version.outputs.previousNextVersion }}" > previous_version.txt
-      
+
       - name: Cache Previous Version
         uses: actions/cache/save@v3
         with:
           path: previous_version.txt
           key: ${{ needs.check_next_version.outputs.cacheKey }}
+
+      #############################
+      # Report status to Discord
+      #############################
+      - name: Report success
+        if: success()
+        run: |
+          curl -X POST "$DISCORD_WEBHOOK" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "username": "OpenNext E2E Test",
+            "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            "embeds": [
+              {
+                "description": "Test succeeded — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
+                "color": 3061373,
+                "footer": {
+                  "text": "Woah! So cool!",
+                  "icon_url": "https://i.imgur.com/u2ENxCk.png"
+                }
+              }
+            ]
+          }'
+
+      - name: Report failure
+        if: failure()
+        run: |
+          curl -X POST "$DISCORD_WEBHOOK" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "username": "OpenNext E2E Test",
+            "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            "embeds": [
+              {
+                "description": "Test failed — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
+                "color": 14687834,
+                "footer": {
+                  "text": "Hmmm...",
+                  "icon_url": "https://i.imgur.com/QeXzqIy.png"
+                }
+              }
+            ]
+          }'
