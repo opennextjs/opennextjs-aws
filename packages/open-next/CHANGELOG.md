@@ -1,5 +1,11 @@
 # open-next
 
+## 2.0.6
+
+### Patch Changes
+
+- 67f3dcb: Support Nextjs 13.4.13+
+
 ## 2.0.5
 
 ### Patch Changes
