@@ -20,6 +20,10 @@ jobs:
         run: pnpm lint
 
       - name: Publish Pre-release to npm
-        run: pnpm release-snapshot
+        # https://github.com/changesets/action
+        uses: changesets/action@v1
+        with:
+          createGithubReleases: false
+          publish: pnpm run release-snapshot
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
