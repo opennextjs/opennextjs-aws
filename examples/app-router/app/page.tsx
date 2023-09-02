@@ -34,6 +34,12 @@ export default function Home() {
         <Nav href={"/parallel"} title="Parallel">
           Parallel routing
         </Nav>
+        <Nav href={"/headers"} title="Headers">
+          Headers from middleware should be available via headers()
+        </Nav>
+        <Nav href={"/search-query"} title="Search Query">
+          Search Query Params should be available in middleware
+        </Nav>
       </main>
     </>
   );

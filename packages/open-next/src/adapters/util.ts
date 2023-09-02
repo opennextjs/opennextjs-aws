@@ -41,8 +41,33 @@ export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
-  // Static routes take precedence over dynamic routes
-  return [...routesManifest.staticRoutes, ...routesManifest.dynamicRoutes];
+
+  const _dataRoutes = routesManifest.dataRoutes ?? [];
+  const dataRoutes = {
+    static: _dataRoutes.filter((r) => r.routeKeys === undefined),
+    dynamic: _dataRoutes.filter((r) => r.routeKeys !== undefined),
+  };
+
+  return {
+    rewrites: {
+      beforeFiles: routesManifest.rewrites.beforeFiles ?? [],
+      afterFiles: routesManifest.rewrites.afterFiles ?? [],
+      fallback: routesManifest.rewrites.fallback ?? [],
+    },
+    redirects: routesManifest.redirects ?? [],
+    routes: {
+      static: routesManifest.staticRoutes ?? [],
+      dynamic: routesManifest.dynamicRoutes ?? [],
+      data: dataRoutes,
+    },
+  };
+}
+
+export function loadConfigHeaders(nextDir: string) {
+  const filePath = path.join(nextDir, "routes-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  const routesManifest = JSON.parse(json) as RoutesManifest;
+  return routesManifest.headers;
 }
 
 export function loadAppPathsManifestKeys(nextDir: string) {
@@ -59,9 +84,35 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     string
   >;
   return Object.keys(appPathsManifest).map((key) => {
-    // Remove group route params and /page suffix
-    const cleanedKey = key.replace(/\/\(\w+\)|\/page$/g, "");
+    // Remove parallel route
+    let cleanedKey = key.replace(/\/@[^\/]+/g, "");
+
+    // Remove group routes
+    cleanedKey = cleanedKey.replace(/\/\((?!\.)[^\)]*\)/g, "");
+
+    // Remove /page suffix
+    cleanedKey = cleanedKey.replace(/\/page$/g, "");
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
+}
+
+export function escapeRegex(str: string) {
+  let path = str.replace(/\(\.\)/g, "_µ1_");
+
+  path = path.replace(/\(\.{2}\)/g, "_µ2_");
+
+  path = path.replace(/\(\.{3}\)/g, "_µ3_");
+
+  return path;
+}
+
+export function unescapeRegex(str: string) {
+  let path = str.replace(/_µ1_/g, "(.)");
+
+  path = path.replace(/_µ2_/g, "(..)");
+
+  path = path.replace(/_µ3_/g, "(...)");
+
+  return path;
 }

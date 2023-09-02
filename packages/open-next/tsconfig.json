@@ -2,8 +2,8 @@
   "extends": "@tsconfig/node18/tsconfig.json",
   "compilerOptions": {
     "declaration": true,
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    "module": "esnext",
+    "lib": ["DOM", "ESNext"],
     "outDir": "./dist",
     "allowSyntheticDefaultImports": true
   }

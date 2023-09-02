@@ -40,12 +40,14 @@
     "@node-minify/core": "^8.0.6",
     "@node-minify/terser": "^8.0.6",
     "@tsconfig/node18": "^1.0.1",
-    "esbuild": "^0.15.18",
+    "esbuild": "^0.18.18",
+    "@esbuild-plugins/node-resolve": "0.2.2",
+    "path-to-regexp": "^6.2.1",
     "promise.series": "^0.2.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.109",
-    "@types/node": "^18.11.17",
+    "@types/node": "^18.16.1",
     "typescript": "^4.9.3"
   },
   "bugs": {

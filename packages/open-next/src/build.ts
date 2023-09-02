@@ -4,9 +4,14 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
-import { BuildOptions as ESBuildOptions, buildSync } from "esbuild";
+import {
+  build as buildAsync,
+  BuildOptions as ESBuildOptions,
+  buildSync,
+} from "esbuild";
 
 import { minifyAll } from "./minimize-js.js";
+import openNextPlugin from "./plugin.js";
 
 interface BuildOptions {
   /**
@@ -60,7 +65,7 @@ export async function build(opts: BuildOptions = {}) {
   initOutputDir();
   createStaticAssets();
   createCacheAssets(monorepoRoot);
-  createServerBundle(monorepoRoot);
+  await createServerBundle(monorepoRoot);
   createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
@@ -74,6 +79,7 @@ function normalizeOptions(opts: BuildOptions) {
   const outputDir = ".open-next";
   return {
     openNextVersion: getOpenNextVersion(),
+    nextVersion: getNextVersion(appPath),
     appPath,
     appPublicPath: path.join(appPath, "public"),
     outputDir,
@@ -228,6 +234,7 @@ function createRevalidationBundle() {
 
   // Build Lambda code
   esbuildSync({
+    external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
     outfile: path.join(outputPath, "index.mjs"),
   });
@@ -366,7 +373,7 @@ function createCacheAssets(monorepoRoot: string) {
 /* Server Helper Functions */
 /***************************/
 
-function createServerBundle(monorepoRoot: string) {
+async function createServerBundle(monorepoRoot: string) {
   console.info(`Bundling server function...`);
 
   const { appPath, outputDir } = options;
@@ -399,7 +406,32 @@ function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync({
+  const plugins =
+    compareSemver(options.nextVersion, "13.4.13") >= 0
+      ? [
+          openNextPlugin({
+            target: /plugins\/serverHandler\.js/g,
+            replacements: ["./serverHandler.replacement.js"],
+          }),
+          openNextPlugin({
+            target: /plugins\/util\.js/g,
+            replacements: ["./util.replacement.js"],
+          }),
+          openNextPlugin({
+            target: /plugins\/routing\/default\.js/g,
+            replacements: ["./default.replacement.js"],
+          }),
+        ]
+      : undefined;
+
+  if (plugins) {
+    console.log(
+      `Applying plugins:: [${plugins
+        .map(({ name }) => name)
+        .join(",")}] for Next version: ${options.nextVersion}`,
+    );
+  }
+  await esbuildAsync({
     entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
     external: ["next"],
     outfile: path.join(outputPath, packagePath, "index.mjs"),
@@ -411,6 +443,7 @@ function createServerBundle(monorepoRoot: string) {
         "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
       ].join(""),
     },
+    plugins,
   });
 
   if (isMonorepo) {
@@ -529,6 +562,7 @@ function removeCachedPages(outputPath: string, packagePath: string) {
 
 function addCacheHandler(outputPath: string) {
   esbuildSync({
+    external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
     outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
@@ -543,6 +577,35 @@ function addCacheHandler(outputPath: string) {
 function esbuildSync(esbuildOptions: ESBuildOptions) {
   const { openNextVersion, debug } = options;
   const result = buildSync({
+    target: "esnext",
+    format: "esm",
+    platform: "node",
+    bundle: true,
+    minify: debug ? false : true,
+    sourcemap: debug ? "inline" : false,
+    ...esbuildOptions,
+    define: {
+      ...esbuildOptions.define,
+      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
+        ? "true"
+        : "false",
+      "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
+    },
+  });
+
+  if (result.errors.length > 0) {
+    result.errors.forEach((error) => console.error(error));
+    throw new Error(
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
+      }.`,
+    );
+  }
+}
+
+async function esbuildAsync(esbuildOptions: ESBuildOptions) {
+  const { openNextVersion, debug } = options;
+  const result = await buildAsync({
     target: "esnext",
     format: "esm",
     platform: "node",
@@ -620,4 +683,27 @@ function getBuildId(dotNextPath: string) {
 
 function getOpenNextVersion() {
   return require(path.join(__dirname, "../package.json")).version;
+}
+
+function getNextVersion(appPath: string) {
+  const version = require(path.join(appPath, "./package.json")).dependencies
+    .next;
+  // Drop the -canary.n suffix
+  return version.split("-")[0];
+}
+
+function compareSemver(v1: string, v2: string): number {
+  if (v1 === "latest") return 1;
+  if (/^[^\d]/.test(v1)) {
+    v1 = v1.substring(1);
+  }
+  if (/^[^\d]/.test(v2)) {
+    v2 = v2.substring(1);
+  }
+  const [major1, minor1, patch1] = v1.split(".").map(Number);
+  const [major2, minor2, patch2] = v2.split(".").map(Number);
+
+  if (major1 !== major2) return major1 - major2;
+  if (minor1 !== minor2) return minor1 - minor2;
+  return patch1 - patch2;
 }

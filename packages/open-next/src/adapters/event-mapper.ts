@@ -10,17 +10,19 @@ import type {
 
 import { debug } from "./logger.js";
 
-type InternalEvent = {
+export type InternalEvent = {
   readonly type: "v1" | "v2" | "cf";
   readonly method: string;
   readonly rawPath: string;
   readonly url: string;
   readonly body: Buffer;
   readonly headers: Record<string, string>;
+  readonly query: Record<string, string | string[]>;
+  readonly cookies: Record<string, string>;
   readonly remoteAddress: string;
 };
 
-type InternalResult = {
+export type InternalResult = {
   readonly type: "v1" | "v2" | "cf";
   statusCode: number;
   headers: Record<string, string | string[]>;
@@ -49,14 +51,17 @@ export function isCloudFrontRequestEvent(
 export function convertFrom(
   event: APIGatewayProxyEventV2 | APIGatewayProxyEvent | CloudFrontRequestEvent,
 ): InternalEvent {
+  let internalEvent: InternalEvent;
   if (isCloudFrontRequestEvent(event)) {
-    return convertFromCloudFrontRequestEvent(event);
+    internalEvent = convertFromCloudFrontRequestEvent(event);
   } else if (isAPIGatewayProxyEventV2(event)) {
-    return convertFromAPIGatewayProxyEventV2(event);
+    internalEvent = convertFromAPIGatewayProxyEventV2(event);
   } else if (isAPIGatewayProxyEvent(event)) {
-    return convertFromAPIGatewayProxyEvent(event);
-  }
-  throw new Error("Unsupported event type");
+    internalEvent = convertFromAPIGatewayProxyEvent(event);
+  } else throw new Error("Unsupported event type");
+
+  return internalEvent;
+  // return fixDataPage(internalEvent, buildId);
 }
 
 export function convertTo(
@@ -72,6 +77,17 @@ export function convertTo(
   throw new Error("Unsupported event type");
 }
 
+function removeUndefinedFromQuery(
+  query: Record<string, string | string[] | undefined>,
+) {
+  const newQuery: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      newQuery[key] = value;
+    }
+  }
+  return newQuery;
+}
 function convertFromAPIGatewayProxyEvent(
   event: APIGatewayProxyEvent,
 ): InternalEvent {
@@ -84,6 +100,14 @@ function convertFromAPIGatewayProxyEvent(
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
     headers: normalizeAPIGatewayProxyEventHeaders(event),
     remoteAddress: requestContext.identity.sourceIp,
+    query: removeUndefinedFromQuery(
+      event.multiValueQueryStringParameters ?? {},
+    ),
+    cookies:
+      event.multiValueHeaders?.cookie?.reduce((acc, cur) => {
+        const [key, value] = cur.split("=");
+        return { ...acc, [key]: value };
+      }, {}) ?? {},
   };
 }
 
@@ -99,6 +123,12 @@ function convertFromAPIGatewayProxyEventV2(
     body: normalizeAPIGatewayProxyEventV2Body(event),
     headers: normalizeAPIGatewayProxyEventV2Headers(event),
     remoteAddress: requestContext.http.sourceIp,
+    query: removeUndefinedFromQuery(event.queryStringParameters ?? {}),
+    cookies:
+      event.cookies?.reduce((acc, cur) => {
+        const [key, value] = cur.split("=");
+        return { ...acc, [key]: value };
+      }, {}) ?? {},
   };
 }
 
@@ -118,6 +148,17 @@ function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
+    query: querystring.split("&").reduce(
+      (acc, cur) => ({
+        ...acc,
+        [cur.split("=")[0]]: cur.split("=")[1],
+      }),
+      {},
+    ),
+    cookies: headers.cookie.reduce((acc, cur) => {
+      const { key, value } = cur;
+      return { ...acc, [key ?? ""]: value };
+    }, {}),
   };
 }
 
@@ -137,6 +178,7 @@ function convertToApiGatewayProxyResult(
       headers[key] = value;
     }
   });
+
   const response: APIGatewayProxyResult = {
     statusCode: result.statusCode,
     headers,
@@ -161,6 +203,7 @@ function convertToApiGatewayProxyResultV2(
       }
       headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
     });
+
   const response: APIGatewayProxyResultV2 = {
     statusCode: result.statusCode,
     headers,
@@ -186,6 +229,7 @@ function convertToCloudFrontRequestResult(
           : [{ key, value: value.toString() }]),
       ];
     });
+
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
     statusDescription: "OK",
