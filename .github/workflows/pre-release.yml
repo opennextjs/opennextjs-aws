@@ -1,5 +1,7 @@
 name: Pre-release
 
+on: workflow_dispatch
+
 jobs:
   release:
     name: Pre-release
