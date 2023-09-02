@@ -1,6 +1,5 @@
 {
   "name": "@open-next/utils",
-  "version": "0.0.0",
   "private": true,
   "exports": {
     ".": "./dist/index.js",
@@ -9,7 +8,9 @@
   },
   "typesVersions": {
     "*": {
-      "types": ["./dist/*.d.ts"]
+      "types": [
+        "./dist/*.d.ts"
+      ]
     }
   },
   "scripts": {
@@ -18,8 +19,7 @@
     "lint": "TIMING=1 eslint \"**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "tsup": "7.2.0",
     "@types/node": "20.5.0"

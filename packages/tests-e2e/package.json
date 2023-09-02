@@ -1,6 +1,5 @@
 {
   "name": "tests-e2e",
-  "version": "0.0.0",
   "private": true,
   "scripts": {
     "e2e:dev": "playwright test --headed",
