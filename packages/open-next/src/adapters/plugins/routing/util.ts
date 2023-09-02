@@ -7,6 +7,10 @@ import { IncomingMessage } from "../../request.js";
 import { ServerResponse } from "../../response.js";
 import { loadBuildId, loadHtmlPages } from "../../util.js";
 
+enum CommonHeaders {
+  CACHE_CONTROL = "cache-control",
+}
+
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
 const NEXT_DIR = path.join(__dirname, ".next");
@@ -48,8 +52,8 @@ export function fixCacheHeaderForHtmlPages(
   headers: Record<string, string | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (htmlPages.includes(rawPath) && headers["cache-control"]) {
-    headers["cache-control"] =
+  if (htmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
+    headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
@@ -74,13 +78,20 @@ export async function revalidateIfRequired(
   headers: Record<string, string | undefined>,
   req: IncomingMessage,
 ) {
+  // If the page has been revalidated via on demand revalidation, we need to remove the cache-control so that CloudFront doesn't cache the page
+  if (headers["x-nextjs-cache"] === "REVALIDATED") {
+    headers[CommonHeaders.CACHE_CONTROL] =
+      "private, no-cache, no-store, max-age=0, must-revalidate";
+    return;
+  }
   if (headers["x-nextjs-cache"] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
   // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
+  headers[CommonHeaders.CACHE_CONTROL] =
+    "s-maxage=2, stale-while-revalidate=2592000";
 
   // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
   // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
