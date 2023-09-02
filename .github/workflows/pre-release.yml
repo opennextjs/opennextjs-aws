@@ -1,0 +1,30 @@
+name: Pre-release
+
+jobs:
+  release:
+    name: Pre-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        # https://github.com/actions/checkout
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/pnpm-setup
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Check codestyle
+        run: pnpm lint
+
+      - name: Create Release Pull Request or Publish to npm
+        id: changesets
+        # https://github.com/changesets/action
+        uses: changesets/action@v1
+        with:
+          createGithubReleases: false
+          version: pnpm run version
+          publish: pnpm run snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
