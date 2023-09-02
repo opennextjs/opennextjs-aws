@@ -174,10 +174,10 @@ jobs:
             "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
             "embeds": [
               {
-                "description": "Test succeeded — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
+                "description": "Test succeeded [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
                 "color": 3061373,
                 "footer": {
-                  "text": "Woah! So cool!",
+                  "text": "🍌 Ook-ook! Eeek-aak-eek! 🍌",
                   "icon_url": "https://i.imgur.com/u2ENxCk.png"
                 }
               }
@@ -194,10 +194,10 @@ jobs:
             "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
             "embeds": [
               {
-                "description": "Test failed — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
+                "description": "Test failed [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
                 "color": 14687834,
                 "footer": {
-                  "text": "Hmmm...",
+                  "text": "🥓 Oink oink... 🥓",
                   "icon_url": "https://i.imgur.com/QeXzqIy.png"
                 }
               }
