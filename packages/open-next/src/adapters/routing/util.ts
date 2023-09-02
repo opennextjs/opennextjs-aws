@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { isBinaryContentType } from "../binary";
+import { ServerResponse } from "../http/response";
 import { MiddlewareManifest } from "../next-types";
-import { ServerResponse } from "../response";
 
 export function isExternal(url?: string) {
   if (!url) return false;

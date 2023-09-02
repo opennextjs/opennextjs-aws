@@ -13,6 +13,7 @@ build({
   buildOutputPath: args["--build-output-path"],
   appPath: args["--app-path"],
   minify: Object.keys(args).includes("--minify"),
+  streaming: Object.keys(args).includes("--streaming"),
 });
 
 function parseArgs() {

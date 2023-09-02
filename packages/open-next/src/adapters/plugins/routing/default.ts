@@ -1,10 +1,13 @@
 /* eslint-disable simple-import-sort/imports */
-import type { PostProcessOptions, ProcessInternalEventResult } from "./types";
+import type {
+  PostProcessOptions,
+  ProcessInternalEventResult,
+} from "../../types/plugin";
 import type { InternalEvent, InternalResult } from "../../event-mapper";
 //#override imports
 import { debug } from "../../logger";
-import { IncomingMessage } from "../../request";
-import { ServerResponse } from "../../response";
+import { IncomingMessage } from "../../http/request";
+import { ServerResponse } from "../../http/response";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
@@ -17,6 +20,10 @@ import { convertRes } from "../../routing/util";
 //#override processInternalEvent
 export async function processInternalEvent(
   internalEvent: InternalEvent,
+  createResponse: (
+    method: string,
+    headers: Record<string, string>,
+  ) => ServerResponse,
 ): Promise<ProcessInternalEventResult> {
   const reqProps = {
     method: internalEvent.method,
@@ -31,7 +38,7 @@ export async function processInternalEvent(
     remoteAddress: internalEvent.remoteAddress,
   };
   const req = new IncomingMessage(reqProps);
-  const res = new ServerResponse({ method: reqProps.method, headers: {} });
+  const res = createResponse(reqProps.method, {});
   return { internalEvent, req, res, isExternalRewrite: false };
 }
 //#endOverride

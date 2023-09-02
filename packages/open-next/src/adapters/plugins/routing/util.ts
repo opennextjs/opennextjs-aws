@@ -2,9 +2,9 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
 import path from "path";
 
+import { IncomingMessage } from "../../http/request.js";
+import { ServerResponse } from "../../http/response.js";
 import { awsLogger, debug } from "../../logger.js";
-import { IncomingMessage } from "../../request.js";
-import { ServerResponse } from "../../response.js";
 import { loadBuildId, loadHtmlPages } from "../../util.js";
 
 // Expected environment variables

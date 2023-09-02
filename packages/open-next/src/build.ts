@@ -8,6 +8,7 @@ import {
   build as buildAsync,
   BuildOptions as ESBuildOptions,
   buildSync,
+  Plugin,
 } from "esbuild";
 
 import { minifyAll } from "./minimize-js.js";
@@ -24,6 +25,11 @@ interface BuildOptions {
    * @default false
    */
   debug?: boolean;
+  /**
+   * Enable streaming mode.
+   * @default false
+   */
+  streaming?: boolean;
   /**
    * The command to build the Next.js app.
    * @default `npm run build`, `yarn build`, or `pnpm build` based on the lock file found in the app's directory or any of its parent directories.
@@ -78,7 +84,7 @@ export async function build(opts: BuildOptions = {}) {
   initOutputDir();
   createStaticAssets();
   createCacheAssets(monorepoRoot);
-  await createServerBundle(monorepoRoot);
+  await createServerBundle(monorepoRoot, opts.streaming);
   createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
@@ -417,7 +423,7 @@ function createCacheAssets(monorepoRoot: string) {
 /* Server Helper Functions */
 /***************************/
 
-async function createServerBundle(monorepoRoot: string) {
+async function createServerBundle(monorepoRoot: string, streaming = false) {
   console.info(`Bundling server function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -450,6 +456,14 @@ async function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
+  const streamPlugins: Plugin[] = streaming
+    ? [
+        openNextPlugin({
+          target: /plugins\/lambdaHandler\.js/g,
+          replacements: ["./streaming.replacement.js"],
+        }),
+      ]
+    : [];
   const plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
@@ -465,10 +479,11 @@ async function createServerBundle(monorepoRoot: string) {
             target: /plugins\/routing\/default\.js/g,
             replacements: ["./default.replacement.js"],
           }),
+          ...streamPlugins,
         ]
-      : undefined;
+      : streamPlugins;
 
-  if (plugins) {
+  if (plugins.length > 0) {
     console.log(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)

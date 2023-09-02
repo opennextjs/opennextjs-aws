@@ -1,12 +1,14 @@
 /* eslint-disable simple-import-sort/imports */
-import type { PostProcessOptions, ProcessInternalEventResult } from "./types";
-import type { InternalEvent, InternalResult } from "../../event-mapper";
+import type {
+  PostProcessOptions,
+  ProcessInternalEvent,
+} from "../../types/plugin";
+import type { InternalResult } from "../../event-mapper";
 //#override imports
 import path from "node:path";
 
 import { debug } from "../../logger";
-import { IncomingMessage } from "../../request";
-import { ServerResponse } from "../../response";
+import { IncomingMessage } from "../../http/request";
 import {
   addNextConfigHeaders,
   fixDataPage,
@@ -30,9 +32,10 @@ const configHeaders = loadConfigHeaders(NEXT_DIR);
 //#endOverride
 
 //#override processInternalEvent
-export async function processInternalEvent(
-  event: InternalEvent,
-): Promise<ProcessInternalEventResult> {
+export const processInternalEvent: ProcessInternalEvent = async (
+  event,
+  createResponse,
+) => {
   const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
   debug("nextHeaders", nextHeaders);
 
@@ -102,17 +105,13 @@ export async function processInternalEvent(
   };
   debug("IncomingMessage constructor props", reqProps);
   const req = new IncomingMessage(reqProps);
-  const res = new ServerResponse({
-    method: reqProps.method,
-    // Next headers should be added first in case middleware modifies headers
-    headers: {
-      ...nextHeaders,
-      ...middlewareResponseHeaders,
-    },
+  const res = createResponse(reqProps.method, {
+    ...nextHeaders,
+    ...middlewareResponseHeaders,
   });
 
   return { internalEvent: internalEvent, req, res, isExternalRewrite };
-}
+};
 //#endOverride
 
 //#override postProcessResponse
