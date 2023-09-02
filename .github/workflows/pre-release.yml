@@ -19,14 +19,7 @@ jobs:
       - name: Check codestyle
         run: pnpm lint
 
-      - name: Create Release Pull Request or Publish to npm
-        id: changesets
-        # https://github.com/changesets/action
-        uses: changesets/action@v1
-        with:
-          createGithubReleases: false
-          version: pnpm run version
-          publish: pnpm run snapshot
+      - name: Publish Pre-release to npm
+        run: pnpm release-snapshot
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
