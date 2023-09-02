@@ -1,8 +1,8 @@
 import path from "node:path";
 
 import { InternalEvent, InternalResult } from "../event-mapper.js";
-import { IncomingMessage } from "../request.js";
-import { ServerResponse } from "../response.js";
+import { IncomingMessage } from "../http/request.js";
+import { ServerResponse } from "../http/response.js";
 import { loadConfig } from "../util.js";
 import {
   convertRes,

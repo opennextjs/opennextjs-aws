@@ -1,9 +1,9 @@
 /*eslint-disable simple-import-sort/imports */
 import type { Options, PluginHandler } from "../next-types.js";
+import type { IncomingMessage } from "../http/request.js";
+import type { ServerResponse } from "../http/response.js";
 //#override imports
 
-import { IncomingMessage } from "../request.js";
-import { ServerResponse } from "../response.js";
 import { proxyRequest } from "./routing/util.js";
 import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#endOverride
