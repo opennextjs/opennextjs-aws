@@ -41,6 +41,7 @@ export class StreamingServerResponse extends http.ServerResponse {
     }
     try {
       this.fixHeaders(this[HEADERS]);
+      this._wroteHeader = true;
       this.responseStream = awslambda.HttpResponseStream.from(
         this.responseStream,
         {
@@ -49,7 +50,6 @@ export class StreamingServerResponse extends http.ServerResponse {
         },
       );
 
-      this._wroteHeader = true;
       debug("writeHead", this[HEADERS]);
     } catch (e) {
       this.responseStream.end();
@@ -76,12 +76,15 @@ export class StreamingServerResponse extends http.ServerResponse {
       this.internalWrite(chunk);
     }
 
+    if (!this._hasWritten) {
+      // We need to send data here, otherwise the stream will not end at all
+      this.internalWrite(new Uint8Array(8));
+    }
+
     setImmediate(() => {
-      if (!this._hasWritten) {
-        // We need to send data here, otherwise the stream will not end at all
-        this.internalWrite(new Uint8Array(8));
-      }
-      this.responseStream.end();
+      this.responseStream.end(() => {
+        debug("stream end", chunk);
+      });
     });
     debug("stream end", chunk);
     return this;
@@ -114,15 +117,17 @@ export class StreamingServerResponse extends http.ServerResponse {
       _writableState: {},
       writable: true,
       // @ts-ignore
-      on: Function.prototype,
+      on: this.responseStream.on.bind(this.responseStream),
       // @ts-ignore
-      removeListener: Function.prototype,
+      removeListener: this.responseStream.removeListener.bind(
+        this.responseStream,
+      ),
       // @ts-ignore
-      destroy: Function.prototype,
+      destroy: this.responseStream.destroy.bind(this.responseStream),
       // @ts-ignore
-      cork: Function.prototype,
+      cork: this.responseStream.cork.bind(this.responseStream),
       // @ts-ignore
-      uncork: Function.prototype,
+      uncork: this.responseStream.uncork.bind(this.responseStream),
       // @ts-ignore
       write: (data, encoding, cb) => {
         if (typeof encoding === "function") {
@@ -141,8 +146,8 @@ export class StreamingServerResponse extends http.ServerResponse {
 
     this.responseStream.on("error", (err) => {
       this.emit("error", err);
-      this.responseStream.end();
       error("error", err);
+      this.responseStream.end();
     });
   }
 }

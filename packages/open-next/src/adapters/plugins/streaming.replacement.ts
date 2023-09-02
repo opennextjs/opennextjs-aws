@@ -65,7 +65,6 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
   if ("type" in preprocessResult) {
     //TODO: replace this line
     const headers = preprocessResult.headers as Record<string, string>;
-    console.log("headers", headers);
     const res = createServerResponse("GET", headers);
     // setImmediate(() => {
     //   console.log("preprocessResult.headers", headers);
