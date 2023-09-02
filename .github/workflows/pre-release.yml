@@ -11,6 +11,11 @@ jobs:
         # https://github.com/actions/checkout
         uses: actions/checkout@v3
 
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v3
+        with:
+          registry-url: "https://registry.npmjs.org"
+
       - uses: ./.github/actions/pnpm-setup
 
       - name: Install dependencies
@@ -20,10 +25,6 @@ jobs:
         run: pnpm lint
 
       - name: Publish Pre-release to npm
-        # https://github.com/changesets/action
-        uses: changesets/action@v1
-        with:
-          createGithubReleases: false
-          publish: pnpm run release-snapshot
+        run: pnpm release-snapshot
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
