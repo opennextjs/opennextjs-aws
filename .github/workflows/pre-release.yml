@@ -26,4 +26,5 @@ jobs:
           createGithubReleases: false
           publish: pnpm run release-snapshot
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
