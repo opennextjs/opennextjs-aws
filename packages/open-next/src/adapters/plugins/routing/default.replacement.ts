@@ -19,6 +19,7 @@ import { loadBuildId, loadConfigHeaders, loadRoutesManifest } from "../../util";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
+  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./util";
@@ -129,6 +130,7 @@ export async function postProcessResponse({
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);
+    fixISRHeaders(headers);
 
     await revalidateIfRequired(
       internalEvent.headers.host,
