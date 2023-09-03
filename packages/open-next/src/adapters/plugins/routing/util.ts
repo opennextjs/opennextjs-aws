@@ -73,12 +73,12 @@ export function addOpenNextHeader(headers: Record<string, string | undefined>) {
   headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
 }
 
-export async function revalidateIfRequired(
-  host: string,
-  rawPath: string,
-  headers: Record<string, string | undefined>,
-  req: IncomingMessage,
-) {
+export function fixISRHeaders(headers: Record<string, string | undefined>) {
+  if (headers["x-nextjs-cache"] === "REVALIDATED") {
+    headers["cache-control"] =
+      "private, no-cache, no-store, max-age=0, must-revalidate";
+    return;
+  }
   if (headers["x-nextjs-cache"] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
@@ -86,12 +86,20 @@ export async function revalidateIfRequired(
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
   headers["cache-control"] = "s-maxage=2, stale-while-revalidate=2592000";
+}
 
+export async function revalidateIfRequired(
+  host: string,
+  rawPath: string,
+  headers: Record<string, string | undefined>,
+  req?: IncomingMessage,
+) {
+  if (headers["x-nextjs-cache"] !== "STALE") return;
   // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
   // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
-  const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+  const internalMeta = req?.[Symbol.for("NextInternalRequestMeta")];
 
   // When using Pages Router, two requests will be received:
   // 1. one for the page: /foo

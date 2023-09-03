@@ -15,6 +15,7 @@ import { processInternalEvent } from "./routing/default.js";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
+  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./routing/util";
@@ -51,10 +52,19 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
       { method, headers },
       responseStream,
       // We need to fix the cache header before sending any response
-      async (headers) => {
+      (headers) => {
         fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
         fixSWRCacheHeader(headers);
         addOpenNextHeader(headers);
+        fixISRHeaders(headers);
+      },
+      // This run in the callback of the response stream end
+      async (headers) => {
+        await revalidateIfRequired(
+          internalEvent.headers.host,
+          internalEvent.rawPath,
+          headers,
+        );
       },
     );
 
@@ -86,13 +96,6 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
 
     //@ts-expect-error - processRequest is already defined in serverHandler.ts
     await processRequest(req, res, overwrittenInternalEvent, isExternalRewrite);
-
-    await revalidateIfRequired(
-      internalEvent.headers.host,
-      internalEvent.rawPath,
-      res.headers,
-      req,
-    );
   }
 });
 //#endOverride

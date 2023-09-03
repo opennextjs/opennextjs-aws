@@ -9,6 +9,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   [HEADERS]: Record<string, string> = {};
   responseStream: ResponseStream;
   fixHeaders: (headers: Record<string, string>) => void;
+  onEnd: (headers: Record<string, string>) => Promise<void>;
   private _wroteHeader = false;
   private _hasWritten = false;
 
@@ -54,8 +55,12 @@ export class StreamingServerResponse extends http.ServerResponse {
         statusCode: statusCode as number,
         headers: this[HEADERS],
       });
-      this.internalWrite(prelude);
-      this.internalWrite(new Uint8Array(8));
+      process.nextTick(() => {
+        this.responseStream.write(prelude);
+      });
+      process.nextTick(() => {
+        this.responseStream.write(new Uint8Array(8));
+      });
       // this.responseStream = awslambda.HttpResponseStream.from(
       //   this.responseStream,
       //   {
@@ -96,9 +101,10 @@ export class StreamingServerResponse extends http.ServerResponse {
     }
 
     process.nextTick(() => {
-      this.responseStream.end(() => {
+      this.responseStream.end(async () => {
         // The callback seems necessary here
         debug("stream end", chunk);
+        await this.onEnd(this[HEADERS]);
       });
     });
     // debug("stream end", chunk);
@@ -116,6 +122,7 @@ export class StreamingServerResponse extends http.ServerResponse {
     { method, headers }: { method?: string; headers?: Record<string, string> },
     responseStream: ResponseStream,
     fixHeaders: (headers: Record<string, string>) => void,
+    onEnd: (headers: Record<string, string>) => Promise<void>,
   ) {
     //@ts-ignore
     super({ method });
@@ -123,6 +130,7 @@ export class StreamingServerResponse extends http.ServerResponse {
     this[HEADERS] = headers || {};
 
     this.fixHeaders = fixHeaders;
+    this.onEnd = onEnd;
     this.responseStream = responseStream;
 
     this.useChunkedEncodingByDefault = false;
