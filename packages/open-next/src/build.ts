@@ -35,6 +35,16 @@ interface BuildOptions {
    * ```
    */
   buildCommand?: string;
+  /**
+   * The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd().
+   * @default "."
+   */
+  buildOutputPath?: string;
+  /**
+   * The path to the root of the Next.js app's source code. This path is relative from the current process.cwd().
+   * @default "."
+   */
+  appPath?: string;
 }
 
 const require = topLevelCreateRequire(import.meta.url);
@@ -46,14 +56,17 @@ export type PublicFiles = {
 };
 
 export async function build(opts: BuildOptions = {}) {
+  const { root: monorepoRoot, packager } = findMonorepoRoot(
+    path.join(process.cwd(), opts.appPath || "."),
+  );
+
   // Initialize options
-  options = normalizeOptions(opts);
+  options = normalizeOptions(opts, monorepoRoot);
 
   // Pre-build validation
   checkRunningInsideNextjsApp();
   printNextjsVersion();
   printOpenNextVersion();
-  const { root: monorepoRoot, packager } = findMonorepoRoot();
 
   // Build Next.js app
   printHeader("Building Next.js app");
@@ -74,13 +87,17 @@ export async function build(opts: BuildOptions = {}) {
   }
 }
 
-function normalizeOptions(opts: BuildOptions) {
-  const appPath = process.cwd();
-  const outputDir = ".open-next";
+function normalizeOptions(opts: BuildOptions, root: string) {
+  const appPath = path.join(process.cwd(), opts.appPath || ".");
+  const buildOutputPath = path.join(process.cwd(), opts.buildOutputPath || ".");
+  const outputDir = path.join(buildOutputPath, ".open-next");
+  const nextPackageJsonPath = findNextPackageJsonPath(appPath, root);
   return {
     openNextVersion: getOpenNextVersion(),
-    nextVersion: getNextVersion(appPath),
+    nextVersion: getNextVersion(nextPackageJsonPath),
+    nextPackageJsonPath,
     appPath,
+    appBuildOutputPath: buildOutputPath,
     appPublicPath: path.join(appPath, "public"),
     outputDir,
     tempDir: path.join(outputDir, ".build"),
@@ -103,8 +120,7 @@ function checkRunningInsideNextjsApp() {
   }
 }
 
-function findMonorepoRoot() {
-  const { appPath } = options;
+function findMonorepoRoot(appPath: string) {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [
@@ -128,6 +144,13 @@ function findMonorepoRoot() {
   return { root: appPath, packager: "npm" as const };
 }
 
+function findNextPackageJsonPath(appPath: string, root: string) {
+  // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
+  return fs.existsSync(path.join(appPath, "./package.json"))
+    ? path.join(appPath, "./package.json")
+    : path.join(root, "./package.json");
+}
+
 function setStandaloneBuildMode(monorepoRoot: string) {
   // Equivalent to setting `target: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
@@ -136,13 +159,13 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
-  const { appPath } = options;
+  const { nextPackageJsonPath } = options;
   const command =
     options.buildCommand ??
     (packager === "npm" ? "npm run build" : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
-    cwd: appPath,
+    cwd: path.dirname(nextPackageJsonPath),
   });
 }
 
@@ -226,7 +249,7 @@ async function minifyServerBundle() {
 function createRevalidationBundle() {
   console.info(`Bundling revalidation function...`);
 
-  const { appPath, outputDir } = options;
+  const { appBuildOutputPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "revalidation-function");
@@ -241,7 +264,7 @@ function createRevalidationBundle() {
 
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
-    path.join(appPath, ".next", "prerender-manifest.json"),
+    path.join(appBuildOutputPath, ".next", "prerender-manifest.json"),
     path.join(outputPath, "prerender-manifest.json"),
   );
 }
@@ -249,7 +272,7 @@ function createRevalidationBundle() {
 function createImageOptimizationBundle() {
   console.info(`Bundling image optimization function...`);
 
-  const { appPath, outputDir } = options;
+  const { appPath, appBuildOutputPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
@@ -289,7 +312,7 @@ function createImageOptimizationBundle() {
   // Copy over .next/required-server-files.json file
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
-    path.join(appPath, ".next/required-server-files.json"),
+    path.join(appBuildOutputPath, ".next/required-server-files.json"),
     path.join(outputPath, ".next/required-server-files.json"),
   );
 
@@ -310,7 +333,7 @@ function createImageOptimizationBundle() {
 function createStaticAssets() {
   console.info(`Bundling static assets...`);
 
-  const { appPath, appPublicPath, outputDir } = options;
+  const { appBuildOutputPath, appPublicPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
@@ -322,11 +345,11 @@ function createStaticAssets() {
   // - .next/static   => _next/static
   // - public/*       => *
   fs.copyFileSync(
-    path.join(appPath, ".next/BUILD_ID"),
+    path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
   );
   fs.cpSync(
-    path.join(appPath, ".next/static"),
+    path.join(appBuildOutputPath, ".next/static"),
     path.join(outputPath, "_next", "static"),
     { recursive: true },
   );
@@ -338,12 +361,16 @@ function createStaticAssets() {
 function createCacheAssets(monorepoRoot: string) {
   console.info(`Bundling cache assets...`);
 
-  const { appPath, outputDir } = options;
-  const packagePath = path.relative(monorepoRoot, appPath);
-  const buildId = getBuildId(appPath);
+  const { appBuildOutputPath, outputDir } = options;
+  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const buildId = getBuildId(appBuildOutputPath);
 
   // Copy pages to cache folder
-  const dotNextPath = path.join(appPath, ".next/standalone", packagePath);
+  const dotNextPath = path.join(
+    appBuildOutputPath,
+    ".next/standalone",
+    packagePath,
+  );
   const outputPath = path.join(outputDir, "cache", buildId);
   [".next/server/pages", ".next/server/app"]
     .map((dir) => path.join(dotNextPath, dir))
@@ -361,7 +388,10 @@ function createCacheAssets(monorepoRoot: string) {
   );
 
   // Copy fetch-cache to cache folder
-  const fetchCachePath = path.join(appPath, ".next/cache/fetch-cache");
+  const fetchCachePath = path.join(
+    appBuildOutputPath,
+    ".next/cache/fetch-cache",
+  );
   if (fs.existsSync(fetchCachePath)) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
     fs.mkdirSync(fetchOutputPath, { recursive: true });
@@ -376,7 +406,7 @@ function createCacheAssets(monorepoRoot: string) {
 async function createServerBundle(monorepoRoot: string) {
   console.info(`Bundling server function...`);
 
-  const { appPath, outputDir } = options;
+  const { appPath, appBuildOutputPath, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-function");
@@ -388,12 +418,12 @@ async function createServerBundle(monorepoRoot: string) {
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
   const isMonorepo = monorepoRoot !== appPath;
-  const packagePath = path.relative(monorepoRoot, appPath);
+  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
 
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
   //       symlinks. We don't want to resolve the symlinks when copying.
-  fs.cpSync(path.join(appPath, ".next/standalone"), outputPath, {
+  fs.cpSync(path.join(appBuildOutputPath, ".next/standalone"), outputPath, {
     recursive: true,
     verbatimSymlinks: true,
   });
@@ -685,9 +715,9 @@ function getOpenNextVersion() {
   return require(path.join(__dirname, "../package.json")).version;
 }
 
-function getNextVersion(appPath: string) {
-  const version = require(path.join(appPath, "./package.json")).dependencies
-    .next;
+function getNextVersion(nextPackageJsonPath: string) {
+  const version = require(nextPackageJsonPath).dependencies.next;
+
   // Drop the -canary.n suffix
   return version.split("-")[0];
 }
