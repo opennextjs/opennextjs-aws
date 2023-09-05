@@ -10,6 +10,8 @@ if (Object.keys(args).includes("--help")) printHelp();
 
 build({
   buildCommand: args["--build-command"],
+  buildOutputPath: args["--build-output-path"],
+  appPath: args["--app-path"],
   minify: Object.keys(args).includes("--minify"),
 });
 
