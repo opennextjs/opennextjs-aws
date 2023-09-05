@@ -255,9 +255,6 @@ importers:
       '@node-minify/terser':
         specifier: ^8.0.6
         version: 8.0.6
-      '@open-next/utils':
-        specifier: workspace:*
-        version: link:../utils
       '@tsconfig/node18':
         specifier: ^1.0.1
         version: 1.0.3
