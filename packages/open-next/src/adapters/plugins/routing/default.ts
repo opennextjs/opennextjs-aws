@@ -12,7 +12,6 @@ import {
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
-
 //#endOverride
 
 //#override processInternalEvent
@@ -22,7 +21,7 @@ export async function processInternalEvent(
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,
-    // WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
+    //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
     // There is 3 way we can handle revalidation:
     // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
     // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh

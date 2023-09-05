@@ -509,7 +509,7 @@ public, max-age=0, s-maxage=31536000, must-revalidate
 `NextServer` does not seem to set an appropriate value for the `stale-while-revalidate` cache header. For example, the header might look like this:
 
 ```
-s-maxage=600, stale-while-revalidate
+s-maxage=600 stale-while-revalidate
 ```
 
 This prevents CloudFront from caching the stale data.
@@ -517,7 +517,7 @@ This prevents CloudFront from caching the stale data.
 To work around the issue, the server function checks if the response includes the `stale-while-revalidate` header. If found, it sets the value to 30 days:
 
 ```
-s-maxage=600, stale-while-revalidate=2592000
+s-maxage=600 stale-while-revalidate=2592000
 ```
 
 #### WORKAROUND: Set `NextServer` working directory (AWS specific)
