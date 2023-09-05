@@ -1,5 +1,11 @@
 # open-next
 
+## 2.1.1
+
+### Patch Changes
+
+- 10b0e55: Adds custom build-output-path and app-path arguments; fix custom swr header
+
 ## 2.1.0
 
 ### Minor Changes
