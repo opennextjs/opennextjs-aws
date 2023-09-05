@@ -40,3 +40,25 @@ test("Incremental Static Regeneration", async ({ page }) => {
 
   expect(newTime).not.toEqual(finalTime);
 });
+
+test("headers", async ({ page }) => {
+  let responsePromise = page.waitForResponse((response) => {
+    return response.status() === 200;
+  });
+  await page.goto("/isr");
+
+  while (true) {
+    const response = await responsePromise;
+    const headers = response.headers();
+
+    // this was set in middleware
+    if (headers["cache-control"] === "max-age=10, stale-while-revalidate=999") {
+      break;
+    }
+    await wait(1000);
+    responsePromise = page.waitForResponse((response) => {
+      return response.status() === 200;
+    });
+    await page.reload();
+  }
+});

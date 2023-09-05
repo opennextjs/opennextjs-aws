@@ -28,6 +28,16 @@ export function middleware(request: NextRequest) {
   );
   const responseHeaders = new Headers();
   responseHeaders.set("response-header", "response-header");
+
+  // Set the cache control header with custom swr
+  // For: isr.test.ts
+  if (path === "/isr") {
+    responseHeaders.set(
+      "cache-control",
+      "max-age=10, stale-while-revalidate=999",
+    );
+  }
+
   const r = NextResponse.next({
     headers: responseHeaders,
     request: {
