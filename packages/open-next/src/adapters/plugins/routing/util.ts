@@ -54,16 +54,6 @@ export function fixCacheHeaderForHtmlPages(
   }
 }
 
-export function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
-  // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  if (headers["cache-control"]?.includes("stale-while-revalidate")) {
-    headers["cache-control"] = headers["cache-control"].replace(
-      "stale-while-revalidate",
-      "stale-while-revalidate=2592000", // 30 days
-    );
-  }
-}
-
 export function addOpenNextHeader(headers: Record<string, string | undefined>) {
   headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
 }
@@ -119,5 +109,15 @@ export async function revalidateIfRequired(
   } catch (e) {
     debug(`Failed to revalidate stale page ${rawPath}`);
     debug(e);
+  }
+}
+
+export function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
+  // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
+  if (headers["cache-control"]) {
+    headers["cache-control"] = headers["cache-control"].replace(
+      /\bstale-while-revalidate(?!=)/,
+      "stale-while-revalidate=2592000", // 30 days
+    );
   }
 }
