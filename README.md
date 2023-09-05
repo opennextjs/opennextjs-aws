@@ -616,6 +616,26 @@ await build({
 });
 ```
 
+#### Custom app and build output paths
+
+OpenNext runs the `build` script from your current command folder by default. When running OpenNext from a monorepo with decentralised application and build output paths, you can specify a custom `appPath` and/or `buildOutputPath`. This will allow you to execute your command from the root of the monorepo.
+
+```bash
+# CLI
+open-next build --build-command "pnpm custom:build" --app-path "./apps/example-app" --build-output-path "./dist/apps/example-app"
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  buildCommand: "pnpm custom:build",
+  appPath: "./apps/example-app",
+  buildOutputPath: "./dist/apps/example-app"
+});
+```
+
 #### Minify server function
 
 Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app.

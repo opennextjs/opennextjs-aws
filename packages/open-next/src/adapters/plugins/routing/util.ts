@@ -56,9 +56,9 @@ export function fixCacheHeaderForHtmlPages(
 
 export function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  if (headers["cache-control"]?.includes("stale-while-revalidate")) {
+  if (headers["cache-control"]) {
     headers["cache-control"] = headers["cache-control"].replace(
-      "stale-while-revalidate",
+      /\bstale-while-revalidate(?!=)/,
       "stale-while-revalidate=2592000", // 30 days
     );
   }
