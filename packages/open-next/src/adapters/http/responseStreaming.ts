@@ -21,6 +21,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   onEnd: (headers: Record<string, string>) => Promise<void>;
   private _wroteHeader = false;
   private _hasWritten = false;
+  private _initialHeaders: Record<string, string> = {};
 
   constructor({
     method,
@@ -32,6 +33,7 @@ export class StreamingServerResponse extends http.ServerResponse {
     super({ method } as any);
 
     this[HEADERS] = parseHeaders(headers) || {};
+    this._initialHeaders = { ...this[HEADERS] };
 
     this.fixHeaders = fixHeaders;
     this.onEnd = onEnd;
@@ -111,6 +113,13 @@ export class StreamingServerResponse extends http.ServerResponse {
         ...parsedHeaders,
       };
       this.fixHeaders(this[HEADERS]);
+      this[HEADERS] = {
+        ...this[HEADERS],
+        ...this._initialHeaders,
+      };
+
+      debug("writeHead", this[HEADERS]);
+
       this._wroteHeader = true;
       // FIXME: This is extracted from the docker lambda node 18 runtime
       // https://gist.github.com/conico974/13afd708af20711b97df439b910ceb53#file-index-mjs-L921-L932
