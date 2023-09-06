@@ -7,6 +7,13 @@ import { convertHeader, NO_OP, parseHeaders } from "./util.js";
 
 const HEADERS = Symbol();
 
+export interface StreamingServerResponseProps {
+  method?: string;
+  headers?: Record<string, string>;
+  responseStream: ResponseStream;
+  fixHeaders: (headers: Record<string, string>) => void;
+  onEnd: (headers: Record<string, string>) => Promise<void>;
+}
 export class StreamingServerResponse extends http.ServerResponse {
   [HEADERS]: Record<string, string> = {};
   responseStream: ResponseStream;
@@ -14,6 +21,63 @@ export class StreamingServerResponse extends http.ServerResponse {
   onEnd: (headers: Record<string, string>) => Promise<void>;
   private _wroteHeader = false;
   private _hasWritten = false;
+
+  constructor({
+    method,
+    headers,
+    responseStream,
+    fixHeaders,
+    onEnd,
+  }: StreamingServerResponseProps) {
+    super({ method } as any);
+
+    this[HEADERS] = headers || {};
+
+    this.fixHeaders = fixHeaders;
+    this.onEnd = onEnd;
+    this.responseStream = responseStream;
+
+    this.useChunkedEncodingByDefault = false;
+    this.chunkedEncoding = false;
+
+    const socket: Partial<Socket> & { _writableState: any } = {
+      _writableState: {},
+      writable: true,
+      on: NO_OP,
+      removeListener: NO_OP,
+      destroy: NO_OP,
+      cork: NO_OP,
+      uncork: NO_OP,
+      write: (
+        data: Uint8Array | string,
+        encoding?: string | null | (() => void),
+        cb?: () => void,
+      ) => {
+        if (typeof encoding === "function") {
+          cb = encoding;
+          encoding = undefined;
+        }
+
+        this.internalWrite(data);
+
+        if (typeof cb === "function") {
+          cb();
+        }
+        return true;
+      },
+    };
+
+    this.assignSocket(socket as Socket);
+
+    this.responseStream.on("close", this.cancel.bind(this));
+    this.responseStream.on("error", this.cancel.bind(this));
+
+    this.on("close", this.cancel.bind(this));
+    this.on("error", this.cancel.bind(this));
+    this.once("finish", () => {
+      this.emit("close");
+    });
+  }
 
   get headers() {
     return this[HEADERS];
@@ -50,7 +114,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       this._wroteHeader = true;
       // FIXME: This is extracted from the docker lambda node 18 runtime
       // https://gist.github.com/conico974/13afd708af20711b97df439b910ceb53#file-index-mjs-L921-L932
-      // We replace their write with ours which are inside a process.nextTick
+      // We replace their write with ours which are inside a setImmediate
       // This way it seems to work all the time
       // I think we can't ship this code as it is, it could break at anytime if they decide to change the runtime and they already did it in the past
       this.responseStream.setContentType(
@@ -60,10 +124,10 @@ export class StreamingServerResponse extends http.ServerResponse {
         statusCode: statusCode as number,
         headers: this[HEADERS],
       });
-      process.nextTick(() => {
+      setImmediate(() => {
         this.responseStream.write(prelude);
       });
-      process.nextTick(() => {
+      setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
       });
       // This is the way we should do it but it doesn't work everytime for some reasons
@@ -104,7 +168,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       this.internalWrite(new Uint8Array(8));
     }
 
-    process.nextTick(() => {
+    setImmediate(() => {
       this.responseStream.end(async () => {
         debug("stream end", chunk);
         await this.onEnd(this[HEADERS]);
@@ -116,8 +180,9 @@ export class StreamingServerResponse extends http.ServerResponse {
 
   private internalWrite(chunk: any) {
     this._hasWritten = true;
-    process.nextTick(() => {
+    setImmediate(() => {
       if (this.responseStream.writableNeedDrain) {
+        debug("drain");
         this.responseStream.once("drain", () => {
           this.internalWrite(chunk);
         });
@@ -128,68 +193,12 @@ export class StreamingServerResponse extends http.ServerResponse {
   }
 
   cancel(error?: Error) {
+    debug("cancel", error);
     this.responseStream.off("close", this.cancel.bind(this));
     this.responseStream.off("error", this.cancel.bind(this));
 
     if (error) {
       this.responseStream.destroy(error);
     }
-  }
-
-  constructor(
-    { method, headers }: { method?: string; headers?: Record<string, string> },
-    responseStream: ResponseStream,
-    fixHeaders: (headers: Record<string, string>) => void,
-    onEnd: (headers: Record<string, string>) => Promise<void>,
-  ) {
-    //@ts-ignore
-    super({ method });
-
-    this[HEADERS] = headers || {};
-
-    this.fixHeaders = fixHeaders;
-    this.onEnd = onEnd;
-    this.responseStream = responseStream;
-
-    this.useChunkedEncodingByDefault = false;
-    this.chunkedEncoding = false;
-
-    const socket: Partial<Socket> & { _writableState: any } = {
-      _writableState: {},
-      writable: true,
-      on: NO_OP,
-      removeListener: NO_OP,
-      destroy: NO_OP,
-      cork: NO_OP,
-      uncork: NO_OP,
-      write: (
-        data: Uint8Array | string,
-        encoding?: string | null | (() => void),
-        cb?: () => void,
-      ) => {
-        if (typeof encoding === "function") {
-          cb = encoding;
-          encoding = undefined;
-        }
-
-        this.internalWrite(data);
-
-        if (typeof cb === "function") {
-          cb();
-        }
-        return this.responseStream.writableNeedDrain;
-      },
-    };
-
-    this.assignSocket(socket as Socket);
-
-    this.responseStream.on("close", this.cancel.bind(this));
-    this.responseStream.on("error", this.cancel.bind(this));
-
-    this.on("close", this.cancel.bind(this));
-    this.on("error", this.cancel.bind(this));
-    this.once("finish", () => {
-      this.emit("close");
-    });
   }
 }

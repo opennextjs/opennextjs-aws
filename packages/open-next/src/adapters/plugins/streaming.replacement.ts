@@ -48,25 +48,26 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
     method: string,
     headers: Record<string, string>,
   ) =>
-    new StreamingServerResponse(
-      { method, headers },
+    new StreamingServerResponse({
+      method,
+      headers,
       responseStream,
       // We need to fix the cache header before sending any response
-      (headers) => {
+      fixHeaders: (headers) => {
         fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
         fixSWRCacheHeader(headers);
         addOpenNextHeader(headers);
         fixISRHeaders(headers);
       },
       // This run in the callback of the response stream end
-      async (headers) => {
+      onEnd: async (headers) => {
         await revalidateIfRequired(
           internalEvent.headers.host,
           internalEvent.rawPath,
           headers,
         );
       },
-    );
+    });
 
   const preprocessResult = await processInternalEvent(
     internalEvent,
