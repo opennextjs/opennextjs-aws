@@ -9,7 +9,7 @@ const HEADERS = Symbol();
 
 export interface StreamingServerResponseProps {
   method?: string;
-  headers?: Record<string, string>;
+  headers?: Record<string, string | string[] | undefined>;
   responseStream: ResponseStream;
   fixHeaders: (headers: Record<string, string>) => void;
   onEnd: (headers: Record<string, string>) => Promise<void>;
@@ -31,7 +31,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   }: StreamingServerResponseProps) {
     super({ method } as any);
 
-    this[HEADERS] = headers || {};
+    this[HEADERS] = parseHeaders(headers) || {};
 
     this.fixHeaders = fixHeaders;
     this.onEnd = onEnd;

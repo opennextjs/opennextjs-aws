@@ -1,5 +1,6 @@
 /* eslint-disable simple-import-sort/imports */
 import type {
+  CreateResponse,
   PostProcessOptions,
   ProcessInternalEventResult,
 } from "../../types/plugin";
@@ -7,7 +8,6 @@ import type { InternalEvent, InternalResult } from "../../event-mapper";
 //#override imports
 import { debug } from "../../logger";
 import { IncomingMessage } from "../../http/request";
-import { ServerResponse } from "../../http/response";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
@@ -16,16 +16,15 @@ import {
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
+import { ServerlessResponse } from "../../http";
+import { ServerResponse } from "http";
 //#endOverride
 
 //#override processInternalEvent
-export async function processInternalEvent(
+export async function processInternalEvent<Response extends ServerResponse>(
   internalEvent: InternalEvent,
-  createResponse: (
-    method: string,
-    headers: Record<string, string>,
-  ) => ServerResponse,
-): Promise<ProcessInternalEventResult> {
+  createResponse: CreateResponse<Response>,
+): Promise<ProcessInternalEventResult<Response>> {
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,
@@ -51,7 +50,9 @@ export async function postProcessResponse({
   res,
   isExternalRewrite,
 }: PostProcessOptions): Promise<InternalResult> {
-  const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
+  const { statusCode, headers, isBase64Encoded, body } = convertRes(
+    res as ServerlessResponse,
+  );
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 

@@ -3,7 +3,7 @@ import crypto from "crypto";
 import path from "path";
 
 import { IncomingMessage } from "../../http/request.js";
-import { ServerResponse } from "../../http/response.js";
+import { ServerlessResponse } from "../../http/response.js";
 import { awsLogger, debug } from "../../logger.js";
 import { loadBuildId, loadHtmlPages } from "../../util.js";
 
@@ -18,7 +18,10 @@ const sqsClient = new SQSClient({
   logger: awsLogger,
 });
 
-export async function proxyRequest(req: IncomingMessage, res: ServerResponse) {
+export async function proxyRequest(
+  req: IncomingMessage,
+  res: ServerlessResponse,
+) {
   const HttpProxy = require("next/dist/compiled/http-proxy") as any;
 
   const proxy = new HttpProxy({

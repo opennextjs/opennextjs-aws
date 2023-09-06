@@ -6,7 +6,7 @@ import {
 import path from "path";
 
 import { convertFrom, convertTo, InternalEvent } from "../event-mapper";
-import { type IncomingMessage, ServerResponse } from "../http";
+import { type IncomingMessage, ServerlessResponse } from "../http";
 import { debug, error } from "../logger";
 import { CreateResponse } from "../types/plugin";
 import { generateUniqueId, loadBuildId } from "../util";
@@ -56,8 +56,10 @@ export async function lambdaHandler(
   //     : formatAPIGatewayFailoverResponse();
   // }
 
-  const createServerResponse: CreateResponse = (method, headers) =>
-    new ServerResponse({ method, headers });
+  const createServerResponse: CreateResponse<ServerlessResponse> = (
+    method,
+    headers,
+  ) => new ServerlessResponse({ method, headers });
 
   const preprocessResult = await processInternalEvent(
     internalEvent,
@@ -89,7 +91,7 @@ export async function lambdaHandler(
 
 async function processRequest(
   req: IncomingMessage,
-  res: ServerResponse,
+  res: ServerlessResponse,
   internalEvent: InternalEvent,
   isExternalRewrite?: boolean,
 ) {
