@@ -38,12 +38,14 @@ export class ServerlessResponse extends http.ServerResponse {
   [HEADERS]: Record<string, string>;
   private _wroteHeader = false;
   private _header = "";
+  private _initialHeaders: Record<string, string> = {};
 
   constructor({ method, headers }: ServerlessResponseProps) {
     super({ method, headers } as any);
 
     this[BODY] = [];
     this[HEADERS] = parseHeaders(headers) || {};
+    this._initialHeaders = this[HEADERS];
 
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;
@@ -106,7 +108,11 @@ export class ServerlessResponse extends http.ServerResponse {
     const headers =
       typeof res.getHeaders === "function" ? res.getHeaders() : res[HEADERS];
 
-    return Object.assign(headers, res[HEADERS]);
+    return {
+      ...parseHeaders(headers),
+      ...res[HEADERS],
+      ...res._initialHeaders,
+    };
   }
 
   get headers() {
