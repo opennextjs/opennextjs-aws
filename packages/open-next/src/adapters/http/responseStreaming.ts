@@ -1,7 +1,9 @@
 import http from "node:http";
+import { Socket } from "node:net";
 
 import { debug, error } from "../logger.js";
 import type { ResponseStream } from "../types/aws-lambda.js";
+import { convertHeader, NO_OP, parseHeaders } from "./util.js";
 
 const HEADERS = Symbol();
 
@@ -17,30 +19,33 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this[HEADERS];
   }
 
-  setHeader(name: string, value: string | number | readonly string[]): this {
-    // @ts-ignore
-    this[HEADERS][name.toLowerCase()] = value;
+  setHeader(name: string, value: string | number | string[]): this {
+    this[HEADERS][name.toLowerCase()] = convertHeader(value);
     return this;
   }
 
   writeHead(
     statusCode: number,
-    statusMessage?: string | undefined,
-    headers?: http.OutgoingHttpHeaders | http.OutgoingHttpHeader[] | undefined,
-  ): this;
-  writeHead(
-    statusCode: number,
-    headers?: http.OutgoingHttpHeaders | http.OutgoingHttpHeader[] | undefined,
-  ): this;
-  writeHead(
-    statusCode: unknown,
-    statusMessage?: unknown,
-    headers?: unknown,
+    _statusMessage?:
+      | string
+      | http.OutgoingHttpHeaders
+      | http.OutgoingHttpHeader[],
+    _headers?: http.OutgoingHttpHeaders | http.OutgoingHttpHeader[],
   ): this {
+    const headers =
+      typeof _statusMessage === "string" ? _headers : _statusMessage;
+    const statusMessage =
+      typeof _statusMessage === "string" ? _statusMessage : undefined;
     if (this._wroteHeader) {
       return this;
     }
     try {
+      debug("writeHead", statusCode, statusMessage, headers);
+      const parsedHeaders = parseHeaders(headers);
+      this[HEADERS] = {
+        ...this[HEADERS],
+        ...parsedHeaders,
+      };
       this.fixHeaders(this[HEADERS]);
       this._wroteHeader = true;
       // FIXME: This is extracted from the docker lambda node 18 runtime
@@ -61,6 +66,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       process.nextTick(() => {
         this.responseStream.write(new Uint8Array(8));
       });
+      // This is the way we should do it but it doesn't work everytime for some reasons
       // this.responseStream = awslambda.HttpResponseStream.from(
       //   this.responseStream,
       //   {
@@ -78,14 +84,13 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this;
   }
 
-  end(cb?: (() => void) | undefined): this;
-  end(chunk: any, cb?: (() => void) | undefined): this;
   end(
-    chunk: any,
-    encoding: BufferEncoding,
-    cb?: (() => void) | undefined,
-  ): this;
-  end(chunk?: unknown, encoding?: unknown, cb?: unknown): this {
+    _chunk?: Uint8Array | string | (() => void),
+    _encoding?: BufferEncoding | (() => void),
+    _cb?: (() => void) | undefined,
+  ): this {
+    const chunk = typeof _chunk === "function" ? undefined : _chunk;
+    const cb = typeof _cb === "function" ? _cb : undefined;
     if (!this._wroteHeader) {
       // When next directly returns with end, the writeHead is not called,
       // so we need to call it here
@@ -94,7 +99,6 @@ export class StreamingServerResponse extends http.ServerResponse {
     if (chunk && typeof chunk !== "function") {
       this.internalWrite(chunk);
     }
-
     if (!this._hasWritten && !chunk) {
       // We need to send data here if there is none, otherwise the stream will not end at all
       this.internalWrite(new Uint8Array(8));
@@ -102,20 +106,34 @@ export class StreamingServerResponse extends http.ServerResponse {
 
     process.nextTick(() => {
       this.responseStream.end(async () => {
-        // The callback seems necessary here
         debug("stream end", chunk);
         await this.onEnd(this[HEADERS]);
+        cb?.();
       });
     });
-    // debug("stream end", chunk);
     return this;
   }
 
   private internalWrite(chunk: any) {
+    this._hasWritten = true;
     process.nextTick(() => {
-      this.responseStream.write(chunk);
-      this._hasWritten = true;
+      if (this.responseStream.writableNeedDrain) {
+        this.responseStream.once("drain", () => {
+          this.internalWrite(chunk);
+        });
+      } else {
+        this.responseStream.write(chunk);
+      }
     });
+  }
+
+  cancel(error?: Error) {
+    this.responseStream.off("close", this.cancel.bind(this));
+    this.responseStream.off("error", this.cancel.bind(this));
+
+    if (error) {
+      this.responseStream.destroy(error);
+    }
   }
 
   constructor(
@@ -136,23 +154,19 @@ export class StreamingServerResponse extends http.ServerResponse {
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;
 
-    this.assignSocket({
+    const socket: Partial<Socket> & { _writableState: any } = {
       _writableState: {},
       writable: true,
-      // @ts-ignore
-      on: this.responseStream.on.bind(this.responseStream),
-      // @ts-ignore
-      removeListener: this.responseStream.removeListener.bind(
-        this.responseStream,
-      ),
-      // @ts-ignore
-      destroy: this.responseStream.destroy.bind(this.responseStream),
-      // @ts-ignore
-      cork: this.responseStream.cork.bind(this.responseStream),
-      // @ts-ignore
-      uncork: this.responseStream.uncork.bind(this.responseStream),
-      // @ts-ignore
-      write: (data, encoding, cb) => {
+      on: NO_OP,
+      removeListener: NO_OP,
+      destroy: NO_OP,
+      cork: NO_OP,
+      uncork: NO_OP,
+      write: (
+        data: Uint8Array | string,
+        encoding?: string | null | (() => void),
+        cb?: () => void,
+      ) => {
         if (typeof encoding === "function") {
           cb = encoding;
           encoding = undefined;
@@ -163,14 +177,19 @@ export class StreamingServerResponse extends http.ServerResponse {
         if (typeof cb === "function") {
           cb();
         }
-        return true;
+        return this.responseStream.writableNeedDrain;
       },
-    });
+    };
 
-    this.responseStream.on("error", (err) => {
-      this.emit("error", err);
-      error("error", err);
-      this.responseStream.end();
+    this.assignSocket(socket as Socket);
+
+    this.responseStream.on("close", this.cancel.bind(this));
+    this.responseStream.on("error", this.cancel.bind(this));
+
+    this.on("close", this.cancel.bind(this));
+    this.on("error", this.cancel.bind(this));
+    this.once("finish", () => {
+      this.emit("close");
     });
   }
 }
