@@ -1,29 +1,36 @@
+import type { ServerResponse } from "http";
+
 import type { InternalEvent, InternalResult } from "../event-mapper";
 import type { IncomingMessage } from "../http/request";
-import type { ServerResponse } from "../http/response";
 
-export type ProcessInternalEventResult =
+export type ProcessInternalEventResult<
+  Response extends ServerResponse = ServerResponse,
+> =
   | {
       internalEvent: InternalEvent;
       req: IncomingMessage;
-      res: ServerResponse;
+      res: Response;
       isExternalRewrite: boolean;
     }
   | InternalResult;
 
-export type ProcessInternalEvent = (
+export type ProcessInternalEvent<
+  Response extends ServerResponse = ServerResponse,
+> = (
   internalEvent: InternalEvent,
-  createResponse: CreateResponse,
-) => Promise<ProcessInternalEventResult>;
+  createResponse: CreateResponse<Response>,
+) => Promise<ProcessInternalEventResult<Response>>;
 
-export interface PostProcessOptions {
+export interface PostProcessOptions<
+  Response extends ServerResponse = ServerResponse,
+> {
   internalEvent: InternalEvent;
   req: IncomingMessage;
-  res: ServerResponse;
+  res: Response;
   isExternalRewrite?: boolean;
 }
 
-export type CreateResponse = (
+export type CreateResponse<Response extends ServerResponse = ServerResponse> = (
   method: string,
   headers: Record<string, string | string[] | undefined>,
-) => ServerResponse;
+) => Response;

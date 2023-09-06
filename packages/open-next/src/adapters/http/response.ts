@@ -2,15 +2,21 @@
 // https://github.com/dougmoscrop/serverless-http/blob/master/lib/response.js
 // Licensed under the MIT License
 
-// @ts-nocheck
 import http from "node:http";
+import { Socket } from "node:net";
 
-import { getString, headerEnd } from "./util.js";
+import {
+  convertHeader,
+  getString,
+  headerEnd,
+  NO_OP,
+  parseHeaders,
+} from "./util.js";
 
 const BODY = Symbol();
 const HEADERS = Symbol();
 
-function addData(stream, data) {
+function addData(stream: ServerlessResponse, data: Uint8Array | string) {
   if (
     Buffer.isBuffer(data) ||
     ArrayBuffer.isView(data) ||
@@ -22,77 +28,40 @@ function addData(stream, data) {
   }
 }
 
-export class ServerResponse extends http.ServerResponse {
-  static from(res) {
-    const response = new ServerResponse(res);
+export interface ServerlessResponseProps {
+  method: string;
+  headers: Record<string, string | string[] | undefined>;
+}
 
-    response.statusCode = res.statusCode;
-    response[HEADERS] = res.headers;
-    response[BODY] = [Buffer.from(res.body)];
-    response.end();
+export class ServerlessResponse extends http.ServerResponse {
+  [BODY]: Buffer[];
+  [HEADERS]: Record<string, string>;
+  private _wroteHeader = false;
+  private _header = "";
 
-    return response;
-  }
-
-  static body(res) {
-    return Buffer.concat(res[BODY]);
-  }
-
-  static headers(res) {
-    const headers =
-      typeof res.getHeaders === "function" ? res.getHeaders() : res._headers;
-
-    return Object.assign(headers, res[HEADERS]);
-  }
-
-  get headers() {
-    return this[HEADERS];
-  }
-
-  setHeader(key, value) {
-    if (this._wroteHeader) {
-      this[HEADERS][key] = value;
-    } else {
-      super.setHeader(key, value);
-    }
-    return this;
-  }
-
-  writeHead(statusCode, reason, obj) {
-    const headers = typeof reason === "string" ? obj : reason;
-
-    for (const name in headers) {
-      this.setHeader(name, headers[name]);
-
-      if (!this._wroteHeader) {
-        // we only need to initiate super.headers once
-        // writeHead will add the other headers itself
-        break;
-      }
-    }
-
-    return super.writeHead(statusCode, reason, obj);
-  }
-
-  constructor({ method, headers }) {
-    super({ method, headers });
+  constructor({ method, headers }: ServerlessResponseProps) {
+    super({ method, headers } as any);
 
     this[BODY] = [];
-    this[HEADERS] = headers || {};
+    this[HEADERS] = parseHeaders(headers) || {};
 
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;
     this._header = "";
 
-    this.assignSocket({
+    const socket: Partial<Socket> & { _writableState: any } = {
       _writableState: {},
       writable: true,
-      on: Function.prototype,
-      removeListener: Function.prototype,
-      destroy: Function.prototype,
-      cork: Function.prototype,
-      uncork: Function.prototype,
-      write: (data, encoding, cb) => {
+      on: NO_OP,
+      removeListener: NO_OP,
+      destroy: NO_OP,
+      cork: NO_OP,
+      uncork: NO_OP,
+      write: (
+        data: Uint8Array | string,
+        encoding?: string | null | (() => void),
+        cb?: () => void,
+      ) => {
         if (typeof encoding === "function") {
           cb = encoding;
           encoding = null;
@@ -118,11 +87,58 @@ export class ServerResponse extends http.ServerResponse {
         if (typeof cb === "function") {
           cb();
         }
+        return true;
       },
-    });
+    };
+
+    this.assignSocket(socket as Socket);
 
     this.once("finish", () => {
       this.emit("close");
     });
+  }
+
+  static body(res: ServerlessResponse) {
+    return Buffer.concat(res[BODY]);
+  }
+
+  static headers(res: ServerlessResponse) {
+    const headers =
+      typeof res.getHeaders === "function" ? res.getHeaders() : res[HEADERS];
+
+    return Object.assign(headers, res[HEADERS]);
+  }
+
+  get headers() {
+    return this[HEADERS];
+  }
+
+  setHeader(key: string, value: string | number | string[]): this {
+    if (this._wroteHeader) {
+      this[HEADERS][key] = convertHeader(value);
+    } else {
+      super.setHeader(key, value);
+    }
+    return this;
+  }
+
+  writeHead(
+    statusCode: number,
+    reason?: string | any | any[],
+    obj?: any | any[],
+  ) {
+    const headers = typeof reason === "string" ? obj : reason;
+
+    for (const name in headers) {
+      this.setHeader(name, headers[name]);
+
+      if (!this._wroteHeader) {
+        // we only need to initiate super.headers once
+        // writeHead will add the other headers itself
+        break;
+      }
+    }
+
+    return super.writeHead(statusCode, reason, obj);
   }
 }

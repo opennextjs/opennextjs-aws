@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { InternalEvent, InternalResult } from "../event-mapper.js";
 import { IncomingMessage } from "../http/request.js";
-import { ServerResponse } from "../http/response.js";
+import { ServerlessResponse } from "../http/response.js";
 import { loadConfig } from "../util.js";
 import {
   convertRes,
@@ -43,7 +43,10 @@ export async function handleMiddleware(
   if (!hasMatch) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
-  const res = new ServerResponse({ method: req.method, headers: {} });
+  const res = new ServerlessResponse({
+    method: req.method ?? "GET",
+    headers: {},
+  });
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original

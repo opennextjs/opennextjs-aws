@@ -2,7 +2,7 @@
 
 import { InternalEvent } from "./event-mapper.js";
 import { IncomingMessage } from "./http/request.js";
-import { ServerResponse } from "./http/response.js";
+import { ServerlessResponse } from "./http/response.js";
 
 type RemotePattern = {
   protocol?: "http" | "https";
@@ -138,7 +138,7 @@ export type Options = {
 export interface PluginHandler {
   (
     req: IncomingMessage,
-    res: ServerResponse,
+    res: ServerlessResponse,
     options: Options,
-  ): Promise<ServerResponse | undefined>;
+  ): Promise<ServerlessResponse | undefined>;
 }

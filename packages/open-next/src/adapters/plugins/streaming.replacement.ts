@@ -19,6 +19,7 @@ import {
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./routing/util";
+import { CreateResponse } from "../types/plugin";
 //#endOverride
 
 //#override lambdaHandler
@@ -44,9 +45,9 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
 
-  const createServerResponse = (
+  const createServerResponse: CreateResponse<StreamingServerResponse> = (
     method: string,
-    headers: Record<string, string>,
+    headers: Record<string, string | string[] | undefined>,
   ) =>
     new StreamingServerResponse({
       method,
@@ -74,19 +75,14 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
     createServerResponse,
   );
   if ("type" in preprocessResult) {
-    //TODO: replace this line
-    const headers = preprocessResult.headers as Record<string, string>;
+    const headers = preprocessResult.headers;
     const res = createServerResponse("GET", headers);
-    // setImmediate(() => {
-    //   console.log("preprocessResult.headers", headers);
-    //   res.writeHead(preprocessResult.statusCode, headers);
-    // });
+
     setImmediate(() => {
       res.writeHead(preprocessResult.statusCode, headers);
       res.write(preprocessResult.body);
       res.end();
     });
-    // res.statusCode = preprocessResult.statusCode;
   } else {
     const {
       req,
