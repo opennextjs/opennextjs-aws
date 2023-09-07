@@ -11,5 +11,5 @@ export async function getServerSideProps() {
 export default function Page({
   time,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <div className="flex">SSR: {time}</div>;
+  return <div className="flex">Time: {time}</div>;
 }

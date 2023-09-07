@@ -3,7 +3,7 @@ import { Socket } from "node:net";
 
 import { debug, error } from "../logger.js";
 import type { ResponseStream } from "../types/aws-lambda.js";
-import { convertHeader, NO_OP, parseHeaders } from "./util.js";
+import { convertHeader, getString, NO_OP, parseHeaders } from "./util.js";
 
 const HEADERS = Symbol();
 
@@ -59,12 +59,14 @@ export class StreamingServerResponse extends http.ServerResponse {
           cb = encoding;
           encoding = undefined;
         }
-
-        this.internalWrite(data);
+        const d = getString(data);
+        const isSse = d.endsWith("\n\n");
+        this.internalWrite(data, isSse);
 
         if (typeof cb === "function") {
           cb();
         }
+
         return true;
       },
     };
@@ -134,8 +136,14 @@ export class StreamingServerResponse extends http.ServerResponse {
         headers: this[HEADERS],
       });
       setImmediate(() => {
+        if (this[HEADERS]["content-type"]?.includes("text/html")) {
+          // this.internalWrite(" ".repeat(80008));
+        }
+      });
+      setImmediate(() => {
         this.responseStream.write(prelude);
       });
+
       setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
       });
@@ -187,16 +195,23 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this;
   }
 
-  private internalWrite(chunk: any) {
+  private internalWrite(chunk: any, isSse: boolean = false) {
     this._hasWritten = true;
     setImmediate(() => {
       if (this.responseStream.writableNeedDrain) {
         debug("drain");
         this.responseStream.once("drain", () => {
-          this.internalWrite(chunk);
+          this.internalWrite(chunk, isSse);
         });
       } else {
         this.responseStream.write(chunk);
+      }
+      // SSE need to flush to send to client ASAP
+      if (isSse) {
+        setImmediate(() => {
+          this.responseStream.write("\n\n");
+          this.responseStream.uncork();
+        });
       }
     });
   }

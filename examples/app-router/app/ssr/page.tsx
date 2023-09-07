@@ -1,12 +1,23 @@
-import { wait } from "@open-next/utils";
+import React from "react";
 
-export const revalidate = 0;
+import { headers } from "next/headers";
+
+async function getTime() {
+  const res = await new Promise<string>((resolve) => {
+    setTimeout(() => {
+      resolve(new Date().toISOString());
+    }, 1500);
+  });
+  return res;
+}
+
 export default async function SSR() {
-  await wait(2000);
-  const time = new Date().toISOString();
+  const time = await getTime();
+  const headerList = headers();
   return (
     <div>
-      <h1>SSR {time}</h1>
+      <h1>Time: {time}</h1>
+      <div> {headerList.get("host")}</div>
     </div>
   );
 }
