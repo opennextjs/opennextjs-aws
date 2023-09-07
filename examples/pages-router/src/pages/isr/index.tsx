@@ -12,5 +12,5 @@ export async function getStaticProps() {
 export default function Page({
   time,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
-  return <div className="flex">ISR: {time}</div>;
+  return <div className="flex">Time: {time}</div>;
 }

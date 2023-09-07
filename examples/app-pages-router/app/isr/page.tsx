@@ -5,5 +5,5 @@ async function getTime() {
 export const revalidate = 10;
 export default async function ISR() {
   const time = getTime();
-  return <div>ISR: {time}</div>;
+  return <div>Time: {time}</div>;
 }
