@@ -67,17 +67,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         const isSse = d.endsWith("\n\n");
         this.internalWrite(data, isSse);
 
-        if (d.includes("<!DOCTYPE html>") || !d) {
-          process.nextTick(() => {
-            this.responseStream.write("\r\n\r\n");
-            this.responseStream.write("\n\n", cb);
-            this.responseStream.uncork();
-          });
-        } else {
-          if (typeof cb === "function") {
-            cb();
-          }
-        }
+        cb?.();
 
         console.log(`${n++}: ${d}`);
 
@@ -149,11 +139,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         statusCode: statusCode as number,
         headers: this[HEADERS],
       });
-      // setImmediate(() => {
-      //   if (this[HEADERS]["content-type"]?.includes("text/html")) {
-      //     this.internalWrite(" ".repeat(80008));
-      //   }
-      // });
+
       setImmediate(() => {
         this.responseStream.write(prelude);
       });
@@ -161,14 +147,13 @@ export class StreamingServerResponse extends http.ServerResponse {
       setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
       });
-      // This is the way we should do it but it doesn't work everytime for some reasons
-      // this.responseStream = awslambda.HttpResponseStream.from(
-      //   this.responseStream,
-      //   {
-      //     statusCode: statusCode as number,
-      //     headers: this[HEADERS],
-      //   },
-      // );
+
+      // Try to flush the buffer to the client to invoke
+      // the streaming. This does not work 100% of the time.
+      process.nextTick(() => {
+        this.responseStream.write("\n\n");
+        this.responseStream.uncork();
+      });
 
       debug("writeHead", this[HEADERS]);
     } catch (e) {
