@@ -54,14 +54,19 @@ export function fixCacheHeaderForHtmlPages(
   }
 }
 
-export function fixSWRCacheHeader(headers: Record<string, string | undefined>) {
+export function fixSWRCacheHeader(
+  headers: Record<string, string | string[] | undefined>,
+) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  if (headers["cache-control"]) {
-    headers["cache-control"] = headers["cache-control"].replace(
-      /\bstale-while-revalidate(?!=)/,
-      "stale-while-revalidate=2592000", // 30 days
-    );
+  let cacheControl = headers["cache-control"];
+  if (!cacheControl) return;
+  if (Array.isArray(cacheControl)) {
+    cacheControl = cacheControl.join(",");
   }
+  headers["cache-control"] = cacheControl.replace(
+    /\bstale-while-revalidate(?!=)/,
+    "stale-while-revalidate=2592000", // 30 days
+  );
 }
 
 export function addOpenNextHeader(headers: Record<string, string | undefined>) {
