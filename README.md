@@ -329,7 +329,35 @@ await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
 await invalidateCFPaths(["/page/*"]);
 ```
 
-Please note that on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation) (`revalidatePath` and `revalidateTag`) is not yet supported.
+For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
+
+```ts
+function getByTag(tag: string) {
+  try {
+    const { Items } = await this.dynamoClient.send(
+      new QueryCommand({
+        TableName: process.env.CACHE_DYNAMO_TABLE,
+        KeyConditionExpression: "#tag = :tag",
+        ExpressionAttributeNames: {
+          "#tag": "tag",
+        },
+        ExpressionAttributeValues: {
+          ":tag": { S: `${process.env.NEXT_BUILD_ID}/${tag}` },
+        },
+      }),
+    );
+    return (
+      // We need to remove the buildId from the path
+      Items?.map(
+        ({ path: { S: key } }) => key?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
+      ) ?? []
+    );
+  } catch (e) {
+    error("Failed to get by tag", e);
+    return [];
+  }
+}
+```
 
 ## How warming works
 
