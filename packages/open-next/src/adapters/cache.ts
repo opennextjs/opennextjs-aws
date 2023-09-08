@@ -12,12 +12,15 @@ import {
   PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
-//@ts-ignore
-import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
+// //@ts-ignore
+// import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
 import path from "path";
 
 import { awsLogger, debug, error } from "./logger.js";
 import { loadBuildId } from "./util.js";
+
+// TODO: Remove this, temporary only to run some tests
+const getDerivedTags = (tags: string[]) => tags;
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -125,8 +128,12 @@ export default class S3Cache {
     );
   }
 
-  public async get(key: string, fetchCache?: boolean) {
-    return fetchCache ? this.getFetchCache(key) : this.getIncrementalCache(key);
+  public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
+    const isFetchCache =
+      typeof options === "object" ? options.fetchCache : options;
+    return isFetchCache
+      ? this.getFetchCache(key)
+      : this.getIncrementalCache(key);
   }
 
   async getFetchCache(key: string) {
