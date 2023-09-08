@@ -155,10 +155,11 @@ function convertFromCloudFrontRequestEvent(
       }),
       {},
     ),
-    cookies: headers.cookie.reduce((acc, cur) => {
-      const { key, value } = cur;
-      return { ...acc, [key ?? ""]: value };
-    }, {}),
+    cookies:
+      headers.cookie?.reduce((acc, cur) => {
+        const { key, value } = cur;
+        return { ...acc, [key ?? ""]: value };
+      }, {}) ?? {},
   };
 }
 
