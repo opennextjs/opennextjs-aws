@@ -1,5 +1,11 @@
 # open-next
 
+## 2.1.2
+
+### Patch Changes
+
+- 002b0f2: #219: fix window sharp command crash; #220: fix crash when cache-control is an array; #221: fix crash when cookies are missing from edge
+
 ## 2.1.1
 
 ### Patch Changes
