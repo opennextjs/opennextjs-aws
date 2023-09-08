@@ -437,14 +437,14 @@ function createCacheAssets(monorepoRoot: string) {
                 path: {
                   S: path.posix.join(
                     buildId,
-                    path.relative(outputPath, filePath).replace(".meta", "")
+                    path.relative(outputPath, filePath).replace(".meta", ""),
                   ),
                 },
                 revalidatedAt: { N: `${Date.now()}` },
               });
             });
         }
-      }
+      },
     );
 
     const tagsManifestPath = path.join(fetchCachePath, "tags-manifest.json");
@@ -473,7 +473,7 @@ function createCacheAssets(monorepoRoot: string) {
     // TODO: check if metafiles doesn't contain duplicates
     fs.writeFileSync(
       path.join(fetchOutputPath, "dynamodb-cache.json"),
-      JSON.stringify(metaFiles)
+      JSON.stringify(metaFiles),
     );
   }
 }
@@ -674,8 +674,6 @@ function addCacheHandler(outputPath: string) {
   esbuildSync({
     external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
-    // We don't need to bundle next
-    external: ["next"],
     outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
     format: "cjs",
@@ -691,12 +689,12 @@ function patchFetch(outputPath: string) {
     "dist",
     "server",
     "lib",
-    "patch-fetch.js"
+    "patch-fetch.js",
   );
   const content = fs.readFileSync(toOverridePath, "utf-8");
   const patchedContent = content.replace(
     "staticGenerationStore.isOnDemandRevalidate",
-    "(staticGenerationStore.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true'))"
+    "(staticGenerationStore.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true'))",
   );
   fs.writeFileSync(toOverridePath, patchedContent);
 }
@@ -773,7 +771,7 @@ function removeFiles(
     root,
     conditionFn,
     (filePath) => fs.rmSync(filePath, { force: true }),
-    searchingDir
+    searchingDir,
   );
 }
 
@@ -781,7 +779,7 @@ function traverseFiles(
   root: string,
   conditionFn: (file: string) => boolean,
   callbackFn: (filePath: string) => void,
-  searchingDir: string = ""
+  searchingDir: string = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const filePath = path.join(root, searchingDir, file);
@@ -791,7 +789,7 @@ function traverseFiles(
         root,
         conditionFn,
         callbackFn,
-        path.join(searchingDir, file)
+        path.join(searchingDir, file),
       );
       return;
     }
