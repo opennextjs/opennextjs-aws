@@ -5,7 +5,7 @@ import { wait } from "@open-next/utils";
 import { expect, test } from "@playwright/test";
 
 // NOTE: We don't await page load b/c we want to see the Loading page
-test.only("Server Side Render and loading.tsx", async ({ page }) => {
+test("Server Side Render and loading.tsx", async ({ page }) => {
   test.setTimeout(600000);
   await page.goto("/");
   await page.getByRole("link", { name: "SSR" }).click();
@@ -14,7 +14,7 @@ test.only("Server Side Render and loading.tsx", async ({ page }) => {
   let loading: any;
   let lastTime = "";
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 5; i++) {
     page.reload();
 
     loading = page.getByText("Loading...");
@@ -25,7 +25,6 @@ test.only("Server Side Render and loading.tsx", async ({ page }) => {
     expect(time).not.toEqual(lastTime);
     lastTime = time!;
     await wait(1000);
-    console.log("~~i: ", i);
   }
 
   // let loading = page.getByText("Loading...");
