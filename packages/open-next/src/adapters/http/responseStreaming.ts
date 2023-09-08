@@ -42,6 +42,9 @@ export class StreamingServerResponse extends http.ServerResponse {
     this.useChunkedEncodingByDefault = false;
     this.chunkedEncoding = false;
 
+    this.responseStream.cork();
+    let n = 0;
+
     const socket: Partial<Socket> & { _writableState: any } = {
       _writableState: {},
       writable: true,
@@ -60,12 +63,23 @@ export class StreamingServerResponse extends http.ServerResponse {
           encoding = undefined;
         }
         const d = getString(data);
+
         const isSse = d.endsWith("\n\n");
         this.internalWrite(data, isSse);
 
-        if (typeof cb === "function") {
-          cb();
+        if (d.includes("<!DOCTYPE html>") || !d) {
+          process.nextTick(() => {
+            this.responseStream.write("\r\n\r\n");
+            this.responseStream.write("\n\n", cb);
+            this.responseStream.uncork();
+          });
+        } else {
+          if (typeof cb === "function") {
+            cb();
+          }
         }
+
+        console.log(`${n++}: ${d}`);
 
         return true;
       },
@@ -135,11 +149,11 @@ export class StreamingServerResponse extends http.ServerResponse {
         statusCode: statusCode as number,
         headers: this[HEADERS],
       });
-      setImmediate(() => {
-        if (this[HEADERS]["content-type"]?.includes("text/html")) {
-          // this.internalWrite(" ".repeat(80008));
-        }
-      });
+      // setImmediate(() => {
+      //   if (this[HEADERS]["content-type"]?.includes("text/html")) {
+      //     this.internalWrite(" ".repeat(80008));
+      //   }
+      // });
       setImmediate(() => {
         this.responseStream.write(prelude);
       });
@@ -192,6 +206,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         cb?.();
       });
     });
+
     return this;
   }
 
