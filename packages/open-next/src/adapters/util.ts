@@ -116,3 +116,16 @@ export function unescapeRegex(str: string) {
 
   return path;
 }
+
+// AWS cookies are in a single `set-cookie` string, delimited by a comma
+export function parseCookies(
+  cookies?: string | string[],
+): string[] | undefined {
+  if (!cookies) return;
+
+  if (typeof cookies === "string") {
+    return cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim());
+  }
+
+  return cookies;
+}
