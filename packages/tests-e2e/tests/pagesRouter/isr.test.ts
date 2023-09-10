@@ -8,7 +8,7 @@ test("Incremental Static Regeneration", async ({ page }) => {
   await page.waitForURL("/isr");
   // Load the page a couple times to regenerate ISR
 
-  let el = page.getByText("ISR").first();
+  let el = page.getByText("Time:");
   // Track the static time
   let time = await el.textContent();
   let newTime;
@@ -17,13 +17,13 @@ test("Incremental Static Regeneration", async ({ page }) => {
     await wait(1000);
     await page.reload();
     time = tempTime;
-    el = page.getByText("ISR");
+    el = page.getByText("Time:");
     newTime = await el.textContent();
     tempTime = newTime;
   } while (time !== newTime);
   await page.reload();
   await wait(1000);
-  el = page.getByText("ISR");
+  el = page.getByText("Time:");
   const midTime = await el.textContent();
   // Expect that the time is still stale
   expect(midTime).toEqual(newTime);
@@ -33,7 +33,7 @@ test("Incremental Static Regeneration", async ({ page }) => {
   let finalTime = newTime;
   do {
     await wait(2000);
-    el = page.getByText("ISR");
+    el = page.getByText("Time:");
     finalTime = await el.textContent();
     await page.reload();
   } while (newTime === finalTime);

@@ -9,19 +9,19 @@ test("Server Side Render", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "/SSR" }).click();
   await page.waitForURL("/ssr");
-  let el = page.getByText("SSR").first();
+  let el = page.getByText("Time:").first();
   await expect(el).toBeVisible();
   let time = await el.textContent();
 
   await page.reload();
 
-  el = page.getByText("SSR");
+  el = page.getByText("Time:");
   let newTime = await el.textContent();
   await expect(el).toBeVisible();
 
   for (let i = 0; i < 5; i++) {
     await page.reload();
-    el = page.getByText("SSR");
+    el = page.getByText("Time:");
     newTime = await el.textContent();
     await expect(el).toBeVisible();
     await expect(time).not.toEqual(newTime);
