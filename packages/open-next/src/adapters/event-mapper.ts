@@ -9,6 +9,7 @@ import type {
 } from "aws-lambda";
 
 import { debug } from "./logger.js";
+import { parseCookies } from "./util.js";
 
 export type InternalEvent = {
   readonly type: "v1" | "v2" | "cf";
@@ -205,15 +206,10 @@ function convertToApiGatewayProxyResultV2(
       headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
     });
 
-  let cookies = result.headers["set-cookie"];
-  // AWS cookies are in a single `set-cookie` string, delimited by a comma
-  if (cookies && typeof cookies === "string") {
-    cookies = cookies.split(",").map((c) => c.trim());
-  }
   const response: APIGatewayProxyResultV2 = {
     statusCode: result.statusCode,
     headers,
-    cookies: cookies as string[],
+    cookies: parseCookies(result.headers["set-cookie"]),
     body: result.body,
     isBase64Encoded: result.isBase64Encoded,
   };
