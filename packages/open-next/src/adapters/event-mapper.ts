@@ -206,8 +206,7 @@ function convertToApiGatewayProxyResultV2(
     });
 
   let cookies = result.headers["set-cookie"];
-  // Set-Cookies as a comma delimited string is NOT a standard, but
-  // in the context of AWS,
+  // AWS cookies are in a single `set-cookie` string, delimited by a comma
   if (cookies && !Array.isArray(cookies)) {
     cookies = cookies.split(",").map((c) => c.trim());
   }
