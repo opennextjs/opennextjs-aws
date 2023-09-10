@@ -124,7 +124,7 @@ export function parseCookies(
   if (!cookies) return;
 
   if (typeof cookies === "string") {
-    return cookies.split(/(?<!Expires=\w+),/).map((c) => c.trim());
+    return cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim());
   }
 
   return cookies;
