@@ -207,7 +207,7 @@ function convertToApiGatewayProxyResultV2(
 
   let cookies = result.headers["set-cookie"];
   // AWS cookies are in a single `set-cookie` string, delimited by a comma
-  if (cookies && !Array.isArray(cookies)) {
+  if (cookies && typeof cookies === "string") {
     cookies = cookies.split(",").map((c) => c.trim());
   }
   const response: APIGatewayProxyResultV2 = {
