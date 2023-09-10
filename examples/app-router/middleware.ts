@@ -44,6 +44,12 @@ export function middleware(request: NextRequest) {
       headers: requestHeaders,
     },
   });
+
+  // Set cookies in middleware
+  // For: middleware.cookies.test.ts
+  r.cookies.set("from", "middleware");
+  r.cookies.set("with", "love");
+
   return r;
 }
 
