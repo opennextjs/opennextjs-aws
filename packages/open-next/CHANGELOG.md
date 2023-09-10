@@ -1,5 +1,11 @@
 # open-next
 
+## 2.1.3
+
+### Patch Changes
+
+- 880973f: Set cookies properly in APIGateway response. Fixes #224
+
 ## 2.1.2
 
 ### Patch Changes
