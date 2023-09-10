@@ -205,10 +205,16 @@ function convertToApiGatewayProxyResultV2(
       headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
     });
 
+  let cookies = result.headers["set-cookie"];
+  // Set-Cookies as a comma delimited string is NOT a standard, but
+  // in the context of AWS,
+  if (cookies && !Array.isArray(cookies)) {
+    cookies = cookies.split(",").map((c) => c.trim());
+  }
   const response: APIGatewayProxyResultV2 = {
     statusCode: result.statusCode,
     headers,
-    cookies: result.headers["set-cookie"] as string[] | undefined,
+    cookies: cookies as string[],
     body: result.body,
     isBase64Encoded: result.isBase64Encoded,
   };
