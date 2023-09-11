@@ -1,5 +1,11 @@
 # open-next
 
+## 2.1.4
+
+### Patch Changes
+
+- 29c54a4: Fix 2.1.3 cookie parsing with Expires prop
+
 ## 2.1.3
 
 ### Patch Changes
