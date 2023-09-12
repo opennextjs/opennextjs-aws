@@ -524,7 +524,7 @@ async function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  const plugins =
+  let plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
           openNextPlugin({
@@ -541,6 +541,19 @@ async function createServerBundle(monorepoRoot: string) {
           }),
         ]
       : undefined;
+
+  if (compareSemver(options.nextVersion, "13.4.20") >= 0) {
+    plugins = [
+      openNextPlugin({
+        target: /plugins\/serverHandler\.js/g,
+        replacements: ["./13.4.20/serverHandler.js"],
+      }),
+      openNextPlugin({
+        target: /plugins\/util\.js/g,
+        replacements: ["./13.4.20/util.js"],
+      }),
+    ];
+  }
 
   if (plugins) {
     console.log(
