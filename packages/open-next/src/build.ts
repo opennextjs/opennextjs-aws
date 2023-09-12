@@ -470,9 +470,18 @@ function createCacheAssets(monorepoRoot: string) {
       });
     }
 
+    const providerPath = path.join(outputDir, "dynamodb-provider");
+
+    esbuildSync({
+      external: ["@aws-sdk/client-dynamodb"],
+      entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
+      outfile: path.join(providerPath, "index.mjs"),
+      target: ["node18"],
+    });
+
     // TODO: check if metafiles doesn't contain duplicates
     fs.writeFileSync(
-      path.join(fetchOutputPath, "dynamodb-cache.json"),
+      path.join(providerPath, "dynamodb-cache.json"),
       JSON.stringify(metaFiles),
     );
   }
