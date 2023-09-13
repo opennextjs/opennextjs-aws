@@ -320,28 +320,20 @@ function createImageOptimizationBundle() {
   // Target should be same as used by Lambda, see https://github.com/sst/sst/blob/ca6f763fdfddd099ce2260202d0ce48c72e211ea/packages/sst/src/constructs/NextjsSite.ts#L114
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
-  //check if we are running in Windows environment then set env variables accordingly.
-  if (process.platform === "win32") {
-    cp.execSync(
-      `set SHARP_IGNORE_GLOBAL_LIBVIPS=1 && npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix=${path.resolve(
-        outputPath,
-      )} sharp@0.32.5`,
-      {
-        stdio: "inherit",
-        cwd: appPath,
-      },
-    );
-  } else {
-    cp.execSync(
-      `SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix=${path.resolve(
-        outputPath,
-      )} sharp@0.32.5`,
-      {
-        stdio: "inherit",
-        cwd: appPath,
-      },
-    );
-  }
+  const npmEnv = {
+    SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
+  };
+  Object.assign(process.env, npmEnv);
+
+  cp.execSync(
+    `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${path.resolve(
+      outputPath,
+    )}" sharp@0.32.5`,
+    {
+      stdio: "inherit",
+      cwd: appPath,
+    },
+  );
 }
 
 function createStaticAssets() {
