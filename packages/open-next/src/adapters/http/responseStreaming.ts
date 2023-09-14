@@ -1,5 +1,6 @@
 import http from "node:http";
 import { Socket } from "node:net";
+import zlib from "node:zlib";
 
 import { debug, error } from "../logger.js";
 import type { ResponseStream } from "../types/aws-lambda.js";
@@ -68,9 +69,6 @@ export class StreamingServerResponse extends http.ServerResponse {
         this.internalWrite(data, isSse);
 
         cb?.();
-
-        console.log(`${n++}: ${d}`);
-
         return true;
       },
     };
@@ -122,6 +120,7 @@ export class StreamingServerResponse extends http.ServerResponse {
       this[HEADERS] = {
         ...this[HEADERS],
         ...this._initialHeaders,
+        "content-encoding": "br",
       };
 
       debug("writeHead", this[HEADERS]);
@@ -139,20 +138,23 @@ export class StreamingServerResponse extends http.ServerResponse {
         statusCode: statusCode as number,
         headers: this[HEADERS],
       });
-
+      // Try to flush the buffer to the client to invoke
+      // the streaming. This does not work 100% of the time.
+      setImmediate(() => {
+        this.responseStream.write("\n\n");
+        this.responseStream.uncork();
+      });
       setImmediate(() => {
         this.responseStream.write(prelude);
       });
 
       setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
-      });
-
-      // Try to flush the buffer to the client to invoke
-      // the streaming. This does not work 100% of the time.
-      process.nextTick(() => {
-        this.responseStream.write("\n\n");
-        this.responseStream.uncork();
+        const br = zlib.createBrotliCompress({
+          flush: zlib.constants.BROTLI_OPERATION_FLUSH,
+        });
+        br.pipe(this.responseStream);
+        this.responseStream = br as unknown as ResponseStream;
       });
 
       debug("writeHead", this[HEADERS]);
