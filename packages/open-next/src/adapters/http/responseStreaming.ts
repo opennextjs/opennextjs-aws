@@ -120,8 +120,13 @@ export class StreamingServerResponse extends http.ServerResponse {
       this[HEADERS] = {
         ...this[HEADERS],
         ...this._initialHeaders,
-        "content-encoding": "br",
       };
+
+      console.log("~~thisheaders: ", this[HEADERS]);
+      if (this[HEADERS]["accept-encoding"]?.includes("br")) {
+        console.log("~~setting encoding to br");
+        this[HEADERS]["content-encoding"] = "br";
+      }
 
       debug("writeHead", this[HEADERS]);
 
@@ -150,11 +155,15 @@ export class StreamingServerResponse extends http.ServerResponse {
 
       setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
-        const br = zlib.createBrotliCompress({
-          flush: zlib.constants.BROTLI_OPERATION_FLUSH,
-        });
-        br.pipe(this.responseStream);
-        this.responseStream = br as unknown as ResponseStream;
+        console.log("~~accept-encoding:", this[HEADERS]["accept-encoding"]);
+
+        if (this[HEADERS]["accept-encoding"]?.includes("br")) {
+          const br = zlib.createBrotliCompress({
+            flush: zlib.constants.BROTLI_OPERATION_FLUSH,
+          });
+          br.pipe(this.responseStream);
+          this.responseStream = br as unknown as ResponseStream;
+        }
       });
 
       debug("writeHead", this[HEADERS]);
