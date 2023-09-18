@@ -542,15 +542,15 @@ async function createServerBundle(monorepoRoot: string) {
         ]
       : undefined;
 
-  if (compareSemver(options.nextVersion, "13.4.20") >= 0) {
+  if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
     plugins = [
       openNextPlugin({
         target: /plugins\/serverHandler\.js/g,
-        replacements: ["./13.4.20/serverHandler.js"],
+        replacements: ["./13.5/serverHandler.js"],
       }),
       openNextPlugin({
         target: /plugins\/util\.js/g,
-        replacements: ["./13.4.20/util.js"],
+        replacements: ["./13.5/util.js"],
       }),
     ];
   }
