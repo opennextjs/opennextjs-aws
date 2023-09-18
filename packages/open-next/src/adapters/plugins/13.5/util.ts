@@ -1,12 +1,17 @@
 import path from "node:path";
 
+import { debug } from "../../logger.js";
 import { loadConfig } from "../../util.js";
 
 const NEXT_DIR = path.join(__dirname, ".next");
 
 const config = loadConfig(NEXT_DIR);
-//#override requestHandler
 
+//#override requireHooks
+debug("No need to override require hooks with next 13.4.20+");
+//#endOverride
+
+//#override requestHandler
 process.env.__NEXT_PRIVATE_STANDALONE_CONFIG = JSON.stringify({
   ...config,
   // Next.js compression should be disabled because of a bug in the bundled
