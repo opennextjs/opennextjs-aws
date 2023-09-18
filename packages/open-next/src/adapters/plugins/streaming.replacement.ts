@@ -32,7 +32,6 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
   responseStream: ResponseStream,
 ) {
   debug("event", event);
-  console.log("~~url: ", event);
 
   // Handler warmer
   if ("type" in event) {
@@ -49,8 +48,10 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
   const createServerResponse: CreateResponse<StreamingServerResponse> = (
     method: string,
     headers: Record<string, string | string[] | undefined>,
-  ) =>
-    new StreamingServerResponse({
+  ) => {
+    // sets the accept-encoding
+    headers["accept-encoding"] = internalEvent.headers["accept-encoding"];
+    return new StreamingServerResponse({
       method,
       headers,
       responseStream,
@@ -70,6 +71,7 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
         );
       },
     });
+  };
 
   const preprocessResult = await processInternalEvent(
     internalEvent,
@@ -77,9 +79,6 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
   );
   if ("type" in preprocessResult) {
     const headers = preprocessResult.headers;
-    headers["cookie"] = internalEvent.headers["cookie"];
-    headers["accept-encoding"] = internalEvent.headers["accept-encoding"];
-
     const res = createServerResponse("GET", headers);
 
     setImmediate(() => {

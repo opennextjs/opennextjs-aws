@@ -23,6 +23,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   private _wroteHeader = false;
   private _hasWritten = false;
   private _initialHeaders: Record<string, string> = {};
+  private _cookies: string[] = [];
 
   constructor({
     method,
@@ -89,8 +90,16 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this[HEADERS];
   }
 
-  setHeader(name: string, value: string | number | string[]): this {
-    this[HEADERS][name.toLowerCase()] = convertHeader(value);
+  setHeader(key: string, value: string | number | string[]): this {
+    key = key.toLowerCase();
+    // There can be multiple set-cookie response headers
+    // They need to be returned as a special "cookies" array, eg:
+    // {statusCode: xxx, cookies: ['Cookie=Yum'], ...}
+    if (key === "set-cookie") {
+      this._cookies.push(convertHeader(value));
+    } else {
+      this[HEADERS][key] = convertHeader(value);
+    }
     return this;
   }
 
@@ -116,17 +125,19 @@ export class StreamingServerResponse extends http.ServerResponse {
         ...this[HEADERS],
         ...parsedHeaders,
       };
+
       this.fixHeaders(this[HEADERS]);
       this[HEADERS] = {
         ...this[HEADERS],
         ...this._initialHeaders,
       };
 
-      console.log("~~thisheaders: ", this[HEADERS]);
-      if (this[HEADERS]["accept-encoding"]?.includes("br")) {
-        console.log("~~setting encoding to br");
+      const acceptsBrEncoding =
+        this[HEADERS]["accept-encoding"]?.includes("br");
+      if (acceptsBrEncoding) {
         this[HEADERS]["content-encoding"] = "br";
       }
+      delete this[HEADERS]["accept-encoding"];
 
       debug("writeHead", this[HEADERS]);
 
@@ -141,8 +152,10 @@ export class StreamingServerResponse extends http.ServerResponse {
       );
       const prelude = JSON.stringify({
         statusCode: statusCode as number,
+        cookies: this._cookies,
         headers: this[HEADERS],
       });
+
       // Try to flush the buffer to the client to invoke
       // the streaming. This does not work 100% of the time.
       setImmediate(() => {
@@ -155,9 +168,10 @@ export class StreamingServerResponse extends http.ServerResponse {
 
       setImmediate(() => {
         this.responseStream.write(new Uint8Array(8));
-        console.log("~~accept-encoding:", this[HEADERS]["accept-encoding"]);
 
-        if (this[HEADERS]["accept-encoding"]?.includes("br")) {
+        // After headers are written, compress all writes
+        // using Brotli
+        if (acceptsBrEncoding) {
           const br = zlib.createBrotliCompress({
             flush: zlib.constants.BROTLI_OPERATION_FLUSH,
           });

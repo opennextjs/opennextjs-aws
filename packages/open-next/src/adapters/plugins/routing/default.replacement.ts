@@ -39,7 +39,6 @@ export const processInternalEvent: ProcessInternalEvent = async (
   createResponse,
 ) => {
   const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
-  console.log("~~nextHeaders", nextHeaders);
 
   let internalEvent = fixDataPage(event, buildId);
 
