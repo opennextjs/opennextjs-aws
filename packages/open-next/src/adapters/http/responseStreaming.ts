@@ -200,9 +200,6 @@ export class StreamingServerResponse extends http.ServerResponse {
       // so we need to call it here
       this.writeHead(this.statusCode ?? 200);
     }
-    if (chunk && typeof chunk !== "function") {
-      this.internalWrite(chunk, false, cb);
-    }
 
     if (!this._hasWritten && !chunk) {
       // We need to send data here if there is none, otherwise the stream will not end at all
@@ -234,14 +231,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   private internalWrite(chunk: any, isSse: boolean = false, cb?: () => void) {
     this._hasWritten = true;
     setImmediate(() => {
-      if (this.responseStream.writableNeedDrain) {
-        debug("drain");
-        this.responseStream.once("drain", () => {
-          this.internalWrite(chunk, isSse, cb);
-        });
-      } else {
-        this.responseStream.write(chunk, cb);
-      }
+      this.responseStream.write(chunk, cb);
       // SSE need to flush to send to client ASAP
       if (isSse) {
         setImmediate(() => {
