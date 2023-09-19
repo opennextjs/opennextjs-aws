@@ -49,7 +49,7 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
     method: string,
     headers: Record<string, string | string[] | undefined>,
   ) => {
-    // sets the accept-encoding
+    // sets the accept-encoding for responseStreaming.ts to set "content-encoding"
     headers["accept-encoding"] = internalEvent.headers["accept-encoding"];
     return new StreamingServerResponse({
       method,

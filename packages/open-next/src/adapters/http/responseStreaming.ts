@@ -24,6 +24,7 @@ export class StreamingServerResponse extends http.ServerResponse {
   private _hasWritten = false;
   private _initialHeaders: Record<string, string> = {};
   private _cookies: string[] = [];
+  private _compressed = false;
 
   constructor({
     method,
@@ -45,7 +46,6 @@ export class StreamingServerResponse extends http.ServerResponse {
     this.chunkedEncoding = false;
 
     this.responseStream.cork();
-    let n = 0;
 
     const socket: Partial<Socket> & { _writableState: any } = {
       _writableState: {},
@@ -65,11 +65,9 @@ export class StreamingServerResponse extends http.ServerResponse {
           encoding = undefined;
         }
         const d = getString(data);
-
         const isSse = d.endsWith("\n\n");
-        this.internalWrite(data, isSse);
+        this.internalWrite(data, isSse, cb);
 
-        cb?.();
         return true;
       },
     };
@@ -132,9 +130,8 @@ export class StreamingServerResponse extends http.ServerResponse {
         ...this._initialHeaders,
       };
 
-      const acceptsBrEncoding =
-        this[HEADERS]["accept-encoding"]?.includes("br");
-      if (acceptsBrEncoding) {
+      this._compressed = this[HEADERS]["accept-encoding"]?.includes("br");
+      if (this._compressed) {
         this[HEADERS]["content-encoding"] = "br";
       }
       delete this[HEADERS]["accept-encoding"];
@@ -171,10 +168,11 @@ export class StreamingServerResponse extends http.ServerResponse {
 
         // After headers are written, compress all writes
         // using Brotli
-        if (acceptsBrEncoding) {
+        if (this._compressed) {
           const br = zlib.createBrotliCompress({
             flush: zlib.constants.BROTLI_OPERATION_FLUSH,
           });
+          br.setMaxListeners(100);
           br.pipe(this.responseStream);
           this.responseStream = br as unknown as ResponseStream;
         }
@@ -196,40 +194,53 @@ export class StreamingServerResponse extends http.ServerResponse {
   ): this {
     const chunk = typeof _chunk === "function" ? undefined : _chunk;
     const cb = typeof _cb === "function" ? _cb : undefined;
+
     if (!this._wroteHeader) {
       // When next directly returns with end, the writeHead is not called,
       // so we need to call it here
       this.writeHead(this.statusCode ?? 200);
     }
     if (chunk && typeof chunk !== "function") {
-      this.internalWrite(chunk);
+      this.internalWrite(chunk, false, cb);
     }
+
     if (!this._hasWritten && !chunk) {
       // We need to send data here if there is none, otherwise the stream will not end at all
-      this.internalWrite(new Uint8Array(8));
+      this.internalWrite(new Uint8Array(8), false, cb);
     }
 
-    setImmediate(() => {
-      this.responseStream.end(async () => {
-        debug("stream end", chunk);
-        await this.onEnd(this[HEADERS]);
-        cb?.();
+    const _end = () => {
+      setImmediate(() => {
+        this.responseStream.end(_chunk, async () => {
+          if (this._compressed) {
+            (this.responseStream as unknown as zlib.BrotliCompress).flush(
+              zlib.constants.BROTLI_OPERATION_FINISH,
+            );
+          }
+          await this.onEnd(this[HEADERS]);
+          cb?.();
+        });
       });
-    });
+    };
 
+    if (this.responseStream.writableNeedDrain) {
+      this.responseStream.once("drain", _end);
+    } else {
+      _end();
+    }
     return this;
   }
 
-  private internalWrite(chunk: any, isSse: boolean = false) {
+  private internalWrite(chunk: any, isSse: boolean = false, cb?: () => void) {
     this._hasWritten = true;
     setImmediate(() => {
       if (this.responseStream.writableNeedDrain) {
         debug("drain");
         this.responseStream.once("drain", () => {
-          this.internalWrite(chunk, isSse);
+          this.internalWrite(chunk, isSse, cb);
         });
       } else {
-        this.responseStream.write(chunk);
+        this.responseStream.write(chunk, cb);
       }
       // SSE need to flush to send to client ASAP
       if (isSse) {
@@ -242,7 +253,6 @@ export class StreamingServerResponse extends http.ServerResponse {
   }
 
   cancel(error?: Error) {
-    debug("cancel", error);
     this.responseStream.off("close", this.cancel.bind(this));
     this.responseStream.off("error", this.cancel.bind(this));
 
