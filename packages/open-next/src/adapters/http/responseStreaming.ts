@@ -68,7 +68,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         const isSse = d.endsWith("\n\n");
         this.internalWrite(data, isSse, cb);
 
-        return true;
+        return this.responseStream.writableNeedDrain;
       },
     };
 

@@ -35,7 +35,10 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
 
   // Handler warmer
   if ("type" in event) {
-    throw new Error("Warmer function are not supported with streaming");
+    // @ts-ignore formatWarmerResponse defined in lambdaHandler
+    const result = await formatWarmerResponse(event);
+    responseStream.end(Buffer.from(JSON.stringify(result)), "utf-8");
+    return;
   }
   // Parse Lambda event and create Next.js request
   const internalEvent = convertFrom(event);
