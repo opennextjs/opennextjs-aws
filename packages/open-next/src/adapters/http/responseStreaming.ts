@@ -231,7 +231,13 @@ export class StreamingServerResponse extends http.ServerResponse {
   private internalWrite(chunk: any, isSse: boolean = false, cb?: () => void) {
     this._hasWritten = true;
     setImmediate(() => {
-      this.responseStream.write(chunk, cb);
+      if (this.responseStream.writableNeedDrain) {
+        this.responseStream.once("drain", () => {
+          this.internalWrite(chunk, isSse, cb);
+        });
+      } else {
+        this.responseStream.write(chunk, cb);
+      }
       // SSE need to flush to send to client ASAP
       if (isSse) {
         setImmediate(() => {
