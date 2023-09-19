@@ -101,6 +101,16 @@ export class StreamingServerResponse extends http.ServerResponse {
     return this;
   }
 
+  removeHeader(key: string): this {
+    key = key.toLowerCase();
+    if (key === "set-cookie") {
+      this._cookies.length = 0;
+    } else {
+      delete this[HEADERS][key];
+    }
+    return this;
+  }
+
   writeHead(
     statusCode: number,
     _statusMessage?:
