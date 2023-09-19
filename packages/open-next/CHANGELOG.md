@@ -1,5 +1,11 @@
 # open-next
 
+## 2.1.5
+
+### Patch Changes
+
+- 2ae2a1b: Fix windows image optimization build
+
 ## 2.1.4
 
 ### Patch Changes
