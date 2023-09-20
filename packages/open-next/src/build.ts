@@ -626,22 +626,22 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   let plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
-          openNextPlugin({
-            name: "opennext-13.4.13-serverHandler",
-            target: /plugins\/serverHandler\.js/g,
-            replacements: ["./serverHandler.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-util",
-            target: /plugins\/util\.js/g,
-            replacements: ["./util.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-default",
-            target: /plugins\/routing\/default\.js/g,
-            replacements: ["./default.replacement.js"],
-          }),
-        ]
+        openNextPlugin({
+          name: "opennext-13.4.13-serverHandler",
+          target: /plugins\/serverHandler\.js/g,
+          replacements: ["./serverHandler.replacement.js"],
+        }),
+        openNextPlugin({
+          name: "opennext-13.4.13-util",
+          target: /plugins\/util\.js/g,
+          replacements: ["./util.replacement.js"],
+        }),
+        openNextPlugin({
+          name: "opennext-13.4.13-default",
+          target: /plugins\/routing\/default\.js/g,
+          replacements: ["./default.replacement.js"],
+        }),
+      ]
       : undefined;
 
   if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
@@ -707,6 +707,25 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
   addCacheHandler(outputPath, options.dangerous);
+
+  if (options.minify) {
+    removeNodeModule(path.join(outputPath, "node_modules"), [
+      "@esbuild",
+      "prisma/libquery_engine-darwin-arm64.dylib.node",
+      "@swc/core-darwin-arm64",
+      "@swc/core",
+      "better-sqlite3",
+      "esbuild",
+      "webpack",
+      "uglify-js",
+      // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
+      // "react-dom",
+      "@webassemblyjs",
+      "uglify-js",
+      "sass",
+      "caniuse-lite",
+    ]);
+  }
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -823,11 +842,9 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
     format: "cjs",
     banner: {
       js: [
-        `globalThis.disableIncrementalCache = ${
-          options?.disableIncrementalCache ?? false
+        `globalThis.disableIncrementalCache = ${options?.disableIncrementalCache ?? false
         };`,
-        `globalThis.disableDynamoDBCache = ${
-          options?.disableDynamoDBCache ?? false
+        `globalThis.disableDynamoDBCache = ${options?.disableDynamoDBCache ?? false
         };`,
       ].join(""),
     },
@@ -861,8 +878,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -891,8 +907,7 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -995,4 +1010,14 @@ function compareSemver(v1: string, v2: string): number {
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
   return patch1 - patch2;
+}
+
+function removeNodeModule(nodeModulesPath: string, modules: string[]) {
+  console.log("removing: ", modules);
+  for (const module of modules) {
+    fs.rmSync(path.join(nodeModulesPath, module), {
+      force: true,
+      recursive: true,
+    });
+  }
 }
