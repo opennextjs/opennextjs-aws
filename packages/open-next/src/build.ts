@@ -552,6 +552,14 @@ async function createServerBundle(monorepoRoot: string) {
         target: /plugins\/util\.js/g,
         replacements: ["./13.5/util.js"],
       }),
+      openNextPlugin({
+        target: /plugins\/util\.js/g,
+        replacements: ["./util.replacement.js"],
+      }),
+      openNextPlugin({
+        target: /plugins\/routing\/default\.js/g,
+        replacements: ["./default.replacement.js"],
+      }),
     ];
   }
 
