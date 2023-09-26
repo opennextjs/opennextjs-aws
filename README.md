@@ -411,6 +411,19 @@ This cost estimate is based on the `us-east-1` region pricing and does not consi
 
 ## Limitations and workarounds
 
+#### WORKAROUND: Patch fetch behaviour for ISR. Only for next@13.5.1+
+
+In order to make fetch work as expected with ISR, you need to patch the `fetch` function in your app. Just add this lines to your root layout component:
+
+```ts
+const asyncStorage = require("next/dist/client/components/static-generation-async-storage.external");
+//@ts-ignore
+const staticStore = (fetch as any).__nextGetStaticStore?.() || asyncStorage.staticGenerationAsyncStorage;
+const store = staticStore.getStore();
+store.isOnDemandRevalidate = store.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true');
+```
+Without this workaround, if you have 2 fetch calls in your page with different revalidate values, both will use the smallest value during ISR revalidation.
+
 #### WORKAROUND: Create one cache behavior per top-level file and folder in `public/` (AWS specific)
 
 As mentioned in the [Asset files](#asset-files) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. And requests for these files are handled by the S3 bucket, like so:
