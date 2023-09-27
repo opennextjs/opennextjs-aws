@@ -447,28 +447,26 @@ function createCacheAssets(monorepoRoot: string) {
       },
     );
 
-    const tagsManifestPath = path.join(fetchCachePath, "tags-manifest.json");
-    if (fs.existsSync(tagsManifestPath)) {
-      // We also need to add cache tags from tags-manifest.json
-      const tagsManifestFile = fs.readFileSync(tagsManifestPath, "utf8");
-      const tagsManifest = JSON.parse(tagsManifestFile) as {
-        version: number;
-        items: {
-          [tag: string]: {
-            keys: string[];
-          };
-        };
-      };
-      Object.entries(tagsManifest.items).forEach(([tag, tagObject]) => {
-        tagObject.keys.forEach((key: string) => {
+    traverseFiles(
+      fetchCachePath,
+      () => true,
+      (filepath) => {
+        const fileContent = fs.readFileSync(filepath, "utf8");
+        const fileData = JSON.parse(fileContent);
+        fileData?.tags?.forEach((tag: string) => {
           metaFiles.push({
             tag: { S: path.posix.join(buildId, tag) },
-            path: { S: path.posix.join(buildId, key) },
+            path: {
+              S: path.posix.join(
+                buildId,
+                path.relative(fetchCachePath, filepath),
+              ),
+            },
             revalidatedAt: { N: `${Date.now()}` },
           });
         });
-      });
-    }
+      },
+    );
 
     const providerPath = path.join(outputDir, "dynamodb-provider");
 
