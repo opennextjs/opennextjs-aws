@@ -17,39 +17,39 @@ const routeHasMatcher =
     cookies: Record<string, string>,
     query: Record<string, string | string[]>,
   ) =>
-  (redirect: RouteHas): boolean => {
-    switch (redirect.type) {
-      case "header":
-        return (
-          headers?.[redirect.key.toLowerCase()] !== "" &&
-          new RegExp(redirect.value ?? "").test(
-            headers[redirect.key.toLowerCase()] ?? "",
-          )
-        );
-      case "cookie":
-        return (
-          cookies?.[redirect.key] !== "" &&
-          new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
-        );
-      case "query":
-        return query[redirect.key] && Array.isArray(redirect.value)
-          ? redirect.value.reduce(
+    (redirect: RouteHas): boolean => {
+      switch (redirect.type) {
+        case "header":
+          return (
+            headers?.[redirect.key.toLowerCase()] !== "" &&
+            new RegExp(redirect.value ?? "").test(
+              headers[redirect.key.toLowerCase()] ?? "",
+            )
+          );
+        case "cookie":
+          return (
+            cookies?.[redirect.key] !== "" &&
+            new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
+          );
+        case "query":
+          return query[redirect.key] && Array.isArray(redirect.value)
+            ? redirect.value.reduce(
               (prev, current) =>
                 prev || new RegExp(current).test(query[redirect.key] as string),
               false,
             )
-          : new RegExp(redirect.value ?? "").test(
+            : new RegExp(redirect.value ?? "").test(
               (query[redirect.key] as string | undefined) ?? "",
             );
-      case "host":
-        return (
-          headers?.host !== "" &&
-          new RegExp(redirect.value ?? "").test(headers.host)
-        );
-      default:
-        return false;
-    }
-  };
+        case "host":
+          return (
+            headers?.host !== "" &&
+            new RegExp(redirect.value ?? "").test(headers.host)
+          );
+        default:
+          return false;
+      }
+    };
 
 function checkHas(
   matcher: ReturnType<typeof routeHasMatcher>,
@@ -58,9 +58,9 @@ function checkHas(
 ) {
   return has
     ? has.reduce((acc, cur) => {
-        if (acc === false) return false;
-        return inverted ? !matcher(cur) : matcher(cur);
-      }, true)
+      if (acc === false) return false;
+      return inverted ? !matcher(cur) : matcher(cur);
+    }, true)
     : true;
 }
 
@@ -181,28 +181,4 @@ export function handleRedirects(
       isBase64Encoded: false,
     };
   }
-}
-
-export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
-  const { rawPath, query } = internalEvent;
-  const dataPattern = `/_next/data/${buildId}`;
-
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
-    query.__nextDataReq = "1";
-    const urlQuery: Record<string, string> = {};
-    Object.keys(query).forEach((k) => {
-      const v = query[k];
-      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-    });
-    return {
-      ...internalEvent,
-      rawPath: newPath,
-      query,
-      url: `${newPath}${
-        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-      }`,
-    };
-  }
-  return internalEvent;
 }

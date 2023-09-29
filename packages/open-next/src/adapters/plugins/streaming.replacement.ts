@@ -15,7 +15,6 @@ import { processInternalEvent } from "./routing/default.js";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
-  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./routing/util";
@@ -63,7 +62,7 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
         fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
         fixSWRCacheHeader(headers);
         addOpenNextHeader(headers);
-        fixISRHeaders(headers);
+        // fixISRHeaders(headers);
       },
       // This run in the callback of the response stream end
       onEnd: async (headers) => {

@@ -11,7 +11,6 @@ import { debug } from "../../logger";
 import { IncomingMessage } from "../../http/request";
 import {
   addNextConfigHeaders,
-  fixDataPage,
   handleRedirects,
   handleRewrites,
 } from "../../routing/matcher";
@@ -19,7 +18,6 @@ import { loadBuildId, loadConfigHeaders, loadRoutesManifest } from "../../util";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
-  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./util";
@@ -40,7 +38,7 @@ export const processInternalEvent: ProcessInternalEvent = async (
 ) => {
   const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
 
-  let internalEvent = fixDataPage(event, buildId);
+  let internalEvent = event;
 
   const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {
@@ -132,7 +130,7 @@ export async function postProcessResponse({
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);
-    fixISRHeaders(headers);
+    // fixISRHeaders(headers);
 
     await revalidateIfRequired(
       internalEvent.headers.host,
