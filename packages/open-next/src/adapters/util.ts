@@ -32,6 +32,7 @@ export function loadHtmlPages(nextDir: string) {
 }
 
 export function loadPublicAssets(openNextDir: string) {
+  console.log("~~openNextDir: ", openNextDir);
   const filePath = path.join(openNextDir, "public-files.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as PublicFiles;

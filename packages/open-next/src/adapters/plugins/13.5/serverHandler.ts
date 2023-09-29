@@ -1,7 +1,7 @@
 /*eslint-disable simple-import-sort/imports */
 import type { Options, PluginHandler } from "../../next-types.js";
-import type { IncomingMessage } from "../../request.js";
-import type { ServerResponse } from "../../response.js";
+import type { IncomingMessage } from "../../http/request.js";
+import type { ServerlessResponse } from "../../http/response.js";
 //#override imports
 //@ts-ignore
 import { requestHandler } from "./util.js";
@@ -12,7 +12,7 @@ import { proxyRequest } from "./routing/util.js";
 //#override handler
 export const handler: PluginHandler = async (
   req: IncomingMessage,
-  res: ServerResponse,
+  res: ServerlessResponse,
   options: Options,
 ) => {
   if (options.isExternalRewrite) {

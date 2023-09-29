@@ -8,7 +8,6 @@ import path from "path";
 import { convertFrom, convertTo, InternalEvent } from "../event-mapper";
 import { type IncomingMessage, ServerlessResponse } from "../http";
 import { debug, error } from "../logger";
-import { OPEN_NEXT_DIR } from "../server-adapter";
 import { CreateResponse } from "../types/plugin";
 import { generateUniqueId, loadBuildId, loadPublicAssets } from "../util";
 import { WarmerEvent, WarmerResponse } from "../warmer-function";
@@ -20,7 +19,9 @@ import {
 //#endOverride
 import { handler as serverHandler } from "./serverHandler";
 
-export const NEXT_DIR = path.join(__dirname, ".next");
+const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
+
+const NEXT_DIR = path.join(__dirname, ".next");
 const buildId = loadBuildId(NEXT_DIR);
 const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 
