@@ -5,7 +5,7 @@ import path from "node:path";
 
 import type { SQSEvent } from "aws-lambda";
 
-import { debug } from "./logger.js";
+import { debug, error } from "./logger.js";
 
 const prerenderManifest = loadPrerenderManifest();
 
@@ -42,7 +42,10 @@ export const handler = async (event: SQSEvent) => {
         },
         (res) => resolve(res),
       );
-      req.on("error", (err) => reject(err));
+      req.on("error", (err) => {
+        error(`Error revalidating page`, { host, url });
+        reject(err);
+      });
       req.end();
     });
   }
