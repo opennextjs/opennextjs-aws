@@ -96,15 +96,15 @@ jobs:
       # Install latest nextjs version
       - name: Install Nextjs in app-router
         working-directory: examples/app-router
-        run: pnpm add next@latest
+        run: pnpm add next@${{ needs.check_next_version.outputs.previousNextVersion }}
 
       - name: Install Nextjs in pages-router
         working-directory: examples/pages-router
-        run: pnpm add next@latest
+        run: pnpm add next@${{ needs.check_next_version.outputs.previousNextVersion }}
 
       - name: Install Nextjs in app-pages-router
         working-directory: examples/app-pages-router
-        run: pnpm add next@latest
+        run: pnpm add next@${{ needs.check_next_version.outputs.previousNextVersion }}
 
       - name: Get Playwright version
         id: playwright-version
