@@ -93,6 +93,19 @@ jobs:
       - name: Install packages
         run: pnpm install
 
+      # Install latest nextjs version
+      - name: Install Nextjs in app-router
+        working-directory: examples/app-router
+        run: pnpm add next@latest
+
+      - name: Install Nextjs in pages-router
+        working-directory: examples/pages-router
+        run: pnpm add next@latest
+
+      - name: Install Nextjs in app-pages-router
+        working-directory: examples/app-pages-router
+        run: pnpm add next@latest
+
       - name: Get Playwright version
         id: playwright-version
         run: echo "version=$(npm ls @playwright/test | grep @playwright | sed 's/.*@//' | sed 's/ .*//' )"

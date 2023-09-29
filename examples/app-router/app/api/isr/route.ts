@@ -2,6 +2,8 @@ import fs from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 // This endpoint simulates an on demand revalidation request
 export async function GET(request: NextRequest) {
   const cwd = process.cwd();
@@ -12,7 +14,9 @@ export async function GET(request: NextRequest) {
   const manifest = JSON.parse(prerenderManifest);
   const previewId = manifest.preview.previewModeId;
 
-  const result = await fetch(`https://${request.url}/isr`, {
+  const url = new URL(request.url);
+
+  const result = await fetch(`${url.origin}/isr`, {
     headers: { "x-prerender-revalidate": previewId },
     method: "HEAD",
   });
