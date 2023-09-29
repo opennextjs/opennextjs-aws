@@ -30,8 +30,10 @@ const config = loadConfig(NEXT_DIR);
 // Step 3: Apply the override after Next.js server is imported since the
 //         override that Next.js does is done at import time
 
+//#override requireHooks
 overrideNextjsRequireHooks(config);
 applyNextjsRequireHooksOverride();
+//#endOverride
 
 //#override requestHandler
 // @ts-ignore

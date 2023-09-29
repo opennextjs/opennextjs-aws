@@ -393,6 +393,14 @@ function createCacheAssets(monorepoRoot: string) {
       (file.endsWith(".html") && htmlPages.has(file)),
   );
 
+  // Generate dynamodb data
+  // We need to traverse the cache to find every .meta file
+  const metaFiles: {
+    tag: { S: string };
+    path: { S: string };
+    revalidatedAt: { N: string };
+  }[] = [];
+
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
     appBuildOutputPath,
@@ -402,6 +410,70 @@ function createCacheAssets(monorepoRoot: string) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
     fs.mkdirSync(fetchOutputPath, { recursive: true });
     fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+
+    // Compute dynamodb cache data
+    // Traverse files inside cache to find all meta files and cache tags associated with them
+    traverseFiles(
+      outputPath,
+      (file) => file.endsWith(".meta"),
+      (filePath) => {
+        const fileContent = fs.readFileSync(filePath, "utf8");
+        const fileData = JSON.parse(fileContent);
+        if (fileData.headers?.["x-next-cache-tags"]) {
+          fileData.headers["x-next-cache-tags"]
+            .split(",")
+            .forEach((tag: string) => {
+              // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
+              metaFiles.push({
+                tag: { S: path.posix.join(buildId, tag.trim()) },
+                path: {
+                  S: path.posix.join(
+                    buildId,
+                    path.relative(outputPath, filePath).replace(".meta", ""),
+                  ),
+                },
+                revalidatedAt: { N: `${Date.now()}` },
+              });
+            });
+        }
+      },
+    );
+
+    traverseFiles(
+      fetchCachePath,
+      () => true,
+      (filepath) => {
+        const fileContent = fs.readFileSync(filepath, "utf8");
+        const fileData = JSON.parse(fileContent);
+        fileData?.tags?.forEach((tag: string) => {
+          metaFiles.push({
+            tag: { S: path.posix.join(buildId, tag) },
+            path: {
+              S: path.posix.join(
+                buildId,
+                path.relative(fetchCachePath, filepath),
+              ),
+            },
+            revalidatedAt: { N: `${Date.now()}` },
+          });
+        });
+      },
+    );
+
+    const providerPath = path.join(outputDir, "dynamodb-provider");
+
+    esbuildSync({
+      external: ["@aws-sdk/client-dynamodb"],
+      entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
+      outfile: path.join(providerPath, "index.mjs"),
+      target: ["node18"],
+    });
+
+    // TODO: check if metafiles doesn't contain duplicates
+    fs.writeFileSync(
+      path.join(providerPath, "dynamodb-cache.json"),
+      JSON.stringify(metaFiles),
+    );
   }
 }
 
@@ -442,7 +514,7 @@ async function createServerBundle(monorepoRoot: string) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  const plugins =
+  let plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
           openNextPlugin({
@@ -459,6 +531,27 @@ async function createServerBundle(monorepoRoot: string) {
           }),
         ]
       : undefined;
+
+  if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
+    plugins = [
+      openNextPlugin({
+        target: /plugins\/serverHandler\.js/g,
+        replacements: ["./13.5/serverHandler.js"],
+      }),
+      openNextPlugin({
+        target: /plugins\/util\.js/g,
+        replacements: ["./13.5/util.js"],
+      }),
+      openNextPlugin({
+        target: /plugins\/util\.js/g,
+        replacements: ["./util.replacement.js"],
+      }),
+      openNextPlugin({
+        target: /plugins\/routing\/default\.js/g,
+        replacements: ["./default.replacement.js"],
+      }),
+    ];
+  }
 
   if (plugins) {
     console.log(
@@ -674,16 +767,35 @@ function removeFiles(
   conditionFn: (file: string) => boolean,
   searchingDir: string = "",
 ) {
+  traverseFiles(
+    root,
+    conditionFn,
+    (filePath) => fs.rmSync(filePath, { force: true }),
+    searchingDir,
+  );
+}
+
+function traverseFiles(
+  root: string,
+  conditionFn: (file: string) => boolean,
+  callbackFn: (filePath: string) => void,
+  searchingDir: string = "",
+) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const filePath = path.join(root, searchingDir, file);
 
     if (fs.statSync(filePath).isDirectory()) {
-      removeFiles(root, conditionFn, path.join(searchingDir, file));
+      traverseFiles(
+        root,
+        conditionFn,
+        callbackFn,
+        path.join(searchingDir, file),
+      );
       return;
     }
 
     if (conditionFn(path.join(searchingDir, file))) {
-      fs.rmSync(filePath, { force: true });
+      callbackFn(filePath);
     }
   });
 }

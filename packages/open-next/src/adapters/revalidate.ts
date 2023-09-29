@@ -37,6 +37,7 @@ export const handler = async (event: SQSEvent) => {
           method: "HEAD",
           headers: {
             "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
+            "x-isr": "1",
           },
         },
         (res) => resolve(res),

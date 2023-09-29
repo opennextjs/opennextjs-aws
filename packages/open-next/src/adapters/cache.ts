@@ -1,23 +1,35 @@
-import path from "node:path";
-
+import {
+  BatchWriteItemCommand,
+  DynamoDBClient,
+  QueryCommand,
+} from "@aws-sdk/client-dynamodb";
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   PutObjectCommandInput,
+  PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
+// //@ts-ignore
+// import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
+import path from "path";
 
 import { awsLogger, debug, error } from "./logger.js";
 import { loadBuildId } from "./util.js";
+
+// TODO: Remove this, temporary only to run some tests
+const getDerivedTags = (tags: string[]) => tags;
 
 interface CachedFetchValue {
   kind: "FETCH";
   data: {
     headers: { [k: string]: string };
     body: string;
+    url: string;
     status?: number;
+    tags?: string[];
   };
   revalidate: number;
 }
@@ -51,6 +63,8 @@ interface IncrementalCachedPageValue {
   // the string value
   html: string;
   pageData: Object;
+  status?: number;
+  headers?: Record<string, undefined | string>;
 }
 
 type IncrementalCacheValue =
@@ -88,15 +102,24 @@ type Extension =
   | "redirect";
 
 // Expected environment variables
-const { CACHE_BUCKET_NAME, CACHE_BUCKET_KEY_PREFIX, CACHE_BUCKET_REGION } =
-  process.env;
+const {
+  CACHE_BUCKET_NAME,
+  CACHE_BUCKET_KEY_PREFIX,
+  CACHE_BUCKET_REGION,
+  CACHE_DYNAMO_TABLE,
+} = process.env;
 
 export default class S3Cache {
   private client: S3Client;
+  private dynamoClient: DynamoDBClient;
   private buildId: string;
 
   constructor(_ctx: CacheHandlerContext) {
     this.client = new S3Client({
+      region: CACHE_BUCKET_REGION,
+      logger: awsLogger,
+    });
+    this.dynamoClient = new DynamoDBClient({
       region: CACHE_BUCKET_REGION,
       logger: awsLogger,
     });
@@ -105,16 +128,29 @@ export default class S3Cache {
     );
   }
 
-  async get(key: string, fetchCache?: boolean) {
-    return fetchCache ? this.getFetchCache(key) : this.getIncrementalCache(key);
+  public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
+    const isFetchCache =
+      typeof options === "object" ? options.fetchCache : options;
+    return isFetchCache
+      ? this.getFetchCache(key)
+      : this.getIncrementalCache(key);
   }
 
   async getFetchCache(key: string) {
     debug("get fetch cache", { key });
     try {
       const { Body, LastModified } = await this.getS3Object(key, "fetch");
+      const lastModified = await this.getHasRevalidatedTags(
+        key,
+        LastModified?.getTime(),
+      );
+      if (lastModified === -1) {
+        // If some tags are stale we need to force revalidation
+        return null;
+      }
+
       return {
-        lastModified: LastModified?.getTime(),
+        lastModified,
         value: JSON.parse((await Body?.transformToString()) ?? "{}"),
       } as CacheHandlerValue;
     } catch (e) {
@@ -160,19 +196,31 @@ export default class S3Cache {
       if (!isJson && !isRsc) return null;
 
       try {
-        const [{ Body, LastModified }, { Body: PageBody }] = await Promise.all([
-          this.getS3Object(key, "html"),
-          this.getS3Object(key, isJson ? "json" : "rsc"),
-        ]);
-
+        const [{ Body, LastModified }, { Body: PageBody }, { Body: MetaBody }] =
+          await Promise.all([
+            this.getS3Object(key, "html"),
+            this.getS3Object(key, isJson ? "json" : "rsc"),
+            this.getS3Object(key, "meta"),
+          ]);
+        const lastModified = await this.getHasRevalidatedTags(
+          key,
+          LastModified?.getTime(),
+        );
+        if (lastModified === -1) {
+          // If some tags are stale we need to force revalidation
+          return null;
+        }
+        const meta = JSON.parse((await MetaBody?.transformToString()) ?? "{}");
         return {
-          lastModified: LastModified?.getTime(),
+          lastModified,
           value: {
             kind: "PAGE",
             html: (await Body?.transformToString()) ?? "",
             pageData: isJson
               ? JSON.parse((await PageBody?.transformToString()) ?? "{}")
               : await PageBody?.transformToString(),
+            status: meta.status,
+            headers: meta.headers,
           },
         } as CacheHandlerValue;
       } catch (e) {
@@ -200,7 +248,7 @@ export default class S3Cache {
     return null;
   }
 
-  async set(key: string, data?: IncrementalCacheValue | null): Promise<void> {
+  async set(key: string, data?: IncrementalCacheValue): Promise<void> {
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
       await Promise.all([
@@ -210,6 +258,15 @@ export default class S3Cache {
     } else if (data?.kind === "PAGE") {
       const { html, pageData } = data;
       const isAppPath = typeof pageData === "string";
+      let metaPromise: Promise<PutObjectCommandOutput | void> =
+        Promise.resolve();
+      if (data.status || data.headers) {
+        metaPromise = this.putS3Object(
+          key,
+          "meta",
+          JSON.stringify({ status: data.status, headers: data.headers }),
+        );
+      }
       await Promise.all([
         this.putS3Object(key, "html", html),
         this.putS3Object(
@@ -217,6 +274,7 @@ export default class S3Cache {
           isAppPath ? "rsc" : "json",
           isAppPath ? pageData : JSON.stringify(pageData),
         ),
+        metaPromise,
       ]);
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
@@ -227,7 +285,167 @@ export default class S3Cache {
     } else if (data === null || data === undefined) {
       await this.deleteS3Objects(key);
     }
+    // Write getDerivedTags to dynamodb
+    // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
+    const derivedTags: string[] =
+      data?.kind === "FETCH"
+        ? getDerivedTags(data.data.tags ?? [])
+        : data?.kind === "PAGE"
+        ? getDerivedTags(data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
+        : [];
+    debug("derivedTags", derivedTags);
+    // Get all tags stored in dynamodb for the given key
+    // If any of the derived tags are not stored in dynamodb for the given key, write them
+    const storedTags = await this.getTagsByPath(key);
+    const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
+    if (tagsToWrite.length > 0) {
+      await this.batchWriteDynamoItem(
+        tagsToWrite.map((tag) => ({
+          path: key,
+          tag: tag,
+        })),
+      );
+    }
   }
+
+  public async revalidateTag(tag: string) {
+    debug("revalidateTag", tag);
+    // Find all keys with the given tag
+    const paths = await this.getByTag(tag);
+    debug("Items", paths);
+    // Update all keys with the given tag with revalidatedAt set to now
+    await this.batchWriteDynamoItem(
+      paths?.map((path) => ({
+        path: path,
+        tag: tag,
+      })) ?? [],
+    );
+  }
+
+  // DynamoDB handling
+
+  private async getTagsByPath(path: string) {
+    try {
+      const result = await this.dynamoClient.send(
+        new QueryCommand({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression: "#key = :key",
+          ExpressionAttributeNames: {
+            "#key": "path",
+          },
+          ExpressionAttributeValues: {
+            ":key": { S: this.buildDynamoKey(path) },
+          },
+        }),
+      );
+      const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
+      debug("tags for path", path, tags);
+      return tags;
+    } catch (e) {
+      error("Failed to get tags by path", e);
+      return [];
+    }
+  }
+
+  //TODO: Figure out a better name for this function since it returns the lastModified
+  private async getHasRevalidatedTags(key: string, lastModified?: number) {
+    try {
+      const result = await this.dynamoClient.send(
+        new QueryCommand({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression:
+            "#key = :key AND #revalidatedAt > :lastModified",
+          ExpressionAttributeNames: {
+            "#key": "path",
+            "#revalidatedAt": "revalidatedAt",
+          },
+          ExpressionAttributeValues: {
+            ":key": { S: this.buildDynamoKey(key) },
+            ":lastModified": { N: String(lastModified ?? 0) },
+          },
+        }),
+      );
+      const revalidatedTags = result.Items ?? [];
+      debug("revalidatedTags", revalidatedTags);
+      // If we have revalidated tags we return -1 to force revalidation
+      return revalidatedTags.length > 0 ? -1 : lastModified ?? Date.now();
+    } catch (e) {
+      error("Failed to get revalidated tags", e);
+      return lastModified ?? Date.now();
+    }
+  }
+
+  private async getByTag(tag: string) {
+    try {
+      const { Items } = await this.dynamoClient.send(
+        new QueryCommand({
+          TableName: CACHE_DYNAMO_TABLE,
+          KeyConditionExpression: "#tag = :tag",
+          ExpressionAttributeNames: {
+            "#tag": "tag",
+          },
+          ExpressionAttributeValues: {
+            ":tag": { S: this.buildDynamoKey(tag) },
+          },
+        }),
+      );
+      return (
+        // We need to remove the buildId from the path
+        Items?.map(
+          ({ path: { S: key } }) => key?.replace(`${this.buildId}/`, "") ?? "",
+        ) ?? []
+      );
+    } catch (e) {
+      error("Failed to get by tag", e);
+      return [];
+    }
+  }
+
+  private async batchWriteDynamoItem(req: { path: string; tag: string }[]) {
+    await Promise.all(
+      this.chunkArray(req, 25).map((Items) => {
+        return this.dynamoClient.send(
+          new BatchWriteItemCommand({
+            RequestItems: {
+              [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
+                PutRequest: {
+                  Item: {
+                    ...this.buildDynamoObject(Item.path, Item.tag),
+                  },
+                },
+              })),
+            },
+          }),
+        );
+      }),
+    );
+  }
+
+  private buildDynamoKey(key: string) {
+    // FIXME: We should probably use something else than path.join here
+    // this could transform some fetch cache key into a valid path
+    return path.posix.join(this.buildId, key);
+  }
+
+  private buildDynamoObject(path: string, tags: string) {
+    return {
+      path: { S: this.buildDynamoKey(path) },
+      tag: { S: this.buildDynamoKey(tags) },
+      revalidatedAt: { N: `${Date.now()}` },
+    };
+  }
+
+  private chunkArray<T>(array: T[], chunkSize: number) {
+    const chunks = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  // S3 handling
 
   private buildS3Key(key: string, extension: Extension) {
     return path.posix.join(

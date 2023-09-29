@@ -329,7 +329,35 @@ await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
 await invalidateCFPaths(["/page/*"]);
 ```
 
-Please note that on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation) (`revalidatePath` and `revalidateTag`) is not yet supported.
+For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
+
+```ts
+function getByTag(tag: string) {
+  try {
+    const { Items } = await this.dynamoClient.send(
+      new QueryCommand({
+        TableName: process.env.CACHE_DYNAMO_TABLE,
+        KeyConditionExpression: "#tag = :tag",
+        ExpressionAttributeNames: {
+          "#tag": "tag",
+        },
+        ExpressionAttributeValues: {
+          ":tag": { S: `${process.env.NEXT_BUILD_ID}/${tag}` },
+        },
+      }),
+    );
+    return (
+      // We need to remove the buildId from the path
+      Items?.map(
+        ({ path: { S: key } }) => key?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
+      ) ?? []
+    );
+  } catch (e) {
+    error("Failed to get by tag", e);
+    return [];
+  }
+}
+```
 
 ## How warming works
 
@@ -382,6 +410,19 @@ $0.00864 + $0.145728288 + $0.0161280288 x 50 = $0.960769728
 This cost estimate is based on the `us-east-1` region pricing and does not consider any free tier benefits.
 
 ## Limitations and workarounds
+
+#### WORKAROUND: Patch fetch behaviour for ISR. Only for next@13.5.1+
+
+In order to make fetch work as expected with ISR, you need to patch the `fetch` function in your app. Just add this lines to your root layout component:
+
+```ts
+const asyncStorage = require("next/dist/client/components/static-generation-async-storage.external");
+//@ts-ignore
+const staticStore = (fetch as any).__nextGetStaticStore?.() || asyncStorage.staticGenerationAsyncStorage;
+const store = staticStore.getStore();
+store.isOnDemandRevalidate = store.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true');
+```
+Without this workaround, if you have 2 fetch calls in your page with different revalidate values, both will use the smallest value during ISR revalidation.
 
 #### WORKAROUND: Create one cache behavior per top-level file and folder in `public/` (AWS specific)
 
