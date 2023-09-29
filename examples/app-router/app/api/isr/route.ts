@@ -14,9 +14,7 @@ export async function GET(request: NextRequest) {
   const manifest = JSON.parse(prerenderManifest);
   const previewId = manifest.preview.previewModeId;
 
-  const url = new URL(request.url);
-
-  const result = await fetch(`${url.origin}/isr`, {
+  const result = await fetch(`https://${request.headers.get("host")}/isr`, {
     headers: { "x-prerender-revalidate": previewId },
     method: "HEAD",
   });
