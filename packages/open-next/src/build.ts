@@ -518,14 +518,17 @@ async function createServerBundle(monorepoRoot: string) {
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
           openNextPlugin({
+            name: "opennext-13.4.13-serverHandler",
             target: /plugins\/serverHandler\.js/g,
             replacements: ["./serverHandler.replacement.js"],
           }),
           openNextPlugin({
+            name: "opennext-13.4.13-util",
             target: /plugins\/util\.js/g,
             replacements: ["./util.replacement.js"],
           }),
           openNextPlugin({
+            name: "opennext-13.4.13-default",
             target: /plugins\/routing\/default\.js/g,
             replacements: ["./default.replacement.js"],
           }),
@@ -535,18 +538,17 @@ async function createServerBundle(monorepoRoot: string) {
   if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
     plugins = [
       openNextPlugin({
+        name: "opennext-13.5-serverHandler",
         target: /plugins\/serverHandler\.js/g,
         replacements: ["./13.5/serverHandler.js"],
       }),
       openNextPlugin({
+        name: "opennext-13.5-util",
         target: /plugins\/util\.js/g,
-        replacements: ["./13.5/util.js"],
+        replacements: ["./13.5/util.js", "./util.replacement.js"],
       }),
       openNextPlugin({
-        target: /plugins\/util\.js/g,
-        replacements: ["./util.replacement.js"],
-      }),
-      openNextPlugin({
+        name: "opennext-13.5-default",
         target: /plugins\/routing\/default\.js/g,
         replacements: ["./default.replacement.js"],
       }),
