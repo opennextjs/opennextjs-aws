@@ -472,13 +472,19 @@ export default class S3Cache {
     return (Contents ?? []).map(({ Key }) => Key);
   }
 
-  private getS3Object(key: string, extension: Extension) {
-    return this.client.send(
-      new GetObjectCommand({
-        Bucket: CACHE_BUCKET_NAME,
-        Key: this.buildS3Key(key, extension),
-      }),
-    );
+  private async getS3Object(key: string, extension: Extension) {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({
+          Bucket: CACHE_BUCKET_NAME,
+          Key: this.buildS3Key(key, extension),
+        }),
+      );
+      return result;
+    } catch (e) {
+      error("This error can usually be ignored : ", e);
+      return { Body: null, LastModified: null };
+    }
   }
 
   private putS3Object(
