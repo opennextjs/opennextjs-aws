@@ -131,15 +131,18 @@ export default class S3Cache {
   public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
     const isFetchCache =
       typeof options === "object" ? options.fetchCache : options;
+    const keys = await this.listS3Object(key);
+    if (keys.length === 0) return null;
+    debug("keys", keys);
     return isFetchCache
-      ? this.getFetchCache(key)
-      : this.getIncrementalCache(key);
+      ? this.getFetchCache(key, keys)
+      : this.getIncrementalCache(key, keys);
   }
 
-  async getFetchCache(key: string) {
+  async getFetchCache(key: string, keys: string[]) {
     debug("get fetch cache", { key });
     try {
-      const { Body, LastModified } = await this.getS3Object(key, "fetch");
+      const { Body, LastModified } = await this.getS3Object(key, "fetch", keys);
       const lastModified = await this.getHasRevalidatedTags(
         key,
         LastModified?.getTime(),
@@ -148,6 +151,8 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
+
+      if (Body === null) return null;
 
       return {
         lastModified,
@@ -159,17 +164,16 @@ export default class S3Cache {
     }
   }
 
-  async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
-    const keys = await this.listS3Object(key);
-    if (keys.length === 0) return null;
-    debug("keys", keys);
-
+  async getIncrementalCache(
+    key: string,
+    keys: string[],
+  ): Promise<CacheHandlerValue | null> {
     if (keys.includes(this.buildS3Key(key, "body"))) {
       debug("get body cache ", { key });
       try {
         const [{ Body, LastModified }, { Body: MetaBody }] = await Promise.all([
-          this.getS3Object(key, "body"),
-          this.getS3Object(key, "meta"),
+          this.getS3Object(key, "body", keys),
+          this.getS3Object(key, "meta", keys),
         ]);
         const body = await Body?.transformToByteArray();
         const meta = JSON.parse((await MetaBody?.transformToString()) ?? "{}");
@@ -198,9 +202,9 @@ export default class S3Cache {
       try {
         const [{ Body, LastModified }, { Body: PageBody }, { Body: MetaBody }] =
           await Promise.all([
-            this.getS3Object(key, "html"),
-            this.getS3Object(key, isJson ? "json" : "rsc"),
-            this.getS3Object(key, "meta"),
+            this.getS3Object(key, "html", keys),
+            this.getS3Object(key, isJson ? "json" : "rsc", keys),
+            this.getS3Object(key, "meta", keys),
           ]);
         const lastModified = await this.getHasRevalidatedTags(
           key,
@@ -234,7 +238,11 @@ export default class S3Cache {
     if (keys.includes(this.buildS3Key(key, "redirect"))) {
       debug("get redirect cache", { key });
       try {
-        const { Body, LastModified } = await this.getS3Object(key, "redirect");
+        const { Body, LastModified } = await this.getS3Object(
+          key,
+          "redirect",
+          keys,
+        );
         return {
           lastModified: LastModified?.getTime(),
           value: JSON.parse((await Body?.transformToString()) ?? "{}"),
@@ -473,11 +481,13 @@ export default class S3Cache {
         Prefix: `${this.buildS3KeyPrefix(key)}.`,
       }),
     );
-    return (Contents ?? []).map(({ Key }) => Key);
+    return (Contents ?? []).map(({ Key }) => Key) as string[];
   }
 
-  private async getS3Object(key: string, extension: Extension) {
+  private async getS3Object(key: string, extension: Extension, keys: string[]) {
     try {
+      if (!keys.includes(this.buildS3Key(key, extension)))
+        return { Body: null, LastModified: null };
       const result = await this.client.send(
         new GetObjectCommand({
           Bucket: CACHE_BUCKET_NAME,
