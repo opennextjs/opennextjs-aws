@@ -404,23 +404,27 @@ export default class S3Cache {
   }
 
   private async batchWriteDynamoItem(req: { path: string; tag: string }[]) {
-    await Promise.all(
-      this.chunkArray(req, 25).map((Items) => {
-        return this.dynamoClient.send(
-          new BatchWriteItemCommand({
-            RequestItems: {
-              [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
-                PutRequest: {
-                  Item: {
-                    ...this.buildDynamoObject(Item.path, Item.tag),
+    try {
+      await Promise.all(
+        this.chunkArray(req, 25).map((Items) => {
+          return this.dynamoClient.send(
+            new BatchWriteItemCommand({
+              RequestItems: {
+                [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
+                  PutRequest: {
+                    Item: {
+                      ...this.buildDynamoObject(Item.path, Item.tag),
+                    },
                   },
-                },
-              })),
-            },
-          }),
-        );
-      }),
-    );
+                })),
+              },
+            }),
+          );
+        }),
+      );
+    } catch (e) {
+      error("Failed to batch write dynamo item", e);
+    }
   }
 
   private buildDynamoKey(key: string) {
