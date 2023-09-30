@@ -6,6 +6,7 @@ import { Plugin } from "esbuild";
 export interface IPluginSettings {
   target: RegExp;
   replacements: string[];
+  name?: string;
 }
 
 const overridePattern = /\/\/#override (\w+)\n([\s\S]*?)\n\/\/#endOverride/gm;
@@ -46,9 +47,10 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
 export default function openNextPlugin({
   target,
   replacements,
+  name,
 }: IPluginSettings): Plugin {
   return {
-    name: "opennext",
+    name: name ?? "opennext",
     setup(build) {
       build.onLoad({ filter: target }, async (args) => {
         let contents = await readFile(args.path, "utf-8");
@@ -69,6 +71,9 @@ export default function openNextPlugin({
               const id = match[1];
               const pattern = new RegExp(
                 `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`,
+              );
+              console.log(
+                `Open-next plugin ${name} -- Applying override for ${id} from ${fp}`,
               );
               contents = contents.replace(pattern, replacement);
             }
