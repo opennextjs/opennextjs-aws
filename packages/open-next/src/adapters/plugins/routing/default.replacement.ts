@@ -11,6 +11,7 @@ import { debug } from "../../logger";
 import { IncomingMessage } from "../../http/request";
 import {
   addNextConfigHeaders,
+  fixDataPage,
   handleRedirects,
   handleRewrites,
 } from "../../routing/matcher";
@@ -38,7 +39,7 @@ export const processInternalEvent: ProcessInternalEvent = async (
 ) => {
   const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
 
-  let internalEvent = event;
+  let internalEvent = fixDataPage(event, buildId);
 
   const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {
