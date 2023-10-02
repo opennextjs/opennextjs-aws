@@ -1,5 +1,11 @@
 # open-next
 
+## 2.2.0
+
+### Minor Changes
+
+- 02bd7de: Streaming and cache revalidation
+
 ## 2.1.5
 
 ### Patch Changes
