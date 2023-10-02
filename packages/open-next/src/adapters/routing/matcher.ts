@@ -4,6 +4,7 @@ import { InternalEvent, InternalResult } from "../event-mapper";
 import { debug } from "../logger";
 import {
   Header,
+  PrerenderManifest,
   RedirectDefinition,
   RewriteDefinition,
   RouteHas,
@@ -204,5 +205,32 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
       }`,
     };
   }
+  return internalEvent;
+}
+
+export function handleFallbackFalse(
+  internalEvent: InternalEvent,
+  prerenderManifest: PrerenderManifest,
+): InternalEvent {
+  const { rawPath } = internalEvent;
+  const { dynamicRoutes, routes } = prerenderManifest;
+  const routeFallback = Object.entries(dynamicRoutes)
+    .filter(([, { fallback }]) => fallback === false)
+    .some(([, { routeRegex }]) => {
+      const routeRegexExp = new RegExp(routeRegex);
+      return routeRegexExp.test(rawPath);
+    });
+  if (routeFallback && !Object.keys(routes).includes(rawPath)) {
+    return {
+      ...internalEvent,
+      rawPath: "/404",
+      url: "/404",
+      headers: {
+        ...internalEvent.headers,
+        "x-invoke-status": "404",
+      },
+    };
+  }
+
   return internalEvent;
 }

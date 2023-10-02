@@ -2,7 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { PublicFiles } from "../build.js";
-import type { NextConfig, RoutesManifest } from "./next-types.js";
+import type {
+  NextConfig,
+  PrerenderManifest,
+  RoutesManifest,
+} from "./next-types.js";
 
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
@@ -68,6 +72,12 @@ export function loadConfigHeaders(nextDir: string) {
   const json = fs.readFileSync(filePath, "utf-8");
   const routesManifest = JSON.parse(json) as RoutesManifest;
   return routesManifest.headers;
+}
+
+export function loadPrerenderManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "prerender-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as PrerenderManifest;
 }
 
 export function loadAppPathsManifestKeys(nextDir: string) {

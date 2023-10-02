@@ -130,6 +130,17 @@ export interface MiddlewareManifest {
   version: number;
 }
 
+export interface PrerenderManifest {
+  routes: Record<string, never>;
+  dynamicRoutes: {
+    [route: string]: {
+      routeRegex: string;
+      fallback: string | false | null;
+      dataRouteRegex: string;
+    };
+  };
+}
+
 export type Options = {
   internalEvent: InternalEvent;
   buildId: string;

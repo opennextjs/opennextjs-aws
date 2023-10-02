@@ -12,10 +12,16 @@ import { IncomingMessage } from "../../http/request";
 import {
   addNextConfigHeaders,
   fixDataPage,
+  handleFallbackFalse,
   handleRedirects,
   handleRewrites,
 } from "../../routing/matcher";
-import { loadBuildId, loadConfigHeaders, loadRoutesManifest } from "../../util";
+import {
+  loadBuildId,
+  loadConfigHeaders,
+  loadPrerenderManifest,
+  loadRoutesManifest,
+} from "../../util";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
@@ -31,6 +37,7 @@ const NEXT_DIR = path.join(__dirname, ".next");
 const buildId = loadBuildId(NEXT_DIR);
 const routesManifest = loadRoutesManifest(NEXT_DIR);
 const configHeaders = loadConfigHeaders(NEXT_DIR);
+const prerenderManifest = loadPrerenderManifest(NEXT_DIR);
 //#endOverride
 
 //#override processInternalEvent
@@ -41,6 +48,8 @@ export const processInternalEvent: ProcessInternalEvent = async (
   const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
 
   let internalEvent = fixDataPage(event, buildId);
+
+  internalEvent = handleFallbackFalse(internalEvent, prerenderManifest);
 
   const redirect = handleRedirects(internalEvent, routesManifest.redirects);
   if (redirect) {
