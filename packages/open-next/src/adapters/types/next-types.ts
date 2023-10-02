@@ -1,8 +1,8 @@
 // NOTE: add more next config typings as they become relevant
 
-import { InternalEvent } from "./event-mapper.js";
-import { IncomingMessage } from "./http/request.js";
-import { ServerlessResponse } from "./http/response.js";
+import { InternalEvent } from "../event-mapper.js";
+import { IncomingMessage } from "../http/request.js";
+import { ServerlessResponse } from "../http/response.js";
 
 type RemotePattern = {
   protocol?: "http" | "https";

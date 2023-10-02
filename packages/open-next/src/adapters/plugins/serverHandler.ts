@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "../http/request.js";
 import { ServerlessResponse } from "../http/response.js";
-import type { Options, PluginHandler } from "../next-types.js";
+import type { Options, PluginHandler } from "../types/next-types.js";
 //#override imports
 import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#endOverride

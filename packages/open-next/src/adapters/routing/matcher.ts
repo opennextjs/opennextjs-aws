@@ -8,7 +8,7 @@ import {
   RedirectDefinition,
   RewriteDefinition,
   RouteHas,
-} from "../next-types";
+} from "../types/next-types";
 import { escapeRegex, unescapeRegex } from "../util";
 import { convertQuery, getUrlParts, isExternal } from "./util";
 

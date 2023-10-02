@@ -3,13 +3,13 @@ import {
   APIGatewayProxyEventV2,
   CloudFrontRequestEvent,
 } from "aws-lambda";
-import path from "path";
 
+import { BuildId, PublicAssets } from "../config";
 import { convertFrom, convertTo, InternalEvent } from "../event-mapper";
 import { type IncomingMessage, ServerlessResponse } from "../http";
 import { debug, error } from "../logger";
 import { CreateResponse } from "../types/plugin";
-import { generateUniqueId, loadBuildId, loadPublicAssets } from "../util";
+import { generateUniqueId } from "../util";
 import { WarmerEvent, WarmerResponse } from "../warmer-function";
 //#override imports
 import {
@@ -18,12 +18,6 @@ import {
 } from "./routing/default.js";
 //#endOverride
 import { handler as serverHandler } from "./serverHandler";
-
-const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
-
-const NEXT_DIR = path.join(__dirname, ".next");
-const buildId = loadBuildId(NEXT_DIR);
-const publicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 
 const serverId = `server-${generateUniqueId()}`;
 
@@ -49,12 +43,11 @@ export async function lambdaHandler(
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
 
-  //TODO: uncomment this
   // WORKAROUND: public/ static files served by the server function (AWS specific) — https://github.com/serverless-stack/open-next#workaround-public-static-files-served-by-the-server-function-aws-specific
   // TODO: This is no longer required if each top-level file and folder in "/public"
   //       is handled by a separate cache behavior. Leaving here for backward compatibility.
   //       Remove this on next major release.
-  if (publicAssets.files.includes(internalEvent.rawPath)) {
+  if (PublicAssets.files.includes(internalEvent.rawPath)) {
     return internalEvent.type === "cf"
       ? formatCloudFrontFailoverResponse(event as CloudFrontRequestEvent)
       : formatAPIGatewayFailoverResponse();
@@ -109,7 +102,7 @@ async function processRequest(
     // nextjs version to patch Nextjs 13.4.x and future breaking changes.
     await serverHandler(req, res, {
       internalEvent,
-      buildId,
+      buildId: BuildId,
       isExternalRewrite,
     });
   } catch (e: any) {

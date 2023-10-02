@@ -1,18 +1,14 @@
 import path from "node:path";
 
+import { NEXT_DIR, NextConfig } from "../config/index.js";
 import { InternalEvent, InternalResult } from "../event-mapper.js";
 import { IncomingMessage } from "../http/request.js";
 import { ServerlessResponse } from "../http/response.js";
-import { loadConfig } from "../util.js";
 import {
   convertRes,
   getMiddlewareMatch,
   loadMiddlewareManifest,
 } from "./util.js";
-
-const NEXT_DIR = path.join(__dirname, ".next");
-
-const config = loadConfig(NEXT_DIR);
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
@@ -78,9 +74,9 @@ export async function handleMiddleware(
       headers: req.headers,
       method: req.method || "GET",
       nextConfig: {
-        basePath: config.basePath,
-        i18n: config.i18n,
-        trailingSlash: config.trailingSlash,
+        basePath: NextConfig.basePath,
+        i18n: NextConfig.i18n,
+        trailingSlash: NextConfig.trailingSlash,
       },
       url,
       body: getCloneableBody(req),

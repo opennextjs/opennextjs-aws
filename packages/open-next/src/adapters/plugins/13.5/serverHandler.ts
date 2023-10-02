@@ -1,5 +1,5 @@
 /*eslint-disable simple-import-sort/imports */
-import type { Options, PluginHandler } from "../../next-types.js";
+import type { Options, PluginHandler } from "../../types/next-types.js";
 import type { IncomingMessage } from "../../http/request.js";
 import type { ServerlessResponse } from "../../http/response.js";
 //#override imports

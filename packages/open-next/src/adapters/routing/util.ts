@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { isBinaryContentType } from "../binary";
 import { ServerlessResponse } from "../http/response";
-import { MiddlewareManifest } from "../next-types";
+import { MiddlewareManifest } from "../types/next-types";
 
 export function isExternal(url?: string) {
   if (!url) return false;
