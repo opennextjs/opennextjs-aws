@@ -33,7 +33,7 @@ export function middleware(request: NextRequest) {
 
   // Set the cache control header with custom swr
   // For: isr.test.ts
-  if (path === "/isr") {
+  if (path === "/isr" && !request.headers.get("x-prerender-revalidate")) {
     responseHeaders.set(
       "cache-control",
       "max-age=10, stale-while-revalidate=999",
@@ -49,8 +49,12 @@ export function middleware(request: NextRequest) {
 
   // Set cookies in middleware
   // For: middleware.cookies.test.ts
-  r.cookies.set("from", "middleware");
-  r.cookies.set("with", "love");
+  r.cookies.set("from", "middleware", {
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+  });
+  r.cookies.set("with", "love", {
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+  });
 
   return r;
 }
