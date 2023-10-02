@@ -563,6 +563,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
 
   if (streaming) {
     const streamingPlugin = openNextPlugin({
+      name: "opennext-streaming",
       target: /plugins\/lambdaHandler\.js/g,
       replacements: ["./streaming.replacement.js"],
     });

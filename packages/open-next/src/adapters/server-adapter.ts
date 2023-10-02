@@ -1,16 +1,21 @@
-import path from "node:path";
-
-import { debug } from "./logger.js";
+/* eslint-disable unused-imports/no-unused-imports */
+// We load every config here so that they are only loaded once
+// and during cold starts
+import {
+  AppPathsManifestKeys,
+  BuildId,
+  ConfigHeaders,
+  HtmlPages,
+  NEXT_DIR,
+  NextConfig,
+  OPEN_NEXT_DIR,
+  PrerenderManifest,
+  PublicAssets,
+  RoutesManifest,
+} from "./config/index.js";
 import { lambdaHandler } from "./plugins/lambdaHandler.js";
-import { loadBuildId, loadConfig, setNodeEnv } from "./util.js";
+import { setNodeEnv } from "./util.js";
 
-export const NEXT_DIR = path.join(__dirname, ".next");
-export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
-export const config = loadConfig(NEXT_DIR);
-
-debug({ NEXT_DIR, OPEN_NEXT_DIR });
-
-const buildId = loadBuildId(NEXT_DIR);
 setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
@@ -33,5 +38,5 @@ function setNextjsServerWorkingDirectory() {
 function setBuildIdEnv() {
   // This allows users to access the CloudFront invalidating path when doing on-demand
   // invalidations. ie. `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`
-  process.env.NEXT_BUILD_ID = buildId;
+  process.env.NEXT_BUILD_ID = BuildId;
 }

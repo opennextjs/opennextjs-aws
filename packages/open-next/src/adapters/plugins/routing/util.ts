@@ -1,11 +1,10 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
-import path from "path";
 
+import { BuildId, HtmlPages } from "../../config/index.js";
 import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
 import { awsLogger, debug } from "../../logger.js";
-import { loadBuildId, loadHtmlPages } from "../../util.js";
 
 enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
@@ -13,9 +12,6 @@ enum CommonHeaders {
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
-const NEXT_DIR = path.join(__dirname, ".next");
-const htmlPages = loadHtmlPages(NEXT_DIR);
-const buildId = loadBuildId(NEXT_DIR);
 
 const sqsClient = new SQSClient({
   region: REVALIDATION_QUEUE_REGION,
@@ -55,7 +51,7 @@ export function fixCacheHeaderForHtmlPages(
   headers: Record<string, string | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (htmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
+  if (HtmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
@@ -114,7 +110,7 @@ export async function revalidateIfRequired(
   // does not include the "/_next/data/" prefix. Need to add it.
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? rawPath.startsWith("/_next/data/")
-      ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
+      ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;
 

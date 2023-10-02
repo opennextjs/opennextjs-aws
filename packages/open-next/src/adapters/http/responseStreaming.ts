@@ -4,6 +4,7 @@ import zlib from "node:zlib";
 
 import { debug, error } from "../logger.js";
 import type { ResponseStream } from "../types/aws-lambda.js";
+import { parseCookies } from "../util.js";
 import { convertHeader, getString, NO_OP, parseHeaders } from "./util.js";
 
 const HEADERS = Symbol();
@@ -34,7 +35,10 @@ export class StreamingServerResponse extends http.ServerResponse {
     onEnd,
   }: StreamingServerResponseProps) {
     super({ method } as any);
-
+    if (headers && headers["set-cookie"]) {
+      this._cookies = parseCookies(headers["set-cookie"]) as string[];
+      delete headers["set-cookie"];
+    }
     this[HEADERS] = parseHeaders(headers) || {};
     this._initialHeaders = { ...this[HEADERS] };
 
@@ -68,7 +72,7 @@ export class StreamingServerResponse extends http.ServerResponse {
         const isSse = d.endsWith("\n\n");
         this.internalWrite(data, isSse, cb);
 
-        return this.responseStream.writableNeedDrain;
+        return !this.responseStream.writableNeedDrain;
       },
     };
 

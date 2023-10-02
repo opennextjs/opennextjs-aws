@@ -5,31 +5,33 @@ import type {
 } from "../../types/plugin";
 import type { InternalResult } from "../../event-mapper";
 //#override imports
-import path from "node:path";
 
 import { debug } from "../../logger";
 import { IncomingMessage } from "../../http/request";
 import {
   addNextConfigHeaders,
   fixDataPage,
+  handleFallbackFalse,
   handleRedirects,
   handleRewrites,
 } from "../../routing/matcher";
-import { loadBuildId, loadConfigHeaders, loadRoutesManifest } from "../../util";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
+  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
 import { handleMiddleware } from "../../routing/middleware";
 import { ServerlessResponse } from "../../http";
+import {
+  BuildId,
+  ConfigHeaders,
+  PrerenderManifest,
+  RoutesManifest,
+} from "../../config";
 
-const NEXT_DIR = path.join(__dirname, ".next");
-const buildId = loadBuildId(NEXT_DIR);
-const routesManifest = loadRoutesManifest(NEXT_DIR);
-const configHeaders = loadConfigHeaders(NEXT_DIR);
 //#endOverride
 
 //#override processInternalEvent
@@ -37,11 +39,13 @@ export const processInternalEvent: ProcessInternalEvent = async (
   event,
   createResponse,
 ) => {
-  const nextHeaders = addNextConfigHeaders(event, configHeaders) ?? {};
+  const nextHeaders = addNextConfigHeaders(event, ConfigHeaders) ?? {};
 
-  let internalEvent = fixDataPage(event, buildId);
+  let internalEvent = fixDataPage(event, BuildId);
 
-  const redirect = handleRedirects(internalEvent, routesManifest.redirects);
+  internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
+
+  const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
   if (redirect) {
     return redirect;
   }
@@ -59,12 +63,12 @@ export const processInternalEvent: ProcessInternalEvent = async (
   // First rewrite to be applied
   const beforeRewrites = handleRewrites(
     internalEvent,
-    routesManifest.rewrites.beforeFiles,
+    RoutesManifest.rewrites.beforeFiles,
   );
   internalEvent = beforeRewrites.internalEvent;
   isExternalRewrite = beforeRewrites.isExternalRewrite;
 
-  const isStaticRoute = routesManifest.routes.static.some((route) =>
+  const isStaticRoute = RoutesManifest.routes.static.some((route) =>
     new RegExp(route.regex).test(event.rawPath),
   );
 
@@ -72,20 +76,20 @@ export const processInternalEvent: ProcessInternalEvent = async (
     // Second rewrite to be applied
     const afterRewrites = handleRewrites(
       internalEvent,
-      routesManifest.rewrites.afterFiles,
+      RoutesManifest.rewrites.afterFiles,
     );
     internalEvent = afterRewrites.internalEvent;
     isExternalRewrite = afterRewrites.isExternalRewrite;
   }
 
-  const isDynamicRoute = routesManifest.routes.dynamic.some((route) =>
+  const isDynamicRoute = RoutesManifest.routes.dynamic.some((route) =>
     new RegExp(route.regex).test(event.rawPath),
   );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
       internalEvent,
-      routesManifest.rewrites.fallback,
+      RoutesManifest.rewrites.fallback,
     );
     internalEvent = fallbackRewrites.internalEvent;
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
@@ -131,7 +135,7 @@ export async function postProcessResponse({
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);
-    // fixISRHeaders(headers);
+    fixISRHeaders(headers);
 
     await revalidateIfRequired(
       internalEvent.headers.host,
