@@ -1,6 +1,6 @@
-import type { Options, PluginHandler } from "../next-types.js";
-import type { IncomingMessage } from "../request.js";
-import type { ServerResponse } from "../response.js";
+import type { IncomingMessage } from "../http/request.js";
+import { ServerlessResponse } from "../http/response.js";
+import type { Options, PluginHandler } from "../types/next-types.js";
 //#override imports
 import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#endOverride
@@ -8,7 +8,7 @@ import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#override handler
 export const handler: PluginHandler = async (
   req: IncomingMessage,
-  res: ServerResponse,
+  res: ServerlessResponse,
   options: Options,
 ) => {
   setNextjsPrebundledReact(options.internalEvent.rawPath);

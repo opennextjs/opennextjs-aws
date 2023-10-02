@@ -21,8 +21,9 @@ import {
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
+import { loadConfig } from "./config/util.js";
 import { awsLogger, debug, error } from "./logger.js";
-import { loadConfig, setNodeEnv } from "./util.js";
+import { setNodeEnv } from "./util.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;

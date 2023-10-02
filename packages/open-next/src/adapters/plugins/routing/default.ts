@@ -1,23 +1,30 @@
 /* eslint-disable simple-import-sort/imports */
-import type { PostProcessOptions, ProcessInternalEventResult } from "./types";
+import type {
+  CreateResponse,
+  PostProcessOptions,
+  ProcessInternalEventResult,
+} from "../../types/plugin";
 import type { InternalEvent, InternalResult } from "../../event-mapper";
 //#override imports
 import { debug } from "../../logger";
-import { IncomingMessage } from "../../request";
-import { ServerResponse } from "../../response";
+import { IncomingMessage } from "../../http/request";
 import {
   addOpenNextHeader,
   fixCacheHeaderForHtmlPages,
+  fixISRHeaders,
   fixSWRCacheHeader,
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
+import { ServerlessResponse } from "../../http";
+import { ServerResponse } from "http";
 //#endOverride
 
 //#override processInternalEvent
-export async function processInternalEvent(
+export async function processInternalEvent<Response extends ServerResponse>(
   internalEvent: InternalEvent,
-): Promise<ProcessInternalEventResult> {
+  createResponse: CreateResponse<Response>,
+): Promise<ProcessInternalEventResult<Response>> {
   const reqProps = {
     method: internalEvent.method,
     url: internalEvent.url,
@@ -31,7 +38,7 @@ export async function processInternalEvent(
     remoteAddress: internalEvent.remoteAddress,
   };
   const req = new IncomingMessage(reqProps);
-  const res = new ServerResponse({ method: reqProps.method, headers: {} });
+  const res = createResponse(reqProps.method, {});
   return { internalEvent, req, res, isExternalRewrite: false };
 }
 //#endOverride
@@ -43,7 +50,9 @@ export async function postProcessResponse({
   res,
   isExternalRewrite,
 }: PostProcessOptions): Promise<InternalResult> {
-  const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
+  const { statusCode, headers, isBase64Encoded, body } = convertRes(
+    res as ServerlessResponse,
+  );
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 
@@ -51,6 +60,7 @@ export async function postProcessResponse({
     fixCacheHeaderForHtmlPages(internalEvent.rawPath, headers);
     fixSWRCacheHeader(headers);
     addOpenNextHeader(headers);
+    fixISRHeaders(headers);
 
     await revalidateIfRequired(
       internalEvent.headers.host,

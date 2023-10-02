@@ -16,8 +16,8 @@ import {
 // import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
 import path from "path";
 
+import { loadBuildId } from "./config/util.js";
 import { awsLogger, debug, error } from "./logger.js";
-import { loadBuildId } from "./util.js";
 
 // TODO: Remove this, temporary only to run some tests
 const getDerivedTags = (tags: string[]) => tags;

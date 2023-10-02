@@ -1,11 +1,10 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
-import path from "path";
 
+import { BuildId, HtmlPages } from "../../config/index.js";
+import { IncomingMessage } from "../../http/request.js";
+import { ServerlessResponse } from "../../http/response.js";
 import { awsLogger, debug } from "../../logger.js";
-import { IncomingMessage } from "../../request.js";
-import { ServerResponse } from "../../response.js";
-import { loadBuildId, loadHtmlPages } from "../../util.js";
 
 enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
@@ -13,16 +12,16 @@ enum CommonHeaders {
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
-const NEXT_DIR = path.join(__dirname, ".next");
-const htmlPages = loadHtmlPages(NEXT_DIR);
-const buildId = loadBuildId(NEXT_DIR);
 
 const sqsClient = new SQSClient({
   region: REVALIDATION_QUEUE_REGION,
   logger: awsLogger,
 });
 
-export async function proxyRequest(req: IncomingMessage, res: ServerResponse) {
+export async function proxyRequest(
+  req: IncomingMessage,
+  res: ServerlessResponse,
+) {
   const HttpProxy = require("next/dist/compiled/http-proxy") as any;
 
   const proxy = new HttpProxy({
@@ -52,7 +51,7 @@ export function fixCacheHeaderForHtmlPages(
   headers: Record<string, string | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (htmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
+  if (HtmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
@@ -62,12 +61,12 @@ export function fixSWRCacheHeader(
   headers: Record<string, string | string[] | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  let cacheControl = headers["cache-control"];
+  let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {
     cacheControl = cacheControl.join(",");
   }
-  headers["cache-control"] = cacheControl.replace(
+  headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
     "stale-while-revalidate=2592000", // 30 days
   );
@@ -81,7 +80,7 @@ export async function revalidateIfRequired(
   host: string,
   rawPath: string,
   headers: Record<string, string | undefined>,
-  req: IncomingMessage,
+  req?: IncomingMessage,
 ) {
   // If the page has been revalidated via on demand revalidation, we need to remove the cache-control so that CloudFront doesn't cache the page
   if (headers["x-nextjs-cache"] === "REVALIDATED") {
@@ -102,7 +101,7 @@ export async function revalidateIfRequired(
   // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
   // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
   // @ts-ignore
-  const internalMeta = req[Symbol.for("NextInternalRequestMeta")];
+  const internalMeta = req?.[Symbol.for("NextInternalRequestMeta")];
 
   // When using Pages Router, two requests will be received:
   // 1. one for the page: /foo
@@ -111,7 +110,7 @@ export async function revalidateIfRequired(
   // does not include the "/_next/data/" prefix. Need to add it.
   const revalidateUrl = internalMeta?._nextDidRewrite
     ? rawPath.startsWith("/_next/data/")
-      ? `/_next/data/${buildId}${internalMeta?._nextRewroteUrl}.json`
+      ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
       : internalMeta?._nextRewroteUrl
     : rawPath;
 
@@ -180,4 +179,20 @@ function cyrb128(str: string) {
   h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
   (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
   return h1 >>> 0;
+}
+
+export function fixISRHeaders(headers: Record<string, string | undefined>) {
+  if (headers["x-nextjs-cache"] === "REVALIDATED") {
+    headers[CommonHeaders.CACHE_CONTROL] =
+      "private, no-cache, no-store, max-age=0, must-revalidate";
+    return;
+  }
+  if (headers["x-nextjs-cache"] !== "STALE") return;
+
+  // If the cache is stale, we revalidate in the background
+  // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
+  // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
+  // Once the revalidation is complete, CloudFront will serve the fresh data
+  headers[CommonHeaders.CACHE_CONTROL] =
+    "s-maxage=2, stale-while-revalidate=2592000";
 }

@@ -1,18 +1,14 @@
 import path from "node:path";
 
+import { NEXT_DIR, NextConfig } from "../config/index.js";
 import { InternalEvent, InternalResult } from "../event-mapper.js";
-import { IncomingMessage } from "../request.js";
-import { ServerResponse } from "../response.js";
-import { loadConfig } from "../util.js";
+import { IncomingMessage } from "../http/request.js";
+import { ServerlessResponse } from "../http/response.js";
 import {
   convertRes,
   getMiddlewareMatch,
   loadMiddlewareManifest,
 } from "./util.js";
-
-const NEXT_DIR = path.join(__dirname, ".next");
-
-const config = loadConfig(NEXT_DIR);
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
@@ -43,7 +39,10 @@ export async function handleMiddleware(
   if (!hasMatch) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
-  const res = new ServerResponse({ method: req.method, headers: {} });
+  const res = new ServerlessResponse({
+    method: req.method ?? "GET",
+    headers: {},
+  });
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
@@ -75,9 +74,9 @@ export async function handleMiddleware(
       headers: req.headers,
       method: req.method || "GET",
       nextConfig: {
-        basePath: config.basePath,
-        i18n: config.i18n,
-        trailingSlash: config.trailingSlash,
+        basePath: NextConfig.basePath,
+        i18n: NextConfig.i18n,
+        trailingSlash: NextConfig.trailingSlash,
       },
       url,
       body: getCloneableBody(req),

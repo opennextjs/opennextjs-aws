@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
+    "openbuild": "node ../../packages/open-next/dist/index.js build --streaming --build-command \"npx turbo build\"",
     "dev": "next dev --port 3001",
     "build": "next build",
     "start": "next start --port 3001",

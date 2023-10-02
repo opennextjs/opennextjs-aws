@@ -1,9 +1,9 @@
 /*eslint-disable simple-import-sort/imports */
-import type { Options, PluginHandler } from "../next-types.js";
+import type { Options, PluginHandler } from "../types/next-types.js";
+import type { IncomingMessage } from "../http/request.js";
+import type { ServerlessResponse } from "../http/response.js";
 //#override imports
 
-import { IncomingMessage } from "../request.js";
-import { ServerResponse } from "../response.js";
 import { proxyRequest } from "./routing/util.js";
 import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#endOverride
@@ -11,7 +11,7 @@ import { requestHandler, setNextjsPrebundledReact } from "./util.js";
 //#override handler
 export const handler: PluginHandler = async (
   req: IncomingMessage,
-  res: ServerResponse,
+  res: ServerlessResponse,
   options: Options,
 ) => {
   let { internalEvent } = options;

@@ -62,7 +62,6 @@ export function convertFrom(
   } else throw new Error("Unsupported event type");
 
   return internalEvent;
-  // return fixDataPage(internalEvent, buildId);
 }
 
 export function convertTo(

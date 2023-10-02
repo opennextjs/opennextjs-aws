@@ -1,8 +1,8 @@
 // NOTE: add more next config typings as they become relevant
 
-import { InternalEvent } from "./event-mapper.js";
-import { IncomingMessage } from "./request.js";
-import { ServerResponse } from "./response.js";
+import { InternalEvent } from "../event-mapper.js";
+import { IncomingMessage } from "../http/request.js";
+import { ServerlessResponse } from "../http/response.js";
 
 type RemotePattern = {
   protocol?: "http" | "https";
@@ -130,6 +130,17 @@ export interface MiddlewareManifest {
   version: number;
 }
 
+export interface PrerenderManifest {
+  routes: Record<string, never>;
+  dynamicRoutes: {
+    [route: string]: {
+      routeRegex: string;
+      fallback: string | false | null;
+      dataRouteRegex: string;
+    };
+  };
+}
+
 export type Options = {
   internalEvent: InternalEvent;
   buildId: string;
@@ -138,7 +149,7 @@ export type Options = {
 export interface PluginHandler {
   (
     req: IncomingMessage,
-    res: ServerResponse,
+    res: ServerlessResponse,
     options: Options,
-  ): Promise<ServerResponse | undefined>;
+  ): Promise<ServerlessResponse | undefined>;
 }
