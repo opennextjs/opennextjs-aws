@@ -1,0 +1,102 @@
+#### On-demand revalidation
+
+When you manualy revalidates the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:
+
+```ts
+// pages/api/revalidate.js
+export default async function handler(req, res) {
+  await res.revalidate("/foo");
+  await invalidateCloudFrontPaths(["/foo"]);
+  // ...
+}
+```
+
+If the pages router is in use, you must also invalidate the `_next/data/BUILD_ID/foo.json` path. The value for `BUILD_ID` can be found in the `.next/BUILD_ID` build output and can be accessed at runtime via the `process.env.NEXT_BUILD_ID` environment variable.
+
+```ts
+await invalidateCloudFrontPaths(["/foo", `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`]);
+```
+
+And here is an example of the `invalidateCloudFrontPaths()` function:
+
+```ts
+import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
+
+const cloudFront = new CloudFrontClient({});
+
+function invalidateCFPaths(paths: string[]) {
+  cloudFront.send(
+    new CreateInvalidationCommand({
+      // Set CloudFront distribution ID here
+      DistributionId: distributionId,
+      InvalidationBatch: {
+        CallerReference: `${Date.now()}`,
+        Paths: {
+          Quantity: paths.length,
+          Items: paths,
+        },
+      },
+    }),
+  );
+}
+```
+
+Note that manual CloudFront path invalidation incurs costs. According to the [AWS CloudFront pricing page](https://aws.amazon.com/cloudfront/pricing/):
+
+> No additional charge for the first 1,000 paths requested for invalidation each month. Thereafter, $0.005 per path requested for invalidation.
+
+Due to these costs, if multiple paths require invalidation, it is more economical to invalidate a wildcard path `/*`. For example:
+
+```ts
+// This costs $0.005 x 3 = $0.015 after the first 1000 paths
+await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
+
+// This costs $0.005, but also invalidates other routes such as "page/d"
+await invalidateCFPaths(["/page/*"]);
+```
+
+For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
+
+```ts
+function getByTag(tag: string) {
+  try {
+    const { Items } = await this.dynamoClient.send(
+      new QueryCommand({
+        TableName: process.env.CACHE_DYNAMO_TABLE,
+        KeyConditionExpression: "#tag = :tag",
+        ExpressionAttributeNames: {
+          "#tag": "tag",
+        },
+        ExpressionAttributeValues: {
+          ":tag": { S: `${process.env.NEXT_BUILD_ID}/${tag}` },
+        },
+      }),
+    );
+    return (
+      // We need to remove the buildId from the path
+      Items?.map(
+        ({ path: { S: key } }) => key?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
+      ) ?? []
+    );
+  } catch (e) {
+    error("Failed to get by tag", e);
+    return [];
+  }
+}
+```
+
+#### Patch fetch behaviour for ISR. Only for next@13.5.1+
+
+If you use ISR and fetch in your app, you may encounter a bug that makes your revalidate values inconsistent. 
+The issue is that it revalidates using the lowest revalidate of all fetch calls in your page, regardless of their individual values. To fix this bug, you need to modify the fetch function in your root layout component with the following code snippet
+
+```ts
+export default function RootLayout() {
+  const asyncStorage = require("next/dist/client/components/static-generation-async-storage.external");
+  //@ts-ignore
+  const staticStore = (fetch as any).__nextGetStaticStore?.() || asyncStorage.staticGenerationAsyncStorage;
+  const store = staticStore.getStore();
+  store.isOnDemandRevalidate = store.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true');
+  return <>...</>;
+}
+```

@@ -13,6 +13,8 @@
     "@types/react": "18.0.25",
     "@types/react-dom": "18.0.9",
     "next": "13.4.12",
+    "nextra": "^2.13.1",
+    "nextra-theme-docs": "^2.13.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "typescript": "4.9.3"

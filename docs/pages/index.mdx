@@ -1,0 +1,51 @@
+import {SITE} from "../config"
+
+### Open source Next.js serverless adapter
+
+---
+
+OpenNext takes the Next.js build output and converts it into a package that can be deployed to any functions as a service platform. As of now only AWS Lambda is supported.
+
+
+---
+
+While Vercel is great, it's not a good option if all your infrastructure is on AWS. Hosting it in your AWS account makes it easy to integrate with your backend. And it's a lot cheaper than Vercel.
+
+Next.js, unlike Remix or Astro, doesn't have a way to self-host using serverless. You can run it as a Node application. This however doesn't work the same way as it does on Vercel.
+
+---
+
+There have been several attempts to fix this. Broadly falling into two categories; open source framework specific implementations, or closed source SaaS products.
+
+Most of the open source options, like [serverless-nextjs](https://github.com/serverless-nextjs/serverless-next.js) are dead. Their implementation can also be specific to the framework they are targeting.
+
+Closed source SaaS products like [Amplify](https://aws.amazon.com/amplify/) have incomplete or incorrect implementations. And because they are closed source, you'll need to file a support ticket to get them updated.
+
+---
+
+The goal of OpenNext is to create an open source, framework agnostic, serverless adapter for Next.js.
+
+OpenNext is currently built for AWS but we plan to support any functions as a service platform.
+
+We need your help keeping it up to date and feature complete. Make sure to [**join us on Discord**](https://sst.dev/discord) and [**star us on GitHub**](https://github.com/sst/open-next).
+## Features
+
+OpenNext aims to support all Next.js 13 features. Some features are work in progress. Please open a [new issue](https://github.com/sst/open-next/issues/new) to let us know!
+
+- [x] App & Pages Router
+- [x] API routes
+- [x] Dynamic routes
+- [x] Static site generation (SSG)
+- [x] Server-side rendering (SSR)
+- [x] [Incremental static regeneration (ISR)](/inner_workings/isr)
+- [x] Middleware
+- [x] Image optimization
+- [x] [NextAuth.js](https://next-auth.js.org)
+- [x] [Running at edge](/advanced/architecture#running-at-edge)
+- [x] [No cold start](/inner_workings/warming)
+- [x] Experimental streaming support
+
+## Who is using OpenNext?
+
+[NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext),
+[Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c)

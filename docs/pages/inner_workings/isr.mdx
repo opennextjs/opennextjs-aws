@@ -1,0 +1,19 @@
+In standalone mode, Next.js prebuilds the ISR cache during the build process. And at runtime, **NextServer** expects this cache locally on the server. This works effectively when the server is run on a single web server machine, sharing the cache across all requests. In a Lambda environment, the cache needs to be housed centrally in a location accessible by all server Lambda function instances. S3 serves as this central location.
+
+To facilitate this:
+
+- ISR cache files are excluded from the `server-function` bundle and instead are uploaded to the cache bucket.
+- The default cache handler is replaced with a custom cache handler by configuring the [`incrementalCacheHandlerPath`](https://nextjs.org/docs/app/api-reference/next-config-js/incrementalCacheHandlerPath) field in `next.config.js`.
+- The custom cache handler manages the cache files on S3, handling both reading and writing operations.
+- If the cache is stale, the `server-function` sends the stale response back to the user while sending a message to the revalidation queue to trigger background revalidation.
+- Since we're using FIFO queue, if we want to process more than one revalidation at a time, we need to have separate Message Group IDs. We generate a Message Group ID for each revalidation request based on the route path. This ensures that revalidation requests for the same route are processed only once. You can use `MAX_REVALIDATE_CONCURRENCY` environment variable to control the number of revalidation requests processed at a time. By default, it is set to 10.
+- The `revalidation-function` polls the message from the queue and makes a `HEAD` request to the route with the `x-prerender-revalidate` header.
+- The `server-function` receives the `HEAD` request and revalidates the cache.
+
+#### Tags 
+
+TODO
+
+#### Cost
+
+TODO
