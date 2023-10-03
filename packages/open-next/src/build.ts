@@ -603,6 +603,25 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
   addCacheHandler(outputPath);
+
+  if (options.minify) {
+    removeNodeModule(path.join(outputPath, "node_modules"), [
+      "@esbuild",
+      "prisma/libquery_engine-darwin-arm64.dylib.node",
+      "@swc/core-darwin-arm64",
+      "@swc/core",
+      "better-sqlite3",
+      "esbuild",
+      "webpack",
+      "uglify-js",
+      // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
+      // "react-dom",
+      "@webassemblyjs",
+      "uglify-js",
+      "sass",
+      "caniuse-lite",
+    ]);
+  }
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -875,4 +894,14 @@ function compareSemver(v1: string, v2: string): number {
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
   return patch1 - patch2;
+}
+
+function removeNodeModule(nodeModulesPath: string, modules: string[]) {
+  console.log("removing: ", modules);
+  for (const module of modules) {
+    fs.rmSync(path.join(nodeModulesPath, module), {
+      force: true,
+      recursive: true,
+    });
+  }
 }
