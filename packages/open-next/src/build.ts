@@ -406,6 +406,34 @@ function createCacheAssets(monorepoRoot: string) {
     revalidatedAt: { N: string };
   }[] = [];
 
+  // Compute dynamodb cache data
+  // Traverse files inside cache to find all meta files and cache tags associated with them
+  traverseFiles(
+    outputPath,
+    (file) => file.endsWith(".meta"),
+    (filePath) => {
+      const fileContent = fs.readFileSync(filePath, "utf8");
+      const fileData = JSON.parse(fileContent);
+      if (fileData.headers?.["x-next-cache-tags"]) {
+        fileData.headers["x-next-cache-tags"]
+          .split(",")
+          .forEach((tag: string) => {
+            // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
+            metaFiles.push({
+              tag: { S: path.posix.join(buildId, tag.trim()) },
+              path: {
+                S: path.posix.join(
+                  buildId,
+                  path.relative(outputPath, filePath).replace(".meta", ""),
+                ),
+              },
+              revalidatedAt: { N: `${Date.now()}` },
+            });
+          });
+      }
+    },
+  );
+
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
     appBuildOutputPath,
@@ -415,34 +443,6 @@ function createCacheAssets(monorepoRoot: string) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
     fs.mkdirSync(fetchOutputPath, { recursive: true });
     fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
-
-    // Compute dynamodb cache data
-    // Traverse files inside cache to find all meta files and cache tags associated with them
-    traverseFiles(
-      outputPath,
-      (file) => file.endsWith(".meta"),
-      (filePath) => {
-        const fileContent = fs.readFileSync(filePath, "utf8");
-        const fileData = JSON.parse(fileContent);
-        if (fileData.headers?.["x-next-cache-tags"]) {
-          fileData.headers["x-next-cache-tags"]
-            .split(",")
-            .forEach((tag: string) => {
-              // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
-              metaFiles.push({
-                tag: { S: path.posix.join(buildId, tag.trim()) },
-                path: {
-                  S: path.posix.join(
-                    buildId,
-                    path.relative(outputPath, filePath).replace(".meta", ""),
-                  ),
-                },
-                revalidatedAt: { N: `${Date.now()}` },
-              });
-            });
-        }
-      },
-    );
 
     traverseFiles(
       fetchCachePath,
@@ -464,7 +464,9 @@ function createCacheAssets(monorepoRoot: string) {
         });
       },
     );
+  }
 
+  if (metaFiles.length > 0) {
     const providerPath = path.join(outputDir, "dynamodb-provider");
 
     esbuildSync({
