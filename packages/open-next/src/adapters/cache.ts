@@ -16,8 +16,7 @@ import {
 // import { getDerivedTags } from "next/dist/server/lib/incremental-cache/utils";
 import path from "path";
 
-import { loadBuildId } from "./config/util.js";
-import { awsLogger, debug, error } from "./logger.js";
+import { debug, error } from "./logger.js";
 
 // TODO: Remove this, temporary only to run some tests
 const getDerivedTags = (tags: string[]) => tags;
@@ -105,8 +104,8 @@ type Extension =
 const {
   CACHE_BUCKET_NAME,
   CACHE_BUCKET_KEY_PREFIX,
-  CACHE_BUCKET_REGION,
   CACHE_DYNAMO_TABLE,
+  NEXT_BUILD_ID,
 } = process.env;
 
 export default class S3Cache {
@@ -115,17 +114,9 @@ export default class S3Cache {
   private buildId: string;
 
   constructor(_ctx: CacheHandlerContext) {
-    this.client = new S3Client({
-      region: CACHE_BUCKET_REGION,
-      logger: awsLogger,
-    });
-    this.dynamoClient = new DynamoDBClient({
-      region: CACHE_BUCKET_REGION,
-      logger: awsLogger,
-    });
-    this.buildId = loadBuildId(
-      path.dirname(_ctx.serverDistDir ?? ".next/server"),
-    );
+    this.client = globalThis.S3Client;
+    this.dynamoClient = globalThis.dynamoClient;
+    this.buildId = NEXT_BUILD_ID!;
   }
 
   public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
