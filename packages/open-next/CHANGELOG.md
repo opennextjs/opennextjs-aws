@@ -1,5 +1,11 @@
 # open-next
 
+## 2.2.1
+
+### Patch Changes
+
+- 4158d4f: Fix memory leak from too many files opened; add opt-out flags for app and pages cache revalidation
+
 ## 2.2.0
 
 ### Minor Changes
