@@ -13,6 +13,19 @@ import {
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 
+interface DangerousOptions {
+  /**
+   * The dynamo db cache is used for revalidateTags and revalidatePath.
+   * @default false
+   */
+  disableDynamoDBCache?: boolean;
+  /**
+   * The incremental cache is used for ISR and SSG.
+   * Disable this only if you use only SSR
+   * @default false
+   */
+  disableIncrementalCache?: boolean;
+}
 interface BuildOptions {
   /**
    * Minify the server bundle.
@@ -39,6 +52,10 @@ interface BuildOptions {
    * });
    * ```
    */
+  /**
+   * Dangerous options. This break some functionnality but can be useful in some cases.
+   */
+  dangerous?: DangerousOptions;
   buildCommand?: string;
   /**
    * The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd().
@@ -82,8 +99,10 @@ export async function build(opts: BuildOptions = {}) {
   printHeader("Generating bundle");
   initOutputDir();
   createStaticAssets();
-  createCacheAssets(monorepoRoot);
-  await createServerBundle(monorepoRoot, opts.streaming);
+  if (!options.dangerous?.disableIncrementalCache) {
+    createCacheAssets(monorepoRoot, options.dangerous?.disableDynamoDBCache);
+  }
+  await createServerBundle(monorepoRoot, options.streaming);
   createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
@@ -109,6 +128,8 @@ function normalizeOptions(opts: BuildOptions, root: string) {
     minify: opts.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
     debug: opts.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
     buildCommand: opts.buildCommand,
+    dangerous: opts.dangerous,
+    streaming: opts.streaming ?? false,
   };
 }
 
@@ -369,7 +390,7 @@ function createStaticAssets() {
   }
 }
 
-function createCacheAssets(monorepoRoot: string) {
+function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
   console.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -398,23 +419,14 @@ function createCacheAssets(monorepoRoot: string) {
       (file.endsWith(".html") && htmlPages.has(file)),
   );
 
-  // Generate dynamodb data
-  // We need to traverse the cache to find every .meta file
-  const metaFiles: {
-    tag: { S: string };
-    path: { S: string };
-    revalidatedAt: { N: string };
-  }[] = [];
-
-  // Copy fetch-cache to cache folder
-  const fetchCachePath = path.join(
-    appBuildOutputPath,
-    ".next/cache/fetch-cache",
-  );
-  if (fs.existsSync(fetchCachePath)) {
-    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
-    fs.mkdirSync(fetchOutputPath, { recursive: true });
-    fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+  if (!disableDynamoDBCache) {
+    // Generate dynamodb data
+    // We need to traverse the cache to find every .meta file
+    const metaFiles: {
+      tag: { S: string };
+      path: { S: string };
+      revalidatedAt: { N: string };
+    }[] = [];
 
     // Compute dynamodb cache data
     // Traverse files inside cache to find all meta files and cache tags associated with them
@@ -444,41 +456,54 @@ function createCacheAssets(monorepoRoot: string) {
       },
     );
 
-    traverseFiles(
-      fetchCachePath,
-      () => true,
-      (filepath) => {
-        const fileContent = fs.readFileSync(filepath, "utf8");
-        const fileData = JSON.parse(fileContent);
-        fileData?.tags?.forEach((tag: string) => {
-          metaFiles.push({
-            tag: { S: path.posix.join(buildId, tag) },
-            path: {
-              S: path.posix.join(
-                buildId,
-                path.relative(fetchCachePath, filepath),
-              ),
-            },
-            revalidatedAt: { N: `${Date.now()}` },
+    // Copy fetch-cache to cache folder
+    const fetchCachePath = path.join(
+      appBuildOutputPath,
+      ".next/cache/fetch-cache",
+    );
+    if (fs.existsSync(fetchCachePath)) {
+      const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+      fs.mkdirSync(fetchOutputPath, { recursive: true });
+      fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+
+      traverseFiles(
+        fetchCachePath,
+        () => true,
+        (filepath) => {
+          const fileContent = fs.readFileSync(filepath, "utf8");
+          const fileData = JSON.parse(fileContent);
+          fileData?.tags?.forEach((tag: string) => {
+            metaFiles.push({
+              tag: { S: path.posix.join(buildId, tag) },
+              path: {
+                S: path.posix.join(
+                  buildId,
+                  path.relative(fetchCachePath, filepath),
+                ),
+              },
+              revalidatedAt: { N: `${Date.now()}` },
+            });
           });
-        });
-      },
-    );
+        },
+      );
+    }
 
-    const providerPath = path.join(outputDir, "dynamodb-provider");
+    if (metaFiles.length > 0) {
+      const providerPath = path.join(outputDir, "dynamodb-provider");
 
-    esbuildSync({
-      external: ["@aws-sdk/client-dynamodb"],
-      entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
-      outfile: path.join(providerPath, "index.mjs"),
-      target: ["node18"],
-    });
+      esbuildSync({
+        external: ["@aws-sdk/client-dynamodb"],
+        entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
+        outfile: path.join(providerPath, "index.mjs"),
+        target: ["node18"],
+      });
 
-    // TODO: check if metafiles doesn't contain duplicates
-    fs.writeFileSync(
-      path.join(providerPath, "dynamodb-cache.json"),
-      JSON.stringify(metaFiles),
-    );
+      // TODO: check if metafiles doesn't contain duplicates
+      fs.writeFileSync(
+        path.join(providerPath, "dynamodb-cache.json"),
+        JSON.stringify(metaFiles),
+      );
+    }
   }
 }
 
@@ -602,7 +627,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   addPublicFilesList(outputPath, packagePath);
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
-  addCacheHandler(outputPath);
+  addCacheHandler(outputPath, options.dangerous);
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -710,13 +735,20 @@ function removeCachedPages(outputPath: string, packagePath: string) {
     );
 }
 
-function addCacheHandler(outputPath: string) {
+function addCacheHandler(outputPath: string, options?: DangerousOptions) {
   esbuildSync({
     external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "cache.js")],
     outfile: path.join(outputPath, "cache.cjs"),
     target: ["node18"],
     format: "cjs",
+    banner: {
+      js: `globalThis.disableIncrementalCache = ${
+        options?.disableIncrementalCache ?? false
+      }; globalThis.disableDynamoDBCache = ${
+        options?.disableDynamoDBCache ?? false
+      };`,
+    },
   });
 }
 

@@ -14,6 +14,14 @@ build({
   appPath: args["--app-path"],
   minify: Object.keys(args).includes("--minify"),
   streaming: Object.keys(args).includes("--streaming"),
+  dangerous: {
+    disableDynamoDBCache: Object.keys(args).includes(
+      "--dangerously-disable-dynamodb-cache",
+    ),
+    disableIncrementalCache: Object.keys(args).includes(
+      "--dangerously-disable-incremental-cache",
+    ),
+  },
 });
 
 function parseArgs() {
