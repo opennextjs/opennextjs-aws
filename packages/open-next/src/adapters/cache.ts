@@ -108,6 +108,13 @@ const {
   NEXT_BUILD_ID,
 } = process.env;
 
+declare global {
+  var S3Client: S3Client;
+  var dynamoClient: DynamoDBClient;
+  var disableDynamoDBCache: boolean;
+  var disableIncrementalCache: boolean;
+}
+
 export default class S3Cache {
   private client: S3Client;
   private dynamoClient: DynamoDBClient;
@@ -120,6 +127,9 @@ export default class S3Cache {
   }
 
   public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
+    if (globalThis.disableIncrementalCache) {
+      return null;
+    }
     const isFetchCache =
       typeof options === "object" ? options.fetchCache : options;
     const keys = await this.listS3Object(key);
@@ -248,6 +258,9 @@ export default class S3Cache {
   }
 
   async set(key: string, data?: IncrementalCacheValue): Promise<void> {
+    if (globalThis.disableIncrementalCache) {
+      return;
+    }
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
       await Promise.all([
@@ -308,6 +321,9 @@ export default class S3Cache {
   }
 
   public async revalidateTag(tag: string) {
+    if (globalThis.disableDynamoDBCache || globalThis.disableIncrementalCache) {
+      return;
+    }
     debug("revalidateTag", tag);
     // Find all keys with the given tag
     const paths = await this.getByTag(tag);
@@ -325,6 +341,7 @@ export default class S3Cache {
 
   private async getTagsByPath(path: string) {
     try {
+      if (disableDynamoDBCache) return [];
       const result = await this.dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -350,6 +367,7 @@ export default class S3Cache {
   //TODO: Figure out a better name for this function since it returns the lastModified
   private async getHasRevalidatedTags(key: string, lastModified?: number) {
     try {
+      if (disableDynamoDBCache) return lastModified ?? Date.now();
       const result = await this.dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -378,6 +396,7 @@ export default class S3Cache {
 
   private async getByTag(tag: string) {
     try {
+      if (disableDynamoDBCache) return [];
       const { Items } = await this.dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -404,6 +423,7 @@ export default class S3Cache {
 
   private async batchWriteDynamoItem(req: { path: string; tag: string }[]) {
     try {
+      if (disableDynamoDBCache) return;
       await Promise.all(
         this.chunkArray(req, 25).map((Items) => {
           return this.dynamoClient.send(
