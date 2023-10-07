@@ -25,6 +25,18 @@ test.describe("Next Config Redirect", () => {
     });
     await expect(el).toBeVisible();
   });
+  test("Not missing cookies", async ({ page }) => {
+    await page.goto("/");
+    await page.goto("/next-config-redirect-not-missing");
+
+    // the cookie was not missing, so no redirects
+    await page.waitForURL("/next-config-redirect-not-missing");
+
+    const el = page.getByText("This page could not be found.", {
+      exact: true,
+    });
+    await expect(el).toBeVisible();
+  });
   test("Has cookies", async ({ page }) => {
     await page.goto("/");
     await page.goto("/next-config-redirect-has");

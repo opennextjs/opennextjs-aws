@@ -17,10 +17,16 @@ const nextConfig = {
         missing: [{ type: "cookie", key: "missing-cookie" }],
       },
       {
+        source: "/next-config-redirect-not-missing",
+        destination: "/config-redirect?missing=true",
+        permanent: true,
+        missing: [{ type: "cookie", key: "from" }], // middleware sets this cookie
+      },
+      {
         source: "/next-config-redirect-has",
         destination: "/config-redirect?has=true",
         permanent: true,
-        has: [{ type: "cookie", key: "from" }], // middleware sets this cookie
+        has: [{ type: "cookie", key: "from" }],
       },
       {
         source: "/next-config-redirect-has-with-value",
