@@ -1,0 +1,28 @@
+If your Next.js app is already deployed to another platform or using another open-source framework, you'd want to take a look here:
+
+#### Vercel
+
+Everything should already be set up for you. But there are a few things you should know:
+
+- Streaming by default is disabled in open-next (for now). It is very **experimental** right now see [here](/inner_workings/streaming) for more info.
+- Middleware is not run for static file and for image requests with open-next.
+
+#### AWS Amplify
+
+TODO
+
+#### Netlify
+
+TODO
+
+#### serverless-nextjs
+
+You should remove some stuff from your `next.config.js` file, otherwise you'll get a build error.:
+
+```js
+module.exports = {
+  // ...
+  target: 'serverless', // remove this
+  // ...
+}
+```

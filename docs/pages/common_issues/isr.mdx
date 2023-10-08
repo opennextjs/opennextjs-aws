@@ -1,3 +1,9 @@
+import {Callout} from 'nextra/components'
+
+<Callout type="warning" emoji="⚠️">
+  `next/cache` revalidation needs `next@13.5.1` or higher to work properly. If you are using an older version, please upgrade.
+</Callout>
+
 #### On-demand revalidation
 
 When you manualy revalidates the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:

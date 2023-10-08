@@ -43,7 +43,12 @@ There are two types of caches in the `.open-next/cache` folder:
 
 #### Revalidation Table
 
-TODO
+Create a DynamoDB table with the following configuration:
+- Partition key: `tag` (String)
+- Sort key: `path` (String)
+- An index named `revalidate` with the following configuration:
+  - Partition key: `path` (String)
+  - Sort key: `revalidatedAt` (Number)
 
 #### Image optimization function
 
@@ -67,6 +72,7 @@ Create a Lambda function using the code in the `.open-next/server-function` fold
 - Set the `CACHE_BUCKET_REGION` environment variable with the value being the region of the S3 bucket.
 - Set the `REVALIDATION_QUEUE_URL` environment variable with the value being the URL of the revalidation queue.
 - Set the `REVALIDATION_QUEUE_REGION` environment variable with the value being the region of the revalidation queue.
+- Set the `CACHE_DYNAMO_TABLE` environment variable with the value being the name of the revalidation table.
 - Grant `s3:GetObject`, `s3:PutObject`, and `s3:ListObjects` permission.
 - Grant `sqs:SendMessage` permission.
 
@@ -163,4 +169,7 @@ Read more on [how warming works](/inner_workings/warming).
 
 #### Dynamo Provider Function
 
-TODO
+This function is used to populate the revalidation table. It is a custom resource handler from the cdk see [here](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.custom_resources.AwsCustomResource.html). Ensure the function is configured as follows:
+
+- Set the `CACHE_DYNAMO_TABLE` environment variable with the value being the name of the DynamoDB table where the revalidation table is stored.
+- Grant `dynamodb:PutItem` permission to allow the function to write to the DynamoDB table.

@@ -56,16 +56,31 @@ await build({
 
 This feature is currently **experimental** and needs to be opted into. It can significantly decrease the server function's cold start time. Once it is thoroughly tested and its stability is confirmed, it will be enabled by default.
 
-#### Experimental Streaming support
+#### **Experimental** Streaming support
 
 Enabling this option will enable streaming support for the server function. This is experimental and needs to be opted into. It can significantly decrease the server function's time to first byte. 
 
+**Do not use this in production**. See [this](/inner_workings/streaming) for more information.
 
 ```bash
 open-next build --streaming
 ```
 
+#### **Experimental** disable dynamodb cache
 
+Enabling this option will disable the dynamodb cache. This is experimental and needs to be opted into. This means that `next/cache` revalidation will not work.
+
+```bash
+open-next build --dangerously-disable-dynamodb-cache
+```
+
+#### **Experimental** disable incremental cache
+
+Disabling incremental cache will cause the entire page to be revalidated on each request. This will cause ISR and SSG pages to be in an inconsistent state. Specify this option if you are using SSR pages only. This will also disable the dynamodb cache.
+
+```bash
+open-next build --dangerously-disable-incremental-cache
+```
 
 #### Reusing same bucket for asset and cache
 

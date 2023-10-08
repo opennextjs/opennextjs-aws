@@ -1,2 +1,13 @@
-#### ISR
-TODO: add explanation about ISR
+#### Cannot find module next
+
+You might stumble upon this error inside cloudwatch logs: `Cannot find module 'next'`.
+It is likely that you are in a monorepo and you have several lock files.
+Just make sure that you have a single lock file in the root of your project.
+
+#### headers, redirect, rewrites in `next-config` and middleware are not working in next 13.4.12+
+
+If you use a version of nextjs >= 13.4.12, you'll need to use an open-next version >= 2.1
+
+#### My ISR page has this cache-control header `s-maxage=2, stale-while-revalidate=2592000`
+
+Given how ISR works, while waiting for the revalidation to happen, the page will be served using this cache control header. This prevent your server from being overloaded by a lot of requests while the revalidation is done. You can read more about it [here](/inner_workings/isr).

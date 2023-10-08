@@ -196,7 +196,7 @@ On every request, we try to detect whether the route is using the Pages Router o
 
 #### WORKAROUND: 13.4.13+ breaking changes (middleware, redirect, rewrites)
 
-Nextjs 13.4.13 refactored the middleware logic so that it no longer runs in the server handler. Instead they are executed as workeres in child threads, which introduces a non-acceptable latency of ~5 seconds. In order to circumvent this issue, open-next needs to implement the middleware handler before processing the server handler ourselves.
+Nextjs 13.4.13 refactored the middleware logic so that it no longer runs in the server handler. Instead they are executed as workers in child threads, which introduces a non-acceptable latency of ~5 seconds. In order to circumvent this issue, open-next needs to implement the middleware handler before processing the server handler ourselves.
 
 We've introduced a custom esbuild plugin to conditionally inject and override code to properly handle the breaking changes.
 

@@ -1,0 +1,64 @@
+import { Callout } from "nextra/components";
+
+Open-next use esbuild to build the project. Given that we aim to support multiple version of Next and multiple runtime, we developped a plugin to override some parts of our code at build time with an esbuild plugin.
+
+<Callout type="warning" emoji="⚠️">
+  As of now, the plugin is internal and not exposed to the user.
+  We might expose it in the future, but for now, it is used only internally.
+</Callout>
+
+#### How to use
+
+You need to create a ts file where you will override the code. Inside this file, you can use the following syntax:
+
+```ts
+//#import
+// Everything inside here will be placed at the top of the file
+const test = "test";
+//#endImport
+
+
+//#override import
+// Everything inside here will replace the content of the override with the given id: import
+// To get the id you'll need to look at the file you want to override
+import { requestHandler } from "./util.js";
+//#endOverride
+
+//#override fnId
+// Everything inside here will replace the content of the override with the given id: fnId
+export const fnId = (req: IncomingMessage, res: ServerResponse) => {
+  requestHandler(req, res);
+};
+//#endOverride
+```
+
+and then you use the plugin this way:
+
+```ts
+import openNextPlugin from "./plugin.js";
+
+openNextPlugin({
+  name: "name of the plugin",
+  target: /plugins\/serverHandler\.js/g, // regex to match the file to override
+  replacements: ["./serverHandler.replacement.js"], // path to the files containing the overrides
+}),
+
+```
+
+#### Known issues
+
+Do not include `types` in #override and #imports, as esbuild will remove preceeding comments (ie it removes //#override id)when it builds.
+
+Instead, put the `import type` outside like:
+
+```
+import type { PluginHandler } from "../next-types.js";
+import type { IncomingMessage } from "../request.js";
+import type { ServerResponse } from "../response.js";
+
+//#override imports
+import { requestHandler } from "./util.js";
+//#endOverride
+```
+
+The types are removed in the final output anyways.
