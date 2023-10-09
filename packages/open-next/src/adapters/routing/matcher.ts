@@ -1,5 +1,6 @@
 import { compile, Match, match, PathFunction } from "path-to-regexp";
 
+import { NextConfig } from "../config";
 import { InternalEvent, InternalResult } from "../event-mapper";
 import { debug } from "../logger";
 import {
@@ -170,7 +171,40 @@ export function handleRedirects(
   event: InternalEvent,
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
-  const { internalEvent, __rewrite } = handleRewrites(event, redirects);
+  if (
+    NextConfig.trailingSlash &&
+    !event.rawPath.endsWith("/") &&
+    !event.headers["x-nextjs-data"]
+  ) {
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: event.url + "/",
+      },
+      body: "",
+      isBase64Encoded: false,
+    };
+    // eslint-disable-next-line sonarjs/elseif-without-else
+  } else if (
+    !NextConfig.trailingSlash &&
+    event.rawPath.endsWith("/") &&
+    event.rawPath !== "/"
+  ) {
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: event.url.replace(/\/$/, ""),
+      },
+      body: "",
+      isBase64Encoded: false,
+    };
+  }
+  const { internalEvent, __rewrite } = handleRewrites(
+    event,
+    redirects.filter((r) => !r.internal),
+  );
   if (__rewrite && !__rewrite.internal) {
     return {
       type: event.type,
