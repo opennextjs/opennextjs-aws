@@ -45,11 +45,13 @@ export function loadRoutesManifest(nextDir: string) {
   };
 
   return {
-    rewrites: {
-      beforeFiles: routesManifest.rewrites.beforeFiles ?? [],
-      afterFiles: routesManifest.rewrites.afterFiles ?? [],
-      fallback: routesManifest.rewrites.fallback ?? [],
-    },
+    rewrites: Array.isArray(routesManifest.rewrites)
+      ? { beforeFiles: [], afterFiles: routesManifest.rewrites, fallback: [] }
+      : {
+          beforeFiles: routesManifest.rewrites.beforeFiles ?? [],
+          afterFiles: routesManifest.rewrites.afterFiles ?? [],
+          fallback: routesManifest.rewrites.fallback ?? [],
+        },
     redirects: routesManifest.redirects ?? [],
     routes: {
       static: routesManifest.staticRoutes ?? [],

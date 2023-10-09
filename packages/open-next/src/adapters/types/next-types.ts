@@ -101,11 +101,13 @@ export interface RoutesManifest {
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
   dataRoutes: DataRouteDefinition[];
-  rewrites: {
-    beforeFiles: RewriteDefinition[];
-    afterFiles: RewriteDefinition[];
-    fallback: RewriteDefinition[];
-  };
+  rewrites:
+    | {
+        beforeFiles: RewriteDefinition[];
+        afterFiles: RewriteDefinition[];
+        fallback: RewriteDefinition[];
+      }
+    | RewriteDefinition[];
   redirects: RedirectDefinition[];
   headers?: Header[];
 }
