@@ -86,23 +86,6 @@ export async function handleMiddleware(
     onWarning: console.warn,
   });
   res.statusCode = result.response.status;
-  // If the middleware returned a Redirect, we set the `Location` header with
-  // the redirected url and end the response.
-  if (res.statusCode >= 300 && res.statusCode < 400) {
-    const location = result.response.headers
-      .get("location")
-      ?.replace("http://localhost:3000", `https://${req.headers.host}`);
-    // res.setHeader("Location", location);
-    return {
-      body: "",
-      type: internalEvent.type,
-      statusCode: res.statusCode,
-      headers: {
-        Location: location,
-      },
-      isBase64Encoded: false,
-    };
-  }
 
   /* Apply override headers from middleware
     NextResponse.next({
@@ -132,6 +115,25 @@ export async function handleMiddleware(
       res.setHeader(key, value);
     }
   });
+
+  // If the middleware returned a Redirect, we set the `Location` header with
+  // the redirected url and end the response.
+  if (res.statusCode >= 300 && res.statusCode < 400) {
+    const location = result.response.headers
+      .get("location")
+      ?.replace("http://localhost:3000", `https://${req.headers.host}`);
+    // res.setHeader("Location", location);
+    return {
+      body: "",
+      type: internalEvent.type,
+      statusCode: res.statusCode,
+      headers: {
+        ...resHeaders,
+        Location: location,
+      },
+      isBase64Encoded: false,
+    };
+  }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
