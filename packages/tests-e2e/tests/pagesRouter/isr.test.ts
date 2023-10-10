@@ -4,8 +4,8 @@ import { expect, test } from "@playwright/test";
 test("Incremental Static Regeneration", async ({ page }) => {
   test.setTimeout(45000);
   await page.goto("/");
-  await page.locator("[href='/isr']").click();
-  await page.waitForURL("/isr");
+  await page.locator("[href='/isr/']").click();
+  await page.waitForURL("/isr/");
   // Load the page a couple times to regenerate ISR
 
   let el = page.getByText("Time:");

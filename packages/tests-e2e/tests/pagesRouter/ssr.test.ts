@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 
 test("Server Side Render", async ({ page }) => {
   await page.goto("/");
-  await page.locator('[href="/ssr"]').click();
+  await page.locator('[href="/ssr/"]').click();
 
-  await page.waitForURL("/ssr");
+  await page.waitForURL("/ssr/");
   let el = page.getByText("Time:");
   await expect(el).toBeVisible();
   let time = await el.textContent();

@@ -5,6 +5,8 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   outputFileTracing: "../sst",
+  rewrites: () => [{ source: "/rewrite", destination: "/" }],
+  trailingSlash: true,
 };
 
 module.exports = nextConfig;
