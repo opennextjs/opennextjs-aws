@@ -22,14 +22,14 @@ const routeHasMatcher =
     switch (redirect.type) {
       case "header":
         return (
-          !!headers?.[redirect.key.toLowerCase()] &&
+          headers?.[redirect.key.toLowerCase()] !== "" &&
           new RegExp(redirect.value ?? "").test(
             headers[redirect.key.toLowerCase()] ?? "",
           )
         );
       case "cookie":
         return (
-          !!cookies?.[redirect.key] &&
+          cookies?.[redirect.key] !== "" &&
           new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
         );
       case "query":
