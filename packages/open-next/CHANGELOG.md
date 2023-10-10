@@ -1,5 +1,11 @@
 # open-next
 
+## 2.2.2
+
+### Patch Changes
+
+- 68ae99a: Fix trailing slash; Fix cookies in next-config; Allow custom sharp version
+
 ## 2.2.1
 
 ### Patch Changes
