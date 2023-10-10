@@ -12,17 +12,22 @@ export function isExternal(url?: string) {
 }
 
 export function getUrlParts(url: string, isExternal: boolean) {
+  // NOTE: when redirect to a URL that contains search query params,
+  // compile breaks b/c it does not allow for the '?' character
+  // We can't use encodeURIComponent because modal interception contains
+  // characters that can't be encoded
+  url = url.replaceAll("?", "%3F");
   if (!isExternal) {
     return {
       hostname: "",
-      pathname: encodeURIComponent(url),
+      pathname: url,
       protocol: "",
     };
   }
   const { hostname, pathname, protocol } = new URL(url);
   return {
     hostname,
-    pathname: encodeURIComponent(pathname),
+    pathname,
     protocol,
   };
 }
