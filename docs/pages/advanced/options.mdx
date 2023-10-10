@@ -1,0 +1,128 @@
+#### Custom build command
+
+OpenNext runs the `build` script in your `package.json` by default. However, you can specify a custom build command if required.
+
+```bash
+# CLI
+open-next build --build-command "pnpm custom:build"
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  buildCommand: "pnpm custom:build",
+});
+```
+
+#### Custom app and build output paths
+
+OpenNext runs the `build` script from your current command folder by default. When running OpenNext from a monorepo with decentralised application and build output paths, you can specify a custom `appPath` and/or `buildOutputPath`. This will allow you to execute your command from the root of the monorepo.
+
+```bash
+# CLI
+open-next build --build-command "pnpm custom:build" --app-path "./apps/example-app" --build-output-path "./dist/apps/example-app"
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  buildCommand: "pnpm custom:build",
+  appPath: "./apps/example-app",
+  buildOutputPath: "./dist/apps/example-app"
+});
+```
+
+#### Minify server function
+
+Enabling this option will minimize all `.js` and `.json` files in the server function bundle using the [node-minify](https://github.com/srod/node-minify) library. This can reduce the size of the server function bundle by about 40%, depending on the size of your app.
+
+```bash
+# CLI
+open-next build --minify
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  minify: true,
+});
+```
+
+This feature is currently **experimental** and needs to be opted into. It can significantly decrease the server function's cold start time. Once it is thoroughly tested and its stability is confirmed, it will be enabled by default.
+
+#### **Experimental** Streaming support
+
+Enabling this option will enable streaming support for the server function. This is experimental and needs to be opted into. It can significantly decrease the server function's time to first byte. 
+
+**Do not use this in production**. See [this](/inner_workings/streaming) for more information.
+
+```bash
+open-next build --streaming
+```
+
+#### **Experimental** disable dynamodb cache
+
+Enabling this option will disable the dynamodb cache. This is experimental and needs to be opted into. This means that `next/cache` revalidation will not work.
+
+```bash
+open-next build --dangerously-disable-dynamodb-cache
+```
+
+#### **Experimental** disable incremental cache
+
+Disabling incremental cache will cause the entire page to be revalidated on each request. This will cause ISR and SSG pages to be in an inconsistent state. Specify this option if you are using SSR pages only. This will also disable the dynamodb cache.
+
+```bash
+open-next build --dangerously-disable-incremental-cache
+```
+
+#### Reusing same bucket for asset and cache
+
+Typically, asset files are uploaded to the root of the bucket. However, you might want to store them in a subfolder of the bucket, for instance, when:
+
+- using a pre-existing bucket; or
+- storing both assets and cache files in the same bucket.
+
+If you choose to upload asset files to a subfolder (ie. "assets"), be sure to:
+
+- Set the `BUCKET_KEY_PREFIX` environment variable for the image optimization function to `assets`.
+- Set the "origin path" for the CloudFront S3 origin to `assets`.
+
+Similarly, if you decide to upload cache files to a subfolder (ie. "cache"), be sure to:
+
+- Set the `CACHE_BUCKET_KEY_PREFIX` environment variable for the server function to `cache`.
+
+#### Debug mode
+
+OpenNext can be executed in debug mode for bug tracking purposes.
+
+```bash
+# CLI
+OPEN_NEXT_DEBUG=true npx open-next@latest build
+```
+
+```ts
+// JS
+import { build } from "open-next/build.js";
+
+await build({
+  debug: true,
+});
+```
+
+This does a few things:
+
+1. Lambda handler functions in the build output will not be minified.
+1. Lambda handler functions in the build output has sourcemap enabled inline.
+1. Lambda handler functions will automatically `console.log` the request event object along with other debugging information.
+
+It is recommended to **turn off debug mode when building for production** because:
+
+1. Un-minified function code is 2-3X larger than minified code. This will result in longer Lambda cold start times.
+1. Logging the event object on each request can result in a lot of logs being written to AWS CloudWatch. This will result in increased AWS costs.

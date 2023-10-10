@@ -1,0 +1,90 @@
+import { Callout } from 'nextra/components'
+
+In standalone mode, Next.js prebuilds the ISR cache during the build process. And at runtime, **NextServer** expects this cache locally on the server. This works effectively when the server is run on a single web server machine, sharing the cache across all requests. In a Lambda environment, the cache needs to be housed centrally in a location accessible by all server Lambda function instances. S3 serves as this central location.
+
+To facilitate this:
+
+- ISR cache files are excluded from the `server-function` bundle and instead are uploaded to the cache bucket.
+- The default cache handler is replaced with a custom cache handler by configuring the [`incrementalCacheHandlerPath`](https://nextjs.org/docs/app/api-reference/next-config-js/incrementalCacheHandlerPath) field in `next.config.js`.
+- The custom cache handler manages the cache files on S3, handling both reading and writing operations.
+- Since we're using FIFO queue, if we want to process more than one revalidation at a time, we need to have separate Message Group IDs. We generate a Message Group ID for each revalidation request based on the route path. This ensures that revalidation requests for the same route are processed only once. You can use `MAX_REVALIDATE_CONCURRENCY` environment variable to control the number of revalidation requests processed at a time. By default, it is set to 10.
+- The `revalidation-function` polls the message from the queue and makes a `HEAD` request to the route with the `x-prerender-revalidate` header.
+- The `server-function` receives the `HEAD` request and revalidates the cache.
+- Tags are handled differently in a dynamodb table. We use a separate table to store the tags for each route. The custom cache handler will update the tags in the table when it updates the cache.
+
+#### Lifetime of an ISR request for a stale page
+
+1. Cloudfront receives a request for a page. Let's assume the page is stale in Cloudfront.
+2. Cloudfront forwards the request to the `server-function` in the background but still returns the cached version.
+3. The `server-function` checks in the S3 cache. If the page is stale, it sends the stale response back to Cloudfront while sending a message to the revalidation queue to trigger background revalidation. It will also change the cache-control header to `s-maxage=2, stale-while-revalidate=2592000`
+4. A new request comes in for the same page after 2 seconds. Cloudfront sends the cached version back to the user and forwards the request to the `server-function`.
+5. If the revalidation is done, the `server-function` will update the cache and send the updated response back to Cloudfront. Subsequent request will then get the updated version. Otherwise, we go back to step 3.
+
+#### Tags 
+
+Tags are stored in a dynamodb table. 
+There is 3 fields in the table: `tag`, `path`, `revalidatedAt`. The `tag` field is the partition key and `path` is the sort key.
+
+We use an index called `revalidate` with `path` as a partition key and `revalidatedAt` as the sort key.
+
+Each tags has several paths, and every subpath is also considered as a tag. For example, if we have a tag `tag1` with path `/a/b/c`, we also have tags `/a`, `/a/layout`, `/a/page`, `/a/b`, `/a/b/layout`, `/a/b/page`, `/a/b/c/layout`, `/a/b/c/page`.
+
+When `revalidateTag` is called, we update the `revalidatedAt` value for each path and subpath associated with this tag.
+
+When we check if a page is stale, we check the `revalidatedAt` value for each record and the `LastModified` of this S3 cache objects . If `revalidatedAt` is greater than `LastModified`, we consider the page is stale.
+
+#### Cost
+
+<Callout type="warning" emoji="⚠️">
+  Be aware that fetch cache is using S3. `fetch` by default in next is cached, and even for SSR requests, it will be written to S3. This can lead to a lot of S3 requests and can be expensive. You can disable fetch cache by setting `cache` to `no-store` in the `fetch` options. Also see [this workaround](/common_issues/isr#patch-fetch-behaviour-for-isr-only-for-next1351)
+</Callout>
+
+`get` will be called on every request to ISR and SSG that are not cached in Cloudfront, and `set` will be called on every revalidation.
+They can also be called on fetch requests if the `cache` option is not set to `no-store`.
+
+There is also some cost associated to deployment since you need to upload the cache to S3 and upload the tags to DynamoDB.
+
+For the examples here, let's assume an app route with a 5 minute revalidation delay in us-east-1 (App uses 3 instead of 2 `GetObject`). This is assuming you get constant traffic to the route (If you get no traffic, you will only pay for the storage cost).
+
+##### S3
+- Each `get` request to the cache will result in at least 1 `ListRequest` in S3 and between 2 and 3 `GetObject`
+
+```
+  List Request cost - 8,640 requests * $0.005 per 1,000 requests = $0.0432
+  GetObject cost - 8,640 requests * $0.0004 per 1,000 requests * 3 = $0.010368
+  Total cost - $0.053568 per route per month
+```
+
+- Each `set` request to the cache will result in 2 to 3 `PutObject` in S3
+
+```
+  PutObject cost - 8,640 requests * $0.005 per 1,000 requests * 3 = $0.1296
+  Total cost - $0.1296 per route per month
+```
+
+You can then calculate the cost based on your usage and the [S3 pricing](https://aws.amazon.com/s3/pricing/)
+
+##### DynamoDB
+
+For the example, let's consider that that same route has 2 tags and 10 paths and subpath for each tag. This is assuming you get constant traffic to the route.
+
+- Each `revalidateTag` request will result in 1 `Query` in DynamoDB and a `PutItem` for each path associated with the tag, they are grouped in batches of 25 in a `BatchWriteItem` request.
+```
+  Assuming you do 1 revalidation per 5 minute
+  Query cost - 8,640 request * $0.25 per 1,000,000 read = $0.00216
+  BatchWriteItem cost - 86,400 requests * $0.25 per 1,000,000 write = $0.0216
+  Total cost - $0.04536 per tag revalidation per month
+```
+- Each `get` request will result in 1 `Query` in DynamoDB
+```
+  Query cost - 8,640 request * $0.25 per 1,000,000 read = $0.00216
+  Total cost - $0.00216 per route per month
+```
+- Each `set` request will result in 1 `Query` in DynamoDB and a `PutItem` for each tag associated with the path that are not present in DynamoDB, they are grouped in batches of 25 in a `BatchWriteItem` request.
+```
+  Query cost - 8,640 request * $0.25 per 1,000,000 read = $0.00216
+  Total cost - $0.00216 per route per month
+```
+
+You can then calculate the cost based on your usage and the [DynamoDB pricing](https://aws.amazon.com/dynamodb/pricing/)
+

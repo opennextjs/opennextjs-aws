@@ -1,0 +1,25 @@
+#### Will my Next.js app behave the same as it does on Vercel?
+
+OpenNext aims to deploy your Next.js app to AWS using services like CloudFront, S3, and Lambda. While Vercel uses some AWS services, it also has proprietary infrastructures, resulting in a natural gap of feature parity. And OpenNext is filling that gap.
+
+One architectural difference is how [middleware](https://nextjs.org/docs/advanced-features/middleware) is run, but this should not affect the behavior of most apps.
+
+On Vercel, the Next.js app is built in an undocumented way using the "[minimalMode](https://github.com/vercel/next.js/discussions/29801)". The middleware code is separated from the server code and deployed to edge locations, while the server code is deployed to a single region. When a user makes a request, the middleware code runs first. Then the request reaches the CDN. If the request is cached, the cached response is returned; otherwise, the request hits the server function. This means that the middleware is called even for cached requests.
+
+On the other hand, OpenNext uses the standard `next build` command, which generates a server function that includes the middleware code. This means that for cached requests, the CDN (CloudFront) will send back the cached response, and the middleware code is not run.
+
+We previously built the app using the "minimalMode" and having the same architecture as Vercel, where the middleware code would run in Lambda@Edge on Viewer Request. See the [`vercel-mode` branch](https://github.com/serverless-stack/open-next/tree/vercel-mode). However, we decided that this architecture was not a good fit on AWS for a few reasons:
+
+1. Cold start - Running middleware and server in two separate Lambda functions results in double the latency.
+1. Maintenance - Because the "minimalMode" is not documented, there will likely be unhandled edge cases, and triaging would require constant reverse engineering of Vercel's code base.
+1. Feature parity - Lambda@Edge functions triggered on Viewer Request do not have access to geolocation headers, which affects i18n support.
+
+#### How does OpenNext compared to AWS Amplify?
+
+OpenNext is an open source initiative, and there are a couple of advantages when compared to Amplify:
+
+1. The community contributions to OpenNext allows it to have better feature support. For example, Amplify does not currently support [on-demand revalidation](https://github.com/aws-amplify/amplify-hosting/issues/3116).
+
+1. Amplify's Next.js hosting is a black box. Resources are not deployed to your AWS account. All Amplify users share the same CloudFront CDN owned by the Amplify team. This prevents you from customizing the setup, and customization is important if you are looking for Vercel-like features.
+
+1. Amplify's implementation is closed-source. Bug fixes often take much longer to get fixed as you have to go through AWS support. And you are likely to encounter more quirks when hosting Next.js anywhere but Vercel.

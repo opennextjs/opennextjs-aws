@@ -1,0 +1,16 @@
+import { Callout } from 'nextra/components'
+
+<Callout type="warning" emoji="⚠️">
+  Streaming support is **EXTREMELY EXPERIMENTAL**... AWS has updated their runtime in the past which broke streaming... It seems stable now but if they do another rugpull, it could cause your app to break.
+
+  **It's not recommended to use streaming in production.**
+</Callout>
+
+Streaming is using the new AWS lambda support for [streaming responses](https://docs.aws.amazon.com/lambda/latest/dg/configuration-response-streaming.html). This allows you to send data to the client as it's generated instead of waiting for the entire response to be generated.
+
+If you want to try streaming you need to set the function url invoke mode to `RESPONSE_STREAM`.
+You'll also need to add a `--streaming` tags to the build cli.
+  
+```bash
+open-next build --streaming
+```
