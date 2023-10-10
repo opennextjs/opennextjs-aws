@@ -15,14 +15,14 @@ export function getUrlParts(url: string, isExternal: boolean) {
   if (!isExternal) {
     return {
       hostname: "",
-      pathname: url,
+      pathname: encodeURIComponent(url),
       protocol: "",
     };
   }
   const { hostname, pathname, protocol } = new URL(url);
   return {
     hostname,
-    pathname,
+    pathname: encodeURIComponent(pathname),
     protocol,
   };
 }
