@@ -35,6 +35,12 @@ declare global {
 
 const CACHE_BUCKET_REGION = process.env.CACHE_BUCKET_REGION;
 
+// Cache clients using global variables
+// Note: The clients are used in `cache.ts`. The incremental cache is recreated on
+//       every request and required on every request (And the require cache is also
+//       cleared). It was causing some file to stay open which after enough time
+//       would cause the function to crash with error "EMFILE too many open". It
+//       was also making the memory grow out of control.
 globalThis.S3Client = new S3Client({
   region: CACHE_BUCKET_REGION,
   logger: awsLogger,
