@@ -140,7 +140,7 @@ export default class S3Cache {
       const { Body, LastModified } = await this.getS3Object(key, "fetch", keys);
       const lastModified = await this.getHasRevalidatedTags(
         key,
-        LastModified?.getTime()
+        LastModified?.getTime(),
       );
       if (lastModified === -1) {
         // If some tags are stale we need to force revalidation
@@ -161,7 +161,7 @@ export default class S3Cache {
 
   async getIncrementalCache(
     key: string,
-    keys: string[]
+    keys: string[],
   ): Promise<CacheHandlerValue | null> {
     if (keys.includes(this.buildS3Key(key, "body"))) {
       debug("get body cache ", { key });
@@ -203,7 +203,7 @@ export default class S3Cache {
           ]);
         const lastModified = await this.getHasRevalidatedTags(
           key,
-          LastModified?.getTime()
+          LastModified?.getTime(),
         );
         if (lastModified === -1) {
           // If some tags are stale we need to force revalidation
@@ -236,7 +236,7 @@ export default class S3Cache {
         const { Body, LastModified } = await this.getS3Object(
           key,
           "redirect",
-          keys
+          keys,
         );
         return {
           lastModified: LastModified?.getTime(),
@@ -270,7 +270,7 @@ export default class S3Cache {
         metaPromise = this.putS3Object(
           key,
           "meta",
-          JSON.stringify({ status: data.status, headers: data.headers })
+          JSON.stringify({ status: data.status, headers: data.headers }),
         );
       }
       await Promise.all([
@@ -278,7 +278,7 @@ export default class S3Cache {
         this.putS3Object(
           key,
           isAppPath ? "rsc" : "json",
-          isAppPath ? pageData : JSON.stringify(pageData)
+          isAppPath ? pageData : JSON.stringify(pageData),
         ),
         metaPromise,
       ]);
@@ -309,7 +309,7 @@ export default class S3Cache {
         tagsToWrite.map((tag) => ({
           path: key,
           tag: tag,
-        }))
+        })),
       );
     }
   }
@@ -327,7 +327,7 @@ export default class S3Cache {
       paths?.map((path) => ({
         path: path,
         tag: tag,
-      })) ?? []
+      })) ?? [],
     );
   }
 
@@ -347,7 +347,7 @@ export default class S3Cache {
           ExpressionAttributeValues: {
             ":key": { S: this.buildDynamoKey(path) },
           },
-        })
+        }),
       );
       const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
@@ -376,7 +376,7 @@ export default class S3Cache {
             ":key": { S: this.buildDynamoKey(key) },
             ":lastModified": { N: String(lastModified ?? 0) },
           },
-        })
+        }),
       );
       const revalidatedTags = result.Items ?? [];
       debug("revalidatedTags", revalidatedTags);
@@ -401,12 +401,12 @@ export default class S3Cache {
           ExpressionAttributeValues: {
             ":tag": { S: this.buildDynamoKey(tag) },
           },
-        })
+        }),
       );
       return (
         // We need to remove the buildId from the path
         Items?.map(
-          ({ path: { S: key } }) => key?.replace(`${this.buildId}/`, "") ?? ""
+          ({ path: { S: key } }) => key?.replace(`${this.buildId}/`, "") ?? "",
         ) ?? []
       );
     } catch (e) {
@@ -431,9 +431,9 @@ export default class S3Cache {
                   },
                 })),
               },
-            })
+            }),
           );
-        })
+        }),
       );
     } catch (e) {
       error("Failed to batch write dynamo item", e);
@@ -469,7 +469,7 @@ export default class S3Cache {
       CACHE_BUCKET_KEY_PREFIX ?? "",
       extension === "fetch" ? "__fetch" : "",
       this.buildId,
-      extension === "fetch" ? key : `${key}.${extension}`
+      extension === "fetch" ? key : `${key}.${extension}`,
     );
   }
 
@@ -484,7 +484,7 @@ export default class S3Cache {
         // add a point to the key so that it only matches the key and
         // not other keys starting with the same string
         Prefix: `${this.buildS3KeyPrefix(key)}.`,
-      })
+      }),
     );
     return (Contents ?? []).map(({ Key }) => Key) as string[];
   }
@@ -497,7 +497,7 @@ export default class S3Cache {
         new GetObjectCommand({
           Bucket: CACHE_BUCKET_NAME,
           Key: this.buildS3Key(key, extension),
-        })
+        }),
       );
       return result;
     } catch (e) {
@@ -509,14 +509,14 @@ export default class S3Cache {
   private putS3Object(
     key: string,
     extension: Extension,
-    value: PutObjectCommandInput["Body"]
+    value: PutObjectCommandInput["Body"],
   ) {
     return this.client.send(
       new PutObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
         Key: this.buildS3Key(key, extension),
         Body: value,
-      })
+      }),
     );
   }
 
@@ -524,7 +524,7 @@ export default class S3Cache {
     try {
       const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch|redirect)$`);
       const s3Keys = (await this.listS3Object(key)).filter(
-        (key) => key && regex.test(key)
+        (key) => key && regex.test(key),
       );
 
       await this.client.send(
@@ -533,7 +533,7 @@ export default class S3Cache {
           Delete: {
             Objects: s3Keys.map((Key) => ({ Key })),
           },
-        })
+        }),
       );
     } catch (e) {
       error("Failed to delete cache", e);
