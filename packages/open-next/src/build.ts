@@ -613,6 +613,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     outfile: path.join(outputPath, packagePath, "index.mjs"),
     banner: {
       js: [
+        `globalThis.monorepoPackagePath = "${packagePath}";`,
         "import { createRequire as topLevelCreateRequire } from 'module';",
         "const require = topLevelCreateRequire(import.meta.url);",
         "import bannerUrl from 'url';",
