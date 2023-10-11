@@ -79,7 +79,7 @@ export type PublicFiles = {
 
 export async function build(opts: BuildOptions = {}) {
   const { root: monorepoRoot, packager } = findMonorepoRoot(
-    path.join(process.cwd(), opts.appPath || ".")
+    path.join(process.cwd(), opts.appPath || "."),
   );
 
   // Initialize options
@@ -136,11 +136,11 @@ function normalizeOptions(opts: BuildOptions, root: string) {
 function checkRunningInsideNextjsApp() {
   const { appPath } = options;
   const extension = ["js", "cjs", "mjs"].find((ext) =>
-    fs.existsSync(path.join(appPath, `next.config.${ext}`))
+    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
   if (!extension) {
     console.error(
-      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app."
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
     );
     process.exit(1);
   }
@@ -204,7 +204,7 @@ function printHeader(header: string) {
       `│ ${header} │`,
       "└" + "─".repeat(header.length + 2) + "┘",
       "",
-    ].join("\n")
+    ].join("\n"),
   );
 }
 
@@ -220,7 +220,7 @@ function printNextjsVersion() {
       stdio: "inherit",
       cwd: appPath,
       shell: true,
-    }
+    },
   );
 }
 
@@ -291,7 +291,7 @@ function createRevalidationBundle() {
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next", "prerender-manifest.json"),
-    path.join(outputPath, "prerender-manifest.json")
+    path.join(outputPath, "prerender-manifest.json"),
   );
 }
 
@@ -339,7 +339,7 @@ function createImageOptimizationBundle() {
   fs.mkdirSync(path.join(outputPath, ".next"));
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/required-server-files.json"),
-    path.join(outputPath, ".next/required-server-files.json")
+    path.join(outputPath, ".next/required-server-files.json"),
   );
 
   // Sharp provides pre-build binaries for all platforms. https://github.com/lovell/sharp/blob/main/docs/install.md#cross-platform
@@ -359,7 +359,7 @@ function createImageOptimizationBundle() {
         ...process.env,
         SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
       },
-    }
+    },
   );
 }
 
@@ -379,12 +379,12 @@ function createStaticAssets() {
   // - public/*       => *
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
-    path.join(outputPath, "BUILD_ID")
+    path.join(outputPath, "BUILD_ID"),
   );
   fs.cpSync(
     path.join(appBuildOutputPath, ".next/static"),
     path.join(outputPath, "_next", "static"),
-    { recursive: true }
+    { recursive: true },
   );
   if (fs.existsSync(appPublicPath)) {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
@@ -402,7 +402,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
   const dotNextPath = path.join(
     appBuildOutputPath,
     ".next/standalone",
-    packagePath
+    packagePath,
   );
   const outputPath = path.join(outputDir, "cache", buildId);
   [".next/server/pages", ".next/server/app"]
@@ -417,7 +417,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
     (file) =>
       file.endsWith(".js") ||
       file.endsWith(".js.nft.json") ||
-      (file.endsWith(".html") && htmlPages.has(file))
+      (file.endsWith(".html") && htmlPages.has(file)),
   );
 
   if (!disableDynamoDBCache) {
@@ -447,20 +447,20 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
                 path: {
                   S: path.posix.join(
                     buildId,
-                    path.relative(outputPath, filePath).replace(".meta", "")
+                    path.relative(outputPath, filePath).replace(".meta", ""),
                   ),
                 },
                 revalidatedAt: { N: `${Date.now()}` },
               });
             });
         }
-      }
+      },
     );
 
     // Copy fetch-cache to cache folder
     const fetchCachePath = path.join(
       appBuildOutputPath,
-      ".next/cache/fetch-cache"
+      ".next/cache/fetch-cache",
     );
     if (fs.existsSync(fetchCachePath)) {
       const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
@@ -479,13 +479,13 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
               path: {
                 S: path.posix.join(
                   buildId,
-                  path.relative(fetchCachePath, filepath)
+                  path.relative(fetchCachePath, filepath),
                 ),
               },
               revalidatedAt: { N: `${Date.now()}` },
             });
           });
-        }
+        },
       );
     }
 
@@ -502,7 +502,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
       // TODO: check if metafiles doesn't contain duplicates
       fs.writeFileSync(
         path.join(providerPath, "dynamodb-cache.json"),
-        JSON.stringify(metaFiles)
+        JSON.stringify(metaFiles),
       );
     }
   }
@@ -604,7 +604,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     console.log(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)
-        .join(",")}] for Next version: ${options.nextVersion}`
+        .join(",")}] for Next version: ${options.nextVersion}`,
     );
   }
   await esbuildAsync({
@@ -642,7 +642,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
   fs.writeFileSync(
     path.join(outputPath, "index.mjs"),
-    [`export * from "./${packagePosixPath}/index.mjs";`].join("")
+    [`export * from "./${packagePosixPath}/index.mjs";`].join(""),
   );
 }
 
@@ -675,8 +675,8 @@ function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
         latitude: this.headers.get("cloudfront-viewer-latitude"),
         longitude: this.headers.get("cloudfront-viewer-longitude"),
         metroCode: this.headers.get("cloudfront-viewer-metro-code"),
-      }`
-      )
+      }`,
+      ),
     );
   }
 }
@@ -707,7 +707,7 @@ function addPublicFilesList(outputPath: string, packagePath: string) {
   fs.mkdirSync(outputOpenNextPath, { recursive: true });
   fs.writeFileSync(
     path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(acc)
+    JSON.stringify(acc),
   );
 }
 
@@ -731,8 +731,8 @@ function removeCachedPages(outputPath: string, packagePath: string) {
             !htmlPages.has(file) &&
             // do not remove HTML files with "[param].html" format
             // b/c they are used for "fallback:true" pages
-            !isFallbackTruePage.test(file))
-      )
+            !isFallbackTruePage.test(file)),
+      ),
     );
 }
 
@@ -785,7 +785,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
-      }.`
+      }.`,
     );
   }
 }
@@ -815,7 +815,7 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
-      }.`
+      }.`,
     );
   }
 }
@@ -823,13 +823,13 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
 function removeFiles(
   root: string,
   conditionFn: (file: string) => boolean,
-  searchingDir: string = ""
+  searchingDir: string = "",
 ) {
   traverseFiles(
     root,
     conditionFn,
     (filePath) => fs.rmSync(filePath, { force: true }),
-    searchingDir
+    searchingDir,
   );
 }
 
@@ -837,7 +837,7 @@ function traverseFiles(
   root: string,
   conditionFn: (file: string) => boolean,
   callbackFn: (filePath: string) => void,
-  searchingDir: string = ""
+  searchingDir: string = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const filePath = path.join(root, searchingDir, file);
@@ -847,7 +847,7 @@ function traverseFiles(
         root,
         conditionFn,
         callbackFn,
-        path.join(searchingDir, file)
+        path.join(searchingDir, file),
       );
       return;
     }
@@ -869,7 +869,7 @@ function getHtmlPages(dotNextPath: string) {
   // ])
   const manifestPath = path.join(
     dotNextPath,
-    ".next/server/pages-manifest.json"
+    ".next/server/pages-manifest.json",
   );
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   return Object.entries(JSON.parse(manifest))
