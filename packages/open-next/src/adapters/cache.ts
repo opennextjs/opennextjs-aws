@@ -1,4 +1,3 @@
-import path from "path";
 import {
   BatchWriteItemCommand,
   DynamoDBClient,
@@ -13,6 +12,8 @@ import {
   PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
+import path from "path";
+
 import { debug, error } from "./logger.js";
 
 interface CachedFetchValue {
