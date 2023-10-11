@@ -4,18 +4,7 @@ import { S3Client } from "@aws-sdk/client-s3";
 
 // We load every config here so that they are only loaded once
 // and during cold starts
-import {
-  AppPathsManifestKeys,
-  BuildId,
-  ConfigHeaders,
-  HtmlPages,
-  NEXT_DIR,
-  NextConfig,
-  OPEN_NEXT_DIR,
-  PrerenderManifest,
-  PublicAssets,
-  RoutesManifest,
-} from "./config/index.js";
+import { BuildId } from "./config/index.js";
 import { awsLogger } from "./logger.js";
 import { lambdaHandler } from "./plugins/lambdaHandler.js";
 import { setNodeEnv } from "./util.js";
