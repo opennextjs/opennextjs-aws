@@ -25,7 +25,7 @@ const sqsClient = new SQSClient({
 
 export async function proxyRequest(
   req: IncomingMessage,
-  res: ServerlessResponse
+  res: ServerlessResponse,
 ) {
   const HttpProxy = require("next/dist/compiled/http-proxy") as any;
 
@@ -53,7 +53,7 @@ export async function proxyRequest(
 
 export function fixCacheHeaderForHtmlPages(
   rawPath: string,
-  headers: Record<string, string | undefined>
+  headers: Record<string, string | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (HtmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
@@ -63,7 +63,7 @@ export function fixCacheHeaderForHtmlPages(
 }
 
 export function fixSWRCacheHeader(
-  headers: Record<string, string | string[] | undefined>
+  headers: Record<string, string | string[] | undefined>,
 ) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
   let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
@@ -73,7 +73,7 @@ export function fixSWRCacheHeader(
   }
   headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
-    "stale-while-revalidate=2592000" // 30 days
+    "stale-while-revalidate=2592000", // 30 days
   );
 }
 
@@ -88,7 +88,7 @@ export async function revalidateIfRequired(
   host: string,
   rawPath: string,
   headers: Record<string, string | undefined>,
-  req?: IncomingMessage
+  req?: IncomingMessage,
 ) {
   // If the page has been revalidated via on demand revalidation, we need to remove the cache-control so that CloudFront doesn't cache the page
   if (headers["x-nextjs-cache"] === "REVALIDATED") {
@@ -137,7 +137,7 @@ export async function revalidateIfRequired(
         MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
         MessageBody: JSON.stringify({ host, url: revalidateUrl }),
         MessageGroupId: generateMessageGroupId(rawPath),
-      })
+      }),
     );
   } catch (e) {
     debug(`Failed to revalidate stale page ${rawPath}`);
@@ -162,7 +162,7 @@ function generateMessageGroupId(rawPath: string) {
   // This will generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
   // This means that we could have 1000 revalidate request at the same time
   const maxConcurrency = parseInt(
-    process.env.MAX_REVALIDATE_CONCURRENCY ?? "10"
+    process.env.MAX_REVALIDATE_CONCURRENCY ?? "10",
   );
   const randomInt = Math.floor(randomFloat * maxConcurrency);
   return `revalidate-${randomInt}`;
