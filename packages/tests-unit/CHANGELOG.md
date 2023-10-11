@@ -4,6 +4,14 @@
 
 ### Patch Changes
 
+- Updated dependencies [2d9e538]
+- Updated dependencies [83ed943]
+  - open-next@2.2.3
+
+## null
+
+### Patch Changes
+
 - Updated dependencies [68ae99a]
   - open-next@2.2.2
 
