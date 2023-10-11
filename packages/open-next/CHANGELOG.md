@@ -1,5 +1,12 @@
 # open-next
 
+## 2.2.3
+
+### Patch Changes
+
+- 2d9e538: Make package path available at runtime
+- 83ed943: Add OpenNext version header only in debug mode
+
 ## 2.2.2
 
 ### Patch Changes
