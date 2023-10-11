@@ -775,7 +775,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
       js: [
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
-        `globalThis.openNextVersion = ${openNextVersion};`,
+        `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
@@ -805,7 +805,7 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
       js: [
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
-        `globalThis.openNextVersion = ${openNextVersion};`,
+        `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
