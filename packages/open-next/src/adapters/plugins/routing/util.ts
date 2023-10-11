@@ -6,6 +6,11 @@ import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
 import { awsLogger, debug } from "../../logger.js";
 
+declare global {
+  var openNextDebug: boolean;
+  var openNextVersion: string;
+}
+
 enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
 }
@@ -73,7 +78,10 @@ export function fixSWRCacheHeader(
 }
 
 export function addOpenNextHeader(headers: Record<string, string | undefined>) {
-  headers["X-OpenNext"] = process.env.OPEN_NEXT_VERSION;
+  headers["X-OpenNext"] = "1";
+  if (globalThis.openNextDebug) {
+    headers["X-OpenNext-Version"] = globalThis.openNextVersion;
+  }
 }
 
 export async function revalidateIfRequired(

@@ -744,11 +744,14 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
     target: ["node18"],
     format: "cjs",
     banner: {
-      js: `globalThis.disableIncrementalCache = ${
-        options?.disableIncrementalCache ?? false
-      }; globalThis.disableDynamoDBCache = ${
-        options?.disableDynamoDBCache ?? false
-      };`,
+      js: [
+        `globalThis.disableIncrementalCache = ${
+          options?.disableIncrementalCache ?? false
+        };`,
+        `globalThis.disableDynamoDBCache = ${
+          options?.disableDynamoDBCache ?? false
+        };`,
+      ].join(""),
     },
   });
 }
@@ -767,12 +770,13 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
-    define: {
-      ...esbuildOptions.define,
-      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
-        ? "true"
-        : "false",
-      "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
+    banner: {
+      ...esbuildOptions.banner,
+      js: [
+        esbuildOptions.banner?.js || "",
+        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextVersion = ${openNextVersion};`,
+      ].join(""),
     },
   });
 
@@ -796,13 +800,13 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
-    // "process.env.OPEN_NEXT_DEBUG" determines if the logger writes to console.log
-    define: {
-      ...esbuildOptions.define,
-      "process.env.OPEN_NEXT_DEBUG": process.env.OPEN_NEXT_DEBUG
-        ? "true"
-        : "false",
-      "process.env.OPEN_NEXT_VERSION": `"${openNextVersion}"`,
+    banner: {
+      ...esbuildOptions.banner,
+      js: [
+        esbuildOptions.banner?.js || "",
+        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextVersion = ${openNextVersion};`,
+      ].join(""),
     },
   });
 

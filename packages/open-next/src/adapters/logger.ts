@@ -1,5 +1,9 @@
+declare global {
+  var openNextDebug: boolean;
+}
+
 export function debug(...args: any[]) {
-  if (process.env.OPEN_NEXT_DEBUG) {
+  if (globalThis.openNextDebug) {
     console.log(...args);
   }
 }
