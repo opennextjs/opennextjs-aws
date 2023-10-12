@@ -1,0 +1,39 @@
+import {Callout} from 'nextra/components'
+
+
+#### Reducing Bundle Size
+
+Next will incorrectly trace dev dependencies to be included in the output `node_modules`, which will significantly increase the lambda bundle. For example, the @swc/core-\* binary is ~33MB!
+
+Add this to your next.config.js to help minimize the lambda bundle size:
+
+```typescript
+    outputFileTracingExcludes: {
+      '*': [
+        '@swc/core',
+        'esbuild',
+        'uglify-js',
+        'watchpack',
+        'webassemblyjs'
+      ],
+    },
+```
+
+<Callout type="warning" emoji="⚠️">
+  NextJS currently doesn't expose `outputFileTracingExcludes` as an environmental variable so `open-next`cannot programmatically set this like it does for`output`and`outputFileTracingRoot`.
+  Currently, next uses `webpack` to trace server actions, so you shouldn't add `webpack` to the excludes list, otherwise it will break server actions.
+</Callout>
+
+#### Unzipped size must be smaller than 262144000 bytes
+
+To identify the module that's taking up too much space (and isn't serverless friendly):
+
+```bash
+du -hs .open-next/server-function/node_modules/* | sort -rh
+```
+
+If your app requires the offending library, then consider moving your business logic of the `api` to its own lambda, eg: `/api/v2` => `Api Lambda`
+
+<Callout type="info" emoji="ℹ️">
+  There is a [PR](https://github.com/sst/open-next/pull/242) to remove some dev dependency from the output node_modules but that requires more testing before it can merge.
+</Callout>

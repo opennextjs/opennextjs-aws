@@ -15,3 +15,8 @@ If you are using sentry, API routes returns empty body. You could try configurin
 #### My ISR page has this cache-control header `s-maxage=2, stale-while-revalidate=2592000`
 
 Given how ISR works, while waiting for the revalidation to happen, the page will be served using this cache control header. This prevent your server from being overloaded by a lot of requests while the revalidation is done. You can read more about it [here](/inner_workings/isr).
+
+#### Unzipped size must be smaller than 262144000 bytes
+
+AWS Lambda has an unzipped size limit of 250MB. If your app is over this limit, then it is most likely using a node_module library that is too large for serverless or there is a large dev dependency getting bundled.
+For example, `pdfjs` has `canvas` optional dependency which takes up 180MB. For more details, [read me](/common_issues/bundle_size)
