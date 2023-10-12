@@ -19,4 +19,5 @@ Given how ISR works, while waiting for the revalidation to happen, the page will
 #### Unzipped size must be smaller than 262144000 bytes
 
 AWS Lambda has an unzipped size limit of 250MB. If your app is over this limit, then it is most likely using a node_module library that is too large for serverless or there is a large dev dependency getting bundled.
-For example, `pdfjs` has `canvas` optional dependency which takes up 180MB. For more details, [read me](/common_issues/bundle_size)
+For example, `pdfjs` has `canvas` optional dependency which takes up 180MB. For more details, [read me](/common_issues/bundle_size).
+Note: a large bundle size will increase cold start significantly.

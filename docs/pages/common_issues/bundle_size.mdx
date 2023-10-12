@@ -14,7 +14,8 @@ Add this to your next.config.js to help minimize the lambda bundle size:
         'esbuild',
         'uglify-js',
         'watchpack',
-        'webassemblyjs'
+        'webassemblyjs',
+        'sharp'
       ],
     },
 ```
@@ -37,3 +38,18 @@ If your app requires the offending library, then consider moving your business l
 <Callout type="info" emoji="ℹ️">
   There is a [PR](https://github.com/sst/open-next/pull/242) to remove some dev dependency from the output node_modules but that requires more testing before it can merge.
 </Callout>
+
+#### Common issues
+
+##### Sharp
+
+`sharp` is not needed outside of the `Image Optimization` function so you should not have it as a dependency. But if you are depending on `sharp`, be sure to install it with the correct flags for your lambda.
+eg: `--arch=arm64 --platform=linux --target=18 --libc=glibc`
+
+##### pdfjs
+
+If you need to use pdfjs, you should install it with `npm i pdfjs-dist--no-optional` because the optional dep: `canvas` takes about 180MB.
+
+##### Others
+
+Please open an issue or let us know on discord if there are any other modules that are causing issues.
