@@ -1,8 +1,14 @@
 import Nav from "@example/shared/components/Nav";
-import { Inter } from "next/font/google";
 import Head from "next/head";
 
-const inter = Inter({ subsets: ["latin"] });
+// Not used, but necessary to get prefetching to work
+export function getStaticProps() {
+  return {
+    props: {
+      hello: "world",
+    },
+  };
+}
 
 export default function Home() {
   return (
