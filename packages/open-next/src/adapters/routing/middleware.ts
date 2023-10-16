@@ -142,9 +142,7 @@ export async function handleMiddleware(
     const rewriteUrlObject = new URL(rewriteUrl);
     req.url = rewriteUrlObject.pathname;
     rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
-      if (!middlewareQueryString[k]) {
-        middlewareQueryString[k] = v;
-      }
+      middlewareQueryString[k] = v;
     });
     rewritten = true;
   }
