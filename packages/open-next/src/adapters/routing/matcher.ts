@@ -223,7 +223,8 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
   const dataPattern = `/_next/data/${buildId}`;
 
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    let newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
+    newPath = newPath === "/index" ? "/" : newPath;
     query.__nextDataReq = "1";
     const urlQuery: Record<string, string> = {};
     Object.keys(query).forEach((k) => {
