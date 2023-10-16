@@ -176,11 +176,14 @@ export function handleRedirects(
     !event.rawPath.endsWith("/") &&
     !event.headers["x-nextjs-data"]
   ) {
+    const headersLocation = event.url.split("?");
     return {
       type: event.type,
       statusCode: 308,
       headers: {
-        Location: event.url + "/",
+        Location: `${headersLocation[0]}/${
+          headersLocation[1] ? `?${headersLocation[1]}` : ""
+        }`,
       },
       body: "",
       isBase64Encoded: false,
@@ -191,11 +194,14 @@ export function handleRedirects(
     event.rawPath.endsWith("/") &&
     event.rawPath !== "/"
   ) {
+    const headersLocation = event.url.split("?");
     return {
       type: event.type,
       statusCode: 308,
       headers: {
-        Location: event.url.replace(/\/$/, ""),
+        Location: `${headersLocation[0].replace(/\/$/, "")}${
+          headersLocation[1] ? `?${headersLocation[1]}` : ""
+        }`,
       },
       body: "",
       isBase64Encoded: false,

@@ -37,8 +37,8 @@ export APP_PAGES_ROUTER_URL=$(jq -r '.["e2e-example-AppPagesRouter"].url' .sst/o
 ```
 3. Run the test
 ```bash
-cd ../packages/tests-e2e
-npm run e2e:dev
+cd ../../packages/tests-e2e
+pnpm run e2e:dev
 ```
 
 
