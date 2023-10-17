@@ -175,7 +175,7 @@ export function handleRedirects(
     NextConfig.trailingSlash &&
     !event.headers["x-nextjs-data"] &&
     !event.rawPath.endsWith("/") &&
-    !["/manifest.json", "/robots.txt", "/sitemap.xml"].includes(event.rawPath)
+    !event.rawPath.match(/[\w-]+\.[\w]+$/g)
   ) {
     const headersLocation = event.url.split("?");
     return {
