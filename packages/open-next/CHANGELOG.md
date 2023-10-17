@@ -1,5 +1,11 @@
 # open-next
 
+## 2.2.4
+
+### Patch Changes
+
+- e3f67da: Fix 404 on index page; passthrough headers via middleware redirect; fix trailingSlash causing infinite loop
+
 ## 2.2.3
 
 ### Patch Changes
