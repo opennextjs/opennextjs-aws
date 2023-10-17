@@ -173,8 +173,13 @@ export function handleRedirects(
 ): InternalResult | undefined {
   if (
     NextConfig.trailingSlash &&
+    !event.headers["x-nextjs-data"] &&
     !event.rawPath.endsWith("/") &&
-    !event.headers["x-nextjs-data"]
+    ![
+      "/manifest.json",
+      "/robots.txt",
+      "/sitemap.xml",
+    ].includes(event.rawPath)
   ) {
     const headersLocation = event.url.split("?");
     return {
