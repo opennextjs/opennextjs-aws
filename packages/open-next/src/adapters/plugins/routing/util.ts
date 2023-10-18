@@ -10,6 +10,7 @@ import { awsLogger, debug } from "../../logger.js";
 declare global {
   var openNextDebug: boolean;
   var openNextVersion: string;
+  var lastModified: number;
 }
 
 enum CommonHeaders {
@@ -105,20 +106,7 @@ export async function revalidateIfRequired(
   headers: Record<string, string | undefined>,
   req?: IncomingMessage,
 ) {
-  // If the page has been revalidated via on demand revalidation, we need to remove the cache-control so that CloudFront doesn't cache the page
-  if (headers["x-nextjs-cache"] === "REVALIDATED") {
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
-    return;
-  }
-  if (headers["x-nextjs-cache"] !== "STALE") return;
-
-  // If the cache is stale, we revalidate in the background
-  // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
-  // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
-  // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers[CommonHeaders.CACHE_CONTROL] =
-    "s-maxage=2, stale-while-revalidate=2592000";
+  fixISRHeaders(headers);
 
   // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
   // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
@@ -209,6 +197,24 @@ export function fixISRHeaders(headers: Record<string, string | undefined>) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
+  }
+  if (headers["x-nextjs-cache"] === "HIT" && globalThis.lastModified > 0) {
+    // calculate age
+    const age = Math.round((Date.now() - globalThis.lastModified) / 1000);
+    // extract s-maxage from cache-control
+    const regex = /s-maxage=(\d+)/;
+    const match = headers[CommonHeaders.CACHE_CONTROL]?.match(regex);
+    const sMaxAge = match ? parseInt(match[1]) : undefined;
+
+    if (sMaxAge) {
+      const remainingTtl = Math.max(sMaxAge - age, 1);
+      headers[
+        CommonHeaders.CACHE_CONTROL
+      ] = `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
+    }
+
+    // reset lastModified
+    globalThis.lastModified = 0;
   }
   if (headers["x-nextjs-cache"] !== "STALE") return;
 

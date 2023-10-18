@@ -137,6 +137,7 @@ declare global {
   var dynamoClient: DynamoDBClient;
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
+  var lastModified: number;
 }
 
 export default class S3Cache {
@@ -201,6 +202,7 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
+      globalThis.lastModified = lastModified;
       if (cacheData.type === "route") {
         return {
           lastModified: LastModified?.getTime(),
