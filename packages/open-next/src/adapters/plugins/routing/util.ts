@@ -134,10 +134,13 @@ export async function revalidateIfRequired(
     const hash = (str: string) =>
       crypto.createHash("md5").update(str).digest("hex");
 
+    const lastModified =
+      globalThis.lastModified > 0 ? globalThis.lastModified : "";
+
     await sqsClient.send(
       new SendMessageCommand({
         QueueUrl: REVALIDATION_QUEUE_URL,
-        MessageDeduplicationId: hash(`${rawPath}-${headers.etag}`),
+        MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
         MessageBody: JSON.stringify({ host, url: revalidateUrl }),
         MessageGroupId: generateMessageGroupId(rawPath),
       }),
