@@ -209,7 +209,8 @@ export function fixISRHeaders(headers: Record<string, string | undefined>) {
     const match = headers[CommonHeaders.CACHE_CONTROL]?.match(regex);
     const sMaxAge = match ? parseInt(match[1]) : undefined;
 
-    if (sMaxAge) {
+    // 31536000 is the default s-maxage value for SSG pages
+    if (sMaxAge && sMaxAge !== 31536000) {
       const remainingTtl = Math.max(sMaxAge - age, 1);
       headers[
         CommonHeaders.CACHE_CONTROL
