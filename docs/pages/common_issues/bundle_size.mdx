@@ -21,7 +21,7 @@ Add this to your next.config.js to help minimize the lambda bundle size:
 ```
 
 <Callout type="warning" emoji="⚠️">
-  NextJS currently doesn't expose `outputFileTracingExcludes` as an environmental variable so `open-next`cannot programmatically set this like it does for`output`and`outputFileTracingRoot`.
+  NextJS currently doesn't expose `outputFileTracingExcludes` as an environmental variable so `open-next` cannot programmatically set this like it does for `output` and `outputFileTracingRoot`.
   Currently, next uses `webpack` to trace server actions, so you shouldn't add `webpack` to the excludes list, otherwise it will break server actions.
 </Callout>
 
