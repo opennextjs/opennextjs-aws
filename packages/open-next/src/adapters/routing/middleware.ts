@@ -137,10 +137,12 @@ export async function handleMiddleware(
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
   let rewritten = false;
-  let middlewareQueryString: Record<string, string> = {};
+  let middlewareQueryString = internalEvent.query;
   if (rewriteUrl) {
     const rewriteUrlObject = new URL(rewriteUrl);
     req.url = rewriteUrlObject.pathname;
+    //reset qs
+    middlewareQueryString = {};
     rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
       middlewareQueryString[k] = v;
     });
