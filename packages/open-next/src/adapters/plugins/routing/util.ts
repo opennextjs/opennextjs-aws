@@ -15,6 +15,7 @@ declare global {
 
 enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
+  NEXT_CACHE = "x-nextjs-cache",
 }
 
 // Expected environment variables
@@ -108,46 +109,48 @@ export async function revalidateIfRequired(
 ) {
   fixISRHeaders(headers);
 
-  // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
-  // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
-  // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
-  // @ts-ignore
-  const internalMeta = req?.[Symbol.for("NextInternalRequestMeta")];
+  if (headers[CommonHeaders.NEXT_CACHE] === "STALE") {
+    // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
+    // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
+    // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
+    // @ts-ignore
+    const internalMeta = req?.[Symbol.for("NextInternalRequestMeta")];
 
-  // When using Pages Router, two requests will be received:
-  // 1. one for the page: /foo
-  // 2. one for the json data: /_next/data/BUILD_ID/foo.json
-  // The rewritten url is correct for 1, but that for the second request
-  // does not include the "/_next/data/" prefix. Need to add it.
-  const revalidateUrl = internalMeta?._nextDidRewrite
-    ? rawPath.startsWith("/_next/data/")
-      ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
-      : internalMeta?._nextRewroteUrl
-    : rawPath;
+    // When using Pages Router, two requests will be received:
+    // 1. one for the page: /foo
+    // 2. one for the json data: /_next/data/BUILD_ID/foo.json
+    // The rewritten url is correct for 1, but that for the second request
+    // does not include the "/_next/data/" prefix. Need to add it.
+    const revalidateUrl = internalMeta?._nextDidRewrite
+      ? rawPath.startsWith("/_next/data/")
+        ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
+        : internalMeta?._nextRewroteUrl
+      : rawPath;
 
-  // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
-  // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
-  // If you need to have a revalidation happen more frequently than 5 minutes,
-  // your page will need to have a different etag to bypass the deduplication window.
-  // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
-  try {
-    const hash = (str: string) =>
-      crypto.createHash("md5").update(str).digest("hex");
+    // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
+    // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
+    // If you need to have a revalidation happen more frequently than 5 minutes,
+    // your page will need to have a different etag to bypass the deduplication window.
+    // If data has the same etag during these 5 min dedup window, it will be deduplicated and not revalidated.
+    try {
+      const hash = (str: string) =>
+        crypto.createHash("md5").update(str).digest("hex");
 
-    const lastModified =
-      globalThis.lastModified > 0 ? globalThis.lastModified : "";
+      const lastModified =
+        globalThis.lastModified > 0 ? globalThis.lastModified : "";
 
-    await sqsClient.send(
-      new SendMessageCommand({
-        QueueUrl: REVALIDATION_QUEUE_URL,
-        MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
-        MessageBody: JSON.stringify({ host, url: revalidateUrl }),
-        MessageGroupId: generateMessageGroupId(rawPath),
-      }),
-    );
-  } catch (e) {
-    debug(`Failed to revalidate stale page ${rawPath}`);
-    debug(e);
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: REVALIDATION_QUEUE_URL,
+          MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
+          MessageBody: JSON.stringify({ host, url: revalidateUrl }),
+          MessageGroupId: generateMessageGroupId(rawPath),
+        }),
+      );
+    } catch (e) {
+      debug(`Failed to revalidate stale page ${rawPath}`);
+      debug(e);
+    }
   }
 }
 
@@ -196,12 +199,15 @@ function cyrb128(str: string) {
 }
 
 export function fixISRHeaders(headers: Record<string, string | undefined>) {
-  if (headers["x-nextjs-cache"] === "REVALIDATED") {
+  if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  if (headers["x-nextjs-cache"] === "HIT" && globalThis.lastModified > 0) {
+  if (
+    headers[CommonHeaders.NEXT_CACHE] === "HIT" &&
+    globalThis.lastModified > 0
+  ) {
     // calculate age
     const age = Math.round((Date.now() - globalThis.lastModified) / 1000);
     // extract s-maxage from cache-control
@@ -220,7 +226,7 @@ export function fixISRHeaders(headers: Record<string, string | undefined>) {
     // reset lastModified
     globalThis.lastModified = 0;
   }
-  if (headers["x-nextjs-cache"] !== "STALE") return;
+  if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
   // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
