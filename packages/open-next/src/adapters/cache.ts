@@ -127,9 +127,9 @@ export default class S3Cache {
     }
     const isFetchCache =
       typeof options === "object" ? options.fetchCache : options;
-    const keys = await this.listS3Object(key);
-    if (keys.length === 0) return null;
+    const keys = await this.listS3Object(key, isFetchCache);
     debug("keys", keys);
+    if (keys.length === 0) return null;
     return isFetchCache
       ? this.getFetchCache(key, keys)
       : this.getIncrementalCache(key, keys);
@@ -474,17 +474,23 @@ export default class S3Cache {
     );
   }
 
-  private buildS3KeyPrefix(key: string) {
-    return path.posix.join(CACHE_BUCKET_KEY_PREFIX ?? "", this.buildId, key);
+  private buildS3KeyPrefix(key: string, isFetchCache: boolean) {
+    return path.posix.join(
+      CACHE_BUCKET_KEY_PREFIX ?? "",
+      isFetchCache ? "__fetch" : "",
+      this.buildId,
+      key,
+      // add a dot to the key for non-fetch objects so that it
+      // only matches that key in particular (and all its extensions)
+      isFetchCache ? "" : ".",
+    );
   }
 
-  private async listS3Object(key: string) {
+  private async listS3Object(key: string, isFetchCache = false) {
     const { Contents } = await this.client.send(
       new ListObjectsV2Command({
         Bucket: CACHE_BUCKET_NAME,
-        // add a point to the key so that it only matches the key and
-        // not other keys starting with the same string
-        Prefix: `${this.buildS3KeyPrefix(key)}.`,
+        Prefix: this.buildS3KeyPrefix(key, isFetchCache),
       }),
     );
     return (Contents ?? []).map(({ Key }) => Key) as string[];
