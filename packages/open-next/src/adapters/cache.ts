@@ -15,6 +15,7 @@ import {
 import path from "path";
 
 import { debug, error } from "./logger.js";
+import { chunk } from "./util.js";
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -420,7 +421,7 @@ export default class S3Cache {
     try {
       if (disableDynamoDBCache) return;
       await Promise.all(
-        this.chunkArray(req, 25).map((Items) => {
+        chunk(req, 25).map((Items) => {
           return this.dynamoClient.send(
             new BatchWriteItemCommand({
               RequestItems: {
@@ -453,14 +454,6 @@ export default class S3Cache {
       tag: { S: this.buildDynamoKey(tags) },
       revalidatedAt: { N: `${Date.now()}` },
     };
-  }
-
-  private chunkArray<T>(array: T[], chunkSize: number) {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
   }
 
   // S3 handling

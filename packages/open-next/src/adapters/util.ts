@@ -38,3 +38,13 @@ export function parseCookies(
 
   return cookies;
 }
+
+export function chunk<T>(items: T[], chunkSize: number): T[][] {
+  const chunked = items.reduce((acc, curr, i) => {
+    const chunkIndex = Math.floor(i / chunkSize);
+    acc[chunkIndex] = [...(acc[chunkIndex] ?? []), curr];
+    return acc;
+  }, new Array<T[]>());
+
+  return chunked;
+}
