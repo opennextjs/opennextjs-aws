@@ -5,6 +5,7 @@ import {
 import { CdkCustomResourceEvent, CdkCustomResourceResponse } from "aws-lambda";
 import { readFileSync } from "fs";
 
+import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
 import { chunk } from "./util.js";
 
 const PHYSICAL_RESOURCE_ID = "dynamodb-cache";
@@ -34,8 +35,6 @@ export async function handler(
       return remove();
   }
 }
-
-const MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT = 25;
 
 /**
  * Sending to dynamo X commands at a time, using about X * 25 write units per batch to not overwhelm DDB

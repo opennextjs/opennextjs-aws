@@ -1,0 +1,1 @@
+export const MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT = 25;

@@ -14,6 +14,7 @@ import {
 } from "@aws-sdk/client-s3";
 import path from "path";
 
+import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
 import { debug, error } from "./logger.js";
 import { chunk } from "./util.js";
 
@@ -421,7 +422,7 @@ export default class S3Cache {
     try {
       if (disableDynamoDBCache) return;
       await Promise.all(
-        chunk(req, 25).map((Items) => {
+        chunk(req, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map((Items) => {
           return this.dynamoClient.send(
             new BatchWriteItemCommand({
               RequestItems: {
