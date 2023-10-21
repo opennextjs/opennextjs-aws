@@ -39,6 +39,12 @@ export function parseCookies(
   return cookies;
 }
 
+/**
+ * Create an array of arrays of size `chunkSize` from `items`
+ * @param items Array of T
+ * @param chunkSize size of each chunk
+ * @returns T[][]
+ */
 export function chunk<T>(items: T[], chunkSize: number): T[][] {
   const chunked = items.reduce((acc, curr, i) => {
     const chunkIndex = Math.floor(i / chunkSize);
