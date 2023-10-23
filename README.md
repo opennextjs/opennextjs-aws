@@ -50,6 +50,12 @@ AWS link: https://d1gwt3w78t4dm3.cloudfront.net
 
 Vercel link: https://open-next.vercel.app
 
+## Configuration
+
+### Environment variables
+
+- DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY: The number of concurrent batch write commands to DynamoDB. Defaults to 4 in an effort to leave plenty of DynamoDB write request capacity for the production load.
+
 ## Contribute
 
 To run `OpenNext` locally:

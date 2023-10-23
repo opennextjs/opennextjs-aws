@@ -5,7 +5,10 @@ import {
 import { CdkCustomResourceEvent, CdkCustomResourceResponse } from "aws-lambda";
 import { readFileSync } from "fs";
 
-import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
+import {
+  getDynamoBatchWriteCommandConcurrency,
+  MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
+} from "./constants.js";
 import { chunk } from "./util.js";
 
 const PHYSICAL_RESOURCE_ID = "dynamodb-cache";
@@ -36,12 +39,6 @@ export async function handler(
   }
 }
 
-/**
- * Sending to dynamo X commands at a time, using about X * 25 write units per batch to not overwhelm DDB
- * and give production plenty of room to work with. With DDB Response times, you can expect about 10 batches per second.
- */
-const DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY = 4;
-
 async function insert(): Promise<CdkCustomResourceResponse> {
   const tableName = process.env.CACHE_DYNAMO_TABLE!;
 
@@ -65,7 +62,7 @@ async function insert(): Promise<CdkCustomResourceResponse> {
 
   const paramsChunks = chunk(
     batchWriteParamsArray,
-    DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY,
+    getDynamoBatchWriteCommandConcurrency(),
   );
 
   for (const paramsChunk of paramsChunks) {
