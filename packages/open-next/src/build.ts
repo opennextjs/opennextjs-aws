@@ -431,6 +431,63 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
       (file.endsWith(".html") && htmlPages.has(file)),
   );
 
+  //merge cache files into a single file
+  const cacheFilesPath: Record<
+    string,
+    {
+      meta?: string;
+      html?: string;
+      json?: string;
+      rsc?: string;
+      body?: string;
+    }
+  > = {};
+
+  traverseFiles(
+    outputPath,
+    () => true,
+    (filepath) => {
+      const ext = path.extname(filepath);
+      const newFilePath =
+        ext !== "" ? filepath.replace(ext, ".cache") : `${filepath}.cache`;
+      switch (ext) {
+        case ".meta":
+        case ".html":
+        case ".json":
+        case ".body":
+        case ".rsc":
+          cacheFilesPath[newFilePath] = {
+            [ext.slice(1)]: filepath,
+            ...cacheFilesPath[newFilePath],
+          };
+          break;
+        default:
+          console.warn(`Unknown file extension: ${ext}`);
+          break;
+      }
+    },
+  );
+
+  // Generate cache file
+  Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    console.log(`Generating cache file: ${cacheFilePath}`);
+    console.log(files);
+    const cacheFileContent = {
+      type: files.body ? "route" : files.json ? "page" : "app",
+      meta: files.meta ? fs.readFileSync(files.meta, "utf8") : undefined,
+      html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
+      json: files.json ? fs.readFileSync(files.json, "utf8") : undefined,
+      rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
+      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+    };
+    fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
+  });
+  // console.info(`Cache files generated at ${outputPath}`);
+  // console.info(`Cache files count: ${Object.keys(cacheFilesPath).length}`);
+  // console.info(cacheFilesPath);
+
+  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
+
   if (!disableDynamoDBCache) {
     // Generate dynamodb data
     // We need to traverse the cache to find every .meta file
