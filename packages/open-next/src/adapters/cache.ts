@@ -14,7 +14,9 @@ import {
 } from "@aws-sdk/client-s3";
 import path from "path";
 
+import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
 import { debug, error } from "./logger.js";
+import { chunk } from "./util.js";
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -420,7 +422,7 @@ export default class S3Cache {
     try {
       if (disableDynamoDBCache) return;
       await Promise.all(
-        this.chunkArray(req, 25).map((Items) => {
+        chunk(req, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map((Items) => {
           return this.dynamoClient.send(
             new BatchWriteItemCommand({
               RequestItems: {
@@ -453,14 +455,6 @@ export default class S3Cache {
       tag: { S: this.buildDynamoKey(tags) },
       revalidatedAt: { N: `${Date.now()}` },
     };
-  }
-
-  private chunkArray<T>(array: T[], chunkSize: number) {
-    const chunks = [];
-    for (let i = 0; i < array.length; i += chunkSize) {
-      chunks.push(array.slice(i, i + chunkSize));
-    }
-    return chunks;
   }
 
   // S3 handling
