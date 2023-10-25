@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: "0 0 * * *"
   push:
+    paths-ignore:
+      - 'docs/**'  # Ignore changes in the /docs directory
     branches:
       - main
 
@@ -22,6 +24,8 @@ jobs:
   # Continue to the next job where it does the actual Playwright tests
   check_next_version:
     runs-on: ubuntu-latest
+    # Only run this on the official sst repo
+    if: github.repository == 'sst/open-next'
 
     steps:
       - name: Get Latest Next Version
