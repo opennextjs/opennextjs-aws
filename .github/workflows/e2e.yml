@@ -4,8 +4,10 @@ on:
   schedule:
     - cron: "0 0 * * *"
   push:
-    paths-ignore:
-      - 'docs/**'  # Ignore changes in the /docs directory
+    paths:
+      - 'examples/**'
+      - 'packages/open-next/**'
+      - 'packages/tests-e2e/**'
     branches:
       - main
 
