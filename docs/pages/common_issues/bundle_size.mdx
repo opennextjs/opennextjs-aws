@@ -8,6 +8,7 @@ Next will incorrectly trace dev dependencies to be included in the output `node_
 Add this to your next.config.js to help minimize the lambda bundle size:
 
 ```typescript
+  experimental: {
     outputFileTracingExcludes: {
       '*': [
         '@swc/core',
@@ -18,6 +19,7 @@ Add this to your next.config.js to help minimize the lambda bundle size:
         'sharp'
       ],
     },
+  },
 ```
 
 <Callout type="warning" emoji="⚠️">
