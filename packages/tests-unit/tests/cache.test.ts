@@ -1,7 +1,7 @@
 import { hasCacheExtension } from "../../open-next/src/adapters/cache";
 
 describe("hasCacheExtension", () => {
-  it("Should returns true if extension has a CacheExtension", () => {
+  it("Should returns true if has an extension and it is a CacheExtension", () => {
     expect(hasCacheExtension("hello.json")).toBeTruthy();
   });
 
