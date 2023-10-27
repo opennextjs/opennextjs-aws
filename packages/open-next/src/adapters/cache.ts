@@ -88,7 +88,7 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-type Extension =
+type CacheExtension =
   | "json"
   | "html"
   | "rsc"
@@ -96,6 +96,13 @@ type Extension =
   | "meta"
   | "fetch"
   | "redirect";
+
+/** Beginning single backslash is intentional, to look for the dot + the extension. Do not escape it again. */
+const CACHE_EXTENSION_REGEX = /\.(json|html|rsc|body|meta|fetch|redirect)$/;
+
+function hasCacheExtension(key: string) {
+  return CACHE_EXTENSION_REGEX.test(key);
+}
 
 // Expected environment variables
 const {
@@ -459,7 +466,7 @@ export default class S3Cache {
 
   // S3 handling
 
-  private buildS3Key(key: string, extension: Extension) {
+  private buildS3Key(key: string, extension: CacheExtension) {
     return path.posix.join(
       CACHE_BUCKET_KEY_PREFIX ?? "",
       extension === "fetch" ? "__fetch" : "",
@@ -484,7 +491,11 @@ export default class S3Cache {
     return (Contents ?? []).map(({ Key }) => Key) as string[];
   }
 
-  private async getS3Object(key: string, extension: Extension, keys: string[]) {
+  private async getS3Object(
+    key: string,
+    extension: CacheExtension,
+    keys: string[],
+  ) {
     try {
       if (!keys.includes(this.buildS3Key(key, extension)))
         return { Body: null, LastModified: null };
@@ -503,7 +514,7 @@ export default class S3Cache {
 
   private putS3Object(
     key: string,
-    extension: Extension,
+    extension: CacheExtension,
     value: PutObjectCommandInput["Body"],
   ) {
     return this.client.send(
@@ -517,14 +528,14 @@ export default class S3Cache {
 
   private async deleteS3Objects(key: string) {
     try {
-      const regexString = `\\.(json|rsc|html|body|meta|fetch|redirect)$`;
-      const regex = new RegExp(regexString);
       const s3Keys = (await this.listS3Object(key)).filter(
-        (key) => key && regex.test(key),
+        (key) => key && hasCacheExtension(key),
       );
 
       if (s3Keys.length === 0) {
-        warn(`No s3 keys matching ${regexString} found for ${key}`);
+        warn(
+          `No s3 keys with a valid cache extension found for ${key}, see type CacheExtension in OpenNext for details`,
+        );
         return;
       }
 
