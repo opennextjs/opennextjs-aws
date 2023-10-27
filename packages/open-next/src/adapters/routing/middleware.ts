@@ -13,8 +13,9 @@ import {
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
+//NOTE: we should try to avoid importing stuff from next as much as possible
+// every release of next could break this
 const { run } = require("next/dist/server/web/sandbox");
-const { pipeReadable } = require("next/dist/server/pipe-readable");
 const { getCloneableBody } = require("next/dist/server/body-streams");
 const {
   signalFromNodeResponse,
@@ -31,6 +32,10 @@ type MiddlewareOutputEvent = InternalEvent & {
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
+
+interface MiddlewareResult {
+  response: Response;
+}
 
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
@@ -67,7 +72,7 @@ export async function handleMiddleware(
   initialUrl.search = new URLSearchParams(urlQuery).toString();
   const url = initialUrl.toString();
 
-  const result = await run({
+  const result: MiddlewareResult = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",
     paths: middlewareInfo.paths || [],
@@ -131,7 +136,7 @@ export async function handleMiddleware(
       statusCode: res.statusCode,
       headers: {
         ...resHeaders,
-        Location: location,
+        Location: location ?? "",
       },
       isBase64Encoded: false,
     };
@@ -163,7 +168,12 @@ export async function handleMiddleware(
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
   // the body immediately to the client.
   if (result.response.body) {
-    await pipeReadable(result.response.body, res);
+    // transfer response body to res
+    const arrayBuffer = await result.response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.end(buffer);
+
+    // await pipeReadable(result.response.body, res);
     return {
       type: internalEvent.type,
       ...convertRes(res),
