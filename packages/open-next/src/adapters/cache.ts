@@ -100,7 +100,7 @@ type CacheExtension =
 /** Beginning single backslash is intentional, to look for the dot + the extension. Do not escape it again. */
 const CACHE_EXTENSION_REGEX = /\.(json|html|rsc|body|meta|fetch|redirect)$/;
 
-function hasCacheExtension(key: string) {
+export function hasCacheExtension(key: string) {
   return CACHE_EXTENSION_REGEX.test(key);
 }
 
