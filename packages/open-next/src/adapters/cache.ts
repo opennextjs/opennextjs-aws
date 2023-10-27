@@ -15,7 +15,7 @@ import {
 import path from "path";
 
 import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
-import { debug, error } from "./logger.js";
+import { debug, error, warn } from "./logger.js";
 import { chunk } from "./util.js";
 
 interface CachedFetchValue {
@@ -517,10 +517,16 @@ export default class S3Cache {
 
   private async deleteS3Objects(key: string) {
     try {
-      const regex = new RegExp(`\.(json|rsc|html|body|meta|fetch|redirect)$`);
+      const regexString = `\.(json|rsc|html|body|meta|fetch|redirect)$`;
+      const regex = new RegExp(regexString);
       const s3Keys = (await this.listS3Object(key)).filter(
         (key) => key && regex.test(key),
       );
+
+      if (s3Keys.length === 0) {
+        warn(`No s3 keys matching ${regexString} found for ${key}`);
+        return;
+      }
 
       await this.client.send(
         new DeleteObjectsCommand({
