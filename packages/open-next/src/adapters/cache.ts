@@ -517,7 +517,7 @@ export default class S3Cache {
 
   private async deleteS3Objects(key: string) {
     try {
-      const regexString = `\.(json|rsc|html|body|meta|fetch|redirect)$`;
+      const regexString = `\\.(json|rsc|html|body|meta|fetch|redirect)$`;
       const regex = new RegExp(regexString);
       const s3Keys = (await this.listS3Object(key)).filter(
         (key) => key && regex.test(key),
