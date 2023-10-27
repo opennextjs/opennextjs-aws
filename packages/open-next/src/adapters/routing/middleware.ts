@@ -139,8 +139,15 @@ export async function handleMiddleware(
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
   let rewritten = false;
+  let middlewareQueryString = internalEvent.query;
   if (rewriteUrl) {
-    req.url = new URL(rewriteUrl).pathname;
+    const rewriteUrlObject = new URL(rewriteUrl);
+    req.url = rewriteUrlObject.pathname;
+    //reset qs
+    middlewareQueryString = {};
+    rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
+      middlewareQueryString[k] = v;
+    });
     rewritten = true;
   }
 
@@ -164,7 +171,7 @@ export async function handleMiddleware(
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,
     method: internalEvent.method,
-    query: internalEvent.query,
+    query: middlewareQueryString,
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
   };
