@@ -1,5 +1,6 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
+import { ServerResponse } from "http";
 
 import { BuildId, HtmlPages } from "../../config/index.js";
 import { IncomingMessage } from "../../http/request.js";
@@ -36,13 +37,27 @@ export async function proxyRequest(
   });
 
   await new Promise<void>((resolve, reject) => {
-    proxy.on("proxyRes", () => {
-      resolve();
+    proxy.on("proxyRes", (proxyRes: ServerResponse) => {
+      const body: Uint8Array[] = [];
+      proxyRes.on("data", function (chunk) {
+        body.push(chunk);
+      });
+      proxyRes.on("end", function () {
+        const newBody = Buffer.concat(body).toString();
+        debug(`Proxying response`, {
+          headers: proxyRes.getHeaders(),
+          body: newBody,
+        });
+        res.end(newBody);
+        resolve();
+      });
     });
 
     proxy.on("error", (err: any) => {
       reject(err);
     });
+
+    debug(`Proxying`, { url: req.url, headers: req.headers });
 
     proxy.web(req, res, {
       target: req.url,
