@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "0 0 * * *"
   push:
+    paths:
+      - 'examples/**'
+      - 'packages/open-next/**'
+      - 'packages/tests-e2e/**'
     branches:
       - main
 
@@ -22,6 +26,8 @@ jobs:
   # Continue to the next job where it does the actual Playwright tests
   check_next_version:
     runs-on: ubuntu-latest
+    # Only run this on the official sst repo
+    if: github.repository == 'sst/open-next'
 
     steps:
       - name: Get Latest Next Version
