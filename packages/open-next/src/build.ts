@@ -10,64 +10,9 @@ import {
   buildSync,
 } from "esbuild";
 
+import { BuildOptions, DangerousOptions } from "./adapters/types/open-next.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
-
-interface DangerousOptions {
-  /**
-   * The dynamo db cache is used for revalidateTags and revalidatePath.
-   * @default false
-   */
-  disableDynamoDBCache?: boolean;
-  /**
-   * The incremental cache is used for ISR and SSG.
-   * Disable this only if you use only SSR
-   * @default false
-   */
-  disableIncrementalCache?: boolean;
-}
-interface BuildOptions {
-  /**
-   * Minify the server bundle.
-   * @default false
-   */
-  minify?: boolean;
-  /**
-   * Print debug information.
-   * @default false
-   */
-  debug?: boolean;
-  /**
-   * Enable streaming mode.
-   * @default false
-   */
-  streaming?: boolean;
-  /**
-   * The command to build the Next.js app.
-   * @default `npm run build`, `yarn build`, or `pnpm build` based on the lock file found in the app's directory or any of its parent directories.
-   * @example
-   * ```ts
-   * build({
-   *   buildCommand: "pnpm custom:build",
-   * });
-   * ```
-   */
-  /**
-   * Dangerous options. This break some functionnality but can be useful in some cases.
-   */
-  dangerous?: DangerousOptions;
-  buildCommand?: string;
-  /**
-   * The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd().
-   * @default "."
-   */
-  buildOutputPath?: string;
-  /**
-   * The path to the root of the Next.js app's source code. This path is relative from the current process.cwd().
-   * @default "."
-   */
-  appPath?: string;
-}
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -77,7 +22,13 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build(opts: BuildOptions = {}) {
+export async function build(
+  opts: BuildOptions = {
+    functions: {
+      default: {},
+    },
+  },
+) {
   const { root: monorepoRoot, packager } = findMonorepoRoot(
     path.join(process.cwd(), opts.appPath || "."),
   );
@@ -125,11 +76,17 @@ function normalizeOptions(opts: BuildOptions, root: string) {
     appPublicPath: path.join(appPath, "public"),
     outputDir,
     tempDir: path.join(outputDir, ".build"),
-    minify: opts.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
-    debug: opts.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+    minify:
+      opts.functions.default.minify ??
+      Boolean(process.env.OPEN_NEXT_MINIFY) ??
+      false,
+    debug:
+      opts.functions.default.debug ??
+      Boolean(process.env.OPEN_NEXT_DEBUG) ??
+      false,
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
-    streaming: opts.streaming ?? false,
+    streaming: opts.functions.default.streaming ?? false,
   };
 }
 
