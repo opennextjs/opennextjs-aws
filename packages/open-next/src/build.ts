@@ -377,7 +377,7 @@ function createStaticAssets() {
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
   // - public/*       => *
-  // - src/app/favicon.ico => *
+  // - src/app/favicon.ico => favicon.ico
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
