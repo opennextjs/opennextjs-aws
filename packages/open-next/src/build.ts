@@ -377,7 +377,7 @@ function createStaticAssets() {
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
   // - public/*       => *
-  // - src/app/favicon.ico => favicon.ico
+  // - app/favicon.ico or src/app/favicon.ico  => favicon.ico
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
@@ -391,7 +391,11 @@ function createStaticAssets() {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
   }
 
-  const faviconPath = path.join(appPath, "src", "app", "favicon.ico");
+  const appSrcPath = fs.existsSync(path.join(appPath, "src"))
+    ? "src/app"
+    : "app";
+
+  const faviconPath = path.join(appPath, appSrcPath, "favicon.ico");
 
   if (fs.existsSync(faviconPath)) {
     fs.copyFileSync(faviconPath, path.join(outputPath, "favicon.ico"));
