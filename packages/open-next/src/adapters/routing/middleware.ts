@@ -44,6 +44,8 @@ export async function handleMiddleware(
   const { rawPath, query } = internalEvent;
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return internalEvent;
+  // We bypass the middleware if the request is internal
+  if (internalEvent.headers["x-isr"]) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
   const res = new ServerlessResponse({
