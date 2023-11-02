@@ -1,9 +1,11 @@
 import { DynamoDBClient, DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
 import { S3Client, S3ClientConfig } from "@aws-sdk/client-s3";
 
+import { createMainHandler } from "../core/createMainHandler.js";
+// We load every config here so that they are only loaded once
+// and during cold starts
 import { BuildId } from "./config/index.js";
 import { awsLogger } from "./logger.js";
-import { lambdaHandler } from "./plugins/lambdaHandler.js";
 import { setNodeEnv } from "./util.js";
 
 // We load every config here so that they are only loaded once
@@ -62,7 +64,7 @@ globalThis.dynamoClient = new DynamoDBClient(parseDynamoClientConfigFromEnv());
 // Handler //
 /////////////
 
-export const handler = lambdaHandler;
+export const handler = await createMainHandler();
 
 //////////////////////
 // Helper functions //

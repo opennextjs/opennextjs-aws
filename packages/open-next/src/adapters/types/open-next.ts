@@ -1,4 +1,5 @@
-import { InternalEvent } from "../event-mapper";
+import { InternalEvent, InternalResult } from "../event-mapper";
+import { ResponseStream } from "../http";
 
 export interface DangerousOptions {
   /**
@@ -14,53 +15,61 @@ export interface DangerousOptions {
   disableIncrementalCache?: boolean;
 }
 
-type LazyLoadedOverride<T> = () => Promise<T>;
+export type LazyLoadedOverride<T> = () => Promise<T>;
 
-type Adapter = {
+export type OpenNextHandler = (
+  event: InternalEvent,
+  responseStream?: ResponseStream,
+) => Promise<InternalResult | void>;
+
+export type Converter = {
   convertFrom: (event: any) => InternalEvent;
   convertTo: (result: any) => any;
 };
 
-type Handler = <Return>(...args: any[]) => Return;
+export type Wrapper = (
+  handler: OpenNextHandler,
+  converter: Converter,
+) => Promise<(...args: any[]) => any>;
 
 //TODO: properly type this
-type IncrementalCache = {
+export type IncrementalCache = {
   get(key: string): Promise<any>;
   set(key: string, value: any): Promise<void>;
 };
 
-type TagCache = {
+export type TagCache = {
   getByTag(tag: string): Promise<string[]>;
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: { tag: string; path: string }): Promise<void>;
 };
 
-type Queue = {
+export type Queue = {
   send(message: any): Promise<void>;
 };
 
-interface OverrideOptions {
+export interface OverrideOptions {
   /**
    * This is the main entrypoint of your app.
    * @default "aws-lambda"
    */
-  handler?:
+  wrapper?:
     | "aws-lambda"
     | "aws-lambda-streaming"
     | "docker"
-    | LazyLoadedOverride<Handler>;
+    | LazyLoadedOverride<Wrapper>;
 
   /**
    * This code convert the event to InternalEvent and InternalResult to the expected output.
    * @default "aws-apigw-v2"
    */
-  adapter?:
+  converter?:
     | "aws-apigw-v2"
     | "aws-apigw-v1"
     | "aws-cloudfront"
     | "docker"
-    | LazyLoadedOverride<Adapter>;
+    | LazyLoadedOverride<Converter>;
 
   /**
    * Add possibility to override the default s3 cache. Used for fetch cache and html/rsc/json cache.
