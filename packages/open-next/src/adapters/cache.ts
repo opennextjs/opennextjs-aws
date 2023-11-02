@@ -9,7 +9,6 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   PutObjectCommandInput,
-  PutObjectCommandOutput,
   S3Client,
 } from "@aws-sdk/client-s3";
 import path from "path";
@@ -88,17 +87,38 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-type CacheExtension =
-  | "json"
-  | "html"
-  | "rsc"
-  | "body"
-  | "meta"
-  | "fetch"
-  | "redirect";
+type Extension = "cache" | "fetch";
+
+interface Meta {
+  status?: number;
+  headers?: Record<string, undefined | string | string[]>;
+}
+type S3CachedFile =
+  | {
+      type: "redirect";
+      props?: Object;
+      meta?: Meta;
+    }
+  | {
+      type: "page";
+      html: string;
+      json: Object;
+      meta?: Meta;
+    }
+  | {
+      type: "app";
+      html: string;
+      rsc: string;
+      meta?: Meta;
+    }
+  | {
+      type: "route";
+      body: string;
+      meta?: Meta;
+    };
 
 /** Beginning single backslash is intentional, to look for the dot + the extension. Do not escape it again. */
-const CACHE_EXTENSION_REGEX = /\.(json|html|rsc|body|meta|fetch|redirect)$/;
+const CACHE_EXTENSION_REGEX = /\.(cache|fetch)$/;
 
 export function hasCacheExtension(key: string) {
   return CACHE_EXTENSION_REGEX.test(key);
@@ -136,18 +156,15 @@ export default class S3Cache {
     }
     const isFetchCache =
       typeof options === "object" ? options.fetchCache : options;
-    const keys = await this.listS3Object(key);
-    if (keys.length === 0) return null;
-    debug("keys", keys);
     return isFetchCache
-      ? this.getFetchCache(key, keys)
-      : this.getIncrementalCache(key, keys);
+      ? this.getFetchCache(key)
+      : this.getIncrementalCache(key);
   }
 
-  async getFetchCache(key: string, keys: string[]) {
+  async getFetchCache(key: string) {
     debug("get fetch cache", { key });
     try {
-      const { Body, LastModified } = await this.getS3Object(key, "fetch", keys);
+      const { Body, LastModified } = await this.getS3Object(key, "fetch");
       const lastModified = await this.getHasRevalidatedTags(
         key,
         LastModified?.getTime(),
@@ -169,96 +186,59 @@ export default class S3Cache {
     }
   }
 
-  async getIncrementalCache(
-    key: string,
-    keys: string[],
-  ): Promise<CacheHandlerValue | null> {
-    if (keys.includes(this.buildS3Key(key, "body"))) {
-      debug("get body cache ", { key });
-      try {
-        const [{ Body, LastModified }, { Body: MetaBody }] = await Promise.all([
-          this.getS3Object(key, "body", keys),
-          this.getS3Object(key, "meta", keys),
-        ]);
-        const body = await Body?.transformToByteArray();
-        const meta = JSON.parse((await MetaBody?.transformToString()) ?? "{}");
-
+  async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
+    try {
+      const { Body, LastModified } = await this.getS3Object(key, "cache");
+      const cacheData = JSON.parse(
+        (await Body?.transformToString()) ?? "{}",
+      ) as S3CachedFile;
+      const meta = cacheData.meta;
+      const lastModified = await this.getHasRevalidatedTags(
+        key,
+        LastModified?.getTime(),
+      );
+      if (lastModified === -1) {
+        // If some tags are stale we need to force revalidation
+        return null;
+      }
+      if (cacheData.type === "route") {
         return {
           lastModified: LastModified?.getTime(),
           value: {
             kind: "ROUTE",
-            body: Buffer.from(body ?? Buffer.alloc(0)),
-            status: meta.status,
-            headers: meta.headers,
+            body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
+            status: meta?.status,
+            headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } catch (e) {
-        error("Failed to get body cache", e);
-      }
-      return null;
-    }
-
-    if (keys.includes(this.buildS3Key(key, "html"))) {
-      const isJson = keys.includes(this.buildS3Key(key, "json"));
-      const isRsc = keys.includes(this.buildS3Key(key, "rsc"));
-      debug("get html cache ", { key, isJson, isRsc });
-      if (!isJson && !isRsc) return null;
-
-      try {
-        const [{ Body, LastModified }, { Body: PageBody }, { Body: MetaBody }] =
-          await Promise.all([
-            this.getS3Object(key, "html", keys),
-            this.getS3Object(key, isJson ? "json" : "rsc", keys),
-            this.getS3Object(key, "meta", keys),
-          ]);
-        const lastModified = await this.getHasRevalidatedTags(
-          key,
-          LastModified?.getTime(),
-        );
-        if (lastModified === -1) {
-          // If some tags are stale we need to force revalidation
-          return null;
-        }
-        const meta = JSON.parse((await MetaBody?.transformToString()) ?? "{}");
-        return {
-          lastModified,
-          value: {
-            kind: "PAGE",
-            html: (await Body?.transformToString()) ?? "",
-            pageData: isJson
-              ? JSON.parse((await PageBody?.transformToString()) ?? "{}")
-              : await PageBody?.transformToString(),
-            status: meta.status,
-            headers: meta.headers,
-          },
-        } as CacheHandlerValue;
-      } catch (e) {
-        error("Failed to get html cache", e);
-      }
-      return null;
-    }
-
-    // Check for redirect last. This way if a page has been regenerated
-    // after having been redirected, we'll get the page data
-    if (keys.includes(this.buildS3Key(key, "redirect"))) {
-      debug("get redirect cache", { key });
-      try {
-        const { Body, LastModified } = await this.getS3Object(
-          key,
-          "redirect",
-          keys,
-        );
+      } else if (cacheData.type === "page" || cacheData.type === "app") {
         return {
           lastModified: LastModified?.getTime(),
-          value: JSON.parse((await Body?.transformToString()) ?? "{}"),
-        };
-      } catch (e) {
-        error("Failed to get redirect cache", e);
+          value: {
+            kind: "PAGE",
+            html: cacheData.html,
+            pageData:
+              cacheData.type === "page" ? cacheData.json : cacheData.rsc,
+            status: meta?.status,
+            headers: meta?.headers,
+          },
+        } as CacheHandlerValue;
+      } else if (cacheData.type === "redirect") {
+        return {
+          lastModified: LastModified?.getTime(),
+          value: {
+            kind: "REDIRECT",
+            props: cacheData.props,
+          },
+        } as CacheHandlerValue;
+      } else {
+        error("Unknown cache type", cacheData);
+        return null;
       }
+    } catch (e) {
+      error("Failed to get body cache", e);
       return null;
     }
-
-    return null;
   }
 
   async set(key: string, data?: IncrementalCacheValue): Promise<void> {
@@ -267,37 +247,44 @@ export default class S3Cache {
     }
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
-      await Promise.all([
-        this.putS3Object(key, "body", body),
-        this.putS3Object(key, "meta", JSON.stringify({ status, headers })),
-      ]);
+      this.putS3Object(
+        key,
+        "cache",
+        JSON.stringify({
+          type: "route",
+          body: body.toString("utf8"),
+          meta: {
+            status,
+            headers,
+          },
+        } as S3CachedFile),
+      );
     } else if (data?.kind === "PAGE") {
       const { html, pageData } = data;
       const isAppPath = typeof pageData === "string";
-      let metaPromise: Promise<PutObjectCommandOutput | void> =
-        Promise.resolve();
-      if (data.status || data.headers) {
-        metaPromise = this.putS3Object(
-          key,
-          "meta",
-          JSON.stringify({ status: data.status, headers: data.headers }),
-        );
-      }
-      await Promise.all([
-        this.putS3Object(key, "html", html),
-        this.putS3Object(
-          key,
-          isAppPath ? "rsc" : "json",
-          isAppPath ? pageData : JSON.stringify(pageData),
-        ),
-        metaPromise,
-      ]);
+      this.putS3Object(
+        key,
+        "cache",
+        JSON.stringify({
+          type: isAppPath ? "app" : "page",
+          html,
+          rsc: isAppPath ? pageData : undefined,
+          json: isAppPath ? undefined : pageData,
+          meta: { status: data.status, headers: data.headers },
+        } as S3CachedFile),
+      );
     } else if (data?.kind === "FETCH") {
       await this.putS3Object(key, "fetch", JSON.stringify(data));
     } else if (data?.kind === "REDIRECT") {
-      // delete potential page data if we're redirecting
-      await this.deleteS3Objects(key);
-      await this.putS3Object(key, "redirect", JSON.stringify(data));
+      // // delete potential page data if we're redirecting
+      await this.putS3Object(
+        key,
+        "cache",
+        JSON.stringify({
+          type: "redirect",
+          props: data.props,
+        } as S3CachedFile),
+      );
     } else if (data === null || data === undefined) {
       await this.deleteS3Objects(key);
     }
@@ -466,7 +453,7 @@ export default class S3Cache {
 
   // S3 handling
 
-  private buildS3Key(key: string, extension: CacheExtension) {
+  private buildS3Key(key: string, extension: Extension) {
     return path.posix.join(
       CACHE_BUCKET_KEY_PREFIX ?? "",
       extension === "fetch" ? "__fetch" : "",
@@ -491,14 +478,8 @@ export default class S3Cache {
     return (Contents ?? []).map(({ Key }) => Key) as string[];
   }
 
-  private async getS3Object(
-    key: string,
-    extension: CacheExtension,
-    keys: string[],
-  ) {
+  private async getS3Object(key: string, extension: Extension) {
     try {
-      if (!keys.includes(this.buildS3Key(key, extension)))
-        return { Body: null, LastModified: null };
       const result = await this.client.send(
         new GetObjectCommand({
           Bucket: CACHE_BUCKET_NAME,
@@ -514,7 +495,7 @@ export default class S3Cache {
 
   private putS3Object(
     key: string,
-    extension: CacheExtension,
+    extension: Extension,
     value: PutObjectCommandInput["Body"],
   ) {
     return this.client.send(
