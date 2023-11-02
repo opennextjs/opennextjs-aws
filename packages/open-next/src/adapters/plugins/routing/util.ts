@@ -3,8 +3,13 @@ import crypto from "crypto";
 import { ServerResponse } from "http";
 
 import { BuildId, HtmlPages } from "../../config/index.js";
+import { InternalEvent } from "../../event-mapper.js";
 import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
+import {
+  ResponseStream,
+  StreamingServerResponse,
+} from "../../http/responseStreaming.js";
 import { awsLogger, debug } from "../../logger.js";
 
 declare global {
@@ -234,4 +239,36 @@ export function fixISRHeaders(headers: Record<string, string | undefined>) {
   // Once the revalidation is complete, CloudFront will serve the fresh data
   headers[CommonHeaders.CACHE_CONTROL] =
     "s-maxage=2, stale-while-revalidate=2592000";
+}
+
+export function createServerResponse(
+  internalEvent: InternalEvent,
+  headers: Record<string, string | string[] | undefined>,
+  responseStream?: ResponseStream,
+) {
+  const { method, rawPath } = internalEvent;
+  headers["accept-encoding"] = internalEvent.headers["accept-encoding"];
+  return responseStream
+    ? new StreamingServerResponse({
+        method,
+        headers,
+        responseStream,
+        fixHeaders(headers) {
+          fixCacheHeaderForHtmlPages(rawPath, headers);
+          fixSWRCacheHeader(headers);
+          addOpenNextHeader(headers);
+          fixISRHeaders(headers);
+        },
+        async onEnd(headers) {
+          await revalidateIfRequired(
+            internalEvent.headers.host,
+            rawPath,
+            headers,
+          );
+        },
+      })
+    : new ServerlessResponse({
+        method,
+        headers,
+      });
 }

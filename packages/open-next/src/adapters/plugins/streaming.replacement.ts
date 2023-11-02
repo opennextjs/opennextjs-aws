@@ -57,6 +57,7 @@ export const lambdaHandler = awslambda.streamifyResponse(async function (
     return new StreamingServerResponse({
       method,
       headers,
+      //@ts-ignore - we will remove this file
       responseStream,
       // We need to fix the cache header before sending any response
       fixHeaders: (headers) => {

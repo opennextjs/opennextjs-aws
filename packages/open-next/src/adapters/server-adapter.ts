@@ -2,6 +2,7 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 
+import { createMainHandler } from "../core/createMainHandler.js";
 // We load every config here so that they are only loaded once
 // and during cold starts
 import { BuildId } from "./config/index.js";
@@ -43,7 +44,7 @@ globalThis.dynamoClient = new DynamoDBClient({
 // Handler //
 /////////////
 
-export const handler = lambdaHandler;
+export const handler = await createMainHandler();
 
 //////////////////////
 // Helper functions //
