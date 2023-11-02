@@ -366,7 +366,7 @@ function createImageOptimizationBundle() {
 function createStaticAssets() {
   console.info(`Bundling static assets...`);
 
-  const { appBuildOutputPath, appPublicPath, outputDir } = options;
+  const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
@@ -377,6 +377,7 @@ function createStaticAssets() {
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
   // - public/*       => *
+  // - app/favicon.ico or src/app/favicon.ico  => favicon.ico
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
@@ -388,6 +389,16 @@ function createStaticAssets() {
   );
   if (fs.existsSync(appPublicPath)) {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
+  }
+
+  const appSrcPath = fs.existsSync(path.join(appPath, "src"))
+    ? "src/app"
+    : "app";
+
+  const faviconPath = path.join(appPath, appSrcPath, "favicon.ico");
+
+  if (fs.existsSync(faviconPath)) {
+    fs.copyFileSync(faviconPath, path.join(outputPath, "favicon.ico"));
   }
 }
 
