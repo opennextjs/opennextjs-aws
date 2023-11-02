@@ -2,12 +2,25 @@ import http from "node:http";
 import { Socket } from "node:net";
 import zlib from "node:zlib";
 
+import { Writable } from "stream";
+
 import { debug, error } from "../logger.js";
-import type { ResponseStream } from "../types/aws-lambda.js";
+// import type { ResponseStream } from "../types/aws-lambda.js";
 import { parseCookies } from "../util.js";
 import { convertHeader, getString, NO_OP, parseHeaders } from "./util.js";
 
 const HEADERS = Symbol();
+
+export interface ResponseStream extends Writable {
+  writeHeaders(
+    prelude: {
+      statusCode: number;
+      cookies: string[];
+      headers: Record<string, string>;
+    },
+    onFinish: () => void,
+  ): void;
+}
 
 export interface StreamingServerResponseProps {
   method?: string;
@@ -153,44 +166,24 @@ export class StreamingServerResponse extends http.ServerResponse {
       debug("writeHead", this[HEADERS]);
 
       this._wroteHeader = true;
-      // FIXME: This is extracted from the docker lambda node 18 runtime
-      // https://gist.github.com/conico974/13afd708af20711b97df439b910ceb53#file-index-mjs-L921-L932
-      // We replace their write with ours which are inside a setImmediate
-      // This way it seems to work all the time
-      // I think we can't ship this code as it is, it could break at anytime if they decide to change the runtime and they already did it in the past
-      this.responseStream.setContentType(
-        "application/vnd.awslambda.http-integration-response",
+      this.statusCode = statusCode;
+      this.responseStream.writeHeaders(
+        {
+          statusCode,
+          cookies: this._cookies,
+          headers: this[HEADERS],
+        },
+        () => {
+          if (this._compressed) {
+            const br = zlib.createBrotliCompress({
+              flush: zlib.constants.BROTLI_OPERATION_FLUSH,
+            });
+            br.setMaxListeners(100);
+            br.pipe(this.responseStream);
+            this.responseStream = br as unknown as ResponseStream;
+          }
+        },
       );
-      const prelude = JSON.stringify({
-        statusCode: statusCode as number,
-        cookies: this._cookies,
-        headers: this[HEADERS],
-      });
-
-      // Try to flush the buffer to the client to invoke
-      // the streaming. This does not work 100% of the time.
-      setImmediate(() => {
-        this.responseStream.write("\n\n");
-        this.responseStream.uncork();
-      });
-      setImmediate(() => {
-        this.responseStream.write(prelude);
-      });
-
-      setImmediate(() => {
-        this.responseStream.write(new Uint8Array(8));
-
-        // After headers are written, compress all writes
-        // using Brotli
-        if (this._compressed) {
-          const br = zlib.createBrotliCompress({
-            flush: zlib.constants.BROTLI_OPERATION_FLUSH,
-          });
-          br.setMaxListeners(100);
-          br.pipe(this.responseStream);
-          this.responseStream = br as unknown as ResponseStream;
-        }
-      });
 
       debug("writeHead", this[HEADERS]);
     } catch (e) {
