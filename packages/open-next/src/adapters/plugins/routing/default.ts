@@ -16,12 +16,13 @@ import {
   revalidateIfRequired,
 } from "./util";
 import { convertRes } from "../../routing/util";
-import { ServerlessResponse } from "../../http";
-import { ServerResponse } from "http";
+import { OpenNextNodeResponse } from "../../http/openNextResponse";
 //#endOverride
 
 //#override processInternalEvent
-export async function processInternalEvent<Response extends ServerResponse>(
+export async function processInternalEvent<
+  Response extends OpenNextNodeResponse,
+>(
   internalEvent: InternalEvent,
   createResponse: CreateResponse<Response>,
 ): Promise<ProcessInternalEventResult<Response>> {
@@ -51,7 +52,7 @@ export async function postProcessResponse({
   isExternalRewrite,
 }: PostProcessOptions): Promise<InternalResult> {
   const { statusCode, headers, isBase64Encoded, body } = convertRes(
-    res as ServerlessResponse,
+    res as OpenNextNodeResponse,
   );
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });

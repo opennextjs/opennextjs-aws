@@ -34,6 +34,13 @@ export async function openNextHandler(
   );
 
   if ("type" in preprocessResult) {
+    // res is used only in the streaming case
+    const headers = preprocessResult.headers;
+    const res = createServerResponse(internalEvent, headers, responseStreaming);
+    res.statusCode = preprocessResult.statusCode;
+    res.flushHeaders();
+    res.write(preprocessResult.body);
+    res.end();
     return preprocessResult;
   } else {
     const {
