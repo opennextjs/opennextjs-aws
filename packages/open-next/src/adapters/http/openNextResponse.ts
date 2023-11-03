@@ -1,11 +1,11 @@
 import { OutgoingHttpHeader, OutgoingHttpHeaders } from "http";
-import { Writable } from "stream";
+import { Transform, TransformCallback } from "stream";
 
 import { ResponseStream } from "./responseStreaming";
 import { parseHeaders } from "./util";
 
 // We only need to implement the methods that are used by next.js
-export class OpenNextNodeResponse extends Writable {
+export class OpenNextNodeResponse extends Transform {
   statusCode: number | undefined;
   statusMessage: string | undefined;
   headers: OutgoingHttpHeaders = {};
@@ -14,11 +14,14 @@ export class OpenNextNodeResponse extends Writable {
 
   constructor(
     private fixHeaders: (headers: OutgoingHttpHeaders) => void,
-    private onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
+    onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
     private responseStream?: ResponseStream,
     private initialHeaders?: OutgoingHttpHeaders,
   ) {
     super();
+    this.once("finish", () => {
+      onEnd(this.headers);
+    });
   }
 
   get finished() {
@@ -54,14 +57,18 @@ export class OpenNextNodeResponse extends Writable {
       this.headers = { ...this.headers, ...this.initialHeaders };
     }
     this.fixHeaders(this.headers);
-    this.responseStream?.writeHeaders(
-      {
-        statusCode: this.statusCode ?? 200,
-        cookies: [],
-        headers: parseHeaders(this.headers),
-      },
-      () => {},
-    );
+
+    if (this.responseStream) {
+      this.responseStream?.writeHeaders(
+        {
+          statusCode: this.statusCode ?? 200,
+          cookies: [],
+          headers: parseHeaders(this.headers),
+        },
+        () => {},
+      );
+      this.pipe(this.responseStream);
+    }
   }
 
   // Might be used in next page api routes
@@ -80,48 +87,18 @@ export class OpenNextNodeResponse extends Writable {
 
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
     this._chunks.push(Buffer.from(chunk, encoding));
-    return this.responseStream?.write(chunk, encoding);
+    this.push(chunk, encoding);
   }
 
-  _write(
+  _transform(
     chunk: any,
     encoding: BufferEncoding,
-    callback: (error?: Error | null | undefined) => void,
+    callback: TransformCallback,
   ): void {
     if (!this.headersSent) {
       this.flushHeaders();
     }
     this._internalWrite(chunk, encoding);
     callback();
-  }
-
-  end(cb?: (() => void) | undefined): this;
-  end(chunk: any, cb?: (() => void) | undefined): this;
-  end(
-    chunk: any,
-    encoding: BufferEncoding,
-    cb?: (() => void) | undefined,
-  ): this;
-  end(chunk?: unknown, encoding?: unknown, cb?: unknown): this {
-    this.onEnd(parseHeaders(this.headers));
-    if (!this.headersSent) {
-      this.flushHeaders();
-    }
-    if (!chunk) {
-      this.responseStream?.end();
-      return this;
-    }
-    if (typeof chunk === "function") {
-      chunk();
-    } else if (typeof encoding === "function") {
-      this._internalWrite(chunk, "utf8");
-      encoding();
-    } else {
-      this._internalWrite(chunk, encoding as BufferEncoding);
-      //@ts-expect-error - typescript doesn't infer that cb is a function
-      cb?.();
-    }
-    this.responseStream?.end();
-    return this;
   }
 }
