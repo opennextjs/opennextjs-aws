@@ -42,7 +42,7 @@ const handler: Wrapper = async (handler, converter) =>
         });
       };
 
-      const response = await handler(internalEvent);
+      const response = await handler(internalEvent, res);
 
       return converter.convertTo(response);
     },
