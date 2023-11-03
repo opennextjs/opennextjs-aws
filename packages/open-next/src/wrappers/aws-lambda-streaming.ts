@@ -27,19 +27,17 @@ const handler: Wrapper = async (handler, converter) =>
 
         // Try to flush the buffer to the client to invoke
         // the streaming. This does not work 100% of the time.
-        setImmediate(() => {
-          responseStream.write("\n\n");
-          responseStream.uncork();
-        });
-        setImmediate(() => {
-          responseStream.write(prelude);
-        });
 
-        setImmediate(() => {
-          responseStream.write(new Uint8Array(8));
+        responseStream.write("\n\n");
 
-          onFinish();
-        });
+        responseStream.write(prelude);
+
+        responseStream.write(new Uint8Array(8));
+        responseStream.uncork();
+
+        // responseStream.write("\r\n\r\n");
+
+        onFinish();
       };
 
       const response = await handler(internalEvent, res);
