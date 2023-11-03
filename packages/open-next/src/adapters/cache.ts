@@ -70,6 +70,14 @@ type IncrementalCacheValue =
   | CachedFetchValue
   | CachedRouteValue;
 
+type IncrementalCacheContext = {
+  revalidate?: number | false | undefined;
+  fetchCache?: boolean | undefined;
+  fetchUrl?: string | undefined;
+  fetchIdx?: number | undefined;
+  tags?: string[] | undefined;
+};
+
 interface CacheHandlerContext {
   fs?: never;
   dev?: boolean;
@@ -254,7 +262,11 @@ export default class S3Cache {
     return null;
   }
 
-  async set(key: string, data?: IncrementalCacheValue): Promise<void> {
+  async set(
+    key: string,
+    data?: IncrementalCacheValue,
+    ctx?: IncrementalCacheContext,
+  ): Promise<void> {
     if (globalThis.disableIncrementalCache) {
       return;
     }
@@ -298,7 +310,7 @@ export default class S3Cache {
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
     const derivedTags: string[] =
       data?.kind === "FETCH"
-        ? data.data.tags ?? []
+        ? ctx?.tags ?? []
         : data?.kind === "PAGE"
         ? data.headers?.["x-next-cache-tags"]?.split(",") ?? []
         : [];
