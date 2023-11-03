@@ -565,6 +565,16 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   const outputPath = path.join(outputDir, "server-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
+  // Copy open-next.config.js
+  // We should reuse the one we created at the beginning of the build
+  esbuildSync({
+    entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
+    outfile: path.join(outputPath, "open-next.config.js"),
+    bundle: true,
+    format: "cjs",
+    target: ["node18"],
+  });
+
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
   //       `node_modules` inside `.next/standalone`, and others inside

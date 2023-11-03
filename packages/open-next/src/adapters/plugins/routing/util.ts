@@ -216,7 +216,8 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     // extract s-maxage from cache-control
     const regex = /s-maxage=(\d+)/;
     const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
-    if (!cacheControl || typeof cacheControl !== "string") return;
+    debug("cache-control", cacheControl, globalThis.lastModified, Date.now());
+    if (typeof cacheControl !== "string") return;
     const match = cacheControl.match(regex);
     const sMaxAge = match ? parseInt(match[1]) : undefined;
 
