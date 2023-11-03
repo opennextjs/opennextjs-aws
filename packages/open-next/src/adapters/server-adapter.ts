@@ -7,7 +7,6 @@ import { createMainHandler } from "../core/createMainHandler.js";
 // and during cold starts
 import { BuildId } from "./config/index.js";
 import { awsLogger } from "./logger.js";
-import { lambdaHandler } from "./plugins/lambdaHandler.js";
 import { setNodeEnv } from "./util.js";
 
 setNodeEnv();
