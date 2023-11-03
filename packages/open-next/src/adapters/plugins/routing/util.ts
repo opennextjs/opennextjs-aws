@@ -1,15 +1,13 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
-import { ServerResponse } from "http";
+import { OutgoingHttpHeaders, ServerResponse } from "http";
 
 import { BuildId, HtmlPages } from "../../config/index.js";
 import { InternalEvent } from "../../event-mapper.js";
+import { OpenNextNodeResponse } from "../../http/openNextResponse.js";
 import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
-import {
-  ResponseStream,
-  StreamingServerResponse,
-} from "../../http/responseStreaming.js";
+import { ResponseStream } from "../../http/responseStreaming.js";
 import { awsLogger, debug } from "../../logger.js";
 
 declare global {
@@ -76,7 +74,7 @@ export async function proxyRequest(
 
 export function fixCacheHeaderForHtmlPages(
   rawPath: string,
-  headers: Record<string, string | undefined>,
+  headers: OutgoingHttpHeaders,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (HtmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
@@ -85,22 +83,21 @@ export function fixCacheHeaderForHtmlPages(
   }
 }
 
-export function fixSWRCacheHeader(
-  headers: Record<string, string | string[] | undefined>,
-) {
+export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
   let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {
     cacheControl = cacheControl.join(",");
   }
+  if (typeof cacheControl !== "string") return;
   headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
     "stale-while-revalidate=2592000", // 30 days
   );
 }
 
-export function addOpenNextHeader(headers: Record<string, string | undefined>) {
+export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   headers["X-OpenNext"] = "1";
   if (globalThis.openNextDebug) {
     headers["X-OpenNext-Version"] = globalThis.openNextVersion;
@@ -110,7 +107,7 @@ export function addOpenNextHeader(headers: Record<string, string | undefined>) {
 export async function revalidateIfRequired(
   host: string,
   rawPath: string,
-  headers: Record<string, string | undefined>,
+  headers: OutgoingHttpHeaders,
   req?: IncomingMessage,
 ) {
   fixISRHeaders(headers);
@@ -204,7 +201,7 @@ function cyrb128(str: string) {
   return h1 >>> 0;
 }
 
-export function fixISRHeaders(headers: Record<string, string | undefined>) {
+export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
@@ -218,7 +215,9 @@ export function fixISRHeaders(headers: Record<string, string | undefined>) {
     const age = Math.round((Date.now() - globalThis.lastModified) / 1000);
     // extract s-maxage from cache-control
     const regex = /s-maxage=(\d+)/;
-    const match = headers[CommonHeaders.CACHE_CONTROL]?.match(regex);
+    const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
+    if (!cacheControl || typeof cacheControl !== "string") return;
+    const match = cacheControl.match(regex);
     const sMaxAge = match ? parseInt(match[1]) : undefined;
 
     // 31536000 is the default s-maxage value for SSG pages
@@ -247,29 +246,21 @@ export function createServerResponse(
   headers: Record<string, string | string[] | undefined>,
   responseStream?: ResponseStream,
 ) {
-  const { method, rawPath } = internalEvent;
-  headers["accept-encoding"] = internalEvent.headers["accept-encoding"];
-  return responseStream
-    ? new StreamingServerResponse({
-        method,
-        headers,
-        responseStream,
-        fixHeaders(headers) {
-          fixCacheHeaderForHtmlPages(rawPath, headers);
-          fixSWRCacheHeader(headers);
-          addOpenNextHeader(headers);
-          fixISRHeaders(headers);
-        },
-        async onEnd(headers) {
-          await revalidateIfRequired(
-            internalEvent.headers.host,
-            rawPath,
-            headers,
-          );
-        },
-      })
-    : new ServerlessResponse({
-        method,
-        headers,
-      });
+  return new OpenNextNodeResponse(
+    (_headers) => {
+      fixCacheHeaderForHtmlPages(internalEvent.rawPath, _headers);
+      fixSWRCacheHeader(_headers);
+      addOpenNextHeader(_headers);
+      fixISRHeaders(_headers);
+    },
+    async (_headers) => {
+      await revalidateIfRequired(
+        internalEvent.headers.host,
+        internalEvent.rawPath,
+        _headers,
+      );
+    },
+    responseStream,
+    headers,
+  );
 }

@@ -2,8 +2,8 @@ import path from "node:path";
 
 import { NEXT_DIR, NextConfig } from "../config/index.js";
 import { InternalEvent, InternalResult } from "../event-mapper.js";
+import { OpenNextNodeResponse } from "../http/openNextResponse.js";
 import { IncomingMessage } from "../http/request.js";
-import { ServerlessResponse } from "../http/response.js";
 import {
   convertRes,
   convertToQueryString,
@@ -49,10 +49,10 @@ export async function handleMiddleware(
   if (internalEvent.headers["x-isr"]) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
-  const res = new ServerlessResponse({
-    method: req.method ?? "GET",
-    headers: {},
-  });
+  const res = new OpenNextNodeResponse(
+    () => void 0,
+    () => Promise.resolve(),
+  );
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original

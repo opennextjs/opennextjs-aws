@@ -24,7 +24,6 @@ import {
 } from "./util";
 import { convertRes } from "../../routing/util";
 import { handleMiddleware } from "../../routing/middleware";
-import { ServerlessResponse } from "../../http";
 import {
   BuildId,
   ConfigHeaders,
@@ -126,9 +125,7 @@ export async function postProcessResponse({
   res,
   isExternalRewrite,
 }: PostProcessOptions): Promise<InternalResult> {
-  const { statusCode, headers, isBase64Encoded, body } = convertRes(
-    res as ServerlessResponse,
-  );
+  const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
 
   debug("ServerResponse data", { statusCode, headers, isBase64Encoded, body });
 

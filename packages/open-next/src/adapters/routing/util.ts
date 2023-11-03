@@ -2,7 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { isBinaryContentType } from "../binary";
-import { ServerlessResponse } from "../http/response";
+import { OpenNextNodeResponse } from "../http/openNextResponse";
+import { parseHeaders } from "../http/util";
 import { MiddlewareManifest } from "../types/next-types";
 
 export function isExternal(url?: string, host?: string) {
@@ -35,17 +36,17 @@ export function getUrlParts(url: string, isExternal: boolean) {
   };
 }
 
-export function convertRes(res: ServerlessResponse) {
+export function convertRes(res: OpenNextNodeResponse) {
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
-  const headers = ServerlessResponse.headers(res);
+  const headers = parseHeaders(res.headers);
   const isBase64Encoded = isBinaryContentType(
     Array.isArray(headers["content-type"])
       ? headers["content-type"][0]
       : headers["content-type"],
   );
   const encoding = isBase64Encoded ? "base64" : "utf8";
-  const body = ServerlessResponse.body(res).toString(encoding);
+  const body = res.body.toString(encoding);
   return {
     statusCode,
     headers,

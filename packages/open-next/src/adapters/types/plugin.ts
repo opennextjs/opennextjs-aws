@@ -1,11 +1,8 @@
-import type { ServerResponse } from "http";
-
 import type { InternalEvent, InternalResult } from "../event-mapper";
+import { OpenNextNodeResponse } from "../http/openNextResponse";
 import type { IncomingMessage } from "../http/request";
 
-export type ProcessInternalEventResult<
-  Response extends ServerResponse = ServerResponse,
-> =
+export type ProcessInternalEventResult<Response extends OpenNextNodeResponse> =
   | {
       internalEvent: InternalEvent;
       req: IncomingMessage;
@@ -15,14 +12,14 @@ export type ProcessInternalEventResult<
   | InternalResult;
 
 export type ProcessInternalEvent<
-  Response extends ServerResponse = ServerResponse,
+  Response extends OpenNextNodeResponse = OpenNextNodeResponse,
 > = (
   internalEvent: InternalEvent,
   createResponse: CreateResponse<Response>,
 ) => Promise<ProcessInternalEventResult<Response>>;
 
 export interface PostProcessOptions<
-  Response extends ServerResponse = ServerResponse,
+  Response extends OpenNextNodeResponse = OpenNextNodeResponse,
 > {
   internalEvent: InternalEvent;
   req: IncomingMessage;
@@ -30,7 +27,7 @@ export interface PostProcessOptions<
   isExternalRewrite?: boolean;
 }
 
-export type CreateResponse<Response extends ServerResponse = ServerResponse> = (
+export type CreateResponse<Response extends OpenNextNodeResponse> = (
   method: string,
   headers: Record<string, string | string[] | undefined>,
 ) => Response;
