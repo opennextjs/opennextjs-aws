@@ -490,7 +490,7 @@ export default class S3Cache {
       );
       return result;
     } catch (e) {
-      error("This error can usually be ignored : ", e);
+      warn("This error can usually be ignored : ", e);
       return { Body: null, LastModified: null };
     }
   }
