@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
 
-import { PublicFiles } from "../../build";
 import {
   NextConfig,
   PrerenderManifest,
@@ -27,11 +26,11 @@ export function loadHtmlPages(nextDir: string) {
     .map(([key]) => key);
 }
 
-export function loadPublicAssets(openNextDir: string) {
-  const filePath = path.join(openNextDir, "public-files.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PublicFiles;
-}
+// export function loadPublicAssets(openNextDir: string) {
+//   const filePath = path.join(openNextDir, "public-files.json");
+//   const json = fs.readFileSync(filePath, "utf-8");
+//   return JSON.parse(json) as PublicFiles;
+// }
 
 export function loadRoutesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "routes-manifest.json");

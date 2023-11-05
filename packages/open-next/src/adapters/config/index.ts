@@ -8,7 +8,6 @@ import {
   loadConfigHeaders,
   loadHtmlPages,
   loadPrerenderManifest,
-  loadPublicAssets,
   loadRoutesManifest,
 } from "./util.js";
 
@@ -20,7 +19,7 @@ debug({ NEXT_DIR, OPEN_NEXT_DIR });
 export const NextConfig = loadConfig(NEXT_DIR);
 export const BuildId = loadBuildId(NEXT_DIR);
 export const HtmlPages = loadHtmlPages(NEXT_DIR);
-export const PublicAssets = loadPublicAssets(OPEN_NEXT_DIR);
+// export const PublicAssets = loadPublicAssets(OPEN_NEXT_DIR);
 export const RoutesManifest = loadRoutesManifest(NEXT_DIR);
 export const ConfigHeaders = loadConfigHeaders(NEXT_DIR);
 export const PrerenderManifest = loadPrerenderManifest(NEXT_DIR);

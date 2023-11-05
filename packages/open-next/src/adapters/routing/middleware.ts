@@ -17,9 +17,9 @@ const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 // every release of next could break this
 const { run } = require("next/dist/server/web/sandbox");
 const { getCloneableBody } = require("next/dist/server/body-streams");
-const {
-  signalFromNodeResponse,
-} = require("next/dist/server/web/spec-extension/adapters/next-request");
+// const {
+//   signalFromNodeResponse,
+// } = require("next/dist/server/web/spec-extension/adapters/next-request");
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
@@ -89,7 +89,7 @@ export async function handleMiddleware(
       },
       url,
       body: getCloneableBody(req),
-      signal: signalFromNodeResponse(res),
+      // signal: signalFromNodeResponse(res),
     },
     useCache: true,
     onWarning: console.warn,

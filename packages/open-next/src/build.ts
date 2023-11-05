@@ -11,6 +11,7 @@ import {
 } from "esbuild";
 
 import { BuildOptions, DangerousOptions } from "./adapters/types/open-next.js";
+import { createServerBundle as createSplittedServerBundle } from "./build/createServerBundle.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 
@@ -53,7 +54,8 @@ export async function build(
   if (!options.dangerous?.disableIncrementalCache) {
     createCacheAssets(monorepoRoot, options.dangerous?.disableDynamoDBCache);
   }
-  await createServerBundle(monorepoRoot, options.streaming);
+  await createSplittedServerBundle(opts, options);
+  // await createServerBundle(monorepoRoot, options.streaming);
   createRevalidationBundle();
   createImageOptimizationBundle();
   createWarmerBundle();
@@ -87,6 +89,7 @@ function normalizeOptions(opts: BuildOptions, root: string) {
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
     streaming: opts.functions.default.streaming ?? false,
+    monorepoRoot: root,
   };
 }
 

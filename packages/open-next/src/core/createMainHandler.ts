@@ -37,7 +37,7 @@ async function resolveWrapper(
 export async function createMainHandler() {
   //First we load the config
   const config: BuildOptions = await import(
-    process.cwd() + "/open-next.config.js"
+    process.cwd() + "/open-next.config.mjs"
   ).then((m) => m.default);
 
   // From the config, we create the adapter
