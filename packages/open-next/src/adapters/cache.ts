@@ -234,7 +234,7 @@ export default class S3Cache {
           },
         } as CacheHandlerValue;
       } else {
-        error("Unknown cache type", cacheData);
+        warn("Unknown cache type", cacheData);
         return null;
       }
     } catch (e) {
