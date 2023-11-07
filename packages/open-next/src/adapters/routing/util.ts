@@ -5,9 +5,12 @@ import { isBinaryContentType } from "../binary";
 import { ServerlessResponse } from "../http/response";
 import { MiddlewareManifest } from "../types/next-types";
 
-export function isExternal(url?: string) {
+export function isExternal(url?: string, host?: string) {
   if (!url) return false;
   const pattern = /^https?:\/\//;
+  if (host) {
+    return pattern.test(url) && !url.includes(host);
+  }
   return pattern.test(url);
 }
 

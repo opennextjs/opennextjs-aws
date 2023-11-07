@@ -366,7 +366,7 @@ function createImageOptimizationBundle() {
 function createStaticAssets() {
   console.info(`Bundling static assets...`);
 
-  const { appBuildOutputPath, appPublicPath, outputDir } = options;
+  const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
@@ -377,6 +377,7 @@ function createStaticAssets() {
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
   // - public/*       => *
+  // - app/favicon.ico or src/app/favicon.ico  => favicon.ico
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
@@ -388,6 +389,16 @@ function createStaticAssets() {
   );
   if (fs.existsSync(appPublicPath)) {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
+  }
+
+  const appSrcPath = fs.existsSync(path.join(appPath, "src"))
+    ? "src/app"
+    : "app";
+
+  const faviconPath = path.join(appPath, appSrcPath, "favicon.ico");
+
+  if (fs.existsSync(faviconPath)) {
+    fs.copyFileSync(faviconPath, path.join(outputPath, "favicon.ico"));
   }
 }
 
@@ -419,6 +430,62 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
       file.endsWith(".js.nft.json") ||
       (file.endsWith(".html") && htmlPages.has(file)),
   );
+
+  //merge cache files into a single file
+  const cacheFilesPath: Record<
+    string,
+    {
+      meta?: string;
+      html?: string;
+      json?: string;
+      rsc?: string;
+      body?: string;
+    }
+  > = {};
+
+  traverseFiles(
+    outputPath,
+    () => true,
+    (filepath) => {
+      const ext = path.extname(filepath);
+      const newFilePath =
+        ext !== "" ? filepath.replace(ext, ".cache") : `${filepath}.cache`;
+      switch (ext) {
+        case ".meta":
+        case ".html":
+        case ".json":
+        case ".body":
+        case ".rsc":
+          cacheFilesPath[newFilePath] = {
+            [ext.slice(1)]: filepath,
+            ...cacheFilesPath[newFilePath],
+          };
+          break;
+        default:
+          console.warn(`Unknown file extension: ${ext}`);
+          break;
+      }
+    },
+  );
+
+  // Generate cache file
+  Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileContent = {
+      type: files.body ? "route" : files.json ? "page" : "app",
+      meta: files.meta
+        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+        : undefined,
+      html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
+      json: files.json
+        ? JSON.parse(fs.readFileSync(files.json, "utf8"))
+        : undefined,
+      rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
+      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+    };
+    fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
+  });
+
+  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
 
   if (!disableDynamoDBCache) {
     // Generate dynamodb data

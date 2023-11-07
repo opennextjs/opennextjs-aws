@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "open-next",
-  "version": "2.2.4",
+  "version": "2.3.0",
   "bin": {
     "open-next": "./dist/index.js"
   },
@@ -52,10 +52,10 @@
     "typescript": "^4.9.3"
   },
   "bugs": {
-    "url": "https://github.com/serverless-stack/open-next/issues"
+    "url": "https://github.com/sst/open-next/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/serverless-stack/open-next.git"
+    "url": "git+https://github.com/sst/open-next.git"
   }
 }

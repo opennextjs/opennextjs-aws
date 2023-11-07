@@ -19,7 +19,7 @@ next-env.d.ts
 
 .turbo
 # Tests
-tests-unit/coverage
+packages/tests-unit/coverage
 test-results
 
 .sst/

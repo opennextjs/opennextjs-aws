@@ -44,22 +44,21 @@ They can also be called on fetch requests if the `cache` option is not set to `n
 
 There is also some cost associated to deployment since you need to upload the cache to S3 and upload the tags to DynamoDB.
 
-For the examples here, let's assume an app route with a 5 minute revalidation delay in us-east-1 (App uses 3 instead of 2 `GetObject`). This is assuming you get constant traffic to the route (If you get no traffic, you will only pay for the storage cost).
+For the examples here, let's assume an app route with a 5 minute revalidation delay in us-east-1. This is assuming you get constant traffic to the route (If you get no traffic, you will only pay for the storage cost).
 
 ##### S3
-- Each `get` request to the cache will result in at least 1 `ListRequest` in S3 and between 2 and 3 `GetObject`
+- Each `get` request to the cache will result in at least 1 `GetObject`
 
 ```
-  List Request cost - 8,640 requests * $0.005 per 1,000 requests = $0.0432
-  GetObject cost - 8,640 requests * $0.0004 per 1,000 requests * 3 = $0.010368
-  Total cost - $0.053568 per route per month
+  GetObject cost - 8,640 requests * $0.0004 per 1,000 requests  = $0.003456
+  Total cost - $0.003456 per route per month
 ```
 
-- Each `set` request to the cache will result in 2 to 3 `PutObject` in S3
+- Each `set` request to the cache will result in 1 `PutObject` in S3
 
 ```
-  PutObject cost - 8,640 requests * $0.005 per 1,000 requests * 3 = $0.1296
-  Total cost - $0.1296 per route per month
+  PutObject cost - 8,640 requests * $0.005 per 1,000 requests = $0.0432
+  Total cost - $0.0432 per route per month
 ```
 
 You can then calculate the cost based on your usage and the [S3 pricing](https://aws.amazon.com/s3/pricing/)

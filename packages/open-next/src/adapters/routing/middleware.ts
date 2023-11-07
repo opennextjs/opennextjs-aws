@@ -7,13 +7,15 @@ import { ServerlessResponse } from "../http/response.js";
 import {
   convertRes,
   getMiddlewareMatch,
+  isExternal,
   loadMiddlewareManifest,
 } from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
 
+//NOTE: we should try to avoid importing stuff from next as much as possible
+// every release of next could break this
 const { run } = require("next/dist/server/web/sandbox");
-const { pipeReadable } = require("next/dist/server/pipe-readable");
 const { getCloneableBody } = require("next/dist/server/body-streams");
 const {
   signalFromNodeResponse,
@@ -23,12 +25,17 @@ const middleMatch = getMiddlewareMatch(middlewareManifest);
 
 type MiddlewareOutputEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;
+  externalRewrite?: boolean;
 };
 
 // NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
+
+interface MiddlewareResult {
+  response: Response;
+}
 
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
@@ -37,6 +44,8 @@ export async function handleMiddleware(
   const { rawPath, query } = internalEvent;
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return internalEvent;
+  // We bypass the middleware if the request is internal
+  if (internalEvent.headers["x-isr"]) return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
   const res = new ServerlessResponse({
@@ -65,7 +74,7 @@ export async function handleMiddleware(
   initialUrl.search = new URLSearchParams(urlQuery).toString();
   const url = initialUrl.toString();
 
-  const result = await run({
+  const result: MiddlewareResult = await run({
     distDir: NEXT_DIR,
     name: middlewareInfo.name || "/",
     paths: middlewareInfo.paths || [],
@@ -129,7 +138,7 @@ export async function handleMiddleware(
       statusCode: res.statusCode,
       headers: {
         ...resHeaders,
-        Location: location,
+        Location: location ?? "",
       },
       isBase64Encoded: false,
     };
@@ -139,15 +148,34 @@ export async function handleMiddleware(
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
   let rewritten = false;
+  let externalRewrite = false;
+  let middlewareQueryString = internalEvent.query;
   if (rewriteUrl) {
-    req.url = new URL(rewriteUrl).pathname;
-    rewritten = true;
+    if (isExternal(rewriteUrl, req.headers.host)) {
+      req.url = rewriteUrl;
+      rewritten = true;
+      externalRewrite = true;
+    } else {
+      const rewriteUrlObject = new URL(rewriteUrl);
+      req.url = rewriteUrlObject.pathname;
+      //reset qs
+      middlewareQueryString = {};
+      rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
+        middlewareQueryString[k] = v;
+      });
+      rewritten = true;
+    }
   }
 
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
   // the body immediately to the client.
   if (result.response.body) {
-    await pipeReadable(result.response.body, res);
+    // transfer response body to res
+    const arrayBuffer = await result.response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.end(buffer);
+
+    // await pipeReadable(result.response.body, res);
     return {
       type: internalEvent.type,
       ...convertRes(res),
@@ -164,8 +192,9 @@ export async function handleMiddleware(
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,
     method: internalEvent.method,
-    query: internalEvent.query,
+    query: middlewareQueryString,
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
+    externalRewrite,
   };
 }

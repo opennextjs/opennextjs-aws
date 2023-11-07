@@ -59,15 +59,16 @@ export const processInternalEvent: ProcessInternalEvent = async (
     internalEvent = middleware;
   }
 
-  let isExternalRewrite = false;
-  // First rewrite to be applied
-  const beforeRewrites = handleRewrites(
-    internalEvent,
-    RoutesManifest.rewrites.beforeFiles,
-  );
-  internalEvent = beforeRewrites.internalEvent;
-  isExternalRewrite = beforeRewrites.isExternalRewrite;
-
+  let isExternalRewrite = middleware.externalRewrite ?? false;
+  if (!isExternalRewrite) {
+    // First rewrite to be applied
+    const beforeRewrites = handleRewrites(
+      internalEvent,
+      RoutesManifest.rewrites.beforeFiles,
+    );
+    internalEvent = beforeRewrites.internalEvent;
+    isExternalRewrite = beforeRewrites.isExternalRewrite;
+  }
   const isStaticRoute = RoutesManifest.routes.static.some((route) =>
     new RegExp(route.regex).test(event.rawPath),
   );
