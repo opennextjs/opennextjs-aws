@@ -970,7 +970,12 @@ function getOpenNextVersion() {
 }
 
 function getNextVersion(nextPackageJsonPath: string) {
-  const version = require(nextPackageJsonPath).dependencies.next;
+  const version = require(nextPackageJsonPath)?.dependencies?.next;
+  // require('next/package.json').version
+
+  if (!version) {
+    throw new Error("Failed to find Next version");
+  }
 
   // Drop the -canary.n suffix
   return version.split("-")[0];

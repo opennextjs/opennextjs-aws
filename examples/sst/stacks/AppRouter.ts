@@ -1,4 +1,4 @@
-import { NextjsSite } from "./NextjsSite";
+import { NextjsSite } from "sst/constructs";
 
 export function AppRouter({ stack }) {
   const site = new NextjsSite(stack, "approuter", {
@@ -7,6 +7,9 @@ export function AppRouter({ stack }) {
     bind: [],
     environment: {},
     timeout: "20 seconds",
+    experimental: {
+      streaming: true,
+    },
   });
 
   stack.addOutputs({
