@@ -3,14 +3,11 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
-  "scripts": {
-  },
-  "dependencies": {
-    
-  },
+  "scripts": {},
+  "dependencies": {},
   "devDependencies": {
-    "aws-cdk-lib": "2.91.0",
+    "aws-cdk-lib": "2.101.1",
     "constructs": "10.2.69",
-    "sst": "2.24.24"
+    "sst": "2.35.1"
   }
 }
