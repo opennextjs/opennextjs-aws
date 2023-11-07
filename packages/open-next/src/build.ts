@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 
@@ -84,6 +85,7 @@ export async function build(opts: BuildOptions = {}) {
 
   // Initialize options
   options = normalizeOptions(opts, monorepoRoot);
+  logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
   checkRunningInsideNextjsApp();
@@ -139,7 +141,7 @@ function checkRunningInsideNextjsApp() {
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
   if (!extension) {
-    console.error(
+    logger.error(
       "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
     );
     process.exit(1);
@@ -157,7 +159,7 @@ function findMonorepoRoot(appPath: string) {
 
     if (found) {
       if (currentPath !== appPath) {
-        console.info("Monorepo detected at", currentPath);
+        logger.info("Monorepo detected at", currentPath);
       }
       return { root: currentPath, packager: found.packager };
     }
@@ -197,7 +199,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
 
 function printHeader(header: string) {
   header = `OpenNext — ${header}`;
-  console.info(
+  logger.info(
     [
       "",
       "┌" + "─".repeat(header.length + 2) + "┐",
@@ -226,7 +228,7 @@ function printNextjsVersion() {
 
 function printOpenNextVersion() {
   const { openNextVersion } = options;
-  console.info(`OpenNext v${openNextVersion}`);
+  logger.info(`OpenNext v${openNextVersion}`);
 }
 
 function initOutputDir() {
@@ -236,7 +238,7 @@ function initOutputDir() {
 }
 
 function createWarmerBundle() {
-  console.info(`Bundling warmer function...`);
+  logger.info(`Bundling warmer function...`);
 
   const { outputDir } = options;
 
@@ -264,7 +266,7 @@ function createWarmerBundle() {
 }
 
 async function minifyServerBundle() {
-  console.info(`Minimizing server function...`);
+  logger.info(`Minimizing server function...`);
   const { outputDir } = options;
   await minifyAll(path.join(outputDir, "server-function"), {
     compress_json: true,
@@ -273,7 +275,7 @@ async function minifyServerBundle() {
 }
 
 function createRevalidationBundle() {
-  console.info(`Bundling revalidation function...`);
+  logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, outputDir } = options;
 
@@ -296,7 +298,7 @@ function createRevalidationBundle() {
 }
 
 function createImageOptimizationBundle() {
-  console.info(`Bundling image optimization function...`);
+  logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
 
@@ -364,7 +366,7 @@ function createImageOptimizationBundle() {
 }
 
 function createStaticAssets() {
-  console.info(`Bundling static assets...`);
+  logger.info(`Bundling static assets...`);
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
@@ -403,7 +405,7 @@ function createStaticAssets() {
 }
 
 function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
-  console.info(`Bundling cache assets...`);
+  logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
@@ -464,7 +466,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
         case ".map":
           break;
         default:
-          console.warn(`Unknown file extension: ${ext}`);
+          logger.warn(`Unknown file extension: ${ext}`);
           break;
       }
     },
@@ -582,7 +584,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
 /***************************/
 
 async function createServerBundle(monorepoRoot: string, streaming = false) {
-  console.info(`Bundling server function...`);
+  logger.info(`Bundling server function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
 
@@ -670,7 +672,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   }
 
   if (plugins && plugins.length > 0) {
-    console.log(
+    logger.debug(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)
         .join(",")}] for Next version: ${options.nextVersion}`,
@@ -844,14 +846,14 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
       ...esbuildOptions.banner,
       js: [
         esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
 
   if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
+    result.errors.forEach((error) => logger.error(error));
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
@@ -874,14 +876,14 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
       ...esbuildOptions.banner,
       js: [
         esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
 
   if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
+    result.errors.forEach((error) => logger.error(error));
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
