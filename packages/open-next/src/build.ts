@@ -352,17 +352,23 @@ function createImageOptimizationBundle() {
   const sharpVersion = process.env.SHARP_VERSION ?? "0.32.5";
 
   //check if we are running in Windows environment then set env variables accordingly.
-  cp.execSync(
-    `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
-    {
-      stdio: "inherit",
-      cwd: appPath,
-      env: {
-        ...process.env,
-        SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
+  try {
+    cp.execSync(
+      `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
+      {
+        stdio: "pipe",
+        cwd: appPath,
+        env: {
+          ...process.env,
+          SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
+        },
       },
-    },
-  );
+    );
+  } catch (e: any) {
+    logger.error(e.stdout.toString());
+    logger.error(e.stderr.toString());
+    logger.error("Failed to install sharp.");
+  }
 }
 
 function createStaticAssets() {
