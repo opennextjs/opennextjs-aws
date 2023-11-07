@@ -1,5 +1,5 @@
 import { InternalEvent, InternalResult } from "../event-mapper";
-import { ResponseStream } from "../http";
+import { StreamCreator } from "../http/openNextResponse";
 
 export interface DangerousOptions {
   /**
@@ -19,7 +19,7 @@ export type LazyLoadedOverride<T> = () => Promise<T>;
 
 export type OpenNextHandler = (
   event: InternalEvent,
-  responseStream?: ResponseStream,
+  responseStream?: StreamCreator,
 ) => Promise<InternalResult | void>;
 
 export type Converter = {

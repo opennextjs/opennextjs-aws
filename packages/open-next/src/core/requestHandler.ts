@@ -1,10 +1,7 @@
 import { BuildId } from "../adapters/config";
 import { InternalEvent, InternalResult } from "../adapters/event-mapper";
-import {
-  IncomingMessage,
-  ResponseStream,
-  ServerlessResponse,
-} from "../adapters/http";
+import { IncomingMessage, ServerlessResponse } from "../adapters/http";
+import { StreamCreator } from "../adapters/http/openNextResponse";
 import { error } from "../adapters/logger";
 import {
   postProcessResponse,
@@ -15,7 +12,7 @@ import { handler as serverHandler } from "../adapters/plugins/serverHandler";
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
-  responseStreaming?: ResponseStream,
+  responseStreaming?: StreamCreator,
 ): Promise<InternalResult | void> {
   if (internalEvent.headers["x-forwarded-host"]) {
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];

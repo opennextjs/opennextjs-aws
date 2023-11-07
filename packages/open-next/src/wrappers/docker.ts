@@ -1,17 +1,17 @@
 import { createServer } from "http";
 
-import { ResponseStream } from "../adapters/http";
+import { StreamCreator } from "../adapters/http/openNextResponse";
 import { Wrapper } from "../adapters/types/open-next";
 
 const wrapper: Wrapper = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = converter.convertFrom(req);
-    const _res = res as any as ResponseStream;
-
-    _res["writeHeaders"] = (prelude, onFinish) => {
-      res.writeHead(prelude.statusCode, prelude.headers);
-      res.uncork();
-      onFinish();
+    const _res: StreamCreator = {
+      writeHeaders: (prelude) => {
+        res.writeHead(prelude.statusCode, prelude.headers);
+        res.uncork();
+        return res;
+      },
     };
 
     await handler(internalEvent, _res);

@@ -20,6 +20,8 @@ export interface ResponseStream extends Writable {
     },
     onFinish: () => void,
   ): void;
+  // Just to fix an issue with aws lambda streaming with empty body
+  onFirstWrite?: () => void;
 }
 
 export interface StreamingServerResponseProps {
