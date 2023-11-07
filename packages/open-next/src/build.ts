@@ -461,6 +461,8 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
             ...cacheFilesPath[newFilePath],
           };
           break;
+        case ".map":
+          break;
         default:
           console.warn(`Unknown file extension: ${ext}`);
           break;
