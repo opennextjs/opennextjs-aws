@@ -1,5 +1,13 @@
 # open-next
 
+## 2.3.1
+
+### Patch Changes
+
+- 95bf402: Display sharp installation log on failure
+- 1ed5ffd: Print plugin info in debug mode
+- 1d83dab: Handle .map files during bundling cache assets
+
 ## 2.3.0
 
 ### Minor Changes
