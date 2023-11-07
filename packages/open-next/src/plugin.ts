@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import logger from "./logger.js";
 
 import { Plugin } from "esbuild";
 
@@ -72,7 +73,7 @@ export default function openNextPlugin({
               const pattern = new RegExp(
                 `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`,
               );
-              console.log(
+              logger.debug(
                 `Open-next plugin ${name} -- Applying override for ${id} from ${fp}`,
               );
               contents = contents.replace(pattern, replacement);
