@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import logger from "./logger.js";
 
 import { Plugin } from "esbuild";
+
+import logger from "./logger.js";
 
 export interface IPluginSettings {
   target: RegExp;

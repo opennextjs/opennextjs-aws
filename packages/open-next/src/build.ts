@@ -10,9 +10,9 @@ import {
   buildSync,
 } from "esbuild";
 
+import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
-import logger from "./logger.js";
 
 interface DangerousOptions {
   /**
