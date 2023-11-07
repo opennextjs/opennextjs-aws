@@ -7,6 +7,9 @@ export function AppRouter({ stack }) {
     bind: [],
     environment: {},
     timeout: "20 seconds",
+    experimental: {
+      streaming: true,
+    },
   });
 
   stack.addOutputs({
