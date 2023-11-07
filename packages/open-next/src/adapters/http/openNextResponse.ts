@@ -1,24 +1,43 @@
 import { OutgoingHttpHeader, OutgoingHttpHeaders } from "http";
-import { Transform, TransformCallback } from "stream";
+import { Transform, TransformCallback, Writable } from "stream";
 
-import { ResponseStream } from "./responseStreaming";
-import { parseHeaders } from "./util";
+import { parseCookies } from "../util";
+import { convertHeader, parseHeaders } from "./util";
+
+const SET_COOKIE_HEADER = "set-cookie";
+
+export interface StreamCreator {
+  writeHeaders(prelude: {
+    statusCode: number;
+    cookies: string[];
+    headers: Record<string, string>;
+  }): Writable;
+  // Just to fix an issue with aws lambda streaming with empty body
+  onWrite?: () => void;
+}
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform {
   statusCode: number | undefined;
   statusMessage: string | undefined;
   headers: OutgoingHttpHeaders = {};
+  private _cookies: string[] = [];
+  private responseStream?: Writable;
   headersSent: boolean = false;
   _chunks: Buffer[] = [];
 
   constructor(
     private fixHeaders: (headers: OutgoingHttpHeaders) => void,
     onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
-    private responseStream?: ResponseStream,
+    private streamCreator?: StreamCreator,
     private initialHeaders?: OutgoingHttpHeaders,
   ) {
     super();
+    if (initialHeaders && initialHeaders[SET_COOKIE_HEADER]) {
+      this._cookies = parseCookies(
+        initialHeaders[SET_COOKIE_HEADER] as string | string[],
+      ) as string[];
+    }
     this.once("finish", () => {
       onEnd(this.headers);
     });
@@ -29,17 +48,33 @@ export class OpenNextNodeResponse extends Transform {
   }
 
   setHeader(name: string, value: string | string[]): this {
-    this.headers[name.toLowerCase()] = value;
+    const key = name.toLowerCase();
+    if (key === SET_COOKIE_HEADER) {
+      this._cookies.push(convertHeader(value));
+      this.headers[key] = this._cookies;
+    } else {
+      this.headers[key] = value;
+    }
+
     return this;
   }
 
   removeHeader(name: string): this {
-    delete this.headers[name.toLowerCase()];
+    const key = name.toLowerCase();
+    if (key === SET_COOKIE_HEADER) {
+      this._cookies = [];
+    } else {
+      delete this.headers[key];
+    }
     return this;
   }
 
   hasHeader(name: string): boolean {
-    return this.headers[name.toLowerCase()] !== undefined;
+    const key = name.toLowerCase();
+    if (key === SET_COOKIE_HEADER) {
+      return this._cookies.length > 0;
+    }
+    return this.headers[key] !== undefined;
   }
 
   getHeaders(): OutgoingHttpHeaders {
@@ -54,19 +89,19 @@ export class OpenNextNodeResponse extends Transform {
   flushHeaders() {
     this.headersSent = true;
     if (this.initialHeaders) {
-      this.headers = { ...this.headers, ...this.initialHeaders };
+      this.headers = {
+        ...this.headers,
+        ...this.initialHeaders,
+      };
     }
     this.fixHeaders(this.headers);
 
-    if (this.responseStream) {
-      this.responseStream?.writeHeaders(
-        {
-          statusCode: this.statusCode ?? 200,
-          cookies: [],
-          headers: parseHeaders(this.headers),
-        },
-        () => {},
-      );
+    if (this.streamCreator) {
+      this.responseStream = this.streamCreator?.writeHeaders({
+        statusCode: this.statusCode ?? 200,
+        cookies: this._cookies,
+        headers: parseHeaders(this.headers),
+      });
       this.pipe(this.responseStream);
     }
   }
@@ -88,6 +123,7 @@ export class OpenNextNodeResponse extends Transform {
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
     this._chunks.push(Buffer.from(chunk, encoding));
     this.push(chunk, encoding);
+    this.streamCreator?.onWrite?.();
   }
 
   _transform(

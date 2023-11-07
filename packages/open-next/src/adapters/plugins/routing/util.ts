@@ -4,10 +4,12 @@ import { OutgoingHttpHeaders, ServerResponse } from "http";
 
 import { BuildId, HtmlPages } from "../../config/index.js";
 import { InternalEvent } from "../../event-mapper.js";
-import { OpenNextNodeResponse } from "../../http/openNextResponse.js";
+import {
+  OpenNextNodeResponse,
+  StreamCreator,
+} from "../../http/openNextResponse.js";
 import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
-import { ResponseStream } from "../../http/responseStreaming.js";
 import { awsLogger, debug } from "../../logger.js";
 
 declare global {
@@ -245,7 +247,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
 export function createServerResponse(
   internalEvent: InternalEvent,
   headers: Record<string, string | string[] | undefined>,
-  responseStream?: ResponseStream,
+  responseStream?: StreamCreator,
 ) {
   return new OpenNextNodeResponse(
     (_headers) => {
