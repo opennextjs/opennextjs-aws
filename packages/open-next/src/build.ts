@@ -10,7 +10,6 @@ import {
   buildSync,
 } from "esbuild";
 
-import { debug } from "./adapters/logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 
@@ -669,7 +668,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   }
 
   if (plugins && plugins.length > 0) {
-    debug(
+    console.log(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)
         .join(",")}] for Next version: ${options.nextVersion}`,

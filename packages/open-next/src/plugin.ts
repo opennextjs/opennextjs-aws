@@ -3,8 +3,6 @@ import path from "node:path";
 
 import { Plugin } from "esbuild";
 
-import { debug } from "./adapters/logger";
-
 export interface IPluginSettings {
   target: RegExp;
   replacements: string[];
@@ -74,7 +72,7 @@ export default function openNextPlugin({
               const pattern = new RegExp(
                 `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`,
               );
-              debug(
+              console.log(
                 `Open-next plugin ${name} -- Applying override for ${id} from ${fp}`,
               );
               contents = contents.replace(pattern, replacement);
