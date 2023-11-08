@@ -67,6 +67,18 @@ async function resolveIncrementalCache(
   }
 }
 
+async function resolveTagCache(tagCache: OverrideOptions["tagCache"]) {
+  if (typeof tagCache === "string") {
+    const m = await import(`../cache/tag/${tagCache}.js`);
+    return m.default;
+  } else if (typeof tagCache === "function") {
+    return tagCache();
+  } else {
+    const m_1 = await import("../cache/tag/dynamoDb.js");
+    return m_1.default;
+  }
+}
+
 export async function createMainHandler() {
   //First we load the config
   const config: BuildOptions = await import(
@@ -81,6 +93,8 @@ export async function createMainHandler() {
   globalThis.incrementalCache = await resolveIncrementalCache(
     thisFunction.override?.incrementalCache,
   );
+
+  globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
 
   // From the config, we create the adapter
   const adapter = await resolveConverter(thisFunction.override?.converter);
