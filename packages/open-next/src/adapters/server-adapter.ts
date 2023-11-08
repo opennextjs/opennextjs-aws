@@ -1,11 +1,7 @@
-import { DynamoDBClient, DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
-import { S3ClientConfig } from "@aws-sdk/client-s3";
-
 import { createMainHandler } from "../core/createMainHandler.js";
 // We load every config here so that they are only loaded once
 // and during cold starts
 import { BuildId } from "./config/index.js";
-import { awsLogger } from "./logger.js";
 import { setNodeEnv } from "./util.js";
 
 // We load every config here so that they are only loaded once
@@ -13,49 +9,6 @@ import { setNodeEnv } from "./util.js";
 setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
-
-///////////////////////
-// AWS global client //
-///////////////////////
-
-const CACHE_BUCKET_REGION = process.env.CACHE_BUCKET_REGION;
-
-function parseS3ClientConfigFromEnv(): S3ClientConfig {
-  return {
-    region: CACHE_BUCKET_REGION,
-    logger: awsLogger,
-    maxAttempts: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
-  };
-}
-
-function parseDynamoClientConfigFromEnv(): DynamoDBClientConfig {
-  return {
-    region: CACHE_BUCKET_REGION,
-    logger: awsLogger,
-    maxAttempts: parseNumberFromEnv(process.env.AWS_SDK_DYNAMODB_MAX_ATTEMPTS),
-  };
-}
-
-function parseNumberFromEnv(envValue: string | undefined): number | undefined {
-  if (typeof envValue !== "string") {
-    return envValue;
-  }
-
-  const parsedValue = parseInt(envValue);
-
-  return isNaN(parsedValue) ? undefined : parsedValue;
-}
-
-// Cache clients using global variables
-// Note: The clients are used in `cache.ts`. The incremental cache is recreated on
-//       every request and required on every request (And the require cache is also
-//       cleared). It was causing some file to stay open which after enough time
-//       would cause the function to crash with error "EMFILE too many open". It
-//       was also making the memory grow out of control.
-globalThis.dynamoClient = new DynamoDBClient({
-  region: CACHE_BUCKET_REGION,
-  logger: awsLogger,
-});
 
 /////////////
 // Handler //

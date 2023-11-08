@@ -1,14 +1,6 @@
-import {
-  BatchWriteItemCommand,
-  DynamoDBClient,
-  QueryCommand,
-} from "@aws-sdk/client-dynamodb";
-import path from "path";
-
 import { IncrementalCache } from "../cache/incremental/types.js";
-import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
-import { debug, error } from "./logger.js";
-import { chunk } from "./util.js";
+import { TagCache } from "../cache/tag/types.js";
+import { debug, error, warn } from "./logger.js";
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -95,12 +87,9 @@ export function hasCacheExtension(key: string) {
   return CACHE_EXTENSION_REGEX.test(key);
 }
 
-// Expected environment variables
-const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
-
 declare global {
   var incrementalCache: IncrementalCache;
-  var dynamoClient: DynamoDBClient;
+  var tagCache: TagCache;
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
   var lastModified: number;
@@ -108,13 +97,11 @@ declare global {
 
 export default class S3Cache {
   private client: IncrementalCache;
-  private dynamoClient: DynamoDBClient;
-  private buildId: string;
+  private tagClient: TagCache;
 
   constructor(_ctx: CacheHandlerContext) {
     this.client = globalThis.incrementalCache;
-    this.dynamoClient = globalThis.dynamoClient;
-    this.buildId = NEXT_BUILD_ID!;
+    this.tagClient = globalThis.tagCache;
   }
 
   public async get(
@@ -143,7 +130,10 @@ export default class S3Cache {
     try {
       const { value, lastModified } = await this.client.get(key, true);
       // const { Body, LastModified } = await this.getS3Object(key, "fetch");
-      const _lastModified = await this.getHasRevalidatedTags(key, lastModified);
+      const _lastModified = await this.tagClient.getLastModified(
+        key,
+        lastModified,
+      );
       if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
@@ -172,7 +162,10 @@ export default class S3Cache {
       //   (await Body?.transformToString()) ?? "{}",
       // ) as S3CachedFile;
       const meta = cacheData?.meta;
-      const _lastModified = await this.getHasRevalidatedTags(key, lastModified);
+      const _lastModified = await this.tagClient.getLastModified(
+        key,
+        lastModified,
+      );
       if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
@@ -289,10 +282,10 @@ export default class S3Cache {
     debug("derivedTags", derivedTags);
     // Get all tags stored in dynamodb for the given key
     // If any of the derived tags are not stored in dynamodb for the given key, write them
-    const storedTags = await this.getTagsByPath(key);
+    const storedTags = await this.tagClient.getByPath(key);
     const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
     if (tagsToWrite.length > 0) {
-      await this.batchWriteDynamoItem(
+      await this.tagClient.writeTags(
         tagsToWrite.map((tag) => ({
           path: key,
           tag: tag,
@@ -307,137 +300,14 @@ export default class S3Cache {
     }
     debug("revalidateTag", tag);
     // Find all keys with the given tag
-    const paths = await this.getByTag(tag);
+    const paths = await this.tagClient.getByTag(tag);
     debug("Items", paths);
     // Update all keys with the given tag with revalidatedAt set to now
-    await this.batchWriteDynamoItem(
+    await this.tagClient.writeTags(
       paths?.map((path) => ({
         path: path,
         tag: tag,
       })) ?? [],
     );
-  }
-
-  // DynamoDB handling
-
-  private async getTagsByPath(path: string) {
-    try {
-      if (disableDynamoDBCache) return [];
-      const result = await this.dynamoClient.send(
-        new QueryCommand({
-          TableName: CACHE_DYNAMO_TABLE,
-          IndexName: "revalidate",
-          KeyConditionExpression: "#key = :key",
-          ExpressionAttributeNames: {
-            "#key": "path",
-          },
-          ExpressionAttributeValues: {
-            ":key": { S: this.buildDynamoKey(path) },
-          },
-        }),
-      );
-      const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
-      debug("tags for path", path, tags);
-      return tags;
-    } catch (e) {
-      error("Failed to get tags by path", e);
-      return [];
-    }
-  }
-
-  //TODO: Figure out a better name for this function since it returns the lastModified
-  private async getHasRevalidatedTags(key: string, lastModified?: number) {
-    try {
-      if (disableDynamoDBCache) return lastModified ?? Date.now();
-      const result = await this.dynamoClient.send(
-        new QueryCommand({
-          TableName: CACHE_DYNAMO_TABLE,
-          IndexName: "revalidate",
-          KeyConditionExpression:
-            "#key = :key AND #revalidatedAt > :lastModified",
-          ExpressionAttributeNames: {
-            "#key": "path",
-            "#revalidatedAt": "revalidatedAt",
-          },
-          ExpressionAttributeValues: {
-            ":key": { S: this.buildDynamoKey(key) },
-            ":lastModified": { N: String(lastModified ?? 0) },
-          },
-        }),
-      );
-      const revalidatedTags = result.Items ?? [];
-      debug("revalidatedTags", revalidatedTags);
-      // If we have revalidated tags we return -1 to force revalidation
-      return revalidatedTags.length > 0 ? -1 : lastModified ?? Date.now();
-    } catch (e) {
-      error("Failed to get revalidated tags", e);
-      return lastModified ?? Date.now();
-    }
-  }
-
-  private async getByTag(tag: string) {
-    try {
-      if (disableDynamoDBCache) return [];
-      const { Items } = await this.dynamoClient.send(
-        new QueryCommand({
-          TableName: CACHE_DYNAMO_TABLE,
-          KeyConditionExpression: "#tag = :tag",
-          ExpressionAttributeNames: {
-            "#tag": "tag",
-          },
-          ExpressionAttributeValues: {
-            ":tag": { S: this.buildDynamoKey(tag) },
-          },
-        }),
-      );
-      return (
-        // We need to remove the buildId from the path
-        Items?.map(
-          ({ path: { S: key } }) => key?.replace(`${this.buildId}/`, "") ?? "",
-        ) ?? []
-      );
-    } catch (e) {
-      error("Failed to get by tag", e);
-      return [];
-    }
-  }
-
-  private async batchWriteDynamoItem(req: { path: string; tag: string }[]) {
-    try {
-      if (disableDynamoDBCache) return;
-      await Promise.all(
-        chunk(req, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map((Items) => {
-          return this.dynamoClient.send(
-            new BatchWriteItemCommand({
-              RequestItems: {
-                [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
-                  PutRequest: {
-                    Item: {
-                      ...this.buildDynamoObject(Item.path, Item.tag),
-                    },
-                  },
-                })),
-              },
-            }),
-          );
-        }),
-      );
-    } catch (e) {
-      error("Failed to batch write dynamo item", e);
-    }
-  }
-
-  private buildDynamoKey(key: string) {
-    // FIXME: We should probably use something else than path.join here
-    // this could transform some fetch cache key into a valid path
-    return path.posix.join(this.buildId, key);
-  }
-
-  private buildDynamoObject(path: string, tags: string) {
-    return {
-      path: { S: this.buildDynamoKey(path) },
-      tag: { S: this.buildDynamoKey(tags) },
-      revalidatedAt: { N: `${Date.now()}` },
-    };
   }
 }

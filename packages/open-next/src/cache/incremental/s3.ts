@@ -3,10 +3,12 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
+  S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import path from "path";
 
 import { awsLogger } from "../../adapters/logger";
+import { parseNumberFromEnv } from "../../adapters/util";
 import { Extension } from "../next-types";
 import { IncrementalCache } from "./types";
 
@@ -17,10 +19,15 @@ const {
   CACHE_BUCKET_NAME,
 } = process.env;
 
-const s3Client = new S3Client({
-  region: CACHE_BUCKET_REGION,
-  logger: awsLogger,
-});
+function parseS3ClientConfigFromEnv(): S3ClientConfig {
+  return {
+    region: CACHE_BUCKET_REGION,
+    logger: awsLogger,
+    maxAttempts: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
+  };
+}
+
+const s3Client = new S3Client(parseS3ClientConfigFromEnv());
 
 function buildS3Key(key: string, extension: Extension) {
   return path.posix.join(
