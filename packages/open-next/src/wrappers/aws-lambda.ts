@@ -24,7 +24,7 @@ type AwsLambdaReturn =
 const handler: Wrapper =
   async (handler, converter) =>
   async (event: AwsLambdaEvent): Promise<AwsLambdaReturn> => {
-    const internalEvent = converter.convertFrom(event);
+    const internalEvent = await converter.convertFrom(event);
 
     const response = await handler(internalEvent);
 
