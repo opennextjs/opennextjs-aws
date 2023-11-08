@@ -23,7 +23,7 @@ export type OpenNextHandler = (
 ) => Promise<InternalResult | void>;
 
 export type Converter = {
-  convertFrom: (event: any) => InternalEvent;
+  convertFrom: (event: any) => Promise<InternalEvent>;
   convertTo: (result: any) => any;
 };
 

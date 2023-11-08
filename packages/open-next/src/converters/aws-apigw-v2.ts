@@ -39,9 +39,9 @@ function normalizeAPIGatewayProxyEventV2Headers(
   return headers;
 }
 
-function convertFromAPIGatewayProxyEventV2(
+async function convertFromAPIGatewayProxyEventV2(
   event: APIGatewayProxyEventV2,
-): InternalEvent {
+): Promise<InternalEvent> {
   const { rawPath, rawQueryString, requestContext } = event;
   return {
     type: "v2",

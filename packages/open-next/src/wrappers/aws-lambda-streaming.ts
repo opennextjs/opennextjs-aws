@@ -15,7 +15,7 @@ type AwsLambdaReturn = void;
 const handler: Wrapper = async (handler, converter) =>
   awslambda.streamifyResponse(
     async (event: AwsLambdaEvent, responseStream): Promise<AwsLambdaReturn> => {
-      const internalEvent = converter.convertFrom(event);
+      const internalEvent = await converter.convertFrom(event);
       let _hasWriten = false;
       let _headersSent = false;
 
