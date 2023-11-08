@@ -3,18 +3,11 @@ import {
   DynamoDBClient,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
-import {
-  DeleteObjectsCommand,
-  GetObjectCommand,
-  ListObjectsV2Command,
-  PutObjectCommand,
-  PutObjectCommandInput,
-  S3Client,
-} from "@aws-sdk/client-s3";
 import path from "path";
 
+import { IncrementalCache } from "../cache/incremental/types.js";
 import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
-import { debug, error, warn } from "./logger.js";
+import { debug, error } from "./logger.js";
 import { chunk } from "./util.js";
 
 interface CachedFetchValue {
@@ -95,36 +88,6 @@ interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-type Extension = "cache" | "fetch";
-
-interface Meta {
-  status?: number;
-  headers?: Record<string, undefined | string | string[]>;
-}
-type S3CachedFile =
-  | {
-      type: "redirect";
-      props?: Object;
-      meta?: Meta;
-    }
-  | {
-      type: "page";
-      html: string;
-      json: Object;
-      meta?: Meta;
-    }
-  | {
-      type: "app";
-      html: string;
-      rsc: string;
-      meta?: Meta;
-    }
-  | {
-      type: "route";
-      body: string;
-      meta?: Meta;
-    };
-
 /** Beginning single backslash is intentional, to look for the dot + the extension. Do not escape it again. */
 const CACHE_EXTENSION_REGEX = /\.(cache|fetch)$/;
 
@@ -133,15 +96,10 @@ export function hasCacheExtension(key: string) {
 }
 
 // Expected environment variables
-const {
-  CACHE_BUCKET_NAME,
-  CACHE_BUCKET_KEY_PREFIX,
-  CACHE_DYNAMO_TABLE,
-  NEXT_BUILD_ID,
-} = process.env;
+const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
 
 declare global {
-  var S3Client: S3Client;
+  var incrementalCache: IncrementalCache;
   var dynamoClient: DynamoDBClient;
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
@@ -149,12 +107,12 @@ declare global {
 }
 
 export default class S3Cache {
-  private client: S3Client;
+  private client: IncrementalCache;
   private dynamoClient: DynamoDBClient;
   private buildId: string;
 
   constructor(_ctx: CacheHandlerContext) {
-    this.client = globalThis.S3Client;
+    this.client = globalThis.incrementalCache;
     this.dynamoClient = globalThis.dynamoClient;
     this.buildId = NEXT_BUILD_ID!;
   }
@@ -183,21 +141,19 @@ export default class S3Cache {
   async getFetchCache(key: string) {
     debug("get fetch cache", { key });
     try {
-      const { Body, LastModified } = await this.getS3Object(key, "fetch");
-      const lastModified = await this.getHasRevalidatedTags(
-        key,
-        LastModified?.getTime(),
-      );
-      if (lastModified === -1) {
+      const { value, lastModified } = await this.client.get(key, true);
+      // const { Body, LastModified } = await this.getS3Object(key, "fetch");
+      const _lastModified = await this.getHasRevalidatedTags(key, lastModified);
+      if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
       }
 
-      if (Body === null) return null;
+      if (value === undefined) return null;
 
       return {
-        lastModified,
-        value: JSON.parse((await Body?.transformToString()) ?? "{}"),
+        lastModified: _lastModified,
+        value: value,
       } as CacheHandlerValue;
     } catch (e) {
       error("Failed to get fetch cache", e);
@@ -207,23 +163,24 @@ export default class S3Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     try {
-      const { Body, LastModified } = await this.getS3Object(key, "cache");
-      const cacheData = JSON.parse(
-        (await Body?.transformToString()) ?? "{}",
-      ) as S3CachedFile;
-      const meta = cacheData.meta;
-      const lastModified = await this.getHasRevalidatedTags(
+      const { value: cacheData, lastModified } = await this.client.get(
         key,
-        LastModified?.getTime(),
+        false,
       );
-      if (lastModified === -1) {
+      // const { Body, LastModified } = await this.getS3Object(key, "cache");
+      // const cacheData = JSON.parse(
+      //   (await Body?.transformToString()) ?? "{}",
+      // ) as S3CachedFile;
+      const meta = cacheData?.meta;
+      const _lastModified = await this.getHasRevalidatedTags(key, lastModified);
+      if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
       }
-      globalThis.lastModified = lastModified;
-      if (cacheData.type === "route") {
+      globalThis.lastModified = _lastModified;
+      if (cacheData?.type === "route") {
         return {
-          lastModified: LastModified?.getTime(),
+          lastModified: _lastModified,
           value: {
             kind: "ROUTE",
             body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
@@ -231,9 +188,9 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData.type === "page" || cacheData.type === "app") {
+      } else if (cacheData?.type === "page" || cacheData?.type === "app") {
         return {
-          lastModified: LastModified?.getTime(),
+          lastModified: _lastModified,
           value: {
             kind: "PAGE",
             html: cacheData.html,
@@ -243,9 +200,9 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData.type === "redirect") {
+      } else if (cacheData?.type === "redirect") {
         return {
-          lastModified: LastModified?.getTime(),
+          lastModified: _lastModified,
           value: {
             kind: "REDIRECT",
             props: cacheData.props,
@@ -271,46 +228,55 @@ export default class S3Cache {
     }
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
-      this.putS3Object(
+      await this.client.set(
         key,
-        "cache",
-        JSON.stringify({
+        {
           type: "route",
           body: body.toString("utf8"),
           meta: {
             status,
             headers,
           },
-        } as S3CachedFile),
+        },
+        false,
       );
     } else if (data?.kind === "PAGE") {
       const { html, pageData } = data;
       const isAppPath = typeof pageData === "string";
-      this.putS3Object(
-        key,
-        "cache",
-        JSON.stringify({
-          type: isAppPath ? "app" : "page",
-          html,
-          rsc: isAppPath ? pageData : undefined,
-          json: isAppPath ? undefined : pageData,
-          meta: { status: data.status, headers: data.headers },
-        } as S3CachedFile),
-      );
+      if (isAppPath) {
+        this.client.set(
+          key,
+          {
+            type: "app",
+            html,
+            rsc: pageData,
+          },
+          false,
+        );
+      } else {
+        this.client.set(
+          key,
+          {
+            type: "page",
+            html,
+            json: pageData,
+          },
+          false,
+        );
+      }
     } else if (data?.kind === "FETCH") {
-      await this.putS3Object(key, "fetch", JSON.stringify(data));
+      await this.client.set<true>(key, data, true);
     } else if (data?.kind === "REDIRECT") {
-      // // delete potential page data if we're redirecting
-      await this.putS3Object(
+      await this.client.set(
         key,
-        "cache",
-        JSON.stringify({
+        {
           type: "redirect",
           props: data.props,
-        } as S3CachedFile),
+        },
+        false,
       );
     } else if (data === null || data === undefined) {
-      await this.deleteS3Objects(key);
+      await this.client.delete(key);
     }
     // Write derivedTags to dynamodb
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
@@ -473,87 +439,5 @@ export default class S3Cache {
       tag: { S: this.buildDynamoKey(tags) },
       revalidatedAt: { N: `${Date.now()}` },
     };
-  }
-
-  // S3 handling
-
-  private buildS3Key(key: string, extension: Extension) {
-    return path.posix.join(
-      CACHE_BUCKET_KEY_PREFIX ?? "",
-      extension === "fetch" ? "__fetch" : "",
-      this.buildId,
-      extension === "fetch" ? key : `${key}.${extension}`,
-    );
-  }
-
-  private buildS3KeyPrefix(key: string) {
-    return path.posix.join(CACHE_BUCKET_KEY_PREFIX ?? "", this.buildId, key);
-  }
-
-  private async listS3Object(key: string) {
-    const { Contents } = await this.client.send(
-      new ListObjectsV2Command({
-        Bucket: CACHE_BUCKET_NAME,
-        // add a point to the key so that it only matches the key and
-        // not other keys starting with the same string
-        Prefix: `${this.buildS3KeyPrefix(key)}.`,
-      }),
-    );
-    return (Contents ?? []).map(({ Key }) => Key) as string[];
-  }
-
-  private async getS3Object(key: string, extension: Extension) {
-    try {
-      const result = await this.client.send(
-        new GetObjectCommand({
-          Bucket: CACHE_BUCKET_NAME,
-          Key: this.buildS3Key(key, extension),
-        }),
-      );
-      return result;
-    } catch (e) {
-      warn("This error can usually be ignored : ", e);
-      return { Body: null, LastModified: null };
-    }
-  }
-
-  private putS3Object(
-    key: string,
-    extension: Extension,
-    value: PutObjectCommandInput["Body"],
-  ) {
-    return this.client.send(
-      new PutObjectCommand({
-        Bucket: CACHE_BUCKET_NAME,
-        Key: this.buildS3Key(key, extension),
-        Body: value,
-      }),
-    );
-  }
-
-  private async deleteS3Objects(key: string) {
-    try {
-      const s3Keys = (await this.listS3Object(key)).filter(
-        (key) => key && hasCacheExtension(key),
-      );
-
-      if (s3Keys.length === 0) {
-        warn(
-          `No s3 keys with a valid cache extension found for ${key}, see type CacheExtension in OpenNext for details`,
-        );
-        return;
-      }
-
-      await this.client.send(
-        new DeleteObjectsCommand({
-          Bucket: CACHE_BUCKET_NAME,
-          Delete: {
-            Objects: s3Keys.map((Key) => ({ Key })),
-          },
-        }),
-      );
-    } catch (e) {
-      error("Failed to delete cache", e);
-    }
   }
 }

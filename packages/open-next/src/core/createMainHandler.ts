@@ -4,7 +4,14 @@ import {
   OverrideOptions,
   Wrapper,
 } from "../adapters/types/open-next";
+import type { IncrementalCache } from "../cache/incremental/types";
+import type { Queue } from "../queue/types";
 import { openNextHandler } from "./requestHandler";
+
+declare global {
+  var queue: Queue;
+  var incrementalCache: IncrementalCache;
+}
 
 async function resolveConverter(
   converter: OverrideOptions["converter"],
@@ -46,26 +53,40 @@ async function resolveQueue(queue: OverrideOptions["queue"]) {
   }
 }
 
+async function resolveIncrementalCache(
+  incrementalCache: OverrideOptions["incrementalCache"],
+) {
+  if (typeof incrementalCache === "string") {
+    const m = await import(`../cache/incremental/${incrementalCache}.js`);
+    return m.default;
+  } else if (typeof incrementalCache === "function") {
+    return incrementalCache();
+  } else {
+    const m_1 = await import("../cache/incremental/s3.js");
+    return m_1.default;
+  }
+}
+
 export async function createMainHandler() {
   //First we load the config
   const config: BuildOptions = await import(
     process.cwd() + "/open-next.config.js"
   ).then((m) => m.default);
 
+  const thisFunction = config.functions.default;
+
   // Default queue
-  globalThis.queue = await resolveQueue(
-    config.functions.default.override?.queue,
+  globalThis.queue = await resolveQueue(thisFunction.override?.queue);
+
+  globalThis.incrementalCache = await resolveIncrementalCache(
+    thisFunction.override?.incrementalCache,
   );
 
   // From the config, we create the adapter
-  const adapter = await resolveConverter(
-    config.functions.default.override?.converter,
-  );
+  const adapter = await resolveConverter(thisFunction.override?.converter);
 
   // Then we create the handler
-  const wrapper = await resolveWrapper(
-    config.functions.default.override?.wrapper,
-  );
+  const wrapper = await resolveWrapper(thisFunction.override?.wrapper);
 
   return wrapper(openNextHandler, adapter);
 }

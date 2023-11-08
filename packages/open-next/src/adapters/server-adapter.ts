@@ -1,8 +1,7 @@
 import { DynamoDBClient, DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
-import { S3Client, S3ClientConfig } from "@aws-sdk/client-s3";
+import { S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { createMainHandler } from "../core/createMainHandler.js";
-import { Queue } from "../queue/types.js";
 // We load every config here so that they are only loaded once
 // and during cold starts
 import { BuildId } from "./config/index.js";
@@ -15,15 +14,9 @@ setNodeEnv();
 setBuildIdEnv();
 setNextjsServerWorkingDirectory();
 
-////////////////////////
-// AWS global clients //
-////////////////////////
-
-declare global {
-  var S3Client: S3Client;
-  var dynamoClient: DynamoDBClient;
-  var queue: Queue;
-}
+///////////////////////
+// AWS global client //
+///////////////////////
 
 const CACHE_BUCKET_REGION = process.env.CACHE_BUCKET_REGION;
 
@@ -59,8 +52,10 @@ function parseNumberFromEnv(envValue: string | undefined): number | undefined {
 //       cleared). It was causing some file to stay open which after enough time
 //       would cause the function to crash with error "EMFILE too many open". It
 //       was also making the memory grow out of control.
-globalThis.S3Client = new S3Client(parseS3ClientConfigFromEnv());
-globalThis.dynamoClient = new DynamoDBClient(parseDynamoClientConfigFromEnv());
+globalThis.dynamoClient = new DynamoDBClient({
+  region: CACHE_BUCKET_REGION,
+  logger: awsLogger,
+});
 
 /////////////
 // Handler //
