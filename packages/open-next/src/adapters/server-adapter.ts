@@ -2,6 +2,7 @@ import { DynamoDBClient, DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
 import { S3Client, S3ClientConfig } from "@aws-sdk/client-s3";
 
 import { createMainHandler } from "../core/createMainHandler.js";
+import { Queue } from "../queue/types.js";
 // We load every config here so that they are only loaded once
 // and during cold starts
 import { BuildId } from "./config/index.js";
@@ -21,6 +22,7 @@ setNextjsServerWorkingDirectory();
 declare global {
   var S3Client: S3Client;
   var dynamoClient: DynamoDBClient;
+  var queue: Queue;
 }
 
 const CACHE_BUCKET_REGION = process.env.CACHE_BUCKET_REGION;

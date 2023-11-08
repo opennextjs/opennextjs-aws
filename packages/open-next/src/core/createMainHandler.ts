@@ -34,11 +34,28 @@ async function resolveWrapper(
   }
 }
 
+async function resolveQueue(queue: OverrideOptions["queue"]) {
+  if (typeof queue === "string") {
+    const m = await import(`../queue/${queue}.js`);
+    return m.default;
+  } else if (typeof queue === "function") {
+    return queue();
+  } else {
+    const m_1 = await import("../queue/sqs.js");
+    return m_1.default;
+  }
+}
+
 export async function createMainHandler() {
   //First we load the config
   const config: BuildOptions = await import(
     process.cwd() + "/open-next.config.js"
   ).then((m) => m.default);
+
+  // Default queue
+  globalThis.queue = await resolveQueue(
+    config.functions.default.override?.queue,
+  );
 
   // From the config, we create the adapter
   const adapter = await resolveConverter(

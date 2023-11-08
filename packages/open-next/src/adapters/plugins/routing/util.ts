@@ -1,4 +1,3 @@
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import crypto from "crypto";
 import { OutgoingHttpHeaders, ServerResponse } from "http";
 
@@ -10,7 +9,7 @@ import {
 } from "../../http/openNextResponse.js";
 import { IncomingMessage } from "../../http/request.js";
 import { ServerlessResponse } from "../../http/response.js";
-import { awsLogger, debug } from "../../logger.js";
+import { debug } from "../../logger.js";
 
 declare global {
   var openNextDebug: boolean;
@@ -22,14 +21,6 @@ enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
   NEXT_CACHE = "x-nextjs-cache",
 }
-
-// Expected environment variables
-const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;
-
-const sqsClient = new SQSClient({
-  region: REVALIDATION_QUEUE_REGION,
-  logger: awsLogger,
-});
 
 export async function proxyRequest(
   req: IncomingMessage,
@@ -143,14 +134,20 @@ export async function revalidateIfRequired(
       const lastModified =
         globalThis.lastModified > 0 ? globalThis.lastModified : "";
 
-      await sqsClient.send(
-        new SendMessageCommand({
-          QueueUrl: REVALIDATION_QUEUE_URL,
-          MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
-          MessageBody: JSON.stringify({ host, url: revalidateUrl }),
-          MessageGroupId: generateMessageGroupId(rawPath),
-        }),
-      );
+      // await sqsClient.send(
+      //   new SendMessageCommand({
+      //     QueueUrl: REVALIDATION_QUEUE_URL,
+      //     MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
+      //     MessageBody: JSON.stringify({ host, url: revalidateUrl }),
+      //     MessageGroupId: generateMessageGroupId(rawPath),
+      //   }),
+      // );
+
+      await globalThis.queue.send({
+        MessageBody: { host, url: revalidateUrl },
+        MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
+        MessageGroupId: generateMessageGroupId(rawPath),
+      });
     } catch (e) {
       debug(`Failed to revalidate stale page ${rawPath}`);
       debug(e);

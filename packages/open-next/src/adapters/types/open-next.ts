@@ -1,3 +1,4 @@
+import { Queue } from "../../queue/types";
 import { InternalEvent, InternalResult } from "../event-mapper";
 import { StreamCreator } from "../http/openNextResponse";
 
@@ -43,10 +44,6 @@ export type TagCache = {
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: { tag: string; path: string }): Promise<void>;
-};
-
-export type Queue = {
-  send(message: any): Promise<void>;
 };
 
 export interface OverrideOptions {
