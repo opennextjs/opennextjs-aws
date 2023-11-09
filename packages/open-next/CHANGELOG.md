@@ -1,5 +1,11 @@
 # open-next
 
+## 2.3.2
+
+### Patch Changes
+
+- 4be2ac8: Reduce AWS S3 warning logs; add maxAttempts config to AWS SDK call
+
 ## 2.3.1
 
 ### Patch Changes
