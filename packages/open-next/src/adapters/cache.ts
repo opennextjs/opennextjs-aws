@@ -234,7 +234,7 @@ export default class S3Cache {
           },
         } as CacheHandlerValue;
       } else {
-        error("Unknown cache type", cacheData);
+        warn("Unknown cache type", cacheData);
         return null;
       }
     } catch (e) {
@@ -490,7 +490,7 @@ export default class S3Cache {
       );
       return result;
     } catch (e) {
-      error("This error can usually be ignored : ", e);
+      warn("This error can usually be ignored : ", e);
       return { Body: null, LastModified: null };
     }
   }
