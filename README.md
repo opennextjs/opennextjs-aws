@@ -54,6 +54,8 @@ Vercel link: https://open-next.vercel.app
 
 ### Environment variables
 
+- AWS_SDK_DYNAMODB_MAX_ATTEMPTS: The maximum number of times requests that encounter retryable failures should be attempted for DynamoDB. Defaults to 3.
+- AWS_SDK_S3_MAX_ATTEMPTS: The maximum number of times requests that encounter retryable failures should be attempted for S3. Defaults to 3.
 - DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY: The number of concurrent batch write commands to DynamoDB. Defaults to 4 in an effort to leave plenty of DynamoDB write request capacity for the production load.
 
 ## Contribute
