@@ -626,22 +626,22 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   let plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
-        openNextPlugin({
-          name: "opennext-13.4.13-serverHandler",
-          target: /plugins\/serverHandler\.js/g,
-          replacements: ["./serverHandler.replacement.js"],
-        }),
-        openNextPlugin({
-          name: "opennext-13.4.13-util",
-          target: /plugins\/util\.js/g,
-          replacements: ["./util.replacement.js"],
-        }),
-        openNextPlugin({
-          name: "opennext-13.4.13-default",
-          target: /plugins\/routing\/default\.js/g,
-          replacements: ["./default.replacement.js"],
-        }),
-      ]
+          openNextPlugin({
+            name: "opennext-13.4.13-serverHandler",
+            target: /plugins\/serverHandler\.js/g,
+            replacements: ["./serverHandler.replacement.js"],
+          }),
+          openNextPlugin({
+            name: "opennext-13.4.13-util",
+            target: /plugins\/util\.js/g,
+            replacements: ["./util.replacement.js"],
+          }),
+          openNextPlugin({
+            name: "opennext-13.4.13-default",
+            target: /plugins\/routing\/default\.js/g,
+            replacements: ["./default.replacement.js"],
+          }),
+        ]
       : undefined;
 
   if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
@@ -851,9 +851,11 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
     format: "cjs",
     banner: {
       js: [
-        `globalThis.disableIncrementalCache = ${options?.disableIncrementalCache ?? false
+        `globalThis.disableIncrementalCache = ${
+          options?.disableIncrementalCache ?? false
         };`,
-        `globalThis.disableDynamoDBCache = ${options?.disableDynamoDBCache ?? false
+        `globalThis.disableDynamoDBCache = ${
+          options?.disableDynamoDBCache ?? false
         };`,
       ].join(""),
     },
@@ -887,7 +889,8 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -916,7 +919,8 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${
+        (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
