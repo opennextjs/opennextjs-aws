@@ -4,6 +4,7 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
+import { exec } from "child_process";
 import {
   build as buildAsync,
   BuildOptions as ESBuildOptions,
@@ -709,7 +710,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   addCacheHandler(outputPath, options.dangerous);
 
   removeNodeModule(path.join(outputPath, "node_modules"), [
-    "@esbuild",
+    "@esbuild*",
     "@prisma/engines/download",
     "@prisma/internals/dist/libquery_engine*",
     "@prisma/internals/dist/get-generators/libquery_engine*",
@@ -1026,11 +1027,23 @@ function compareSemver(v1: string, v2: string): number {
 }
 
 function removeNodeModule(nodeModulesPath: string, modules: string[]) {
-  console.log("removing: ", modules);
+  console.log("Removing: ", modules);
+  const isWindows = process.platform === "win32";
+
   for (const module of modules) {
-    fs.rmSync(path.join(nodeModulesPath, module), {
-      force: true,
-      recursive: true,
-    });
+    const modulePath = path.join(nodeModulesPath, module);
+    const pnpmModulePath = path.join(nodeModulesPath, ".pnpm", module);
+
+    if (isWindows) {
+      exec(
+        `PowerShell -Command "Remove-Item -Path '${modulePath}' -Recurse -Force"`,
+      );
+      exec(
+        `PowerShell -Command "Remove-Item -Path '${pnpmModulePath}' -Recurse -Force"`,
+      );
+    } else {
+      exec(`rm -rf ${modulePath}`);
+      exec(`rm -rf ${pnpmModulePath}`);
+    }
   }
 }
