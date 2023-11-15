@@ -711,28 +711,28 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
 
   removeNodeModule(path.join(outputPath, "node_modules"), [
     "@esbuild*",
-    "@prisma/engines/download",
+    "@prisma/engines/download*",
     "@prisma/internals/dist/libquery_engine*",
     "@prisma/internals/dist/get-generators/libquery_engine*",
-    "@prisma/internals/dist/get-generators/engines",
-    "@swc/core-darwin-arm64",
-    "@swc/core",
-    "@types",
-    "@webassemblyjs",
+    "@prisma/internals/dist/get-generators/engines*",
+    "@swc/core-darwin-arm64*",
+    "@swc/core*",
+    "@types*",
+    "@webassemblyjs*",
 
-    "better-sqlite3",
-    "caniuse-lite",
-    "esbuild",
-    ".prisma",
-    "prisma/libquery_engine-darwin-arm64.dylib.node",
-    "prisma/build/public",
-    "prisma/prisma-client/src/__tests__",
-    "prisma/prisma-client/generator-build",
-    "rollup",
-    "sass",
+    "better-sqlite3*",
+    "caniuse-lite*",
+    "esbuild*",
+    ".prisma*",
+    "prisma/libquery_engine-darwin-arm64.dylib.node*",
+    "prisma/build/public*",
+    "prisma/prisma-client/src/__tests__*",
+    "prisma/prisma-client/generator-build*",
+    "rollup*",
+    "sass*",
 
-    "uglify-js",
-    "webpack",
+    "uglify-js*",
+    "webpack*",
     // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
     // "react-dom",
   ]);
@@ -1032,8 +1032,7 @@ function removeNodeModule(nodeModulesPath: string, modules: string[]) {
 
   for (const module of modules) {
     const modulePath = path.join(nodeModulesPath, module);
-    // modules in .pnpm have the version suffix, eg: .pnpm/something@1.1.1
-    const pnpmModulePath = path.join(nodeModulesPath, ".pnpm", `${module}@*`);
+    const pnpmModulePath = path.join(nodeModulesPath, ".pnpm", module);
 
     if (isWindows) {
       exec(
