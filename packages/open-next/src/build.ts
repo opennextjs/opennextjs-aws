@@ -626,22 +626,22 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   let plugins =
     compareSemver(options.nextVersion, "13.4.13") >= 0
       ? [
-          openNextPlugin({
-            name: "opennext-13.4.13-serverHandler",
-            target: /plugins\/serverHandler\.js/g,
-            replacements: ["./serverHandler.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-util",
-            target: /plugins\/util\.js/g,
-            replacements: ["./util.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-default",
-            target: /plugins\/routing\/default\.js/g,
-            replacements: ["./default.replacement.js"],
-          }),
-        ]
+        openNextPlugin({
+          name: "opennext-13.4.13-serverHandler",
+          target: /plugins\/serverHandler\.js/g,
+          replacements: ["./serverHandler.replacement.js"],
+        }),
+        openNextPlugin({
+          name: "opennext-13.4.13-util",
+          target: /plugins\/util\.js/g,
+          replacements: ["./util.replacement.js"],
+        }),
+        openNextPlugin({
+          name: "opennext-13.4.13-default",
+          target: /plugins\/routing\/default\.js/g,
+          replacements: ["./default.replacement.js"],
+        }),
+      ]
       : undefined;
 
   if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
@@ -708,34 +708,32 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   removeCachedPages(outputPath, packagePath);
   addCacheHandler(outputPath, options.dangerous);
 
-  if (options.minify) {
-    removeNodeModule(path.join(outputPath, "node_modules"), [
-      "@esbuild",
-      "@prisma/engines/download",
-      "@prisma/internals/dist/libquery_engine*",
-      "@prisma/internals/dist/get-generators/libquery_engine*",
-      "@prisma/internals/dist/get-generators/engines",
-      "@swc/core-darwin-arm64",
-      "@swc/core",
-      "@types",
-      "@webassemblyjs",
+  removeNodeModule(path.join(outputPath, "node_modules"), [
+    "@esbuild",
+    "@prisma/engines/download",
+    "@prisma/internals/dist/libquery_engine*",
+    "@prisma/internals/dist/get-generators/libquery_engine*",
+    "@prisma/internals/dist/get-generators/engines",
+    "@swc/core-darwin-arm64",
+    "@swc/core",
+    "@types",
+    "@webassemblyjs",
 
-      "better-sqlite3",
-      "caniuse-lite",
-      "esbuild",
-      ".prisma",
-      "prisma/libquery_engine-darwin-arm64.dylib.node",
-      "prisma/build/public",
-      "prisma/prisma-client/src/__tests__",
-      "prisma/prisma-client/generator-build",
-      "sass",
+    "better-sqlite3",
+    "caniuse-lite",
+    "esbuild",
+    ".prisma",
+    "prisma/libquery_engine-darwin-arm64.dylib.node",
+    "prisma/build/public",
+    "prisma/prisma-client/src/__tests__",
+    "prisma/prisma-client/generator-build",
+    "sass",
 
-      "uglify-js",
-      "webpack",
-      // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
-      // "react-dom",
-    ]);
-  }
+    "uglify-js",
+    "webpack",
+    // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
+    // "react-dom",
+  ]);
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -852,11 +850,9 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
     format: "cjs",
     banner: {
       js: [
-        `globalThis.disableIncrementalCache = ${
-          options?.disableIncrementalCache ?? false
+        `globalThis.disableIncrementalCache = ${options?.disableIncrementalCache ?? false
         };`,
-        `globalThis.disableDynamoDBCache = ${
-          options?.disableDynamoDBCache ?? false
+        `globalThis.disableDynamoDBCache = ${options?.disableDynamoDBCache ?? false
         };`,
       ].join(""),
     },
@@ -890,8 +886,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
@@ -920,8 +915,7 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
   if (result.errors.length > 0) {
     result.errors.forEach((error) => logger.error(error));
     throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
+      `There was a problem bundling ${(esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
   }
