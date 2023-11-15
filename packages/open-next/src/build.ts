@@ -1032,7 +1032,8 @@ function removeNodeModule(nodeModulesPath: string, modules: string[]) {
 
   for (const module of modules) {
     const modulePath = path.join(nodeModulesPath, module);
-    const pnpmModulePath = path.join(nodeModulesPath, ".pnpm", module);
+    // modules in .pnpm have the version suffix, eg: .pnpm/something@1.1.1
+    const pnpmModulePath = path.join(nodeModulesPath, ".pnpm", `${module}@*`);
 
     if (isWindows) {
       exec(
