@@ -711,19 +711,29 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   if (options.minify) {
     removeNodeModule(path.join(outputPath, "node_modules"), [
       "@esbuild",
-      "prisma/libquery_engine-darwin-arm64.dylib.node",
+      "@prisma/engines/download",
+      "@prisma/internals/dist/libquery_engine*",
+      "@prisma/internals/dist/get-generators/libquery_engine*",
+      "@prisma/internals/dist/get-generators/engines",
       "@swc/core-darwin-arm64",
       "@swc/core",
+      "@types",
+      "@webassemblyjs",
+
       "better-sqlite3",
+      "caniuse-lite",
       "esbuild",
-      "webpack",
+      ".prisma",
+      "prisma/libquery_engine-darwin-arm64.dylib.node",
+      "prisma/build/public",
+      "prisma/prisma-client/src/__tests__",
+      "prisma/prisma-client/generator-build",
+      "sass",
+
       "uglify-js",
+      "webpack",
       // "react", // TODO: remove react/react-dom when nextjs updates its precompile versions
       // "react-dom",
-      "@webassemblyjs",
-      "uglify-js",
-      "sass",
-      "caniuse-lite",
     ]);
   }
 }
