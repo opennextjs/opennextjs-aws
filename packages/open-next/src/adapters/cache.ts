@@ -151,12 +151,22 @@ export default class S3Cache {
     this.buildId = NEXT_BUILD_ID!;
   }
 
-  public async get(key: string, options?: boolean | { fetchCache?: boolean }) {
+  public async get(
+    key: string,
+    // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
+    options?:
+      | boolean
+      | { fetchCache?: boolean; kindHint?: "app" | "pages" | "fetch" },
+  ) {
     if (globalThis.disableIncrementalCache) {
       return null;
     }
     const isFetchCache =
-      typeof options === "object" ? options.fetchCache : options;
+      typeof options === "object"
+        ? options.kindHint
+          ? options.kindHint === "fetch"
+          : options.fetchCache
+        : options;
     return isFetchCache
       ? this.getFetchCache(key)
       : this.getIncrementalCache(key);
