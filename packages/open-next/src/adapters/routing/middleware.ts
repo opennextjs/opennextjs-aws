@@ -2,10 +2,16 @@ import path from "node:path";
 
 import { NEXT_DIR, NextConfig } from "../config/index.js";
 import { InternalEvent, InternalResult } from "../event-mapper.js";
-import { OpenNextNodeResponse } from "../http/openNextResponse.js";
-import { IncomingMessage } from "../http/request.js";
+//NOTE: we should try to avoid importing stuff from next as much as possible
+// every release of next could break this
+// const { run } = require("next/dist/server/web/sandbox");
+// const { getCloneableBody } = require("next/dist/server/body-streams");
+// const {
+//   signalFromNodeResponse,
+// } = require("next/dist/server/web/spec-extension/adapters/next-request");
+// @ts-expect-error - This is bundled
+import middleware from "./middleware.mjs";
 import {
-  convertRes,
   convertToQueryString,
   getMiddlewareMatch,
   isExternal,
@@ -13,14 +19,6 @@ import {
 } from "./util.js";
 
 const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
-
-//NOTE: we should try to avoid importing stuff from next as much as possible
-// every release of next could break this
-const { run } = require("next/dist/server/web/sandbox");
-const { getCloneableBody } = require("next/dist/server/body-streams");
-const {
-  signalFromNodeResponse,
-} = require("next/dist/server/web/spec-extension/adapters/next-request");
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
@@ -48,11 +46,11 @@ export async function handleMiddleware(
   // We bypass the middleware if the request is internal
   if (internalEvent.headers["x-isr"]) return internalEvent;
 
-  const req = new IncomingMessage(internalEvent);
-  const res = new OpenNextNodeResponse(
-    () => void 0,
-    () => Promise.resolve(),
-  );
+  // const req = new IncomingMessage(internalEvent);
+  // const res = new OpenNextNodeResponse(
+  //   () => void 0,
+  //   () => Promise.resolve(),
+  // );
 
   // NOTE: Next middleware was originally developed to support nested middlewares
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
@@ -62,34 +60,65 @@ export async function handleMiddleware(
     path.join(NEXT_DIR, file),
   );
 
-  const host = req.headers.host
-    ? `https://${req.headers.host}`
+  const host = internalEvent.headers.host
+    ? `https://${internalEvent.headers.host}`
     : "http://localhost:3000";
   const initialUrl = new URL(rawPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
 
-  const result: MiddlewareResult = await run({
-    distDir: NEXT_DIR,
-    name: middlewareInfo.name || "/",
-    paths: middlewareInfo.paths || [],
-    edgeFunctionEntry: middlewareInfo,
-    request: {
-      headers: req.headers,
-      method: req.method || "GET",
+  // const result: MiddlewareResult = await run({
+  //   distDir: NEXT_DIR,
+  //   name: middlewareInfo.name || "/",
+  //   paths: middlewareInfo.paths || [],
+  //   edgeFunctionEntry: middlewareInfo,
+  //   request: {
+  //     headers: req.headers,
+  //     method: req.method || "GET",
+  //     nextConfig: {
+  //       basePath: NextConfig.basePath,
+  //       i18n: NextConfig.i18n,
+  //       trailingSlash: NextConfig.trailingSlash,
+  //     },
+  //     url,
+  //     body: getCloneableBody(req),
+  //     signal: signalFromNodeResponse(res),
+  //   },
+  //   useCache: true,
+  //   onWarning: console.warn,
+  // });
+
+  const convertBodyToReadableStream = (body: string | Buffer) => {
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(body);
+        controller.close();
+      },
+    });
+    return readable;
+  };
+
+  const result: Response = await middleware(
+    [
+      {
+        name: middlewareInfo.name || "/",
+        page: middlewareInfo.page,
+        regex: middlewareInfo.matchers[0].regexp,
+      },
+    ],
+    {
+      headers: internalEvent.headers,
+      method: internalEvent.method || "GET",
       nextConfig: {
         basePath: NextConfig.basePath,
         i18n: NextConfig.i18n,
         trailingSlash: NextConfig.trailingSlash,
       },
       url,
-      body: getCloneableBody(req),
-      signal: signalFromNodeResponse(res),
+      body: convertBodyToReadableStream(internalEvent.body),
     },
-    useCache: true,
-    onWarning: console.warn,
-  });
-  res.statusCode = result.response.status;
+  );
+  const statusCode = result.status;
 
   /* Apply override headers from middleware
     NextResponse.next({
@@ -103,7 +132,7 @@ export async function handleMiddleware(
     We can delete `x-middleware-override-headers` and check if the key starts with
     x-middleware-request- to set the req headers
   */
-  const responseHeaders = result.response.headers as Headers;
+  const responseHeaders = result.headers as Headers;
   const reqHeaders: Record<string, string> = {};
   const resHeaders: Record<string, string> = {};
 
@@ -113,24 +142,27 @@ export async function handleMiddleware(
     if (key.startsWith(xMiddlewareKey)) {
       const k = key.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
-      req.headers[k] = value;
+      // req.headers[k] = value;
     } else {
       resHeaders[key] = value;
-      res.setHeader(key, value);
+      // res.setHeader(key, value);
     }
   });
 
   // If the middleware returned a Redirect, we set the `Location` header with
   // the redirected url and end the response.
-  if (res.statusCode >= 300 && res.statusCode < 400) {
-    const location = result.response.headers
+  if (statusCode >= 300 && statusCode < 400) {
+    const location = result.headers
       .get("location")
-      ?.replace("http://localhost:3000", `https://${req.headers.host}`);
+      ?.replace(
+        "http://localhost:3000",
+        `https://${internalEvent.headers.host}`,
+      );
     // res.setHeader("Location", location);
     return {
       body: "",
       type: internalEvent.type,
-      statusCode: res.statusCode,
+      statusCode: statusCode,
       headers: {
         ...resHeaders,
         Location: location ?? "",
@@ -145,14 +177,15 @@ export async function handleMiddleware(
   let rewritten = false;
   let externalRewrite = false;
   let middlewareQueryString = internalEvent.query;
+  let newUrl = internalEvent.url;
   if (rewriteUrl) {
-    if (isExternal(rewriteUrl, req.headers.host)) {
-      req.url = rewriteUrl;
+    if (isExternal(rewriteUrl, internalEvent.headers.host)) {
+      newUrl = rewriteUrl;
       rewritten = true;
       externalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
-      req.url = rewriteUrlObject.pathname;
+      newUrl = rewriteUrlObject.pathname;
       //reset qs
       middlewareQueryString = {};
       rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
@@ -164,24 +197,27 @@ export async function handleMiddleware(
 
   // If the middleware returned a `NextResponse`, pipe the body to res. This will return
   // the body immediately to the client.
-  if (result.response.body) {
+  if (result.body) {
     // transfer response body to res
-    const arrayBuffer = await result.response.arrayBuffer();
+    const arrayBuffer = await result.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    res.end(buffer);
+    // res.end(buffer);
 
     // await pipeReadable(result.response.body, res);
     return {
       type: internalEvent.type,
-      ...convertRes(res),
+      statusCode: statusCode,
+      headers: resHeaders,
+      body: buffer.toString(),
+      isBase64Encoded: false,
     };
   }
 
   return {
     responseHeaders: resHeaders,
-    url: req.url ?? internalEvent.url,
+    url: newUrl,
     rawPath: rewritten
-      ? req.url ?? internalEvent.rawPath
+      ? newUrl ?? internalEvent.rawPath
       : internalEvent.rawPath,
     type: internalEvent.type,
     headers: { ...internalEvent.headers, ...reqHeaders },
