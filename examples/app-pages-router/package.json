@@ -8,13 +8,13 @@
     "build": "next build",
     "start": "next start --port 3003",
     "lint": "next lint",
-     "clean": "rm -rf .turbo node_modules .next .open-next"
+    "clean": "rm -rf .turbo node_modules .next .open-next"
   },
   "dependencies": {
-    "open-next": "workspace:*",
     "@example/shared": "workspace:*",
     "@open-next/utils": "workspace:*",
     "next": "latest",
+    "open-next": "workspace:*",
     "react": "latest",
     "react-dom": "latest"
   },
