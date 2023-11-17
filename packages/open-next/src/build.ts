@@ -1,5 +1,5 @@
 import cp from "node:child_process";
-import fs from "node:fs";
+import fs, { readFileSync } from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
@@ -573,6 +573,9 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     target: ["node18"],
   });
 
+  // Bundle middleware
+  createMiddleware();
+
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
   //       symlinks. We don't want to resolve the symlinks when copying.
@@ -653,7 +656,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   }
   await esbuildAsync({
     entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
-    external: ["next"],
+    external: ["next", "./middleware.mjs"],
     outfile: path.join(outputPath, packagePath, "index.mjs"),
     banner: {
       js: [
@@ -674,6 +677,62 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
   addCacheHandler(outputPath, options.dangerous);
+}
+
+function createMiddleware() {
+  console.info(`Bundling middleware function...`);
+
+  const { appBuildOutputPath, outputDir } = options;
+
+  // Get middleware manifest
+  const middlewareManifest = JSON.parse(
+    readFileSync(
+      path.join(appBuildOutputPath, ".next/server/middleware-manifest.json"),
+      "utf8",
+    ),
+  );
+
+  const entry = middlewareManifest.middleware["/"];
+
+  // Build edge function
+  buildEdgeFunction(
+    entry,
+    path.join(__dirname, "core", "edgeFunctionHandler.js"),
+    path.join(outputDir, "server-function", "middleware.mjs"),
+    appBuildOutputPath,
+  );
+}
+
+function buildEdgeFunction(
+  entry: any,
+  entrypoint: string,
+  outfile: string,
+  appBuildOutputPath: string,
+) {
+  esbuildSync({
+    entryPoints: [entrypoint],
+    inject: entry.files.map((file: string) =>
+      path.join(appBuildOutputPath, ".next", file),
+    ),
+    bundle: true,
+    outfile,
+    external: ["node:*"],
+    target: "es2022",
+    platform: "neutral",
+    banner: {
+      js: `
+globalThis._ENTRIES = {};
+globalThis.self = globalThis;
+
+import {Buffer} from "node:buffer";
+globalThis.Buffer = Buffer;
+
+import {AsyncLocalStorage} from "node:async_hooks";
+globalThis.AsyncLocalStorage = AsyncLocalStorage;
+
+`,
+    },
+  });
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
