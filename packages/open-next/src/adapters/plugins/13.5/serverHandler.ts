@@ -1,18 +1,18 @@
 /*eslint-disable simple-import-sort/imports */
 import type { Options, PluginHandler } from "../../types/next-types.js";
 import type { IncomingMessage } from "../../http/request.js";
-import type { ServerlessResponse } from "../../http/response.js";
 //#override imports
 //@ts-ignore
 import { requestHandler } from "./util.js";
 //@ts-ignore
 import { proxyRequest } from "./routing/util.js";
+import { OpenNextNodeResponse } from "../../http/openNextResponse.js";
 //#endOverride
 
 //#override handler
 export const handler: PluginHandler = async (
   req: IncomingMessage,
-  res: ServerlessResponse,
+  res: OpenNextNodeResponse,
   options: Options,
 ) => {
   if (options.isExternalRewrite) {

@@ -8,7 +8,6 @@ import {
   StreamCreator,
 } from "../../http/openNextResponse.js";
 import { IncomingMessage } from "../../http/request.js";
-import { ServerlessResponse } from "../../http/response.js";
 import { debug } from "../../logger.js";
 
 declare global {
@@ -24,7 +23,7 @@ enum CommonHeaders {
 
 export async function proxyRequest(
   req: IncomingMessage,
-  res: ServerlessResponse,
+  res: OpenNextNodeResponse,
 ) {
   const HttpProxy = require("next/dist/compiled/http-proxy") as any;
 

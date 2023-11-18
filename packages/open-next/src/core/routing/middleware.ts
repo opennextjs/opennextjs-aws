@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import { NEXT_DIR, NextConfig } from "../config/index.js";
-import { InternalEvent, InternalResult } from "../event-mapper.js";
+import { NEXT_DIR, NextConfig } from "../../adapters/config/index.js";
+import { InternalEvent, InternalResult } from "../../adapters/event-mapper.js";
 //NOTE: we should try to avoid importing stuff from next as much as possible
 // every release of next could break this
 // const { run } = require("next/dist/server/web/sandbox");
@@ -30,10 +30,6 @@ type MiddlewareOutputEvent = InternalEvent & {
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
-
-interface MiddlewareResult {
-  response: Response;
-}
 
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(

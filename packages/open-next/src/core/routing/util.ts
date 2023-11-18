@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isBinaryContentType } from "../binary";
-import { OpenNextNodeResponse } from "../http/openNextResponse";
-import { parseHeaders } from "../http/util";
-import { MiddlewareManifest } from "../types/next-types";
+import { isBinaryContentType } from "../../adapters/binary";
+import { OpenNextNodeResponse } from "../../adapters/http/openNextResponse";
+import { parseHeaders } from "../../adapters/http/util";
+import { MiddlewareManifest } from "../../adapters/types/next-types";
 
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
