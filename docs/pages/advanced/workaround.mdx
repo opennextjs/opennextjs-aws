@@ -1,6 +1,6 @@
 #### WORKAROUND: Create one cache behavior per top-level file and folder in `public/` (AWS specific)
 
-As mentioned in the [Asset files](#asset-files) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. And requests for these files are handled by the S3 bucket, like so:
+As mentioned in the [Asset files](./architecture#asset-files) section, files in your app's `public/` folder are static and are uploaded to the S3 bucket. And requests for these files are handled by the S3 bucket, like so:
 
 ```
 https://my-nextjs-app.com/favicon.ico
@@ -111,7 +111,7 @@ export function middleware(request: NextRequest) {
 
 #### WORKAROUND: `NextServer` does not set cache headers for HTML pages
 
-As mentioned in the [Server function](#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. However, `NextServer` does not seem to set the correct `Cache Control` headers.
+As mentioned in the [Server function](./architecture#server-lambda-function) section, the server function uses the `NextServer` class from Next.js' build output to handle requests. However, `NextServer` does not seem to set the correct `Cache Control` headers.
 
 To work around the issue, the server function checks if the request is for an HTML page, and sets the `Cache Control` header to:
 
@@ -154,7 +154,7 @@ You can build the file path like this:
 path.join(process.cwd(), "posts", "my-post.md");
 ```
 
-As mentioned in the [Server function](#server-lambda-function) section, in a non-monorepo setup, the `server-function` bundle looks like:
+As mentioned in the [Server function](./architecture#server-lambda-function) section, in a non-monorepo setup, the `server-function` bundle looks like:
 
 ```
 .next/
