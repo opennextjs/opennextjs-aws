@@ -1,16 +1,16 @@
 import { compile, Match, match, PathFunction } from "path-to-regexp";
 
-import { NextConfig } from "../config";
-import { InternalEvent, InternalResult } from "../event-mapper";
-import { debug } from "../logger";
+import { NextConfig } from "../../adapters/config";
+import { InternalEvent, InternalResult } from "../../adapters/event-mapper";
+import { debug } from "../../adapters/logger";
 import {
   Header,
   PrerenderManifest,
   RedirectDefinition,
   RewriteDefinition,
   RouteHas,
-} from "../types/next-types";
-import { escapeRegex, unescapeRegex } from "../util";
+} from "../../adapters/types/next-types";
+import { escapeRegex, unescapeRegex } from "../../adapters/util";
 import { convertToQueryString, getUrlParts, isExternal } from "./util";
 
 const routeHasMatcher =
@@ -168,44 +168,42 @@ export function handleRedirects(
   event: InternalEvent,
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
-  if (!NextConfig.skipTrailingSlashRedirect) {
-    if (
-      NextConfig.trailingSlash &&
-      !event.headers["x-nextjs-data"] &&
-      !event.rawPath.endsWith("/") &&
-      !event.rawPath.match(/[\w-]+\.[\w]+$/g)
-    ) {
-      const headersLocation = event.url.split("?");
-      return {
-        type: event.type,
-        statusCode: 308,
-        headers: {
-          Location: `${headersLocation[0]}/${
-            headersLocation[1] ? `?${headersLocation[1]}` : ""
-          }`,
-        },
-        body: "",
-        isBase64Encoded: false,
-      };
-      // eslint-disable-next-line sonarjs/elseif-without-else
-    } else if (
-      !NextConfig.trailingSlash &&
-      event.rawPath.endsWith("/") &&
-      event.rawPath !== "/"
-    ) {
-      const headersLocation = event.url.split("?");
-      return {
-        type: event.type,
-        statusCode: 308,
-        headers: {
-          Location: `${headersLocation[0].replace(/\/$/, "")}${
-            headersLocation[1] ? `?${headersLocation[1]}` : ""
-          }`,
-        },
-        body: "",
-        isBase64Encoded: false,
-      };
-    }
+  if (
+    NextConfig.trailingSlash &&
+    !event.headers["x-nextjs-data"] &&
+    !event.rawPath.endsWith("/") &&
+    !event.rawPath.match(/[\w-]+\.[\w]+$/g)
+  ) {
+    const headersLocation = event.url.split("?");
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: `${headersLocation[0]}/${
+          headersLocation[1] ? `?${headersLocation[1]}` : ""
+        }`,
+      },
+      body: "",
+      isBase64Encoded: false,
+    };
+    // eslint-disable-next-line sonarjs/elseif-without-else
+  } else if (
+    !NextConfig.trailingSlash &&
+    event.rawPath.endsWith("/") &&
+    event.rawPath !== "/"
+  ) {
+    const headersLocation = event.url.split("?");
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: `${headersLocation[0].replace(/\/$/, "")}${
+          headersLocation[1] ? `?${headersLocation[1]}` : ""
+        }`,
+      },
+      body: "",
+      isBase64Encoded: false,
+    };
   }
   const { internalEvent, __rewrite } = handleRewrites(
     event,

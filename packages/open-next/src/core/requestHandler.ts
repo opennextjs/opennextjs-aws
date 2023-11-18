@@ -1,14 +1,15 @@
 import { BuildId } from "../adapters/config";
 import { InternalEvent, InternalResult } from "../adapters/event-mapper";
-import { IncomingMessage, ServerlessResponse } from "../adapters/http";
-import { StreamCreator } from "../adapters/http/openNextResponse";
-import { error } from "../adapters/logger";
+import { IncomingMessage } from "../adapters/http";
 import {
-  postProcessResponse,
-  processInternalEvent,
-} from "../adapters/plugins/routing/default";
+  OpenNextNodeResponse,
+  StreamCreator,
+} from "../adapters/http/openNextResponse";
+import { error } from "../adapters/logger";
 import { createServerResponse } from "../adapters/plugins/routing/util";
 import { handler as serverHandler } from "../adapters/plugins/serverHandler";
+import { convertRes } from "./routing/util";
+import routingHandler from "./routingHandler";
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -17,18 +18,9 @@ export async function openNextHandler(
   if (internalEvent.headers["x-forwarded-host"]) {
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
-  const preprocessResult = await processInternalEvent(
-    internalEvent,
-    (method, headers) =>
-      createServerResponse(
-        internalEvent,
-        {
-          ...headers,
-          "accept-encoding": internalEvent.headers["accept-encoding"],
-        },
-        responseStreaming,
-      ),
-  );
+
+  //TODO: replace this line for next <= 13.4.12
+  const preprocessResult = await routingHandler(internalEvent);
 
   if ("type" in preprocessResult) {
     // res is used only in the streaming case
@@ -40,22 +32,42 @@ export async function openNextHandler(
     res.end();
     return preprocessResult;
   } else {
-    const {
+    const preprocessedEvent = preprocessResult.internalEvent;
+    const reqProps = {
+      method: preprocessedEvent.method,
+      url: preprocessedEvent.url,
+      //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
+      // There is 3 way we can handle revalidation:
+      // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
+      // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
+      // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
+      headers: { ...preprocessedEvent.headers, purpose: "prefetch" },
+      body: preprocessedEvent.body,
+      remoteAddress: preprocessedEvent.remoteAddress,
+    };
+    const req = new IncomingMessage(reqProps);
+    const res = createServerResponse(
+      preprocessedEvent,
+      preprocessResult.headers as any,
+      responseStreaming,
+    );
+
+    await processRequest(
       req,
       res,
-      isExternalRewrite,
-      internalEvent: overwrittenInternalEvent,
-    } = preprocessResult;
+      preprocessedEvent,
+      preprocessResult.isExternalRewrite,
+    );
 
-    // @ts-ignore
-    await processRequest(req, res, overwrittenInternalEvent, isExternalRewrite);
+    const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
 
-    const internalResult = await postProcessResponse({
-      internalEvent: overwrittenInternalEvent,
-      req,
-      res,
-      isExternalRewrite,
-    });
+    const internalResult = {
+      type: internalEvent.type,
+      statusCode,
+      headers,
+      body,
+      isBase64Encoded,
+    };
 
     return internalResult;
   }
@@ -63,7 +75,7 @@ export async function openNextHandler(
 
 async function processRequest(
   req: IncomingMessage,
-  res: ServerlessResponse,
+  res: OpenNextNodeResponse,
   internalEvent: InternalEvent,
   isExternalRewrite?: boolean,
 ) {
