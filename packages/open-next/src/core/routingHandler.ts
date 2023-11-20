@@ -1,5 +1,3 @@
-import type { OutgoingHttpHeaders } from "http";
-
 //TODO: Replace this with injected values in case of external routing
 // We could use open-next plugins to replace these values at build time
 import {
@@ -7,8 +5,10 @@ import {
   ConfigHeaders,
   PrerenderManifest,
   RoutesManifest,
-} from "../adapters/config";
-import { InternalEvent, InternalResult } from "../adapters/event-mapper";
+} from "config/index";
+import type { OutgoingHttpHeaders } from "http";
+import { InternalEvent, InternalResult } from "types/open-next";
+
 import {
   addNextConfigHeaders,
   fixDataPage,

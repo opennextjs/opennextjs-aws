@@ -1,9 +1,8 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
+import { parseCookies } from "http/util";
+import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
-import { InternalEvent, InternalResult } from "../adapters/event-mapper";
 import { debug } from "../adapters/logger";
-import { Converter } from "../adapters/types/open-next";
-import { parseCookies } from "../adapters/util";
 import { removeUndefinedFromQuery } from "./utils";
 
 function normalizeAPIGatewayProxyEventV2Body(

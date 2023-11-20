@@ -1,9 +1,10 @@
-import {
+import type {
   BuildOptions,
   Converter,
   OverrideOptions,
   Wrapper,
-} from "../adapters/types/open-next";
+} from "types/open-next";
+
 import type { IncrementalCache } from "../cache/incremental/types";
 import type { Queue } from "../queue/types";
 import { openNextHandler } from "./requestHandler";

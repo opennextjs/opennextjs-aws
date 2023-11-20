@@ -1,7 +1,8 @@
 import path from "node:path";
 
-import { NEXT_DIR, NextConfig } from "../../adapters/config/index.js";
-import { InternalEvent, InternalResult } from "../../adapters/event-mapper.js";
+import { NEXT_DIR, NextConfig } from "config/index.js";
+import { InternalEvent, InternalResult } from "types/open-next.js";
+
 //NOTE: we should try to avoid importing stuff from next as much as possible
 // every release of next could break this
 // const { run } = require("next/dist/server/web/sandbox");

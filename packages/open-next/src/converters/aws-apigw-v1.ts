@@ -1,8 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
-import { InternalEvent, InternalResult } from "../adapters/event-mapper";
 import { debug } from "../adapters/logger";
-import { Converter } from "../adapters/types/open-next";
 import { removeUndefinedFromQuery } from "./utils";
 
 function normalizeAPIGatewayProxyEventHeaders(

@@ -11,6 +11,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
+import { loadConfig } from "config/util.js";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
@@ -21,7 +22,6 @@ import {
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
-import { loadConfig } from "./config/util.js";
 import { awsLogger, debug, error } from "./logger.js";
 import { setNodeEnv } from "./util.js";
 

@@ -1,17 +1,22 @@
+import { NextConfig } from "config/index";
 import { compile, Match, match, PathFunction } from "path-to-regexp";
-
-import { NextConfig } from "../../adapters/config";
-import { InternalEvent, InternalResult } from "../../adapters/event-mapper";
-import { debug } from "../../adapters/logger";
-import {
+import type {
   Header,
   PrerenderManifest,
   RedirectDefinition,
   RewriteDefinition,
   RouteHas,
-} from "../../adapters/types/next-types";
-import { escapeRegex, unescapeRegex } from "../../adapters/util";
-import { convertQuery, getUrlParts, isExternal } from "./util";
+} from "types/next-types";
+import { InternalEvent, InternalResult } from "types/open-next";
+
+import { debug } from "../../adapters/logger";
+import {
+  convertQuery,
+  escapeRegex,
+  getUrlParts,
+  isExternal,
+  unescapeRegex,
+} from "./util";
 
 const routeHasMatcher =
   (

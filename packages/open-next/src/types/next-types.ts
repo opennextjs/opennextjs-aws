@@ -1,9 +1,8 @@
 // NOTE: add more next config typings as they become relevant
 
-import { InternalEvent } from "../event-mapper.js";
-import { OpenNextNodeResponse } from "../http/openNextResponse.js";
-import { IncomingMessage } from "../http/request.js";
-import { ServerlessResponse } from "../http/response.js";
+import { IncomingMessage, OpenNextNodeResponse } from "http/index.js";
+
+import { InternalEvent } from "./open-next";
 
 type RemotePattern = {
   protocol?: "http" | "https";
@@ -154,5 +153,5 @@ export interface PluginHandler {
     req: IncomingMessage,
     res: OpenNextNodeResponse,
     options: Options,
-  ): Promise<ServerlessResponse | undefined>;
+  ): Promise<OpenNextNodeResponse | undefined>;
 }

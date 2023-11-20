@@ -2,8 +2,9 @@
 // This is needed for userland plugins to attach to the same webpack instance as Next.js'.
 // Individually compiled modules are as defined for the compilation in bundles/webpack/packages/*.
 
+import type { NextConfig } from "types/next-types.js";
+
 import { error } from "./logger.js";
-import type { NextConfig } from "./types/next-types.js";
 
 // This module will only be loaded once per process.
 
