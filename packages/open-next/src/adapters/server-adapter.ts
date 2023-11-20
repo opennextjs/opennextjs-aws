@@ -1,7 +1,8 @@
-import { createMainHandler } from "../core/createMainHandler.js";
 // We load every config here so that they are only loaded once
 // and during cold starts
-import { BuildId } from "./config/index.js";
+import { BuildId } from "config/index.js";
+
+import { createMainHandler } from "../core/createMainHandler.js";
 import { setNodeEnv } from "./util.js";
 
 // We load every config here so that they are only loaded once

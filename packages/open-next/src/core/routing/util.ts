@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isBinaryContentType } from "../../adapters/binary";
-import { OpenNextNodeResponse } from "../../adapters/http/openNextResponse";
-import { parseHeaders } from "../../adapters/http/util";
-import { MiddlewareManifest } from "../../adapters/types/next-types";
+import { OpenNextNodeResponse } from "http/index.js";
+import { parseHeaders } from "http/util.js";
+import type { MiddlewareManifest } from "types/next-types";
+
+import { isBinaryContentType } from "../../adapters/binary.js";
 
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
@@ -99,4 +100,24 @@ export function loadMiddlewareManifest(nextDir: string) {
   const filePath = path.join(nextDir, "server", "middleware-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as MiddlewareManifest;
+}
+
+export function escapeRegex(str: string) {
+  let path = str.replace(/\(\.\)/g, "_µ1_");
+
+  path = path.replace(/\(\.{2}\)/g, "_µ2_");
+
+  path = path.replace(/\(\.{3}\)/g, "_µ3_");
+
+  return path;
+}
+
+export function unescapeRegex(str: string) {
+  let path = str.replace(/_µ1_/g, "(.)");
+
+  path = path.replace(/_µ2_/g, "(..)");
+
+  path = path.replace(/_µ3_/g, "(...)");
+
+  return path;
 }

@@ -3,10 +3,10 @@ import {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
+import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
-import { InternalEvent, InternalResult } from "../adapters/event-mapper";
 import { debug } from "../adapters/logger";
-import { Converter } from "../adapters/types/open-next";
+import { convertToQuery } from "../core/routing/util";
 
 function normalizeCloudFrontRequestEventHeaders(
   rawHeaders: CloudFrontHeaders,
@@ -40,13 +40,7 @@ async function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
-    query: querystring.split("&").reduce(
-      (acc, cur) => ({
-        ...acc,
-        [cur.split("=")[0]]: cur.split("=")[1],
-      }),
-      {},
-    ),
+    query: convertToQuery(querystring),
     cookies:
       headers.cookie?.reduce((acc, cur) => {
         const { key, value } = cur;

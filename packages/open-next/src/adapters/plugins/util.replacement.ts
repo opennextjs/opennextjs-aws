@@ -1,4 +1,4 @@
-import { NextConfig } from "../config";
+import { NextConfig } from "config/index";
 
 //#override requestHandler
 // @ts-ignore

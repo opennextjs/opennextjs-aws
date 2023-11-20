@@ -1,4 +1,4 @@
-import {
+import type {
   APIGatewayProxyEvent,
   APIGatewayProxyEventV2,
   APIGatewayProxyResult,
@@ -6,8 +6,8 @@ import {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
+import type { Wrapper } from "types/open-next";
 
-import { Wrapper } from "../adapters/types/open-next";
 import { WarmerEvent } from "../adapters/warmer-function";
 
 type AwsLambdaEvent =

@@ -2,11 +2,10 @@ import { Writable } from "node:stream";
 import zlib from "node:zlib";
 
 import { APIGatewayProxyEventV2 } from "aws-lambda";
+import { StreamCreator } from "http/index.js";
+import { parseCookies, parseHeaders } from "http/util.js";
+import { Wrapper } from "types/open-next";
 
-import { StreamCreator } from "../adapters/http/openNextResponse";
-import { parseHeaders } from "../adapters/http/util";
-import { Wrapper } from "../adapters/types/open-next";
-import { parseCookies } from "../adapters/util";
 import { WarmerEvent } from "../adapters/warmer-function";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;

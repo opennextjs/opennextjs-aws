@@ -10,10 +10,9 @@ import {
   buildSync,
 } from "esbuild";
 
-import { BuildOptions, DangerousOptions } from "./adapters/types/open-next.js";
-import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
+import { BuildOptions, DangerousOptions } from "./types/open-next.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));

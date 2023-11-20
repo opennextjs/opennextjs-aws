@@ -1,13 +1,13 @@
+import { BuildId, HtmlPages } from "config/index.js";
 import crypto from "crypto";
 import { OutgoingHttpHeaders, ServerResponse } from "http";
-
-import { BuildId, HtmlPages } from "../../config/index.js";
-import { InternalEvent } from "../../event-mapper.js";
 import {
+  IncomingMessage,
   OpenNextNodeResponse,
   StreamCreator,
-} from "../../http/openNextResponse.js";
-import { IncomingMessage } from "../../http/request.js";
+} from "http/index.js";
+import { InternalEvent } from "types/open-next";
+
 import { debug } from "../../logger.js";
 
 declare global {
@@ -25,6 +25,7 @@ export async function proxyRequest(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
 ) {
+  // TODO: we should use our own version instead of the one bundled with Next.js
   const HttpProxy = require("next/dist/compiled/http-proxy") as any;
 
   const proxy = new HttpProxy({

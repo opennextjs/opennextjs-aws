@@ -1,6 +1,6 @@
-import type { InternalEvent, InternalResult } from "../event-mapper";
-import { OpenNextNodeResponse } from "../http/openNextResponse";
-import type { IncomingMessage } from "../http/request";
+import { IncomingMessage, OpenNextNodeResponse } from "http/index.js";
+
+import { InternalEvent, InternalResult } from "./open-next";
 
 export type ProcessInternalEventResult<Response extends OpenNextNodeResponse> =
   | {

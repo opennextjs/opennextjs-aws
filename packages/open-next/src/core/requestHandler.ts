@@ -1,10 +1,11 @@
-import { BuildId } from "../adapters/config";
-import { InternalEvent, InternalResult } from "../adapters/event-mapper";
-import { IncomingMessage } from "../adapters/http";
+import { BuildId } from "config/index";
 import {
+  IncomingMessage,
   OpenNextNodeResponse,
   StreamCreator,
-} from "../adapters/http/openNextResponse";
+} from "http/index.js";
+import { InternalEvent, InternalResult } from "types/open-next";
+
 import { error } from "../adapters/logger";
 import { createServerResponse } from "../adapters/plugins/routing/util";
 import { handler as serverHandler } from "../adapters/plugins/serverHandler";
@@ -94,7 +95,7 @@ async function processRequest(
     });
   } catch (e: any) {
     error("NextJS request failed.", e);
-
+    //TODO: we could return the next 500 page here
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify(

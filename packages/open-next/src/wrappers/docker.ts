@@ -1,9 +1,9 @@
 import debug from "debug";
 import { createServer } from "http";
+import { StreamCreator } from "http/index.js";
+import type { Wrapper } from "types/open-next";
 
-import { StreamCreator } from "../adapters/http/openNextResponse";
 import { error } from "../adapters/logger";
-import { Wrapper } from "../adapters/types/open-next";
 
 const wrapper: Wrapper = async (handler, converter) => {
   const server = createServer(async (req, res) => {

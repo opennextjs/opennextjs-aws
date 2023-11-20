@@ -1,6 +1,26 @@
-import { Queue } from "../../queue/types";
-import { InternalEvent, InternalResult } from "../event-mapper";
-import { StreamCreator } from "../http/openNextResponse";
+import { StreamCreator } from "http/index.js";
+
+import { Queue } from "../queue/types";
+
+export type InternalEvent = {
+  readonly type: "v1" | "v2" | "cf";
+  readonly method: string;
+  readonly rawPath: string;
+  readonly url: string;
+  readonly body: Buffer;
+  readonly headers: Record<string, string>;
+  readonly query: Record<string, string | string[]>;
+  readonly cookies: Record<string, string>;
+  readonly remoteAddress: string;
+};
+
+export type InternalResult = {
+  readonly type: "v1" | "v2" | "cf";
+  statusCode: number;
+  headers: Record<string, string | string[]>;
+  body: string;
+  isBase64Encoded: boolean;
+};
 
 export interface DangerousOptions {
   /**

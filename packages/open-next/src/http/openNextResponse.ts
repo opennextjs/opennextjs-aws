@@ -1,8 +1,7 @@
 import { OutgoingHttpHeader, OutgoingHttpHeaders } from "http";
 import { Transform, TransformCallback, Writable } from "stream";
 
-import { parseCookies } from "../util";
-import { convertHeader, parseHeaders } from "./util";
+import { convertHeader, parseCookies, parseHeaders } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 
