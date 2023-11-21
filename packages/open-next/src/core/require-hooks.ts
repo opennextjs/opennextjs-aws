@@ -4,7 +4,7 @@
 
 import type { NextConfig } from "types/next-types.js";
 
-import { error } from "./logger.js";
+import { error } from "../adapters/logger.js";
 
 // This module will only be loaded once per process.
 
