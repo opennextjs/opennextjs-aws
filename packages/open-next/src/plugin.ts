@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import path from "node:path";
 
 import { Plugin } from "esbuild";
 
@@ -7,7 +6,8 @@ import logger from "./logger.js";
 
 export interface IPluginSettings {
   target: RegExp;
-  replacements: string[];
+  replacements?: string[];
+  deletes?: string[];
   name?: string;
 }
 
@@ -18,7 +18,8 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  *
  * openNextPlugin({
  *   target: /plugins\/default\.js/g,
- *   replacements: ["./13_4_13.js"],
+ *   replacements: [require.resolve("./plugins/default.js")],
+ *   deletes: ["id1"],
  * })
  *
  * To inject arbritary code by using (import at top of file):
@@ -43,12 +44,14 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  *
  * @param opts.target - the target file to replace
  * @param opts.replacements - list of files used to replace the imports/overrides in the target
- *                          - the path is relative to the target path
+ *                          - the path is absolute
+ * @param opts.deletes - list of ids to delete from the target
  * @returns
  */
 export default function openNextPlugin({
   target,
   replacements,
+  deletes,
   name,
 }: IPluginSettings): Plugin {
   return {
@@ -57,9 +60,18 @@ export default function openNextPlugin({
       build.onLoad({ filter: target }, async (args) => {
         let contents = await readFile(args.path, "utf-8");
 
-        await Promise.all(
-          replacements.map(async (fp) => {
-            const p = path.join(args.path, "..", fp);
+        await Promise.all([
+          ...(deletes ?? []).map(async (id) => {
+            const pattern = new RegExp(
+              `\/\/#override (${id})\n([\\s\\S]*?)\/\/#endOverride`,
+            );
+            logger.debug(
+              `Open-next plugin ${name} -- Deleting override for ${id}`,
+            );
+            contents = contents.replace(pattern, "");
+          }),
+          ...(replacements ?? []).map(async (fp) => {
+            const p = fp;
             const replacementFile = await readFile(p, "utf-8");
             const matches = replacementFile.matchAll(overridePattern);
 
@@ -80,7 +92,7 @@ export default function openNextPlugin({
               contents = contents.replace(pattern, replacement);
             }
           }),
-        );
+        ]);
 
         return {
           contents,

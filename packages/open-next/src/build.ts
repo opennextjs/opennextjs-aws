@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 import { BuildOptions, DangerousOptions } from "./types/open-next.js";
@@ -602,59 +603,33 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
 
-  let plugins =
-    compareSemver(options.nextVersion, "13.4.13") >= 0
-      ? [
-          openNextPlugin({
-            name: "opennext-13.4.13-serverHandler",
-            target: /plugins\/serverHandler\.js/g,
-            replacements: ["./serverHandler.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-util",
-            target: /plugins\/util\.js/g,
-            replacements: ["./util.replacement.js"],
-          }),
-          openNextPlugin({
-            name: "opennext-13.4.13-default",
-            target: /plugins\/routing\/default\.js/g,
-            replacements: ["./default.replacement.js"],
-          }),
-        ]
-      : undefined;
+  const disableNextPrebundledReact =
+    compareSemver(options.nextVersion, "13.5.1") >= 0 ||
+    compareSemver(options.nextVersion, "13.4.1") <= 0;
 
-  if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
-    plugins = [
-      openNextPlugin({
-        name: "opennext-13.5-serverHandler",
-        target: /plugins\/serverHandler\.js/g,
-        replacements: ["./13.5/serverHandler.js"],
-      }),
-      openNextPlugin({
-        name: "opennext-13.5-util",
-        target: /plugins\/util\.js/g,
-        replacements: ["./13.5/util.js", "./util.replacement.js"],
-      }),
-      openNextPlugin({
-        name: "opennext-13.5-default",
-        target: /plugins\/routing\/default\.js/g,
-        replacements: ["./default.replacement.js"],
-      }),
-    ];
-  }
-
-  if (streaming) {
-    // const streamingPlugin = openNextPlugin({
-    //   name: "opennext-streaming",
-    //   target: /plugins\/lambdaHandler\.js/g,
-    //   replacements: ["./streaming.replacement.js"],
-    // });
-    // if (plugins) {
-    //   plugins.push(streamingPlugin);
-    // } else {
-    //   plugins = [streamingPlugin];
-    // }
-  }
+  const disableRouting = compareSemver(options.nextVersion, "13.4.13") <= 0;
+  const plugins = [
+    openNextPlugin({
+      name: "requestHandlerOverride",
+      target: /core\/requestHandler.js/g,
+      deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
+      replacements: disableRouting
+        ? [
+            require.resolve(
+              "./adapters/plugins/without-routing/requestHandler.js",
+            ),
+          ]
+        : [],
+    }),
+    openNextPlugin({
+      name: "core/util",
+      target: /core\/util.js/g,
+      deletes: [
+        ...(disableNextPrebundledReact ? ["requireHooks"] : []),
+        ...(disableRouting ? ["trustHostHeader"] : []),
+      ],
+    }),
+  ];
 
   if (plugins && plugins.length > 0) {
     logger.debug(
