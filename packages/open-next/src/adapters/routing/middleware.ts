@@ -6,6 +6,7 @@ import { IncomingMessage } from "../http/request.js";
 import { ServerlessResponse } from "../http/response.js";
 import {
   convertRes,
+  convertToQueryString,
   getMiddlewareMatch,
   isExternal,
   loadMiddlewareManifest,
@@ -61,17 +62,11 @@ export async function handleMiddleware(
     path.join(NEXT_DIR, file),
   );
 
-  const urlQuery: Record<string, string> = {};
-  Object.keys(query).forEach((k) => {
-    const v = query[k];
-    urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-  });
-
   const host = req.headers.host
     ? `https://${req.headers.host}`
     : "http://localhost:3000";
   const initialUrl = new URL(rawPath, host);
-  initialUrl.search = new URLSearchParams(urlQuery).toString();
+  initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
 
   const result: MiddlewareResult = await run({
