@@ -47,7 +47,8 @@ export async function proxyRequest(
       proxyRes.on("end", function () {
         const newBody = Buffer.concat(body).toString();
         debug(`Proxying response`, {
-          headers: proxyRes.getHeaders(),
+          // @ts-ignore TODO: get correct type for the proxyRes
+          headers: proxyRes.getHeaders?.() || proxyRes.headers,
           body: newBody,
         });
         res.end(newBody);
