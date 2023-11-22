@@ -12,6 +12,7 @@ build({
   buildCommand: args["--build-command"],
   buildOutputPath: args["--build-output-path"],
   appPath: args["--app-path"],
+  packageJsonPath: args["--package-json"],
   minify: Object.keys(args).includes("--minify"),
   streaming: Object.keys(args).includes("--streaming"),
   dangerous: {
