@@ -1,45 +1,13 @@
-import type {
-  BuildOptions,
-  Converter,
-  OverrideOptions,
-  Wrapper,
-} from "types/open-next";
+import type { BuildOptions, OverrideOptions } from "types/open-next";
 
 import type { IncrementalCache } from "../cache/incremental/types";
 import type { Queue } from "../queue/types";
 import { openNextHandler } from "./requestHandler";
+import { resolveConverter, resolveTagCache, resolveWrapper } from "./resolve";
 
 declare global {
   var queue: Queue;
   var incrementalCache: IncrementalCache;
-}
-
-async function resolveConverter(
-  converter: OverrideOptions["converter"],
-): Promise<Converter> {
-  if (typeof converter === "string") {
-    const m = await import(`../converters/${converter}.js`);
-    return m.default;
-  } else if (typeof converter === "function") {
-    return converter();
-  } else {
-    const m_1 = await import("../converters/aws-apigw-v2.js");
-    return m_1.default;
-  }
-}
-
-async function resolveWrapper(
-  wrapper: OverrideOptions["wrapper"],
-): Promise<Wrapper> {
-  if (typeof wrapper === "string") {
-    const m = await import(`../wrappers/${wrapper}.js`);
-    return m.default;
-  } else if (typeof wrapper === "function") {
-    return wrapper();
-  } else {
-    const m_1 = await import("../wrappers/aws-lambda.js");
-    return m_1.default;
-  }
 }
 
 async function resolveQueue(queue: OverrideOptions["queue"]) {
@@ -64,18 +32,6 @@ async function resolveIncrementalCache(
     return incrementalCache();
   } else {
     const m_1 = await import("../cache/incremental/s3.js");
-    return m_1.default;
-  }
-}
-
-async function resolveTagCache(tagCache: OverrideOptions["tagCache"]) {
-  if (typeof tagCache === "string") {
-    const m = await import(`../cache/tag/${tagCache}.js`);
-    return m.default;
-  } else if (typeof tagCache === "function") {
-    return tagCache();
-  } else {
-    const m_1 = await import("../cache/tag/dynamoDb.js");
     return m_1.default;
   }
 }

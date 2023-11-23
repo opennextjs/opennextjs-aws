@@ -44,7 +44,7 @@ async function convertFromAPIGatewayProxyEventV2(
 ): Promise<InternalEvent> {
   const { rawPath, rawQueryString, requestContext } = event;
   return {
-    type: "v2",
+    type: "core",
     method: requestContext.http.method,
     rawPath,
     url: rawPath + (rawQueryString ? `?${rawQueryString}` : ""),

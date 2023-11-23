@@ -13,7 +13,7 @@ import { requestHandler, setNextjsPrebundledReact } from "./util";
 export async function openNextHandler(
   internalEvent: InternalEvent,
   responseStreaming?: StreamCreator,
-): Promise<InternalResult | void> {
+): Promise<InternalResult> {
   if (internalEvent.headers["x-forwarded-host"]) {
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }

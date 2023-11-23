@@ -17,7 +17,7 @@ const converter: Converter = {
     const url = new URL(req.url!, `http://${req.headers.host}`);
     const query = Object.fromEntries(url.searchParams.entries());
     return {
-      type: "v2",
+      type: "core",
       method: req.method ?? "GET",
       rawPath: url.pathname,
       url: url.toString(),
