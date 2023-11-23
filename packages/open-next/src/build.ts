@@ -51,6 +51,7 @@ export async function build(
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
+  createOpenNextConfigBundle(options.tempDir);
   createStaticAssets();
   if (!options.dangerous?.disableIncrementalCache) {
     createCacheAssets(monorepoRoot, options.dangerous?.disableDynamoDBCache);
@@ -62,6 +63,16 @@ export async function build(
   if (options.minify) {
     await minifyServerBundle();
   }
+}
+
+function createOpenNextConfigBundle(tempDir: string) {
+  esbuildSync({
+    entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
+    outfile: path.join(tempDir, "open-next.config.js"),
+    bundle: true,
+    format: "cjs",
+    target: ["node18"],
+  });
 }
 
 function normalizeOptions(opts: BuildOptions, root: string) {
@@ -203,6 +214,12 @@ function createWarmerBundle() {
   const outputPath = path.join(outputDir, "warmer-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
+  // Copy open-next.config.js into the bundle
+  fs.copyFileSync(
+    path.join(options.tempDir, "open-next.config.js"),
+    path.join(outputPath, "open-next.config.js"),
+  );
+
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
   //       "serverless-http" package which is not a dependency in user's
@@ -240,6 +257,12 @@ function createRevalidationBundle() {
   const outputPath = path.join(outputDir, "revalidation-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
+  //Copy open-next.config.js into the bundle
+  fs.copyFileSync(
+    path.join(options.tempDir, "open-next.config.js"),
+    path.join(outputPath, "open-next.config.js"),
+  );
+
   // Build Lambda code
   esbuildSync({
     external: ["next", "styled-jsx", "react"],
@@ -262,6 +285,12 @@ function createImageOptimizationBundle() {
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
   fs.mkdirSync(outputPath, { recursive: true });
+
+  // Copy open-next.config.js into the bundle
+  fs.copyFileSync(
+    path.join(options.tempDir, "open-next.config.js"),
+    path.join(outputPath, "open-next.config.js"),
+  );
 
   // Build Lambda code (1st pass)
   // note: bundle in OpenNext package b/c the adapter relies on the
@@ -533,6 +562,12 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
         target: ["node18"],
       });
 
+      //Copy open-next.config.js into the bundle
+      fs.copyFileSync(
+        path.join(options.tempDir, "open-next.config.js"),
+        path.join(providerPath, "open-next.config.js"),
+      );
+
       // TODO: check if metafiles doesn't contain duplicates
       fs.writeFileSync(
         path.join(providerPath, "dynamodb-cache.json"),
@@ -565,13 +600,10 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
 
   // Copy open-next.config.js
   // We should reuse the one we created at the beginning of the build
-  esbuildSync({
-    entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
-    outfile: path.join(outputPath, packagePath, "open-next.config.js"),
-    bundle: true,
-    format: "cjs",
-    target: ["node18"],
-  });
+  fs.copyFileSync(
+    path.join(options.tempDir, "open-next.config.js"),
+    path.join(outputPath, packagePath, "open-next.config.js"),
+  );
 
   // Bundle middleware
   createMiddleware();
