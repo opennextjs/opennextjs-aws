@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import {
+  MiddlewareManifest,
   NextConfig,
   PrerenderManifest,
   RoutesManifest,
@@ -99,4 +100,10 @@ export function loadAppPathsManifestKeys(nextDir: string) {
     // We need to check if the cleaned key is empty because it means it's the root path
     return cleanedKey === "" ? "/" : cleanedKey;
   });
+}
+
+export function loadMiddlewareManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
+  const json = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(json) as MiddlewareManifest;
 }

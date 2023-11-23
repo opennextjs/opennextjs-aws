@@ -19,10 +19,7 @@ export async function resolveConverter<
   converter: DefaultOverrideOptions<E, R>["converter"],
   defaultConverter: string = "aws-apigw-v2",
 ): Promise<Converter<E, R>> {
-  if (typeof converter === "string") {
-    const m = await import(`../converters/${converter}.js`);
-    return m.default;
-  } else if (typeof converter === "function") {
+  if (typeof converter === "function") {
     return converter();
   } else {
     const m_1 = await import(`../converters/${defaultConverter}.js`);
@@ -34,27 +31,29 @@ export async function resolveWrapper<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
 >(wrapper: DefaultOverrideOptions<E, R>["wrapper"]): Promise<Wrapper<E, R>> {
-  if (typeof wrapper === "string") {
-    const m = await import(`../wrappers/${wrapper}.js`);
-    return m.default;
-  } else if (typeof wrapper === "function") {
+  if (typeof wrapper === "function") {
     return wrapper();
   } else {
+    // This will be replaced by the bundler
     const m_1 = await import("../wrappers/aws-lambda.js");
     // @ts-expect-error
     return m_1.default;
   }
 }
 
+/**
+ *
+ * @param tagCache
+ * @returns
+ * @__PURE__
+ */
 export async function resolveTagCache(
   tagCache: OverrideOptions["tagCache"],
 ): Promise<TagCache> {
-  if (typeof tagCache === "string") {
-    const m = await import(`../cache/tag/${tagCache}.js`);
-    return m.default;
-  } else if (typeof tagCache === "function") {
+  if (typeof tagCache === "function") {
     return tagCache();
   } else {
+    // This will be replaced by the bundler
     const m_1 = await import("../cache/tag/dynamoDb.js");
     return m_1.default;
   }

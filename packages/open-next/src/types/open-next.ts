@@ -15,7 +15,7 @@ export type InternalEvent = {
   readonly method: string;
   readonly rawPath: string;
   readonly url: string;
-  readonly body: Buffer;
+  readonly body?: Buffer;
   readonly headers: Record<string, string>;
   readonly query: Record<string, string | string[]>;
   readonly cookies: Record<string, string>;
@@ -94,6 +94,7 @@ export interface DefaultOverrideOptions<
     | "aws-lambda"
     | "aws-lambda-streaming"
     | "docker"
+    | "cloudflare"
     | LazyLoadedOverride<Wrapper<E, R>>;
 
   /**
@@ -104,6 +105,7 @@ export interface DefaultOverrideOptions<
     | "aws-apigw-v2"
     | "aws-apigw-v1"
     | "aws-cloudfront"
+    | "edge"
     | "docker"
     | LazyLoadedOverride<Converter<E, R>>;
 }
