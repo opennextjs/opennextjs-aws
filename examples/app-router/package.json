@@ -13,7 +13,7 @@
   "dependencies": {
     "@example/shared": "workspace:*",
     "@open-next/utils": "workspace:*",
-    "next": "latest",
+    "next": "^14.0.3",
     "open-next": "workspace:*",
     "react": "latest",
     "react-dom": "latest"
