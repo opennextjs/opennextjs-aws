@@ -171,42 +171,44 @@ export function handleRedirects(
   event: InternalEvent,
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
-  if (
-    NextConfig.trailingSlash &&
-    !event.headers["x-nextjs-data"] &&
-    !event.rawPath.endsWith("/") &&
-    !event.rawPath.match(/[\w-]+\.[\w]+$/g)
-  ) {
-    const headersLocation = event.url.split("?");
-    return {
-      type: event.type,
-      statusCode: 308,
-      headers: {
-        Location: `${headersLocation[0]}/${
-          headersLocation[1] ? `?${headersLocation[1]}` : ""
-        }`,
-      },
-      body: "",
-      isBase64Encoded: false,
-    };
-    // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (
-    !NextConfig.trailingSlash &&
-    event.rawPath.endsWith("/") &&
-    event.rawPath !== "/"
-  ) {
-    const headersLocation = event.url.split("?");
-    return {
-      type: event.type,
-      statusCode: 308,
-      headers: {
-        Location: `${headersLocation[0].replace(/\/$/, "")}${
-          headersLocation[1] ? `?${headersLocation[1]}` : ""
-        }`,
-      },
-      body: "",
-      isBase64Encoded: false,
-    };
+  if (!NextConfig.skipTrailingSlashRedirect) {
+    if (
+      NextConfig.trailingSlash &&
+      !event.headers["x-nextjs-data"] &&
+      !event.rawPath.endsWith("/") &&
+      !event.rawPath.match(/[\w-]+\.[\w]+$/g)
+    ) {
+      const headersLocation = event.url.split("?");
+      return {
+        type: event.type,
+        statusCode: 308,
+        headers: {
+          Location: `${headersLocation[0]}/${
+            headersLocation[1] ? `?${headersLocation[1]}` : ""
+          }`,
+        },
+        body: "",
+        isBase64Encoded: false,
+      };
+      // eslint-disable-next-line sonarjs/elseif-without-else
+    } else if (
+      !NextConfig.trailingSlash &&
+      event.rawPath.endsWith("/") &&
+      event.rawPath !== "/"
+    ) {
+      const headersLocation = event.url.split("?");
+      return {
+        type: event.type,
+        statusCode: 308,
+        headers: {
+          Location: `${headersLocation[0].replace(/\/$/, "")}${
+            headersLocation[1] ? `?${headersLocation[1]}` : ""
+          }`,
+        },
+        body: "",
+        isBase64Encoded: false,
+      };
+    }
   }
   const { internalEvent, __rewrite } = handleRewrites(
     event,
