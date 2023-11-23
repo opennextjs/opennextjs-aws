@@ -36,9 +36,10 @@ export async function createGenericHandler<
   R extends BaseEventOrResult = InternalResult,
 >(handler: GenericHandler<Type, E, R>) {
   //First we load the config
-  const config: BuildOptions = await import(
-    process.cwd() + "/open-next.config.js"
-  ).then((m) => m.default);
+  //@ts-expect-error
+  const config: BuildOptions = await import("./open-next.config.js").then(
+    (m) => m.default,
+  );
 
   globalThis.openNextConfig = {
     [handler.type]: config[handler.type],

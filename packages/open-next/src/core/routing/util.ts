@@ -1,14 +1,9 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
 import { OutgoingHttpHeaders, ServerResponse } from "node:http";
-import path from "node:path";
 
 import { BuildId, HtmlPages } from "config/index.js";
-import {
-  IncomingMessage,
-  OpenNextNodeResponse,
-  StreamCreator,
-} from "http/index.js";
+import type { IncomingMessage, StreamCreator } from "http/index.js";
+import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
 import { InternalEvent } from "types/open-next.js";
@@ -78,12 +73,6 @@ export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   const rootMiddleware = middlewareManifest.middleware["/"];
   if (!rootMiddleware?.matchers) return [];
   return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
-}
-
-export function loadMiddlewareManifest(nextDir: string) {
-  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as MiddlewareManifest;
 }
 
 export function escapeRegex(str: string) {
@@ -336,6 +325,14 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     "s-maxage=2, stale-while-revalidate=2592000";
 }
 
+/**
+ *
+ * @param internalEvent
+ * @param headers
+ * @param responseStream
+ * @returns
+ * @__PURE__
+ */
 export function createServerResponse(
   internalEvent: InternalEvent,
   headers: Record<string, string | string[] | undefined>,

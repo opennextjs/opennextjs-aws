@@ -1,6 +1,4 @@
-import path from "node:path";
-
-import { NEXT_DIR, NextConfig } from "config/index.js";
+import { MiddlewareManifest, NextConfig } from "config/index.js";
 import { InternalEvent, InternalResult } from "types/open-next.js";
 
 //NOTE: we should try to avoid importing stuff from next as much as possible
@@ -12,13 +10,9 @@ import { InternalEvent, InternalResult } from "types/open-next.js";
 // } = require("next/dist/server/web/spec-extension/adapters/next-request");
 // @ts-expect-error - This is bundled
 import middleware from "./middleware.mjs";
-import {
-  getMiddlewareMatch,
-  isExternal,
-  loadMiddlewareManifest,
-} from "./util.js";
+import { getMiddlewareMatch, isExternal } from "./util.js";
 
-const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
+const middlewareManifest = MiddlewareManifest;
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
@@ -52,9 +46,6 @@ export async function handleMiddleware(
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
   // structure, but as of now, the only useful property on it is the "/" key (ie root).
   const middlewareInfo = middlewareManifest.middleware["/"];
-  middlewareInfo.paths = middlewareInfo.files.map((file) =>
-    path.join(NEXT_DIR, file),
-  );
 
   const urlQuery: Record<string, string> = {};
   Object.keys(query).forEach((k) => {
@@ -117,7 +108,7 @@ export async function handleMiddleware(
         trailingSlash: NextConfig.trailingSlash,
       },
       url,
-      body: convertBodyToReadableStream(internalEvent.body),
+      body: convertBodyToReadableStream(internalEvent.body ?? ""),
     },
   );
   const statusCode = result.status;

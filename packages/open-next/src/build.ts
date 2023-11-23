@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import openNextConfigPlugin from "./adapters/config/plugin.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
@@ -100,6 +101,7 @@ function normalizeOptions(opts: BuildOptions, root: string) {
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
     streaming: opts.functions.default.streaming ?? false,
+    externalMiddleware: opts.middleware?.external ?? false,
   };
 }
 
@@ -629,7 +631,9 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     compareSemver(options.nextVersion, "13.5.1") >= 0 ||
     compareSemver(options.nextVersion, "13.4.1") <= 0;
 
-  const disableRouting = compareSemver(options.nextVersion, "13.4.13") <= 0;
+  const disableRouting =
+    compareSemver(options.nextVersion, "13.4.13") <= 0 ||
+    options.externalMiddleware;
   const plugins = [
     openNextPlugin({
       name: "requestHandlerOverride",
@@ -685,10 +689,10 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   addCacheHandler(outputPath, options.dangerous);
 }
 
-function createMiddleware() {
+async function createMiddleware() {
   console.info(`Bundling middleware function...`);
 
-  const { appBuildOutputPath, outputDir } = options;
+  const { appBuildOutputPath, outputDir, externalMiddleware } = options;
 
   // Get middleware manifest
   const middlewareManifest = JSON.parse(
@@ -700,13 +704,66 @@ function createMiddleware() {
 
   const entry = middlewareManifest.middleware["/"];
 
-  // Build edge function
-  buildEdgeFunction(
-    entry,
-    path.join(__dirname, "core", "edgeFunctionHandler.js"),
-    path.join(outputDir, "server-function", "middleware.mjs"),
-    appBuildOutputPath,
-  );
+  // Create output folder
+  let outputPath = path.join(outputDir, "server-function");
+  if (externalMiddleware) {
+    outputPath = path.join(outputDir, "middleware");
+    fs.mkdirSync(outputPath, { recursive: true });
+
+    // Copy open-next.config.js
+    fs.copyFileSync(
+      path.join(options.tempDir, "open-next.config.js"),
+      path.join(outputPath, "open-next.config.js"),
+    );
+
+    // Bundle middleware
+    await esbuildAsync({
+      entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
+      inject: entry.files.map((file: string) =>
+        path.join(appBuildOutputPath, ".next", file),
+      ),
+      bundle: true,
+      outfile: path.join(outputPath, "handler.mjs"),
+      external: ["node:*", "fs", "path", "next", "@aws-sdk/*", "stream"],
+      target: "es2022",
+      platform: "neutral",
+      plugins: [
+        openNextConfigPlugin({
+          nextDir: path.join(appBuildOutputPath, ".next"),
+          outputPath: path.join(__dirname, "core"),
+          overrides: {
+            wrapper: "cloudflare",
+          },
+        }),
+      ],
+      treeShaking: true,
+      alias: {
+        path: "node:path",
+        stream: "node:stream",
+      },
+      banner: {
+        js: `
+globalThis._ENTRIES = {};
+globalThis.self = globalThis;
+globalThis.process = {env: {}}
+
+import {Buffer} from "node:buffer";
+globalThis.Buffer = Buffer;
+
+import {AsyncLocalStorage} from "node:async_hooks";
+globalThis.AsyncLocalStorage = AsyncLocalStorage;
+  
+  `,
+      },
+    });
+  } else {
+    buildEdgeFunction(
+      entry,
+      path.join(__dirname, "core", "edgeFunctionHandler.js"),
+      path.join(outputPath, "middleware.mjs"),
+      appBuildOutputPath,
+    );
+  }
 }
 
 function buildEdgeFunction(
@@ -872,6 +929,7 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
 
 function esbuildSync(esbuildOptions: ESBuildOptions) {
   const { openNextVersion, debug } = options;
+  console.log(["./open-next.config.js", ...(esbuildOptions.external ?? [])]);
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -880,6 +938,7 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
+    external: ["./open-next.config.js", ...(esbuildOptions.external ?? [])],
     banner: {
       ...esbuildOptions.banner,
       js: [
@@ -910,6 +969,11 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
     minify: debug ? false : true,
     sourcemap: debug ? "inline" : false,
     ...esbuildOptions,
+    external: [
+      ...(esbuildOptions.external ?? []),
+      "next",
+      "./open-next.config.js",
+    ],
     banner: {
       ...esbuildOptions.banner,
       js: [
