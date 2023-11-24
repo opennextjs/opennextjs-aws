@@ -50,7 +50,7 @@ debug("Init config", {
 // Handler //
 /////////////
 
-export const handler = createGenericHandler({
+export const handler = await createGenericHandler({
   handler: defaultHandler,
   type: "imageOptimization",
 });

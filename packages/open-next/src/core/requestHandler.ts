@@ -91,7 +91,7 @@ async function processRequest(
     const { rawPath } = internalEvent;
 
     if (isExternalRewrite) {
-      return proxyRequest(req, res);
+      return proxyRequest(internalEvent, res);
     } else {
       //#override applyNextjsPrebundledReact
       setNextjsPrebundledReact(rawPath);

@@ -61,7 +61,7 @@ export async function build(
       options.dangerous?.disableDynamoDBCache,
     );
   }
-  await createServerBundle(monorepoRoot, options.streaming);
+  await createServerBundle(monorepoRoot, opts);
   await createRevalidationBundle();
   createImageOptimizationBundle();
   await createWarmerBundle();
@@ -621,7 +621,10 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
-async function createServerBundle(monorepoRoot: string, streaming = false) {
+async function createServerBundle(
+  monorepoRoot: string,
+  buildOptions: BuildOptions,
+) {
   logger.info(`Bundling server function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -669,6 +672,8 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     compareSemver(options.nextVersion, "13.5.1") >= 0 ||
     compareSemver(options.nextVersion, "13.4.1") <= 0;
 
+  const overrides = buildOptions.functions.default.override ?? {};
+
   const disableRouting =
     compareSemver(options.nextVersion, "13.4.13") <= 0 ||
     options.externalMiddleware;
@@ -692,6 +697,19 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(disableRouting ? ["trustHostHeader"] : []),
       ],
+    }),
+
+    openNextResolvePlugin({
+      overrides: {
+        converter:
+          typeof overrides.converter === "function"
+            ? "dummy"
+            : overrides.converter,
+        wrapper:
+          typeof overrides.wrapper === "function"
+            ? "aws-lambda"
+            : overrides.wrapper,
+      },
     }),
   ];
 
