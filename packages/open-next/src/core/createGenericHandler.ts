@@ -27,7 +27,6 @@ type GenericHandler<
 > = {
   handler: OpenNextHandler<E, R>;
   type: Type;
-  defaultConverter?: string;
 };
 
 export async function createGenericHandler<
@@ -48,10 +47,7 @@ export async function createGenericHandler<
     ?.override as any as DefaultOverrideOptions<E, R>;
 
   // From the config, we create the adapter
-  const adapter = await resolveConverter<E, R>(
-    override?.converter,
-    handler.defaultConverter,
-  );
+  const adapter = await resolveConverter<E, R>(override?.converter);
 
   // Then we create the handler
   const wrapper = await resolveWrapper<E, R>(override?.wrapper);

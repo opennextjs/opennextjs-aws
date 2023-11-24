@@ -64,7 +64,6 @@ const defaultHandler = async (event: RevalidateEvent) => {
 export const handler = await createGenericHandler({
   handler: defaultHandler,
   type: "revalidate",
-  defaultConverter: "sqs-revalidate",
 });
 
 function loadPrerenderManifest() {

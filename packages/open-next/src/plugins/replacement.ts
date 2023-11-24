@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { Plugin } from "esbuild";
 
-import logger from "./logger.js";
+import logger from "../logger.js";
 
 export interface IPluginSettings {
   target: RegExp;
@@ -48,7 +48,7 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  * @param opts.deletes - list of ids to delete from the target
  * @returns
  */
-export default function openNextPlugin({
+export function openNextReplacementPlugin({
   target,
   replacements,
   deletes,

@@ -10,10 +10,11 @@ import {
   buildSync,
 } from "esbuild";
 
-import openNextConfigPlugin from "./adapters/config/plugin.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
-import openNextPlugin from "./plugin.js";
+import { openNextEdgePlugins } from "./plugins/edge.js";
+import { openNextReplacementPlugin } from "./plugins/replacement.js";
+import { openNextResolvePlugin } from "./plugins/resolve.js";
 import { BuildOptions, DangerousOptions } from "./types/open-next.js";
 
 const require = topLevelCreateRequire(import.meta.url);
@@ -55,12 +56,15 @@ export async function build(
   createOpenNextConfigBundle(options.tempDir);
   createStaticAssets();
   if (!options.dangerous?.disableIncrementalCache) {
-    createCacheAssets(monorepoRoot, options.dangerous?.disableDynamoDBCache);
+    await createCacheAssets(
+      monorepoRoot,
+      options.dangerous?.disableDynamoDBCache,
+    );
   }
   await createServerBundle(monorepoRoot, options.streaming);
-  createRevalidationBundle();
+  await createRevalidationBundle();
   createImageOptimizationBundle();
-  createWarmerBundle();
+  await createWarmerBundle();
   if (options.minify) {
     await minifyServerBundle();
   }
@@ -207,7 +211,7 @@ function initOutputDir() {
   fs.mkdirSync(tempDir, { recursive: true });
 }
 
-function createWarmerBundle() {
+async function createWarmerBundle() {
   logger.info(`Bundling warmer function...`);
 
   const { outputDir } = options;
@@ -226,10 +230,17 @@ function createWarmerBundle() {
   // note: bundle in OpenNext package b/c the adatper relys on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync({
+  await esbuildAsync({
     entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
     external: ["next"],
     outfile: path.join(outputPath, "index.mjs"),
+    plugins: [
+      openNextResolvePlugin({
+        overrides: {
+          converter: "dummy",
+        },
+      }),
+    ],
     banner: {
       js: [
         "import { createRequire as topLevelCreateRequire } from 'module';",
@@ -250,7 +261,7 @@ async function minifyServerBundle() {
   });
 }
 
-function createRevalidationBundle() {
+async function createRevalidationBundle() {
   logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -266,10 +277,17 @@ function createRevalidationBundle() {
   );
 
   // Build Lambda code
-  esbuildSync({
+  esbuildAsync({
     external: ["next", "styled-jsx", "react"],
     entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
     outfile: path.join(outputPath, "index.mjs"),
+    plugins: [
+      openNextResolvePlugin({
+        overrides: {
+          converter: "sqs-revalidate",
+        },
+      }),
+    ],
   });
 
   // Copy over .next/prerender-manifest.json file
@@ -398,7 +416,10 @@ function createStaticAssets() {
   }
 }
 
-function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
+async function createCacheAssets(
+  monorepoRoot: string,
+  disableDynamoDBCache = false,
+) {
   logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -557,11 +578,18 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
     if (metaFiles.length > 0) {
       const providerPath = path.join(outputDir, "dynamodb-provider");
 
-      esbuildSync({
+      await esbuildAsync({
         external: ["@aws-sdk/client-dynamodb"],
         entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
         outfile: path.join(providerPath, "index.mjs"),
         target: ["node18"],
+        plugins: [
+          openNextResolvePlugin({
+            overrides: {
+              converter: "dummy",
+            },
+          }),
+        ],
       });
 
       //Copy open-next.config.js into the bundle
@@ -635,7 +663,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     compareSemver(options.nextVersion, "13.4.13") <= 0 ||
     options.externalMiddleware;
   const plugins = [
-    openNextPlugin({
+    openNextReplacementPlugin({
       name: "requestHandlerOverride",
       target: /core\/requestHandler.js/g,
       deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
@@ -647,7 +675,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
           ]
         : [],
     }),
-    openNextPlugin({
+    openNextReplacementPlugin({
       name: "core/util",
       target: /core\/util.js/g,
       deletes: [
@@ -719,21 +747,29 @@ async function createMiddleware() {
     // Bundle middleware
     await esbuildAsync({
       entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
-      inject: entry.files.map((file: string) =>
-        path.join(appBuildOutputPath, ".next", file),
-      ),
+      // inject: ,
       bundle: true,
       outfile: path.join(outputPath, "handler.mjs"),
-      external: ["node:*", "fs", "path", "next", "@aws-sdk/*", "stream"],
+      external: ["node:*", "next", "@aws-sdk/*"],
       target: "es2022",
       platform: "neutral",
       plugins: [
-        openNextConfigPlugin({
-          nextDir: path.join(appBuildOutputPath, ".next"),
-          outputPath: path.join(__dirname, "core"),
+        openNextResolvePlugin({
           overrides: {
             wrapper: "cloudflare",
+            converter: "edge",
           },
+        }),
+        openNextEdgePlugins({
+          entryFiles: entry.files.map((file: string) =>
+            path.join(appBuildOutputPath, ".next", file),
+          ),
+          nextDir: path.join(appBuildOutputPath, ".next"),
+          edgeFunctionHandlerPath: path.join(
+            __dirname,
+            "core",
+            "edgeFunctionHandler.js",
+          ),
         }),
       ],
       treeShaking: true,
@@ -741,20 +777,8 @@ async function createMiddleware() {
         path: "node:path",
         stream: "node:stream",
       },
-      banner: {
-        js: `
-globalThis._ENTRIES = {};
-globalThis.self = globalThis;
-globalThis.process = {env: {}}
-
-import {Buffer} from "node:buffer";
-globalThis.Buffer = Buffer;
-
-import {AsyncLocalStorage} from "node:async_hooks";
-globalThis.AsyncLocalStorage = AsyncLocalStorage;
-  
-  `,
-      },
+      conditions: ["module"],
+      mainFields: ["module", "main"],
     });
   } else {
     buildEdgeFunction(
