@@ -4,6 +4,8 @@ import { createGenericHandler } from "../core/createGenericHandler";
 import routingHandler from "../core/routingHandler";
 
 const defaultHandler = async (internalEvent: InternalEvent) => {
+  // TODO: We need to handle splitted function here
+  // We should probably create an host resolver to redirect correctly
   const result = await routingHandler(internalEvent);
   if ("internalEvent" in result) {
     return {
@@ -20,5 +22,8 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
 export const handler = await createGenericHandler({
   handler: defaultHandler,
   type: "middleware",
-  defaultConverter: "edge",
 });
+
+export default {
+  fetch: handler,
+};

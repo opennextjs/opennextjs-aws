@@ -77,7 +77,6 @@ const resolveWarmerInvoke = async () => {
 export const handler = await createGenericHandler({
   handler: defaultHandler,
   type: "warmer",
-  defaultConverter: "dummy",
 });
 
 async function defaultHandler() {

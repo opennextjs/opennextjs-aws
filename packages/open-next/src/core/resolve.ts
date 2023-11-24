@@ -10,19 +10,17 @@ import {
 
 import { TagCache } from "../cache/tag/types.js";
 
-// TODO: We should probably use open-next plugins here to avoid bundling unnecessary code
-
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
 >(
   converter: DefaultOverrideOptions<E, R>["converter"],
-  defaultConverter: string = "aws-apigw-v2",
 ): Promise<Converter<E, R>> {
   if (typeof converter === "function") {
     return converter();
   } else {
-    const m_1 = await import(`../converters/${defaultConverter}.js`);
+    const m_1 = await import(`../converters/aws-apigw-v2.js`);
+    // @ts-expect-error
     return m_1.default;
   }
 }

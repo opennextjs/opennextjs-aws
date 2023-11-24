@@ -82,6 +82,27 @@ type ImageLoader = (url: string) => Promise<{
   cacheControl?: string;
 }>;
 
+export type IncludedWrapper =
+  | "aws-lambda"
+  | "aws-lambda-streaming"
+  | "node"
+  | "cloudflare";
+
+export type IncludedConverter =
+  | "aws-apigw-v2"
+  | "aws-apigw-v1"
+  | "aws-cloudfront"
+  | "edge"
+  | "node"
+  | "sqs-revalidate"
+  | "dummy";
+
+export type IncludedQueue = "sqs";
+
+export type IncludedIncrementalCache = "s3";
+
+export type IncludedTagCache = "dynamodb";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -90,24 +111,13 @@ export interface DefaultOverrideOptions<
    * This is the main entrypoint of your app.
    * @default "aws-lambda"
    */
-  wrapper?:
-    | "aws-lambda"
-    | "aws-lambda-streaming"
-    | "docker"
-    | "cloudflare"
-    | LazyLoadedOverride<Wrapper<E, R>>;
+  wrapper?: IncludedWrapper | LazyLoadedOverride<Wrapper<E, R>>;
 
   /**
    * This code convert the event to InternalEvent and InternalResult to the expected output.
    * @default "aws-apigw-v2"
    */
-  converter?:
-    | "aws-apigw-v2"
-    | "aws-apigw-v1"
-    | "aws-cloudfront"
-    | "edge"
-    | "docker"
-    | LazyLoadedOverride<Converter<E, R>>;
+  converter?: IncludedConverter | LazyLoadedOverride<Converter<E, R>>;
 }
 
 export interface OverrideOptions extends DefaultOverrideOptions {
