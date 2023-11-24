@@ -30,10 +30,10 @@ interface InitializationFunctionEvent {
 }
 
 const tagCache = await resolveTagCache(
-  globalThis.openNextConfig.initializationFunction?.tagCache,
+  globalThis.openNextConfig?.initializationFunction?.tagCache,
 );
 
-export const handler = createGenericHandler({
+export const handler = await createGenericHandler({
   handler: defaultHandler,
   type: "initializationFunction",
 });

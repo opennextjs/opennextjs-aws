@@ -6,6 +6,7 @@ import { StreamCreator } from "http/index.js";
 import { parseCookies, parseHeaders } from "http/util.js";
 import { Wrapper } from "types/open-next";
 
+import { error } from "../adapters/logger";
 import { WarmerEvent } from "../adapters/warmer-function";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
@@ -19,9 +20,14 @@ const handler: Wrapper = async (handler, converter) =>
       let _headersSent = false;
 
       //Handle compression
-      const acceptEncoding = internalEvent.headers["accept-encoding"] ?? "";
+      const acceptEncoding = internalEvent.headers?.["accept-encoding"] ?? "";
       let contentEncoding: string;
       let compressedStream: Writable | undefined;
+
+      responseStream.on("error", (err) => {
+        error(err);
+        responseStream.end();
+      });
 
       if (acceptEncoding.includes("br")) {
         contentEncoding = "br";

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { OutgoingHttpHeaders, ServerResponse } from "node:http";
+import { OutgoingHttpHeaders } from "node:http";
+import { request } from "node:https";
 
 import { BuildId, HtmlPages } from "config/index.js";
 import type { IncomingMessage, StreamCreator } from "http/index.js";
@@ -96,46 +97,52 @@ export function unescapeRegex(str: string) {
 }
 
 export async function proxyRequest(
-  req: IncomingMessage,
+  internalEvent: InternalEvent,
   res: OpenNextNodeResponse,
 ) {
-  // TODO: we should use our own version instead of the one bundled with Next.js
-  const HttpProxy = require("next/dist/compiled/http-proxy") as any;
-
-  const proxy = new HttpProxy({
-    changeOrigin: true,
-    ignorePath: true,
-    xfwd: true,
-  });
-
+  const { url, headers, method, body } = internalEvent;
+  debug("proxyRequest", url);
   await new Promise<void>((resolve, reject) => {
-    proxy.on("proxyRes", (proxyRes: ServerResponse) => {
-      const body: Uint8Array[] = [];
-      proxyRes.on("data", function (chunk) {
-        body.push(chunk);
-      });
-      proxyRes.on("end", function () {
-        const newBody = Buffer.concat(body).toString();
-        debug(`Proxying response`, {
-          headers: proxyRes.getHeaders(),
-          body: newBody,
+    const { host: _host, ...filteredHeaders } = headers;
+    debug("filteredHeaders", filteredHeaders);
+    const req = request(
+      url,
+      {
+        headers: filteredHeaders,
+        method,
+        rejectUnauthorized: false,
+      },
+      (_res) => {
+        res.writeHead(_res.statusCode ?? 200, _res.headers);
+        if (_res.headers["content-encoding"] === "br") {
+          _res.pipe(require("node:zlib").createBrotliDecompress()).pipe(res);
+        } else if (_res.headers["content-encoding"] === "gzip") {
+          _res.pipe(require("node:zlib").createGunzip()).pipe(res);
+        } else {
+          _res.pipe(res);
+        }
+
+        _res.on("error", (e) => {
+          console.log("error", e);
+          res.end();
+          reject(e);
         });
-        res.end(newBody);
-        resolve();
-      });
-    });
+        res.on("end", () => {
+          console.log("end");
+          // res.end();
+          resolve();
+        });
+      },
+    );
 
-    proxy.on("error", (err: any) => {
-      reject(err);
-    });
-
-    debug(`Proxying`, { url: req.url, headers: req.headers });
-
-    proxy.web(req, res, {
-      target: req.url,
-      headers: req.headers,
-    });
+    if (body && method !== "GET" && method !== "HEAD") {
+      req.write(body);
+    }
+    req.end();
   });
+  // console.log("result", result);
+  // res.writeHead(result.status, resHeaders);
+  // res.end(await result.text());
 }
 
 declare global {
