@@ -10,7 +10,7 @@ import type { MiddlewareManifest } from "types/next-types";
 import { InternalEvent } from "types/open-next.js";
 
 import { isBinaryContentType } from "../../adapters/binary.js";
-import { debug } from "../../adapters/logger.js";
+import { debug, error } from "../../adapters/logger.js";
 
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
@@ -148,13 +148,11 @@ export async function proxyRequest(
         }
 
         _res.on("error", (e) => {
-          console.log("error", e);
+          error("proxyRequest error", e);
           res.end();
           reject(e);
         });
         res.on("end", () => {
-          console.log("end");
-          // res.end();
           resolve();
         });
       },

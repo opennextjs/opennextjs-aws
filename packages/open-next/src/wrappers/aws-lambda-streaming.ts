@@ -3,7 +3,6 @@ import zlib from "node:zlib";
 
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { StreamCreator } from "http/index.js";
-import { parseCookies, parseHeaders } from "http/util.js";
 import { Wrapper } from "types/open-next";
 
 import { error } from "../adapters/logger";
@@ -95,21 +94,14 @@ const handler: Wrapper = async (handler, converter) =>
             compressedStream?.uncork();
           }
         },
+        onFinish: () => {
+          if (!_hasWriten) {
+            compressedStream?.end(new Uint8Array(8));
+          }
+        },
       };
 
       const response = await handler(internalEvent, streamCreator);
-
-      if (!compressedStream.writableFinished) {
-        // If the headers are not sent, we need to send them
-        if (!_headersSent) {
-          streamCreator.writeHeaders({
-            statusCode: response?.statusCode ?? 500,
-            cookies: parseCookies(response?.headers["set-cookie"]) ?? [],
-            headers: parseHeaders(response?.headers),
-          });
-        }
-        compressedStream.end(_hasWriten ? undefined : new Uint8Array(8));
-      }
 
       return converter.convertTo(response);
     },

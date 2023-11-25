@@ -14,6 +14,9 @@ const wrapper: Wrapper = async (handler, converter) => {
         res.uncork();
         return res;
       },
+      onFinish: () => {
+        // Is it necessary to do something here?
+      },
     };
 
     await handler(internalEvent, _res);
