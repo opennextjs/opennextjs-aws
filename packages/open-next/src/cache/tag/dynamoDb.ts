@@ -29,11 +29,11 @@ function buildDynamoKey(key: string) {
   return path.posix.join(NEXT_BUILD_ID ?? "", key);
 }
 
-function buildDynamoObject(path: string, tags: string) {
+function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
   return {
     path: { S: buildDynamoKey(path) },
     tag: { S: buildDynamoKey(tags) },
-    revalidatedAt: { N: `${Date.now()}` },
+    revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
   };
 }
 
@@ -127,7 +127,11 @@ const tagCache: TagCache = {
                 [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
                   PutRequest: {
                     Item: {
-                      ...buildDynamoObject(Item.path, Item.tag),
+                      ...buildDynamoObject(
+                        Item.path,
+                        Item.tag,
+                        Item.revalidatedAt,
+                      ),
                     },
                   },
                 })),

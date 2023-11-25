@@ -1,6 +1,4 @@
-import path from "node:path";
-
-import { NEXT_DIR, NextConfig } from "config/index.js";
+import { MiddlewareManifest, NextConfig } from "config/index.js";
 import { InternalEvent, InternalResult } from "types/open-next.js";
 
 //NOTE: we should try to avoid importing stuff from next as much as possible
@@ -10,15 +8,9 @@ import { InternalEvent, InternalResult } from "types/open-next.js";
 // const {
 //   signalFromNodeResponse,
 // } = require("next/dist/server/web/spec-extension/adapters/next-request");
-// @ts-expect-error - This is bundled
-import middleware from "./middleware.mjs";
-import {
-  getMiddlewareMatch,
-  isExternal,
-  loadMiddlewareManifest,
-} from "./util.js";
+import { getMiddlewareMatch, isExternal } from "./util.js";
 
-const middlewareManifest = loadMiddlewareManifest(NEXT_DIR);
+const middlewareManifest = MiddlewareManifest;
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
@@ -52,9 +44,6 @@ export async function handleMiddleware(
   // but that was discarded for simplicity. The MiddlewareInfo type still has the original
   // structure, but as of now, the only useful property on it is the "/" key (ie root).
   const middlewareInfo = middlewareManifest.middleware["/"];
-  middlewareInfo.paths = middlewareInfo.files.map((file) =>
-    path.join(NEXT_DIR, file),
-  );
 
   const urlQuery: Record<string, string> = {};
   Object.keys(query).forEach((k) => {
@@ -69,27 +58,6 @@ export async function handleMiddleware(
   initialUrl.search = new URLSearchParams(urlQuery).toString();
   const url = initialUrl.toString();
 
-  // const result: MiddlewareResult = await run({
-  //   distDir: NEXT_DIR,
-  //   name: middlewareInfo.name || "/",
-  //   paths: middlewareInfo.paths || [],
-  //   edgeFunctionEntry: middlewareInfo,
-  //   request: {
-  //     headers: req.headers,
-  //     method: req.method || "GET",
-  //     nextConfig: {
-  //       basePath: NextConfig.basePath,
-  //       i18n: NextConfig.i18n,
-  //       trailingSlash: NextConfig.trailingSlash,
-  //     },
-  //     url,
-  //     body: getCloneableBody(req),
-  //     signal: signalFromNodeResponse(res),
-  //   },
-  //   useCache: true,
-  //   onWarning: console.warn,
-  // });
-
   const convertBodyToReadableStream = (body: string | Buffer) => {
     const readable = new ReadableStream({
       start(controller) {
@@ -100,7 +68,10 @@ export async function handleMiddleware(
     return readable;
   };
 
-  const result: Response = await middleware(
+  // @ts-expect-error - This is bundled
+  const middleware = await import("./middleware.mjs");
+
+  const result: Response = await middleware.default(
     [
       {
         name: middlewareInfo.name || "/",
@@ -117,7 +88,7 @@ export async function handleMiddleware(
         trailingSlash: NextConfig.trailingSlash,
       },
       url,
-      body: convertBodyToReadableStream(internalEvent.body),
+      body: convertBodyToReadableStream(internalEvent.body ?? ""),
     },
   );
   const statusCode = result.status;
@@ -136,7 +107,7 @@ export async function handleMiddleware(
   */
   const responseHeaders = result.headers as Headers;
   const reqHeaders: Record<string, string> = {};
-  const resHeaders: Record<string, string> = {};
+  const resHeaders: Record<string, string | string[]> = {};
 
   responseHeaders.delete("x-middleware-override-headers");
   const xMiddlewareKey = "x-middleware-request-";
@@ -144,10 +115,14 @@ export async function handleMiddleware(
     if (key.startsWith(xMiddlewareKey)) {
       const k = key.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
-      // req.headers[k] = value;
     } else {
-      resHeaders[key] = value;
-      // res.setHeader(key, value);
+      if (key.toLowerCase() === "set-cookie") {
+        resHeaders[key] = resHeaders[key]
+          ? [...resHeaders[key], value]
+          : [value];
+      } else {
+        resHeaders[key] = value;
+      }
     }
   });
 

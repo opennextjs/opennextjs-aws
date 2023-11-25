@@ -56,7 +56,7 @@ async function convertFromAPIGatewayProxyEvent(
 ): Promise<InternalEvent> {
   const { path, body, httpMethod, requestContext, isBase64Encoded } = event;
   return {
-    type: "v1",
+    type: "core",
     method: httpMethod,
     rawPath: path,
     url: path + normalizeAPIGatewayProxyEventQueryParams(event),

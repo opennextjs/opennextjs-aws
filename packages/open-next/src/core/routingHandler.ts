@@ -9,6 +9,7 @@ import {
 import type { OutgoingHttpHeaders } from "http";
 import { InternalEvent, InternalResult } from "types/open-next";
 
+import { debug } from "../adapters/logger";
 import {
   addNextConfigHeaders,
   fixDataPage,
@@ -35,7 +36,7 @@ export default async function routingHandler(
 
   const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
   if (redirect) {
-    console.log("redirect", redirect);
+    debug("redirect", redirect);
     return redirect;
   }
 

@@ -29,7 +29,7 @@ async function convertFromCloudFrontRequestEvent(
   const { method, uri, querystring, body, headers, clientIp } =
     event.Records[0].cf.request;
   return {
-    type: "cf",
+    type: "core",
     method,
     rawPath: uri,
     url: uri + (querystring ? `?${querystring}` : ""),

@@ -10,11 +10,11 @@ import {
 import NextServer from "next/dist/server/next-server.js";
 import type { MiddlewareManifest } from "types/next-types.js";
 
-import { debug } from "../logger.js";
+import { debug } from "../adapters/logger.js";
 import {
   applyOverride as applyNextjsRequireHooksOverride,
   overrideHooks as overrideNextjsRequireHooks,
-} from "../require-hooks.js";
+} from "./require-hooks.js";
 
 // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 // Step 1: Need to override the require hooks for React before Next.js server
@@ -28,11 +28,12 @@ overrideNextjsRequireHooks(NextConfig);
 applyNextjsRequireHooksOverride();
 //#endOverride
 
-//#override requestHandler
 // @ts-ignore
 export const requestHandler = new NextServer.default({
+  //#override requestHandlerHost
   hostname: "localhost",
   port: 3000,
+  //#endOverride
   conf: {
     ...NextConfig,
     // Next.js compression should be disabled because of a bug in the bundled
@@ -42,6 +43,13 @@ export const requestHandler = new NextServer.default({
     // our own cache handler to store the cache on S3.
     experimental: {
       ...NextConfig.experimental,
+      // This uses the request.headers.host as the URL
+      // https://github.com/vercel/next.js/blob/canary/packages/next/src/server/next-server.ts#L1749-L1754
+      //#override trustHostHeader
+      trustHostHeader: true,
+      //#endOverride
+
+      //TODO: change env.LAMBDA_TASK_ROOT
       incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
     },
   },
@@ -49,7 +57,6 @@ export const requestHandler = new NextServer.default({
   dev: false,
   dir: __dirname,
 }).getRequestHandler();
-//#endOverride
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   const rootMiddleware = middlewareManifest.middleware["/"];

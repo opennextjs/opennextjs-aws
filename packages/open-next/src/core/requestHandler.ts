@@ -1,4 +1,3 @@
-import { BuildId } from "config/index";
 import {
   IncomingMessage,
   OpenNextNodeResponse,
@@ -6,22 +5,23 @@ import {
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
 
-import { error } from "../adapters/logger";
-import { createServerResponse } from "../adapters/plugins/routing/util";
-import { handler as serverHandler } from "../adapters/plugins/serverHandler";
-import { convertRes } from "./routing/util";
+import { debug, error } from "../adapters/logger";
+import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import routingHandler from "./routingHandler";
+import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
   responseStreaming?: StreamCreator,
-): Promise<InternalResult | void> {
+): Promise<InternalResult> {
   if (internalEvent.headers["x-forwarded-host"]) {
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
+  debug("internalEvent", internalEvent);
 
-  //TODO: replace this line for next <= 13.4.12
+  //#override withRouting
   const preprocessResult = await routingHandler(internalEvent);
+  //#endOverride
 
   if ("type" in preprocessResult) {
     // res is used only in the streaming case
@@ -34,6 +34,7 @@ export async function openNextHandler(
     return preprocessResult;
   } else {
     const preprocessedEvent = preprocessResult.internalEvent;
+    debug("preprocessedEvent", preprocessedEvent);
     const reqProps = {
       method: preprocessedEvent.method,
       url: preprocessedEvent.url,
@@ -49,7 +50,7 @@ export async function openNextHandler(
     const req = new IncomingMessage(reqProps);
     const res = createServerResponse(
       preprocessedEvent,
-      preprocessResult.headers as any,
+      preprocessResult.headers as Record<string, string | string[]>,
       responseStreaming,
     );
 
@@ -88,11 +89,19 @@ async function processRequest(
   try {
     // `serverHandler` is replaced at build time depending on user's
     // nextjs version to patch Nextjs 13.4.x and future breaking changes.
-    await serverHandler(req, res, {
-      internalEvent,
-      buildId: BuildId,
-      isExternalRewrite,
-    });
+
+    const { rawPath } = internalEvent;
+
+    if (isExternalRewrite) {
+      return proxyRequest(internalEvent, res);
+    } else {
+      //#override applyNextjsPrebundledReact
+      setNextjsPrebundledReact(rawPath);
+      //#endOverride
+
+      // Next Server
+      await requestHandler(req, res);
+    }
   } catch (e: any) {
     error("NextJS request failed.", e);
     //TODO: we could return the next 500 page here
