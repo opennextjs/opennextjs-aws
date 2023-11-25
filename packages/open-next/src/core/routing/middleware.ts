@@ -8,8 +8,6 @@ import { InternalEvent, InternalResult } from "types/open-next.js";
 // const {
 //   signalFromNodeResponse,
 // } = require("next/dist/server/web/spec-extension/adapters/next-request");
-// @ts-expect-error - This is bundled
-import middleware from "./middleware.mjs";
 import { getMiddlewareMatch, isExternal } from "./util.js";
 
 const middlewareManifest = MiddlewareManifest;
@@ -60,27 +58,6 @@ export async function handleMiddleware(
   initialUrl.search = new URLSearchParams(urlQuery).toString();
   const url = initialUrl.toString();
 
-  // const result: MiddlewareResult = await run({
-  //   distDir: NEXT_DIR,
-  //   name: middlewareInfo.name || "/",
-  //   paths: middlewareInfo.paths || [],
-  //   edgeFunctionEntry: middlewareInfo,
-  //   request: {
-  //     headers: req.headers,
-  //     method: req.method || "GET",
-  //     nextConfig: {
-  //       basePath: NextConfig.basePath,
-  //       i18n: NextConfig.i18n,
-  //       trailingSlash: NextConfig.trailingSlash,
-  //     },
-  //     url,
-  //     body: getCloneableBody(req),
-  //     signal: signalFromNodeResponse(res),
-  //   },
-  //   useCache: true,
-  //   onWarning: console.warn,
-  // });
-
   const convertBodyToReadableStream = (body: string | Buffer) => {
     const readable = new ReadableStream({
       start(controller) {
@@ -91,7 +68,10 @@ export async function handleMiddleware(
     return readable;
   };
 
-  const result: Response = await middleware(
+  // @ts-expect-error - This is bundled
+  const middleware = await import("./middleware.mjs");
+
+  const result: Response = await middleware.default(
     [
       {
         name: middlewareInfo.name || "/",
@@ -127,7 +107,7 @@ export async function handleMiddleware(
   */
   const responseHeaders = result.headers as Headers;
   const reqHeaders: Record<string, string> = {};
-  const resHeaders: Record<string, string> = {};
+  const resHeaders: Record<string, string | string[]> = {};
 
   responseHeaders.delete("x-middleware-override-headers");
   const xMiddlewareKey = "x-middleware-request-";
@@ -135,10 +115,14 @@ export async function handleMiddleware(
     if (key.startsWith(xMiddlewareKey)) {
       const k = key.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
-      // req.headers[k] = value;
     } else {
-      resHeaders[key] = value;
-      // res.setHeader(key, value);
+      if (key.toLowerCase() === "set-cookie") {
+        resHeaders[key] = resHeaders[key]
+          ? [...resHeaders[key], value]
+          : [value];
+      } else {
+        resHeaders[key] = value;
+      }
     }
   });
 

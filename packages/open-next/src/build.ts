@@ -633,13 +633,14 @@ async function createServerBundle(
 
   // Copy open-next.config.js
   // We should reuse the one we created at the beginning of the build
+  fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
   fs.copyFileSync(
     path.join(options.tempDir, "open-next.config.js"),
     path.join(outputPath, packagePath, "open-next.config.js"),
   );
 
   // Bundle middleware
-  createMiddleware();
+  createMiddleware(packagePath);
 
   // Copy over standalone output files
   // note: if user uses pnpm as the package manager, node_modules contain
@@ -735,7 +736,7 @@ async function createServerBundle(
   addCacheHandler(outputPath, options.dangerous);
 }
 
-async function createMiddleware() {
+async function createMiddleware(packagePath: string) {
   console.info(`Bundling middleware function...`);
 
   const { appBuildOutputPath, outputDir, externalMiddleware } = options;
@@ -749,6 +750,9 @@ async function createMiddleware() {
   );
 
   const entry = middlewareManifest.middleware["/"];
+  if (!entry) {
+    return;
+  }
 
   // Create output folder
   let outputPath = path.join(outputDir, "server-function");
@@ -767,7 +771,7 @@ async function createMiddleware() {
       entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
       // inject: ,
       bundle: true,
-      outfile: path.join(outputPath, "handler.mjs"),
+      outfile: path.join(outputPath, packagePath, "handler.mjs"),
       external: ["node:*", "next", "@aws-sdk/*"],
       target: "es2022",
       platform: "neutral",
@@ -802,7 +806,7 @@ async function createMiddleware() {
     buildEdgeFunction(
       entry,
       path.join(__dirname, "core", "edgeFunctionHandler.js"),
-      path.join(outputPath, "middleware.mjs"),
+      path.join(outputPath, packagePath, "middleware.mjs"),
       appBuildOutputPath,
     );
   }
@@ -971,7 +975,6 @@ function addCacheHandler(outputPath: string, options?: DangerousOptions) {
 
 function esbuildSync(esbuildOptions: ESBuildOptions) {
   const { openNextVersion, debug } = options;
-  console.log(["./open-next.config.js", ...(esbuildOptions.external ?? [])]);
   const result = buildSync({
     target: "esnext",
     format: "esm",

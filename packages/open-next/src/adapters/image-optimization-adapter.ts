@@ -227,7 +227,7 @@ async function downloadHandler(
       }
 
       // @ts-ignore
-      pipeRes(response.Body, res);
+      pipeRes(response.body, res);
 
       // Respect the bucket file's content-type and cache-control
       // imageOptimizer will use this to set the results.maxAge

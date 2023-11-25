@@ -48,7 +48,7 @@ export async function openNextHandler(
     const req = new IncomingMessage(reqProps);
     const res = createServerResponse(
       preprocessedEvent,
-      preprocessResult.headers as any,
+      preprocessResult.headers as Record<string, string | string[]>,
       responseStreaming,
     );
 

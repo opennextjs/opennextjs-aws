@@ -13,6 +13,7 @@ export interface StreamCreator {
   }): Writable;
   // Just to fix an issue with aws lambda streaming with empty body
   onWrite?: () => void;
+  onFinish: () => void;
 }
 
 // We only need to implement the methods that are used by next.js
@@ -38,7 +39,11 @@ export class OpenNextNodeResponse extends Transform {
       ) as string[];
     }
     this.once("finish", () => {
+      if (!this.headersSent) {
+        this.flushHeaders();
+      }
       onEnd(this.headers);
+      this.streamCreator?.onFinish();
     });
   }
 
@@ -87,13 +92,13 @@ export class OpenNextNodeResponse extends Transform {
   // Only used directly in next@14+
   flushHeaders() {
     this.headersSent = true;
+    this.fixHeaders(this.headers);
     if (this.initialHeaders) {
       this.headers = {
         ...this.headers,
         ...this.initialHeaders,
       };
     }
-    this.fixHeaders(this.headers);
 
     if (this.streamCreator) {
       this.responseStream = this.streamCreator?.writeHeaders({
