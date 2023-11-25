@@ -675,9 +675,9 @@ async function createServerBundle(
 
   const overrides = buildOptions.functions.default.override ?? {};
 
-  const disableRouting =
-    compareSemver(options.nextVersion, "13.4.13") <= 0 ||
-    options.externalMiddleware;
+  const isBefore13413 = compareSemver(options.nextVersion, "13.4.13") <= 0;
+
+  const disableRouting = isBefore13413 || options.externalMiddleware;
   const plugins = [
     openNextReplacementPlugin({
       name: "requestHandlerOverride",
@@ -697,6 +697,7 @@ async function createServerBundle(
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(disableRouting ? ["trustHostHeader"] : []),
+        ...(!isBefore13413 ? ["requestHandlerHost"] : []),
       ],
     }),
 

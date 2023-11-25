@@ -30,8 +30,10 @@ applyNextjsRequireHooksOverride();
 
 // @ts-ignore
 export const requestHandler = new NextServer.default({
+  //#override requestHandlerHost
   hostname: "localhost",
   port: 3000,
+  //#endOverride
   conf: {
     ...NextConfig,
     // Next.js compression should be disabled because of a bug in the bundled

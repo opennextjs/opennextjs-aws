@@ -5,7 +5,7 @@ import {
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
 
-import { error } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import routingHandler from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
@@ -17,6 +17,7 @@ export async function openNextHandler(
   if (internalEvent.headers["x-forwarded-host"]) {
     internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
   }
+  debug("internalEvent", internalEvent);
 
   //#override withRouting
   const preprocessResult = await routingHandler(internalEvent);
@@ -33,6 +34,7 @@ export async function openNextHandler(
     return preprocessResult;
   } else {
     const preprocessedEvent = preprocessResult.internalEvent;
+    debug("preprocessedEvent", preprocessedEvent);
     const reqProps = {
       method: preprocessedEvent.method,
       url: preprocessedEvent.url,
