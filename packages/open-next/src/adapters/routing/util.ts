@@ -68,7 +68,9 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
       urlQuery.append(key, value);
     }
   });
-  return urlQuery.toString();
+  const queryString = urlQuery.toString();
+
+  return queryString ? `?${queryString}` : "";
 }
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {

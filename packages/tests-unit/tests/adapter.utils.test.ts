@@ -56,23 +56,23 @@ describe("adapter utils", () => {
 
     it("converts a single entry to one querystring parameter", () => {
       const query = { key: "value" };
-      expect(convertToQueryString(query)).toBe("key=value");
+      expect(convertToQueryString(query)).toBe("?key=value");
     });
 
     it("converts multiple distinct entries to a querystring parameter each", () => {
       const query = { key: "value", another: "value2" };
-      expect(convertToQueryString(query)).toBe("key=value&another=value2");
+      expect(convertToQueryString(query)).toBe("?key=value&another=value2");
     });
 
     it("converts multi-value parameters to multiple key value pairs", () => {
       const query = { key: ["value1", "value2"] };
-      expect(convertToQueryString(query)).toBe("key=value1&key=value2");
+      expect(convertToQueryString(query)).toBe("?key=value1&key=value2");
     });
 
     it("converts mixed multi-value and single value parameters", () => {
       const query = { key: ["value1", "value2"], another: "value3" };
       expect(convertToQueryString(query)).toBe(
-        "key=value1&key=value2&another=value3",
+        "?key=value1&key=value2&another=value3",
       );
     });
   });

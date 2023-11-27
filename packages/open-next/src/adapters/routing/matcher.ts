@@ -153,13 +153,11 @@ export function handleRewrites<T extends RewriteDefinition>(
     }
   }
 
-  const queryString = query ? `?${convertToQueryString(query)}` : "";
-
   return {
     internalEvent: {
       ...event,
       rawPath: rewrittenUrl,
-      url: `${rewrittenUrl}${queryString}`,
+      url: `${rewrittenUrl}${convertToQueryString(query)}`,
     },
     __rewrite: rewrite,
     isExternalRewrite,
@@ -237,7 +235,7 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
       ...internalEvent,
       rawPath: newPath,
       query,
-      url: `${newPath}${query ? "?" + convertToQueryString(query) : ""}`,
+      url: `${newPath}${convertToQueryString(query)}`,
     };
   }
   return internalEvent;
