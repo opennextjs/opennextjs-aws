@@ -306,7 +306,7 @@ export default class S3Cache {
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
     const derivedTags: string[] =
       data?.kind === "FETCH"
-        ? ctx?.tags ?? []
+        ? ctx?.tags ?? data?.data?.tags ?? [] // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
         : data?.kind === "PAGE"
         ? data.headers?.["x-next-cache-tags"]?.split(",") ?? []
         : [];
