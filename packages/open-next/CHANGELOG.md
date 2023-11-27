@@ -1,5 +1,39 @@
 # open-next
 
+## 2.3.2
+
+### Patch Changes
+
+- 4be2ac8: Reduce AWS S3 warning logs; add maxAttempts config to AWS SDK call
+
+## 2.3.1
+
+### Patch Changes
+
+- 95bf402: Display sharp installation log on failure
+- 1ed5ffd: Print plugin info in debug mode
+- 1d83dab: Handle .map files during bundling cache assets
+
+## 2.3.0
+
+### Minor Changes
+
+- 22e3e47: Fix inconsistencies with swr and isr (#289)
+
+  Exclude manifest.json, robots.txt and sitemap.xml from routing matcher (#287)
+
+  Feature/rewrite with query string (#281)
+
+  Double chunk DDB batch writes to not overwhelm DDB on load (#293)
+
+  fix: copy favicon.ico from app dir (#301)
+
+  fix: XML Malformed Error DeleteObjectsCommand (#300)
+
+  Fix external rewrite (#299)
+
+  Perf Reduce s3 calls (#295)
+
 ## 2.2.4
 
 ### Patch Changes

@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
 
@@ -84,6 +85,7 @@ export async function build(opts: BuildOptions = {}) {
 
   // Initialize options
   options = normalizeOptions(opts, monorepoRoot);
+  logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
   checkRunningInsideNextjsApp();
@@ -139,7 +141,7 @@ function checkRunningInsideNextjsApp() {
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
   if (!extension) {
-    console.error(
+    logger.error(
       "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
     );
     process.exit(1);
@@ -157,7 +159,7 @@ function findMonorepoRoot(appPath: string) {
 
     if (found) {
       if (currentPath !== appPath) {
-        console.info("Monorepo detected at", currentPath);
+        logger.info("Monorepo detected at", currentPath);
       }
       return { root: currentPath, packager: found.packager };
     }
@@ -197,7 +199,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
 
 function printHeader(header: string) {
   header = `OpenNext — ${header}`;
-  console.info(
+  logger.info(
     [
       "",
       "┌" + "─".repeat(header.length + 2) + "┐",
@@ -226,7 +228,7 @@ function printNextjsVersion() {
 
 function printOpenNextVersion() {
   const { openNextVersion } = options;
-  console.info(`OpenNext v${openNextVersion}`);
+  logger.info(`OpenNext v${openNextVersion}`);
 }
 
 function initOutputDir() {
@@ -236,7 +238,7 @@ function initOutputDir() {
 }
 
 function createWarmerBundle() {
-  console.info(`Bundling warmer function...`);
+  logger.info(`Bundling warmer function...`);
 
   const { outputDir } = options;
 
@@ -264,7 +266,7 @@ function createWarmerBundle() {
 }
 
 async function minifyServerBundle() {
-  console.info(`Minimizing server function...`);
+  logger.info(`Minimizing server function...`);
   const { outputDir } = options;
   await minifyAll(path.join(outputDir, "server-function"), {
     compress_json: true,
@@ -273,7 +275,7 @@ async function minifyServerBundle() {
 }
 
 function createRevalidationBundle() {
-  console.info(`Bundling revalidation function...`);
+  logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, outputDir } = options;
 
@@ -296,7 +298,7 @@ function createRevalidationBundle() {
 }
 
 function createImageOptimizationBundle() {
-  console.info(`Bundling image optimization function...`);
+  logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
 
@@ -350,23 +352,29 @@ function createImageOptimizationBundle() {
   const sharpVersion = process.env.SHARP_VERSION ?? "0.32.5";
 
   //check if we are running in Windows environment then set env variables accordingly.
-  cp.execSync(
-    `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
-    {
-      stdio: "inherit",
-      cwd: appPath,
-      env: {
-        ...process.env,
-        SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
+  try {
+    cp.execSync(
+      `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
+      {
+        stdio: "pipe",
+        cwd: appPath,
+        env: {
+          ...process.env,
+          SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
+        },
       },
-    },
-  );
+    );
+  } catch (e: any) {
+    logger.error(e.stdout.toString());
+    logger.error(e.stderr.toString());
+    logger.error("Failed to install sharp.");
+  }
 }
 
 function createStaticAssets() {
-  console.info(`Bundling static assets...`);
+  logger.info(`Bundling static assets...`);
 
-  const { appBuildOutputPath, appPublicPath, outputDir } = options;
+  const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets");
@@ -377,6 +385,7 @@ function createStaticAssets() {
   // - .next/BUILD_ID => _next/BUILD_ID
   // - .next/static   => _next/static
   // - public/*       => *
+  // - app/favicon.ico or src/app/favicon.ico  => favicon.ico
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
@@ -389,10 +398,20 @@ function createStaticAssets() {
   if (fs.existsSync(appPublicPath)) {
     fs.cpSync(appPublicPath, outputPath, { recursive: true });
   }
+
+  const appSrcPath = fs.existsSync(path.join(appPath, "src"))
+    ? "src/app"
+    : "app";
+
+  const faviconPath = path.join(appPath, appSrcPath, "favicon.ico");
+
+  if (fs.existsSync(faviconPath)) {
+    fs.copyFileSync(faviconPath, path.join(outputPath, "favicon.ico"));
+  }
 }
 
 function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
-  console.info(`Bundling cache assets...`);
+  logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
@@ -419,6 +438,64 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
       file.endsWith(".js.nft.json") ||
       (file.endsWith(".html") && htmlPages.has(file)),
   );
+
+  //merge cache files into a single file
+  const cacheFilesPath: Record<
+    string,
+    {
+      meta?: string;
+      html?: string;
+      json?: string;
+      rsc?: string;
+      body?: string;
+    }
+  > = {};
+
+  traverseFiles(
+    outputPath,
+    () => true,
+    (filepath) => {
+      const ext = path.extname(filepath);
+      const newFilePath =
+        ext !== "" ? filepath.replace(ext, ".cache") : `${filepath}.cache`;
+      switch (ext) {
+        case ".meta":
+        case ".html":
+        case ".json":
+        case ".body":
+        case ".rsc":
+          cacheFilesPath[newFilePath] = {
+            [ext.slice(1)]: filepath,
+            ...cacheFilesPath[newFilePath],
+          };
+          break;
+        case ".map":
+          break;
+        default:
+          logger.warn(`Unknown file extension: ${ext}`);
+          break;
+      }
+    },
+  );
+
+  // Generate cache file
+  Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileContent = {
+      type: files.body ? "route" : files.json ? "page" : "app",
+      meta: files.meta
+        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+        : undefined,
+      html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
+      json: files.json
+        ? JSON.parse(fs.readFileSync(files.json, "utf8"))
+        : undefined,
+      rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
+      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+    };
+    fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
+  });
+
+  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
 
   if (!disableDynamoDBCache) {
     // Generate dynamodb data
@@ -513,7 +590,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
 /***************************/
 
 async function createServerBundle(monorepoRoot: string, streaming = false) {
-  console.info(`Bundling server function...`);
+  logger.info(`Bundling server function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
 
@@ -601,7 +678,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
   }
 
   if (plugins && plugins.length > 0) {
-    console.log(
+    logger.debug(
       `Applying plugins:: [${plugins
         .map(({ name }) => name)
         .join(",")}] for Next version: ${options.nextVersion}`,
@@ -775,14 +852,14 @@ function esbuildSync(esbuildOptions: ESBuildOptions) {
       ...esbuildOptions.banner,
       js: [
         esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
 
   if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
+    result.errors.forEach((error) => logger.error(error));
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
@@ -805,14 +882,14 @@ async function esbuildAsync(esbuildOptions: ESBuildOptions) {
       ...esbuildOptions.banner,
       js: [
         esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${process.env.OPEN_NEXT_DEBUG ?? false};`,
+        `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
       ].join(""),
     },
   });
 
   if (result.errors.length > 0) {
-    result.errors.forEach((error) => console.error(error));
+    result.errors.forEach((error) => logger.error(error));
     throw new Error(
       `There was a problem bundling ${
         (esbuildOptions.entryPoints as string[])[0]
@@ -893,7 +970,12 @@ function getOpenNextVersion() {
 }
 
 function getNextVersion(nextPackageJsonPath: string) {
-  const version = require(nextPackageJsonPath).dependencies.next;
+  const version = require(nextPackageJsonPath)?.dependencies?.next;
+  // require('next/package.json').version
+
+  if (!version) {
+    throw new Error("Failed to find Next version");
+  }
 
   // Drop the -canary.n suffix
   return version.split("-")[0];
