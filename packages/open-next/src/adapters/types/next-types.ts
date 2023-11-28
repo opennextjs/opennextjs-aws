@@ -63,6 +63,7 @@ export type Header = {
 export interface NextConfig {
   basePath?: string;
   trailingSlash?: string;
+  skipTrailingSlashRedirect?: boolean;
   i18n?: {
     locales: string[];
   };
