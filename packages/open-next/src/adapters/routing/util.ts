@@ -73,6 +73,21 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
   return queryString ? `?${queryString}` : "";
 }
 
+/**
+ * Given a raw query string, returns a record with key value-array pairs
+ * similar to how multiValueQueryStringParameters are structured
+ */
+export function convertToQuery(querystring: string) {
+  const query = new URLSearchParams(querystring);
+  const queryObject: Record<string, string[]> = {};
+
+  for (const key of query.keys()) {
+    queryObject[key] = query.getAll(key);
+  }
+
+  return queryObject;
+}
+
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   const rootMiddleware = middlewareManifest.middleware["/"];
   if (!rootMiddleware?.matchers) return [];

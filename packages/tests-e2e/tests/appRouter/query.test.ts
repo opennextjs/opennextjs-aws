@@ -10,7 +10,7 @@ test("SearchQuery", async ({ page }) => {
   let mwEl = page.getByText(`Search Params via Middleware: mw/e2etest`);
   let multiEl = page.getByText(`Multi-value Params (key: multi): 2`);
   let multiOne = page.getByText(`one`);
-  let multiTwo = page.getByText(`Two`);
+  let multiTwo = page.getByText(`two`);
   await expect(propsEl).toBeVisible();
   await expect(mwEl).toBeVisible();
   await expect(multiEl).toBeVisible();

@@ -9,6 +9,7 @@ import type {
 } from "aws-lambda";
 
 import { debug } from "./logger.js";
+import { convertToQuery } from "./routing/util.js";
 import { parseCookies } from "./util.js";
 
 export type InternalEvent = {
@@ -123,7 +124,7 @@ function convertFromAPIGatewayProxyEventV2(
     body: normalizeAPIGatewayProxyEventV2Body(event),
     headers: normalizeAPIGatewayProxyEventV2Headers(event),
     remoteAddress: requestContext.http.sourceIp,
-    query: removeUndefinedFromQuery(event.queryStringParameters ?? {}),
+    query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
     cookies:
       event.cookies?.reduce((acc, cur) => {
         const [key, value] = cur.split("=");
@@ -148,13 +149,7 @@ function convertFromCloudFrontRequestEvent(
     ),
     headers: normalizeCloudFrontRequestEventHeaders(headers),
     remoteAddress: clientIp,
-    query: querystring.split("&").reduce(
-      (acc, cur) => ({
-        ...acc,
-        [cur.split("=")[0]]: cur.split("=")[1],
-      }),
-      {},
-    ),
+    query: convertToQuery(querystring),
     cookies:
       headers.cookie?.reduce((acc, cur) => {
         const { key, value } = cur;
