@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start --port 3002",
     "lint": "next lint",
-     "clean": "rm -rf .turbo node_modules .next .open-next"
+    "clean": "rm -rf .turbo node_modules .next .open-next"
   },
   "dependencies": {
     "@example/shared": "workspace:*",
@@ -16,7 +16,7 @@
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
     "autoprefixer": "10.4.15",
-    "next": "latest",
+    "next": "^14.0.3",
     "postcss": "8.4.27",
     "react": "latest",
     "react-dom": "latest",

@@ -509,8 +509,6 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });
 
-  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
-
   if (!disableDynamoDBCache) {
     // Generate dynamodb data
     // We need to traverse the cache to find every .meta file
@@ -597,6 +595,9 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
       );
     }
   }
+
+  // We need to remove files later because we need the metafiles for dynamodb tags cache
+  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
 }
 
 /***************************/

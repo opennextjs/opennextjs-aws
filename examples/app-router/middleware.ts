@@ -42,6 +42,14 @@ export function middleware(request: NextRequest) {
     );
   }
 
+  // It is so that cloudfront doesn't cache the response
+  if (path.startsWith("/revalidate-tag")) {
+    responseHeaders.set(
+      "cache-control",
+      "private, no-cache, no-store, max-age=0, must-revalidate",
+    );
+  }
+
   const r = NextResponse.next({
     headers: responseHeaders,
     request: {
