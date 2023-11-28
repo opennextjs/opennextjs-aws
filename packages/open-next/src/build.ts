@@ -68,6 +68,11 @@ interface BuildOptions {
    * @default "."
    */
   appPath?: string;
+
+  /**
+   * The path to the package.json file. This path is relative from the current process.cwd().
+   */
+  packageJsonPath?: string;
 }
 
 const require = topLevelCreateRequire(import.meta.url);
@@ -117,7 +122,16 @@ function normalizeOptions(opts: BuildOptions, root: string) {
   const appPath = path.join(process.cwd(), opts.appPath || ".");
   const buildOutputPath = path.join(process.cwd(), opts.buildOutputPath || ".");
   const outputDir = path.join(buildOutputPath, ".open-next");
-  const nextPackageJsonPath = findNextPackageJsonPath(appPath, root);
+
+  let nextPackageJsonPath: string;
+  if (opts.packageJsonPath) {
+    const _pkgPath = path.join(process.cwd(), opts.packageJsonPath);
+    nextPackageJsonPath = _pkgPath.endsWith("package.json")
+      ? _pkgPath
+      : path.join(_pkgPath, "./package.json");
+  } else {
+    nextPackageJsonPath = findNextPackageJsonPath(appPath, root);
+  }
   return {
     openNextVersion: getOpenNextVersion(),
     nextVersion: getNextVersion(nextPackageJsonPath),
