@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-import * as esbuild from "esbuild";
-import path from "path";
-
 import { build } from "./build.js";
 
 const command = process.argv[2];
@@ -11,22 +8,7 @@ if (command !== "build") printHelp();
 const args = parseArgs();
 if (Object.keys(args).includes("--help")) printHelp();
 
-//TODO: validate config file
-
-const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
-
-// Compile open-next.config.ts
-esbuild.buildSync({
-  entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
-  outfile: path.join(outputTmpPath, "open-next.config.js"),
-  bundle: true,
-  format: "cjs",
-  target: ["node18"],
-});
-
-const config = await import(outputTmpPath + "/open-next.config.js");
-
-build(config.default);
+build();
 
 function parseArgs() {
   return process.argv.slice(2).reduce(

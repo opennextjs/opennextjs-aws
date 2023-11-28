@@ -25,13 +25,15 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build(
-  opts: BuildOptions = {
-    functions: {
-      default: {},
-    },
-  },
-) {
+export async function build() {
+  const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
+
+  // Compile open-next.config.ts
+  createOpenNextConfigBundle(outputTmpPath);
+
+  const config = await import(outputTmpPath + "/open-next.config.js");
+  const opts = config.default as BuildOptions;
+
   const { root: monorepoRoot, packager } = findMonorepoRoot(
     path.join(process.cwd(), opts.appPath || "."),
   );
@@ -53,7 +55,6 @@ export async function build(
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir();
-  createOpenNextConfigBundle(options.tempDir);
   createStaticAssets();
   if (!options.dangerous?.disableIncrementalCache) {
     await createCacheAssets(
@@ -71,7 +72,7 @@ export async function build(
 }
 
 function createOpenNextConfigBundle(tempDir: string) {
-  esbuildSync({
+  buildSync({
     entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
     outfile: path.join(tempDir, "open-next.config.js"),
     bundle: true,
@@ -215,8 +216,13 @@ function printOpenNextVersion() {
 
 function initOutputDir() {
   const { outputDir, tempDir } = options;
+  const openNextConfig = readFileSync(
+    path.join(tempDir, "open-next.config.js"),
+    "utf8",
+  );
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
+  fs.writeFileSync(path.join(tempDir, "open-next.config.js"), openNextConfig);
 }
 
 async function createWarmerBundle() {
