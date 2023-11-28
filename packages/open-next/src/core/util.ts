@@ -50,7 +50,7 @@ export const requestHandler = new NextServer.default({
       //#endOverride
 
       //TODO: change env.LAMBDA_TASK_ROOT
-      incrementalCacheHandlerPath: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
+      incrementalCacheHandlerPath: `./cache.cjs`,
     },
   },
   customServer: false,

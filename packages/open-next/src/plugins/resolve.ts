@@ -37,7 +37,6 @@ export function openNextResolvePlugin({ overrides }: IPluginSettings): Plugin {
           );
         }
         if (overrides?.converter) {
-          console.log("converter", overrides.converter);
           contents = contents.replace(
             "../converters/aws-apigw-v2.js",
             `../converters/${overrides.converter}.js`,

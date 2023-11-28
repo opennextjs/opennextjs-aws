@@ -620,6 +620,12 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
+function shouldGenerateDockerfile(
+  options: BuildOptions["functions"]["default"],
+) {
+  return options.override?.generateDockerfile ?? false;
+}
+
 async function createServerBundle(
   monorepoRoot: string,
   buildOptions: BuildOptions,
@@ -743,7 +749,28 @@ async function createServerBundle(
   addPublicFilesList(outputPath, packagePath);
   injectMiddlewareGeolocation(outputPath, packagePath);
   removeCachedPages(outputPath, packagePath);
-  addCacheHandler(outputPath, options.dangerous);
+  addCacheHandler(
+    path.join(outputPath, packagePath, ".next"),
+    options.dangerous,
+  );
+
+  const shouldGenerateDocker = shouldGenerateDockerfile(
+    buildOptions.functions.default,
+  );
+  if (shouldGenerateDocker) {
+    fs.writeFileSync(
+      path.join(outputPath, "Dockerfile"),
+      typeof shouldGenerateDocker === "string"
+        ? shouldGenerateDocker
+        : `
+FROM node:18-alpine
+WORKDIR /app
+COPY . /app
+EXPOSE 3000
+CMD ["node", "index.mjs"]
+    `,
+    );
+  }
 }
 
 async function createMiddleware(packagePath: string) {

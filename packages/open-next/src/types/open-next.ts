@@ -127,6 +127,12 @@ export interface DefaultOverrideOptions<
    * @default "aws-apigw-v2"
    */
   converter?: IncludedConverter | LazyLoadedOverride<Converter<E, R>>;
+  /**
+   * Generate a basic dockerfile to deploy the app.
+   * If a string is provided, it will be used as the base dockerfile.
+   * @default false
+   */
+  generateDockerfile?: boolean | string;
 }
 
 export interface OverrideOptions extends DefaultOverrideOptions {
