@@ -54,13 +54,38 @@ export function convertRes(res: ServerlessResponse) {
   };
 }
 
-export function convertQuery(query: Record<string, string | string[]>) {
-  const urlQuery: Record<string, string> = {};
-  Object.keys(query).forEach((k) => {
-    const v = query[k];
-    urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
+/**
+ * Make sure that multi-value query parameters are transformed to
+ * ?key=value1&key=value2&... so that Next converts those parameters
+ * to an array when reading the query parameters
+ */
+export function convertToQueryString(query: Record<string, string | string[]>) {
+  const urlQuery = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      value.forEach((entry) => urlQuery.append(key, entry));
+    } else {
+      urlQuery.append(key, value);
+    }
   });
-  return urlQuery;
+  const queryString = urlQuery.toString();
+
+  return queryString ? `?${queryString}` : "";
+}
+
+/**
+ * Given a raw query string, returns a record with key value-array pairs
+ * similar to how multiValueQueryStringParameters are structured
+ */
+export function convertToQuery(querystring: string) {
+  const query = new URLSearchParams(querystring);
+  const queryObject: Record<string, string[]> = {};
+
+  for (const key of query.keys()) {
+    queryObject[key] = query.getAll(key);
+  }
+
+  return queryObject;
 }
 
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {

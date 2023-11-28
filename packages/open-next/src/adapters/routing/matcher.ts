@@ -11,7 +11,7 @@ import {
   RouteHas,
 } from "../types/next-types";
 import { escapeRegex, unescapeRegex } from "../util";
-import { convertQuery, getUrlParts, isExternal } from "./util";
+import { convertToQueryString, getUrlParts, isExternal } from "./util";
 
 const routeHasMatcher =
   (
@@ -127,7 +127,6 @@ export function handleRewrites<T extends RewriteDefinition>(
       checkHas(matcher, route.missing, true),
   );
 
-  const urlQueryString = new URLSearchParams(convertQuery(query)).toString();
   let rewrittenUrl = rawPath;
   const isExternalRewrite = isExternal(rewrite?.destination);
   debug("isExternalRewrite", isExternalRewrite);
@@ -154,13 +153,11 @@ export function handleRewrites<T extends RewriteDefinition>(
     }
   }
 
-  const queryString = urlQueryString ? `?${urlQueryString}` : "";
-
   return {
     internalEvent: {
       ...event,
       rawPath: rewrittenUrl,
-      url: `${rewrittenUrl}${queryString}`,
+      url: `${rewrittenUrl}${convertToQueryString(query)}`,
     },
     __rewrite: rewrite,
     isExternalRewrite,
@@ -233,18 +230,12 @@ export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
     let newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
     newPath = newPath === "/index" ? "/" : newPath;
     query.__nextDataReq = "1";
-    const urlQuery: Record<string, string> = {};
-    Object.keys(query).forEach((k) => {
-      const v = query[k];
-      urlQuery[k] = Array.isArray(v) ? v.join(",") : v;
-    });
+
     return {
       ...internalEvent,
       rawPath: newPath,
       query,
-      url: `${newPath}${
-        query ? `?${new URLSearchParams(urlQuery).toString()}` : ""
-      }`,
+      url: `${newPath}${convertToQueryString(query)}`,
     };
   }
   return internalEvent;
