@@ -1,5 +1,6 @@
 import type { BuildOptions, OverrideOptions } from "types/open-next";
 
+import { debug } from "../adapters/logger";
 import type { IncrementalCache } from "../cache/incremental/types";
 import type { Queue } from "../queue/types";
 import { openNextHandler } from "./requestHandler";
@@ -59,5 +60,7 @@ export async function createMainHandler() {
   // Then we create the handler
   const wrapper = await resolveWrapper(thisFunction.override?.wrapper);
 
-  return wrapper(openNextHandler, adapter);
+  debug("Using wrapper", wrapper.name);
+
+  return wrapper.wrapper(openNextHandler, adapter);
 }

@@ -3,7 +3,7 @@ import zlib from "node:zlib";
 
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { StreamCreator } from "http/index.js";
-import { Wrapper } from "types/open-next";
+import { WrapperHandler } from "types/open-next";
 
 import { error } from "../adapters/logger";
 import { WarmerEvent } from "../adapters/warmer-function";
@@ -11,7 +11,7 @@ import { WarmerEvent } from "../adapters/warmer-function";
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
 
 type AwsLambdaReturn = void;
-const handler: Wrapper = async (handler, converter) =>
+const handler: WrapperHandler = async (handler, converter) =>
   awslambda.streamifyResponse(
     async (event: AwsLambdaEvent, responseStream): Promise<AwsLambdaReturn> => {
       const internalEvent = await converter.convertFrom(event);
@@ -107,4 +107,8 @@ const handler: Wrapper = async (handler, converter) =>
     },
   );
 
-export default handler;
+export default {
+  wrapper: handler,
+  name: "aws-lambda-streaming",
+  supportStreaming: true,
+};

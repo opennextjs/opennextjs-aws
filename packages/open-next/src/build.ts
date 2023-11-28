@@ -113,7 +113,6 @@ function normalizeOptions(opts: BuildOptions, root: string) {
       false,
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
-    streaming: opts.functions.default.streaming ?? false,
     externalMiddleware: opts.middleware?.external ?? false,
   };
 }

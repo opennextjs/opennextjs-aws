@@ -7,6 +7,7 @@ import type {
   OpenNextHandler,
 } from "types/open-next";
 
+import { debug } from "../adapters/logger";
 import { resolveConverter, resolveWrapper } from "./resolve";
 
 declare global {
@@ -35,7 +36,7 @@ export async function createGenericHandler<
   R extends BaseEventOrResult = InternalResult,
 >(handler: GenericHandler<Type, E, R>) {
   //First we load the config
-  //@ts-expect-error
+  // @ts-expect-error
   const config: BuildOptions = await import("./open-next.config.js").then(
     (m) => m.default,
   );
@@ -51,6 +52,7 @@ export async function createGenericHandler<
 
   // Then we create the handler
   const wrapper = await resolveWrapper<E, R>(override?.wrapper);
+  debug("Using wrapper", wrapper.name);
 
-  return wrapper(handler.handler, adapter);
+  return wrapper.wrapper(handler.handler, adapter);
 }

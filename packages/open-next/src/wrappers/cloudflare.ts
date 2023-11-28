@@ -1,8 +1,12 @@
-import type { InternalEvent, InternalResult, Wrapper } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  WrapperHandler,
+} from "types/open-next";
 
 import { MiddlewareOutputEvent } from "../core/routingHandler";
 
-const handler: Wrapper<
+const handler: WrapperHandler<
   InternalEvent,
   InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
 > =
@@ -17,4 +21,8 @@ const handler: Wrapper<
     return result;
   };
 
-export default handler;
+export default {
+  wrapper: handler,
+  name: "cloudflare",
+  supportStreaming: true,
+};

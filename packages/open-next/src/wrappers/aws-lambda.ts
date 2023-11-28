@@ -6,7 +6,7 @@ import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
-import type { Wrapper } from "types/open-next";
+import type { WrapperHandler } from "types/open-next";
 
 import { WarmerEvent } from "../adapters/warmer-function";
 
@@ -21,7 +21,7 @@ type AwsLambdaReturn =
   | APIGatewayProxyResult
   | CloudFrontRequestResult;
 
-const handler: Wrapper =
+const handler: WrapperHandler =
   async (handler, converter) =>
   async (event: AwsLambdaEvent): Promise<AwsLambdaReturn> => {
     const internalEvent = await converter.convertFrom(event);
@@ -31,4 +31,8 @@ const handler: Wrapper =
     return converter.convertTo(response);
   };
 
-export default handler;
+export default {
+  wrapper: handler,
+  name: "aws-lambda",
+  supportStreaming: false,
+};

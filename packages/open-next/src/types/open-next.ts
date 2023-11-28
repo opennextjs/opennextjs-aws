@@ -58,13 +58,22 @@ export type Converter<
   convertTo: (result: R) => any;
 };
 
-export type Wrapper<
+export type WrapperHandler<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
 > = (
   handler: OpenNextHandler<E, R>,
   converter: Converter<E, R>,
 ) => Promise<(...args: any[]) => any>;
+
+export type Wrapper<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = {
+  wrapper: WrapperHandler<E, R>;
+  name: string;
+  supportStreaming: boolean;
+};
 
 type Warmer = (warmerId: string) => Promise<
   {
@@ -172,11 +181,6 @@ interface FunctionOptions extends DefaultFunctionOptions {
    * @default []
    */
   routes?: string[];
-  /**
-   * Enable streaming mode.
-   * @default false
-   */
-  streaming?: boolean;
   /**
    * Enable overriding the default lambda.
    */

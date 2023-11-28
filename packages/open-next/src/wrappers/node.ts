@@ -1,11 +1,11 @@
 import { createServer } from "node:http";
 
 import { StreamCreator } from "http/index.js";
-import type { Wrapper } from "types/open-next";
+import type { WrapperHandler } from "types/open-next";
 
 import { debug, error } from "../adapters/logger";
 
-const wrapper: Wrapper = async (handler, converter) => {
+const wrapper: WrapperHandler = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
     const _res: StreamCreator = {
@@ -54,4 +54,8 @@ const wrapper: Wrapper = async (handler, converter) => {
   };
 };
 
-export default wrapper;
+export default {
+  wrapper,
+  name: "node",
+  supportStreaming: true,
+};
