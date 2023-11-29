@@ -8,7 +8,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 16.x
+        node-version: 18.x
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v2
