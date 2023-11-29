@@ -4,18 +4,30 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
-import {
-  build as buildAsync,
-  BuildOptions as ESBuildOptions,
-  buildSync,
-} from "esbuild";
+import { buildSync } from "esbuild";
 
+import { generateOutput } from "./build/generateOutput.js";
+import {
+  compareSemver,
+  esbuildAsync,
+  esbuildSync,
+  getBuildId,
+  getHtmlPages,
+  getNextVersion,
+  getOpenNextVersion,
+  removeFiles,
+  traverseFiles,
+} from "./build/helper.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import { openNextEdgePlugins } from "./plugins/edge.js";
 import { openNextReplacementPlugin } from "./plugins/replacement.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
-import { BuildOptions, DangerousOptions } from "./types/open-next.js";
+import {
+  BuildOptions,
+  DangerousOptions,
+  FunctionOptions,
+} from "./types/open-next.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -66,6 +78,7 @@ export async function build() {
   await createRevalidationBundle();
   createImageOptimizationBundle();
   await createWarmerBundle();
+  await generateOutput(options.appBuildOutputPath, opts);
   if (options.minify) {
     await minifyServerBundle();
   }
@@ -105,13 +118,8 @@ function normalizeOptions(opts: BuildOptions, root: string) {
     outputDir,
     tempDir: path.join(outputDir, ".build"),
     minify:
-      opts.functions.default.minify ??
-      Boolean(process.env.OPEN_NEXT_MINIFY) ??
-      false,
-    debug:
-      opts.functions.default.debug ??
-      Boolean(process.env.OPEN_NEXT_DEBUG) ??
-      false,
+      opts.default.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
+    debug: opts.default.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
     externalMiddleware: opts.middleware?.external ?? false,
@@ -244,26 +252,29 @@ async function createWarmerBundle() {
   // note: bundle in OpenNext package b/c the adatper relys on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  await esbuildAsync({
-    entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
-    external: ["next"],
-    outfile: path.join(outputPath, "index.mjs"),
-    plugins: [
-      openNextResolvePlugin({
-        overrides: {
-          converter: "dummy",
-        },
-      }),
-    ],
-    banner: {
-      js: [
-        "import { createRequire as topLevelCreateRequire } from 'module';",
-        "const require = topLevelCreateRequire(import.meta.url);",
-        "import bannerUrl from 'url';",
-        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-      ].join(""),
+  await esbuildAsync(
+    {
+      entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
+      external: ["next"],
+      outfile: path.join(outputPath, "index.mjs"),
+      plugins: [
+        openNextResolvePlugin({
+          overrides: {
+            converter: "dummy",
+          },
+        }),
+      ],
+      banner: {
+        js: [
+          "import { createRequire as topLevelCreateRequire } from 'module';",
+          "const require = topLevelCreateRequire(import.meta.url);",
+          "import bannerUrl from 'url';",
+          "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+        ].join(""),
+      },
     },
-  });
+    options,
+  );
 }
 
 async function minifyServerBundle() {
@@ -291,18 +302,21 @@ async function createRevalidationBundle() {
   );
 
   // Build Lambda code
-  esbuildAsync({
-    external: ["next", "styled-jsx", "react"],
-    entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
-    outfile: path.join(outputPath, "index.mjs"),
-    plugins: [
-      openNextResolvePlugin({
-        overrides: {
-          converter: "sqs-revalidate",
-        },
-      }),
-    ],
-  });
+  esbuildAsync(
+    {
+      external: ["next", "styled-jsx", "react"],
+      entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
+      outfile: path.join(outputPath, "index.mjs"),
+      plugins: [
+        openNextResolvePlugin({
+          overrides: {
+            converter: "sqs-revalidate",
+          },
+        }),
+      ],
+    },
+    options,
+  );
 
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
@@ -330,32 +344,38 @@ function createImageOptimizationBundle() {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync({
-    entryPoints: [
-      path.join(__dirname, "adapters", "image-optimization-adapter.js"),
-    ],
-    external: ["sharp", "next"],
-    outfile: path.join(outputPath, "index.mjs"),
-  });
+  esbuildSync(
+    {
+      entryPoints: [
+        path.join(__dirname, "adapters", "image-optimization-adapter.js"),
+      ],
+      external: ["sharp", "next"],
+      outfile: path.join(outputPath, "index.mjs"),
+    },
+    options,
+  );
 
   // Build Lambda code (2nd pass)
   // note: bundle in user's Next.js app again b/c the adapter relies on the
   //       "next" package. And the "next" package from user's app should
   //       be used.
-  esbuildSync({
-    entryPoints: [path.join(outputPath, "index.mjs")],
-    external: ["sharp"],
-    allowOverwrite: true,
-    outfile: path.join(outputPath, "index.mjs"),
-    banner: {
-      js: [
-        "import { createRequire as topLevelCreateRequire } from 'module';",
-        "const require = topLevelCreateRequire(import.meta.url);",
-        "import bannerUrl from 'url';",
-        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-      ].join("\n"),
+  esbuildSync(
+    {
+      entryPoints: [path.join(outputPath, "index.mjs")],
+      external: ["sharp"],
+      allowOverwrite: true,
+      outfile: path.join(outputPath, "index.mjs"),
+      banner: {
+        js: [
+          "import { createRequire as topLevelCreateRequire } from 'module';",
+          "const require = topLevelCreateRequire(import.meta.url);",
+          "import bannerUrl from 'url';",
+          "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+        ].join("\n"),
+      },
     },
-  });
+    options,
+  );
 
   // Copy over .next/required-server-files.json file
   fs.mkdirSync(path.join(outputPath, ".next"));
@@ -590,19 +610,22 @@ async function createCacheAssets(
     if (metaFiles.length > 0) {
       const providerPath = path.join(outputDir, "dynamodb-provider");
 
-      await esbuildAsync({
-        external: ["@aws-sdk/client-dynamodb"],
-        entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
-        outfile: path.join(providerPath, "index.mjs"),
-        target: ["node18"],
-        plugins: [
-          openNextResolvePlugin({
-            overrides: {
-              converter: "dummy",
-            },
-          }),
-        ],
-      });
+      await esbuildAsync(
+        {
+          external: ["@aws-sdk/client-dynamodb"],
+          entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
+          outfile: path.join(providerPath, "index.mjs"),
+          target: ["node18"],
+          plugins: [
+            openNextResolvePlugin({
+              overrides: {
+                converter: "dummy",
+              },
+            }),
+          ],
+        },
+        options,
+      );
 
       //Copy open-next.config.js into the bundle
       fs.copyFileSync(
@@ -626,9 +649,7 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
-function shouldGenerateDockerfile(
-  options: BuildOptions["functions"]["default"],
-) {
+function shouldGenerateDockerfile(options: FunctionOptions) {
   return options.override?.generateDockerfile ?? false;
 }
 
@@ -684,7 +705,7 @@ async function createServerBundle(
     compareSemver(options.nextVersion, "13.5.1") >= 0 ||
     compareSemver(options.nextVersion, "13.4.1") <= 0;
 
-  const overrides = buildOptions.functions.default.override ?? {};
+  const overrides = buildOptions.default.override ?? {};
 
   const isBefore13413 = compareSemver(options.nextVersion, "13.4.13") <= 0;
 
@@ -733,21 +754,24 @@ async function createServerBundle(
         .join(",")}] for Next version: ${options.nextVersion}`,
     );
   }
-  await esbuildAsync({
-    entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
-    external: ["next", "./middleware.mjs"],
-    outfile: path.join(outputPath, packagePath, "index.mjs"),
-    banner: {
-      js: [
-        `globalThis.monorepoPackagePath = "${packagePath}";`,
-        "import { createRequire as topLevelCreateRequire } from 'module';",
-        "const require = topLevelCreateRequire(import.meta.url);",
-        "import bannerUrl from 'url';",
-        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-      ].join(""),
+  await esbuildAsync(
+    {
+      entryPoints: [path.join(__dirname, "adapters", "server-adapter.js")],
+      external: ["next", "./middleware.mjs"],
+      outfile: path.join(outputPath, packagePath, "index.mjs"),
+      banner: {
+        js: [
+          `globalThis.monorepoPackagePath = "${packagePath}";`,
+          "import { createRequire as topLevelCreateRequire } from 'module';",
+          "const require = topLevelCreateRequire(import.meta.url);",
+          "import bannerUrl from 'url';",
+          "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+        ].join(""),
+      },
+      plugins,
     },
-    plugins,
-  });
+    options,
+  );
 
   if (isMonorepo) {
     addMonorepoEntrypoint(outputPath, packagePath);
@@ -760,9 +784,7 @@ async function createServerBundle(
     options.dangerous,
   );
 
-  const shouldGenerateDocker = shouldGenerateDockerfile(
-    buildOptions.functions.default,
-  );
+  const shouldGenerateDocker = shouldGenerateDockerfile(buildOptions.default);
   if (shouldGenerateDocker) {
     fs.writeFileSync(
       path.join(outputPath, "Dockerfile"),
@@ -810,41 +832,44 @@ async function createMiddleware(packagePath: string) {
     );
 
     // Bundle middleware
-    await esbuildAsync({
-      entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
-      // inject: ,
-      bundle: true,
-      outfile: path.join(outputPath, packagePath, "handler.mjs"),
-      external: ["node:*", "next", "@aws-sdk/*"],
-      target: "es2022",
-      platform: "neutral",
-      plugins: [
-        openNextResolvePlugin({
-          overrides: {
-            wrapper: "cloudflare",
-            converter: "edge",
-          },
-        }),
-        openNextEdgePlugins({
-          entryFiles: entry.files.map((file: string) =>
-            path.join(appBuildOutputPath, ".next", file),
-          ),
-          nextDir: path.join(appBuildOutputPath, ".next"),
-          edgeFunctionHandlerPath: path.join(
-            __dirname,
-            "core",
-            "edgeFunctionHandler.js",
-          ),
-        }),
-      ],
-      treeShaking: true,
-      alias: {
-        path: "node:path",
-        stream: "node:stream",
+    await esbuildAsync(
+      {
+        entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
+        // inject: ,
+        bundle: true,
+        outfile: path.join(outputPath, packagePath, "handler.mjs"),
+        external: ["node:*", "next", "@aws-sdk/*"],
+        target: "es2022",
+        platform: "neutral",
+        plugins: [
+          openNextResolvePlugin({
+            overrides: {
+              wrapper: "cloudflare",
+              converter: "edge",
+            },
+          }),
+          openNextEdgePlugins({
+            entryFiles: entry.files.map((file: string) =>
+              path.join(appBuildOutputPath, ".next", file),
+            ),
+            nextDir: path.join(appBuildOutputPath, ".next"),
+            edgeFunctionHandlerPath: path.join(
+              __dirname,
+              "core",
+              "edgeFunctionHandler.js",
+            ),
+          }),
+        ],
+        treeShaking: true,
+        alias: {
+          path: "node:path",
+          stream: "node:stream",
+        },
+        conditions: ["module"],
+        mainFields: ["module", "main"],
       },
-      conditions: ["module"],
-      mainFields: ["module", "main"],
-    });
+      options,
+    );
   } else {
     buildEdgeFunction(
       entry,
@@ -861,18 +886,19 @@ function buildEdgeFunction(
   outfile: string,
   appBuildOutputPath: string,
 ) {
-  esbuildSync({
-    entryPoints: [entrypoint],
-    inject: entry.files.map((file: string) =>
-      path.join(appBuildOutputPath, ".next", file),
-    ),
-    bundle: true,
-    outfile,
-    external: ["node:*"],
-    target: "es2022",
-    platform: "neutral",
-    banner: {
-      js: `
+  esbuildSync(
+    {
+      entryPoints: [entrypoint],
+      inject: entry.files.map((file: string) =>
+        path.join(appBuildOutputPath, ".next", file),
+      ),
+      bundle: true,
+      outfile,
+      external: ["node:*"],
+      target: "es2022",
+      platform: "neutral",
+      banner: {
+        js: `
 globalThis._ENTRIES = {};
 globalThis.self = globalThis;
 
@@ -883,8 +909,10 @@ import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 
 `,
+      },
     },
-  });
+    options,
+  );
 }
 
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
@@ -992,191 +1020,25 @@ function removeCachedPages(outputPath: string, packagePath: string) {
     );
 }
 
-function addCacheHandler(outputPath: string, options?: DangerousOptions) {
-  esbuildSync({
-    external: ["next", "styled-jsx", "react"],
-    entryPoints: [path.join(__dirname, "adapters", "cache.js")],
-    outfile: path.join(outputPath, "cache.cjs"),
-    target: ["node18"],
-    format: "cjs",
-    banner: {
-      js: [
-        `globalThis.disableIncrementalCache = ${
-          options?.disableIncrementalCache ?? false
-        };`,
-        `globalThis.disableDynamoDBCache = ${
-          options?.disableDynamoDBCache ?? false
-        };`,
-      ].join(""),
+function addCacheHandler(outputPath: string, opts?: DangerousOptions) {
+  esbuildSync(
+    {
+      external: ["next", "styled-jsx", "react"],
+      entryPoints: [path.join(__dirname, "adapters", "cache.js")],
+      outfile: path.join(outputPath, "cache.cjs"),
+      target: ["node18"],
+      format: "cjs",
+      banner: {
+        js: [
+          `globalThis.disableIncrementalCache = ${
+            opts?.disableIncrementalCache ?? false
+          };`,
+          `globalThis.disableDynamoDBCache = ${
+            opts?.disableDynamoDBCache ?? false
+          };`,
+        ].join(""),
+      },
     },
-  });
-}
-
-/********************/
-/* Helper Functions */
-/********************/
-
-function esbuildSync(esbuildOptions: ESBuildOptions) {
-  const { openNextVersion, debug } = options;
-  const result = buildSync({
-    target: "esnext",
-    format: "esm",
-    platform: "node",
-    bundle: true,
-    minify: debug ? false : true,
-    sourcemap: debug ? "inline" : false,
-    ...esbuildOptions,
-    external: ["./open-next.config.js", ...(esbuildOptions.external ?? [])],
-    banner: {
-      ...esbuildOptions.banner,
-      js: [
-        esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${debug};`,
-        `globalThis.openNextVersion = "${openNextVersion}";`,
-      ].join(""),
-    },
-  });
-
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => logger.error(error));
-    throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
-      }.`,
-    );
-  }
-}
-
-async function esbuildAsync(esbuildOptions: ESBuildOptions) {
-  const { openNextVersion, debug } = options;
-  const result = await buildAsync({
-    target: "esnext",
-    format: "esm",
-    platform: "node",
-    bundle: true,
-    minify: debug ? false : true,
-    sourcemap: debug ? "inline" : false,
-    ...esbuildOptions,
-    external: [
-      ...(esbuildOptions.external ?? []),
-      "next",
-      "./open-next.config.js",
-    ],
-    banner: {
-      ...esbuildOptions.banner,
-      js: [
-        esbuildOptions.banner?.js || "",
-        `globalThis.openNextDebug = ${debug};`,
-        `globalThis.openNextVersion = "${openNextVersion}";`,
-      ].join(""),
-    },
-  });
-
-  if (result.errors.length > 0) {
-    result.errors.forEach((error) => logger.error(error));
-    throw new Error(
-      `There was a problem bundling ${
-        (esbuildOptions.entryPoints as string[])[0]
-      }.`,
-    );
-  }
-}
-
-function removeFiles(
-  root: string,
-  conditionFn: (file: string) => boolean,
-  searchingDir: string = "",
-) {
-  traverseFiles(
-    root,
-    conditionFn,
-    (filePath) => fs.rmSync(filePath, { force: true }),
-    searchingDir,
+    options,
   );
-}
-
-function traverseFiles(
-  root: string,
-  conditionFn: (file: string) => boolean,
-  callbackFn: (filePath: string) => void,
-  searchingDir: string = "",
-) {
-  fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
-    const filePath = path.join(root, searchingDir, file);
-
-    if (fs.statSync(filePath).isDirectory()) {
-      traverseFiles(
-        root,
-        conditionFn,
-        callbackFn,
-        path.join(searchingDir, file),
-      );
-      return;
-    }
-
-    if (conditionFn(path.join(searchingDir, file))) {
-      callbackFn(filePath);
-    }
-  });
-}
-
-function getHtmlPages(dotNextPath: string) {
-  // Get a list of HTML pages
-  //
-  // sample return value:
-  // Set([
-  //   '404.html',
-  //   'csr.html',
-  //   'image-html-tag.html',
-  // ])
-  const manifestPath = path.join(
-    dotNextPath,
-    ".next/server/pages-manifest.json",
-  );
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
-  return Object.entries(JSON.parse(manifest))
-    .filter(([_, value]) => (value as string).endsWith(".html"))
-    .map(([_, value]) => (value as string).replace(/^pages\//, ""))
-    .reduce((acc, page) => {
-      acc.add(page);
-      return acc;
-    }, new Set<string>());
-}
-
-function getBuildId(dotNextPath: string) {
-  return fs
-    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
-    .trim();
-}
-
-function getOpenNextVersion() {
-  return require(path.join(__dirname, "../package.json")).version;
-}
-
-function getNextVersion(nextPackageJsonPath: string) {
-  const version = require(nextPackageJsonPath)?.dependencies?.next;
-  // require('next/package.json').version
-
-  if (!version) {
-    throw new Error("Failed to find Next version");
-  }
-
-  // Drop the -canary.n suffix
-  return version.split("-")[0];
-}
-
-function compareSemver(v1: string, v2: string): number {
-  if (v1 === "latest") return 1;
-  if (/^[^\d]/.test(v1)) {
-    v1 = v1.substring(1);
-  }
-  if (/^[^\d]/.test(v2)) {
-    v2 = v2.substring(1);
-  }
-  const [major1, minor1, patch1] = v1.split(".").map(Number);
-  const [major2, minor2, patch2] = v2.split(".").map(Number);
-
-  if (major1 !== major2) return major1 - major2;
-  if (minor1 !== minor2) return minor1 - minor2;
-  return patch1 - patch2;
 }

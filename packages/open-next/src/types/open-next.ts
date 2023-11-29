@@ -175,29 +175,41 @@ export interface DefaultFunctionOptions<
   override?: DefaultOverrideOptions<E, R>;
 }
 
-interface FunctionOptions extends DefaultFunctionOptions {
+export interface FunctionOptions extends DefaultFunctionOptions {
   /**
-   * TODO: implement edge runtime
+   * Runtime used
    * @default "node"
    */
   runtime?: "node" | "edge";
   /**
-   * Here you should specify all the routes you want to use.
-   * If not provided, all the routes will be used.
-   * @default []
+   * @default "regional"
    */
-  routes?: string[];
+  placement?: "regional" | "global";
   /**
    * Enable overriding the default lambda.
    */
   override?: OverrideOptions;
 }
 
+export interface SplittedFunctionOptions extends FunctionOptions {
+  /**
+   * Here you should specify all the routes you want to use.
+   * If not provided, all the routes will be used.
+   * @default []
+   */
+  routes: string[];
+
+  /**
+   * Cloudfront compatible patterns.
+   * i.e. /api/*
+   * @default []
+   */
+  patterns: string[];
+}
+
 export interface BuildOptions {
-  functions: {
-    default: Omit<FunctionOptions, "routes">;
-    [key: string]: FunctionOptions;
-  };
+  default: FunctionOptions;
+  functions: Record<string, SplittedFunctionOptions>;
 
   /**
    * Override the default middleware

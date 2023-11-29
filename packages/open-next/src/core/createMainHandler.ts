@@ -9,6 +9,7 @@ import { resolveConverter, resolveTagCache, resolveWrapper } from "./resolve";
 declare global {
   var queue: Queue;
   var incrementalCache: IncrementalCache;
+  var fnName: string | undefined;
 }
 
 async function resolveQueue(queue: OverrideOptions["queue"]) {
@@ -43,7 +44,9 @@ export async function createMainHandler() {
     process.cwd() + "/open-next.config.js"
   ).then((m) => m.default);
 
-  const thisFunction = config.functions.default;
+  const thisFunction = globalThis.fnName
+    ? config.functions[globalThis.fnName]
+    : config.default;
 
   // Default queue
   globalThis.queue = await resolveQueue(thisFunction.override?.queue);
