@@ -8,15 +8,53 @@ import {
   BuildOptions as ESBuildOptions,
   buildSync,
 } from "esbuild";
+import { BuildOptions } from "types/open-next.js";
 
 import logger from "../logger.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
-interface Options {
-  openNextVersion: string;
-  debug: boolean;
+export type Options = ReturnType<typeof normalizeOptions>;
+
+export function normalizeOptions(opts: BuildOptions, root: string) {
+  const appPath = path.join(process.cwd(), opts.appPath || ".");
+  const buildOutputPath = path.join(process.cwd(), opts.buildOutputPath || ".");
+  const outputDir = path.join(buildOutputPath, ".open-next");
+
+  let nextPackageJsonPath: string;
+  if (opts.packageJsonPath) {
+    const _pkgPath = path.join(process.cwd(), opts.packageJsonPath);
+    nextPackageJsonPath = _pkgPath.endsWith("package.json")
+      ? _pkgPath
+      : path.join(_pkgPath, "./package.json");
+  } else {
+    nextPackageJsonPath = findNextPackageJsonPath(appPath, root);
+  }
+  return {
+    openNextVersion: getOpenNextVersion(),
+    nextVersion: getNextVersion(nextPackageJsonPath),
+    nextPackageJsonPath,
+    appPath,
+    appBuildOutputPath: buildOutputPath,
+    appPublicPath: path.join(appPath, "public"),
+    outputDir,
+    tempDir: path.join(outputDir, ".build"),
+    minify:
+      opts.default.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
+    debug: opts.default.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+    buildCommand: opts.buildCommand,
+    dangerous: opts.dangerous,
+    externalMiddleware: opts.middleware?.external ?? false,
+    monorepoRoot: root,
+  };
+}
+
+function findNextPackageJsonPath(appPath: string, root: string) {
+  // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
+  return fs.existsSync(path.join(appPath, "./package.json"))
+    ? path.join(appPath, "./package.json")
+    : path.join(root, "./package.json");
 }
 
 export function esbuildSync(esbuildOptions: ESBuildOptions, options: Options) {
@@ -27,7 +65,9 @@ export function esbuildSync(esbuildOptions: ESBuildOptions, options: Options) {
     platform: "node",
     bundle: true,
     minify: debug ? false : true,
+    mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
+    sourcesContent: false,
     ...esbuildOptions,
     external: ["./open-next.config.js", ...(esbuildOptions.external ?? [])],
     banner: {
@@ -61,7 +101,9 @@ export async function esbuildAsync(
     platform: "node",
     bundle: true,
     minify: debug ? false : true,
+    mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
+    sourcesContent: false,
     ...esbuildOptions,
     external: [
       ...(esbuildOptions.external ?? []),

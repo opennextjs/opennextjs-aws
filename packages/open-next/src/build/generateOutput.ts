@@ -139,7 +139,7 @@ export async function generateOutput(
         origins[key] = {
           type: "function",
           handler: "index.handler",
-          bundle: `.open-next/functions/${key}`,
+          bundle: `.open-next/server-functions/${key}`,
           streaming,
         };
       }
@@ -151,8 +151,8 @@ export async function generateOutput(
     if (value.override?.generateDockerfile) {
       origins[key] = {
         type: "ecs",
-        bundle: `.open-next/functions/${key}`,
-        dockerfile: `.open-next/functions/${key}/Dockerfile`,
+        bundle: `.open-next/server-functions/${key}`,
+        dockerfile: `.open-next/server-functions/${key}/Dockerfile`,
       };
     }
   });
