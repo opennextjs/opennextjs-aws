@@ -1,11 +1,11 @@
 const config = {
-  functions: {
-    default: {
-      override: {
-        wrapper: "aws-lambda-streaming",
-      },
+  default: {
+    override: {
+      wrapper: "aws-lambda-streaming",
     },
+    experimentalBundledNextServer: true,
   },
+  functions: {},
   buildCommand: "npx turbo build",
 };
 

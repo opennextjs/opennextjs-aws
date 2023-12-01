@@ -3,37 +3,48 @@ import path from "node:path";
 
 import { BuildOptions, FunctionOptions } from "types/open-next";
 
+import { getBuildId } from "./helper.js";
+
 type BaseFunction = {
   handler: string;
   bundle: string;
 };
 
+type OpenNextFunctionOrigin = {
+  type: "function";
+  streaming?: boolean;
+} & BaseFunction;
+
+type OpenNextECSOrigin = {
+  type: "ecs";
+  bundle: string;
+  dockerfile: string;
+};
+
+type OpenNextS3Origin = {
+  type: "s3";
+  originPath: string;
+  copy: {
+    from: string;
+    to: string;
+    cached: boolean;
+    versionedSubDir?: string;
+  }[];
+};
+
 type OpenNextOrigins =
-  | ({
-      type: "function";
-      streaming?: boolean;
-    } & BaseFunction)
-  | {
-      type: "ecs";
-      bundle: string;
-      dockerfile: string;
-    }
-  | {
-      type: "s3";
-      originPath: string;
-      copy: {
-        from: string;
-        to: string;
-        cached: boolean;
-        versionedSubDir?: string;
-      }[];
-    };
+  | OpenNextFunctionOrigin
+  | OpenNextECSOrigin
+  | OpenNextS3Origin;
 
 interface OpenNextOutput {
   edgeFunctions: {
     [key: string]: BaseFunction;
   };
   origins: {
+    s3: OpenNextS3Origin;
+    default: OpenNextFunctionOrigin | OpenNextECSOrigin;
+    imageOptimizer: OpenNextFunctionOrigin | OpenNextECSOrigin;
     [key: string]: OpenNextOrigins;
   };
   behaviors: {
@@ -52,7 +63,6 @@ interface OpenNextOutput {
 
 async function canStream(opts: FunctionOptions) {
   if (!opts.override?.wrapper) {
-    console.log("Why not here?"), opts.override;
     return false;
   } else {
     if (typeof opts.override.wrapper === "string") {
@@ -86,6 +96,8 @@ export async function generateOutput(
     }
   });
 
+  const defaultOriginCanstream = await canStream(buildOptions.default);
+
   // First add s3 origins and image optimization
   const origins: OpenNextOutput["origins"] = {
     s3: {
@@ -115,58 +127,76 @@ export async function generateOutput(
       bundle: ".open-next/image-optimization-function",
       streaming: false,
     },
-  };
-
-  const defaultOriginCanstream = await canStream(buildOptions.default);
-  origins.default = buildOptions.default.override?.generateDockerfile
-    ? {
-        type: "ecs",
-        bundle: ".open-next/default-function",
-        dockerfile: ".open-next/default-function/Dockerfile",
-      }
-    : {
-        type: "function",
-        handler: "index.handler",
-        bundle: ".open-next/default-function",
-        streaming: defaultOriginCanstream,
-      };
-
-  // Then add function origins
-  Promise.all(
-    Object.entries(buildOptions.functions).map(async ([key, value]) => {
-      if (!value.runtime || value.runtime === "node") {
-        const streaming = await canStream(value);
-        origins[key] = {
+    default: buildOptions.default.override?.generateDockerfile
+      ? {
+          type: "ecs",
+          bundle: ".open-next/server-functions/default",
+          dockerfile: ".open-next/server-functions/default/Dockerfile",
+        }
+      : {
           type: "function",
           handler: "index.handler",
-          bundle: `.open-next/server-functions/${key}`,
-          streaming,
-        };
+          bundle: ".open-next/server-functions/default",
+          streaming: defaultOriginCanstream,
+        },
+  };
+
+  // Then add function origins
+  await Promise.all(
+    Object.entries(buildOptions.functions).map(async ([key, value]) => {
+      if (!value.runtime || value.runtime === "node") {
+        if (value.override?.generateDockerfile) {
+          origins[key] = {
+            type: "ecs",
+            bundle: `.open-next/server-functions/${key}`,
+            dockerfile: `.open-next/server-functions/${key}/Dockerfile`,
+          };
+        } else {
+          const streaming = await canStream(value);
+          origins[key] = {
+            type: "function",
+            handler: "index.handler",
+            bundle: `.open-next/server-functions/${key}`,
+            streaming,
+          };
+        }
       }
     }),
   );
 
-  // Then add ecs origins
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
-    if (value.override?.generateDockerfile) {
-      origins[key] = {
-        type: "ecs",
-        bundle: `.open-next/server-functions/${key}`,
-        dockerfile: `.open-next/server-functions/${key}/Dockerfile`,
-      };
-    }
-  });
-
   // Then we need to compute the behaviors
   const behaviors: OpenNextOutput["behaviors"] = [
     { pattern: "_next/image*", origin: "imageOptimizer" },
-    {
-      pattern: "*",
-      origin: "default",
-      edgeFunction: isExternalMiddleware ? "middleware" : undefined,
-    },
-    //TODO: add base files
   ];
+
+  // Then we add the routes
+  Object.entries(buildOptions.functions).forEach(([key, value]) => {
+    const patterns = "patterns" in value ? value.patterns : ["*"];
+    patterns.forEach((pattern) => {
+      behaviors.push({
+        pattern: pattern.replace(/BUILD_ID/, getBuildId(outputPath)),
+        origin: value.placement === "global" ? undefined : key,
+        edgeFunction:
+          value.placement === "global"
+            ? key
+            : isExternalMiddleware
+            ? "middleware"
+            : undefined,
+      });
+    });
+  });
+
+  // We finish with the default behavior so that they don't override the others
+  behaviors.push({
+    pattern: "_next/data/*",
+    origin: "default",
+    edgeFunction: isExternalMiddleware ? "middleware" : undefined,
+  });
+  behaviors.push({
+    pattern: "*",
+    origin: "default",
+    edgeFunction: isExternalMiddleware ? "middleware" : undefined,
+  });
 
   //Compute behaviors for assets files
   const assetPath = path.join(outputPath, ".open-next", "assets");
@@ -182,23 +212,6 @@ export async function generateOutput(
         origin: "s3",
       });
     }
-  });
-
-  // Then we add the routes
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
-    const patterns = "patterns" in value ? value.patterns : ["*"];
-    patterns.forEach((pattern) => {
-      behaviors.push({
-        pattern,
-        origin: value.placement === "global" ? undefined : key,
-        edgeFunction:
-          value.placement === "global"
-            ? key
-            : isExternalMiddleware
-            ? "middleware"
-            : undefined,
-      });
-    });
   });
 
   const output: OpenNextOutput = {

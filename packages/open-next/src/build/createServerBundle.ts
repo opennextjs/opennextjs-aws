@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
 
 import fs from "fs";
@@ -8,6 +9,7 @@ import url from "url";
 import logger from "../logger.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
+import { bundleNextServer } from "./bundleNextServer.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import type { Options } from "./helper.js";
 import { compareSemver, esbuildAsync, traverseFiles } from "./helper.js";
@@ -35,47 +37,56 @@ export async function createServerBundle(
 
   const remainingRoutes = new Set<string>();
 
+  const { monorepoRoot, appBuildOutputPath } = buildRuntimeOptions;
+
+  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+
   // Find remaining routes
   const serverPath = path.join(
     buildRuntimeOptions.appBuildOutputPath,
     ".next",
     "standalone",
+    packagePath,
     ".next",
     "server",
   );
 
   // Find app dir routes
-  const appPath = path.join(serverPath, "app");
-  traverseFiles(
-    appPath,
-    (file) => {
-      if (file.endsWith("page.js") || file.endsWith("route.js")) {
-        const route = `app/${file.replace(/\.js$/, "")}`;
-        // console.log(`Found remaining route: ${route}`);
-        if (!foundRoutes.has(route)) {
-          remainingRoutes.add(route);
+  if (existsSync(path.join(serverPath, "app"))) {
+    const appPath = path.join(serverPath, "app");
+    traverseFiles(
+      appPath,
+      (file) => {
+        if (file.endsWith("page.js") || file.endsWith("route.js")) {
+          const route = `app/${file.replace(/\.js$/, "")}`;
+          // console.log(`Found remaining route: ${route}`);
+          if (!foundRoutes.has(route)) {
+            remainingRoutes.add(route);
+          }
         }
-      }
-      return false;
-    },
-    () => {},
-  );
+        return false;
+      },
+      () => {},
+    );
+  }
 
   // Find pages dir routes
-  const pagePath = path.join(serverPath, "pages");
-  traverseFiles(
-    pagePath,
-    (file) => {
-      if (file.endsWith(".js")) {
-        const route = `pages/${file.replace(/\.js$/, "")}`;
-        if (!foundRoutes.has(route)) {
-          remainingRoutes.add(route);
+  if (existsSync(path.join(serverPath, "pages"))) {
+    const pagePath = path.join(serverPath, "pages");
+    traverseFiles(
+      pagePath,
+      (file) => {
+        if (file.endsWith(".js")) {
+          const route = `pages/${file.replace(/\.js$/, "")}`;
+          if (!foundRoutes.has(route)) {
+            remainingRoutes.add(route);
+          }
         }
-      }
-      return false;
-    },
-    () => {},
-  );
+        return false;
+      },
+      () => {},
+    );
+  }
 
   // Generate default function
   await generateBundle("default", buildRuntimeOptions, {
@@ -114,8 +125,17 @@ async function generateBundle(
     path.join(outputPath, packagePath, ".next", "cache.cjs"),
   );
 
+  // Bundle next server if necessary
+  const isBundled = fnOptions.experimentalBundledNextServer ?? false;
+  if (isBundled) {
+    bundleNextServer(path.join(outputPath, packagePath), appPath);
+  }
+
   // // Copy middleware
-  if (!options.externalMiddleware) {
+  if (
+    !options.externalMiddleware &&
+    existsSync(path.join(outputDir, ".build", "middleware.mjs"))
+  ) {
     fs.copyFileSync(
       path.join(outputDir, ".build", "middleware.mjs"),
       path.join(outputPath, packagePath, "middleware.mjs"),
@@ -130,8 +150,10 @@ async function generateBundle(
   // Copy all necessary traced files
   copyTracedFiles(
     appBuildOutputPath,
+    packagePath,
     outputPath,
     fnOptions.routes ?? ["app/page.tsx"],
+    isBundled,
   );
 
   // Build Lambda code
@@ -195,7 +217,7 @@ async function generateBundle(
   await esbuildAsync(
     {
       entryPoints: [path.join(__dirname, "../adapters", "server-adapter.js")],
-      external: ["next", "./middleware.mjs"],
+      external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
       outfile: path.join(outputPath, packagePath, "index.mjs"),
       banner: {
         js: [
@@ -207,6 +229,11 @@ async function generateBundle(
         ].join(""),
       },
       plugins,
+      alias: {
+        "next/dist/server/next-server.js": isBundled
+          ? "./next-server.runtime.prod.js"
+          : "next/dist/server/next-server.js",
+      },
     },
     options,
   );

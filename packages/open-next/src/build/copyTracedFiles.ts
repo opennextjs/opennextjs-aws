@@ -12,13 +12,15 @@ import path from "path";
 //TODO: need to make it work with monorepo
 export async function copyTracedFiles(
   buildOutputPath: string,
+  packagePath: string,
   outputDir: string,
   routes: string[],
+  bundledNextServer: boolean,
 ) {
   console.time("copyTracedFiles");
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
-  const standaloneNextDir = path.join(standaloneDir, ".next");
+  const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
 
   const extractFiles = (files: string[], from = standaloneNextDir) => {
     return files.map((f) => path.resolve(from, f));
@@ -27,7 +29,15 @@ export async function copyTracedFiles(
   // On next 14+, we might not have to include those files
   // For next 13, we need to include them otherwise we get runtime error
   const requiredServerFiles = JSON.parse(
-    readFileSync(path.join(dotNextDir, "next-server.js.nft.json"), "utf8"),
+    readFileSync(
+      path.join(
+        dotNextDir,
+        bundledNextServer
+          ? "next-minimal-server.js.nft.json"
+          : "next-server.js.nft.json",
+      ),
+      "utf8",
+    ),
   );
 
   const filesToCopy = new Map<string, string>();
@@ -93,8 +103,7 @@ export async function copyTracedFiles(
     if (
       from.includes("node_modules") &&
       //TODO: we need to figure which packages we could safely remove
-      (from.includes("@edge-runtime") ||
-        from.includes("caniuse-lite") ||
+      (from.includes("caniuse-lite") ||
         from.includes("jest-worker") ||
         from.includes("sharp"))
     ) {

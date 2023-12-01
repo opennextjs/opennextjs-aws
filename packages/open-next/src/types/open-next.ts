@@ -189,6 +189,13 @@ export interface FunctionOptions extends DefaultFunctionOptions {
    * Enable overriding the default lambda.
    */
   override?: OverrideOptions;
+
+  /**
+   * Bundle Next server into a single file.
+   * This results in a way smaller bundle but it might break for some cases.
+   * @default false
+   */
+  experimentalBundledNextServer?: boolean;
 }
 
 export interface SplittedFunctionOptions extends FunctionOptions {
