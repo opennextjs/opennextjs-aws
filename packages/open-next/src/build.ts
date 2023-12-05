@@ -494,18 +494,25 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
 
   // Generate cache file
   Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileMeta = files.meta
+      ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+      : undefined;
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
-      meta: files.meta
-        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
-        : undefined,
+      meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
       json: files.json
         ? JSON.parse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
       body: files.body
-        ? fs.readFileSync(files.body).toString("base64")
+        ? fs
+            .readFileSync(files.body)
+            .toString(
+              cacheFileMeta.headers["content-type"] === "application/json"
+                ? "utf8"
+                : "base64",
+            )
         : undefined,
     };
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
