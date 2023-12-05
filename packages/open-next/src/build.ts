@@ -509,9 +509,9 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
         ? fs
             .readFileSync(files.body)
             .toString(
-              cacheFileMeta.headers["content-type"] === "application/json"
-                ? "utf8"
-                : "base64",
+              cacheFileMeta.headers["content-type"].startsWith("image")
+                ? "base64"
+                : "utf8",
             )
         : undefined,
     };

@@ -228,9 +228,9 @@ export default class S3Cache {
             kind: "ROUTE",
             body: Buffer.from(
               cacheData.body ?? Buffer.alloc(0),
-              meta?.headers?.["content-type"]?.includes("application/json")
-                ? "utf8"
-                : "base64",
+              String(meta?.headers?.["content-type"]).startsWith("image")
+                ? "base64"
+                : "utf8",
             ),
             status: meta?.status,
             headers: meta?.headers,
@@ -282,7 +282,9 @@ export default class S3Cache {
         JSON.stringify({
           type: "route",
           body: body.toString(
-            headers["content-type"] === "application/json" ? "utf8" : "base64",
+            String(headers["content-type"]).startsWith("image")
+              ? "base64"
+              : "utf8",
           ),
           meta: {
             status,
