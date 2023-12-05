@@ -504,7 +504,9 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
         ? JSON.parse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
-      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+      body: files.body
+        ? fs.readFileSync(files.body).toString("base64")
+        : undefined,
     };
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });

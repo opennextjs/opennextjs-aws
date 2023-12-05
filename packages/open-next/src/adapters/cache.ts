@@ -226,7 +226,7 @@ export default class S3Cache {
           lastModified: LastModified?.getTime(),
           value: {
             kind: "ROUTE",
-            body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
+            body: Buffer.from(cacheData.body ?? Buffer.alloc(0), "base64"),
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -276,7 +276,7 @@ export default class S3Cache {
         "cache",
         JSON.stringify({
           type: "route",
-          body: body.toString("utf8"),
+          body: body.toString("base64"),
           meta: {
             status,
             headers,
