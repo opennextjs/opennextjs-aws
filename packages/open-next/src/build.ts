@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import { isBinaryContentType } from "./adapters/binary.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
@@ -509,7 +510,7 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
         ? fs
             .readFileSync(files.body)
             .toString(
-              cacheFileMeta.headers["content-type"].startsWith("image")
+              isBinaryContentType(cacheFileMeta.headers["content-type"])
                 ? "base64"
                 : "utf8",
             )
