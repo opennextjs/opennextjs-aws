@@ -12,6 +12,10 @@ import { InternalEvent } from "types/open-next.js";
 import { isBinaryContentType } from "../../adapters/binary.js";
 import { debug, error } from "../../adapters/logger.js";
 
+/**
+ *
+ * @__PURE__
+ */
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
   const pattern = /^https?:\/\//;
@@ -21,6 +25,10 @@ export function isExternal(url?: string, host?: string) {
   return pattern.test(url);
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function getUrlParts(url: string, isExternal: boolean) {
   // NOTE: when redirect to a URL that contains search query params,
   // compile breaks b/c it does not allow for the '?' character
@@ -42,6 +50,10 @@ export function getUrlParts(url: string, isExternal: boolean) {
   };
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function convertRes(res: OpenNextNodeResponse) {
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
@@ -65,6 +77,7 @@ export function convertRes(res: OpenNextNodeResponse) {
  * Make sure that multi-value query parameters are transformed to
  * ?key=value1&key=value2&... so that Next converts those parameters
  * to an array when reading the query parameters
+ * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
   const urlQuery = new URLSearchParams();
@@ -83,24 +96,34 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
 /**
  * Given a raw query string, returns a record with key value-array pairs
  * similar to how multiValueQueryStringParameters are structured
+ * @__PURE__
  */
 export function convertToQuery(querystring: string) {
   const query = new URLSearchParams(querystring);
-  const queryObject: Record<string, string[]> = {};
+  const queryObject: Record<string, string[] | string> = {};
 
   for (const key of query.keys()) {
-    queryObject[key] = query.getAll(key);
+    const queries = query.getAll(key);
+    queryObject[key] = queries.length > 1 ? queries : queries[0];
   }
 
   return queryObject;
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
   const rootMiddleware = middlewareManifest.middleware["/"];
   if (!rootMiddleware?.matchers) return [];
   return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function escapeRegex(str: string) {
   let path = str.replace(/\(\.\)/g, "_µ1_");
 
@@ -111,6 +134,10 @@ export function escapeRegex(str: string) {
   return path;
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function unescapeRegex(str: string) {
   let path = str.replace(/_µ1_/g, "(.)");
 
@@ -121,6 +148,10 @@ export function unescapeRegex(str: string) {
   return path;
 }
 
+/**
+ *
+ * @__PURE__
+ */
 function filterHeadersForProxy(
   headers: Record<string, string | string[] | undefined>,
 ) {
@@ -131,6 +162,7 @@ function filterHeadersForProxy(
     "via",
     "x-cache",
     "transfer-encoding",
+    "content-encoding",
   ];
   Object.entries(headers).forEach(([key, value]) => {
     const lowerKey = key.toLowerCase();
@@ -143,6 +175,10 @@ function filterHeadersForProxy(
   return filteredHeaders;
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export async function proxyRequest(
   internalEvent: InternalEvent,
   res: OpenNextNodeResponse,
@@ -204,6 +240,10 @@ enum CommonHeaders {
   NEXT_CACHE = "x-nextjs-cache",
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function fixCacheHeaderForHtmlPages(
   rawPath: string,
   headers: OutgoingHttpHeaders,
@@ -215,6 +255,10 @@ export function fixCacheHeaderForHtmlPages(
   }
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
   let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
@@ -229,6 +273,10 @@ export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   );
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   headers["X-OpenNext"] = "1";
   if (globalThis.openNextDebug) {
@@ -236,6 +284,10 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   }
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export async function revalidateIfRequired(
   host: string,
   rawPath: string,
@@ -339,6 +391,10 @@ function cyrb128(str: string) {
   return h1 >>> 0;
 }
 
+/**
+ *
+ * @__PURE__
+ */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
     headers[CommonHeaders.CACHE_CONTROL] =
