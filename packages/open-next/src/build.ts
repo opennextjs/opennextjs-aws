@@ -680,8 +680,8 @@ async function createMiddleware() {
         plugins: [
           openNextResolvePlugin({
             overrides: {
-              wrapper: "cloudflare",
-              converter: "edge",
+              wrapper: "aws-lambda",
+              converter: "aws-cloudfront",
             },
           }),
           openNextEdgePlugins({
@@ -703,6 +703,13 @@ async function createMiddleware() {
         },
         conditions: ["module"],
         mainFields: ["module", "main"],
+        banner: {
+          js: `
+    const require = (await import("node:module")).createRequire(import.meta.url);
+    const __filename = (await import("node:url")).fileURLToPath(import.meta.url);
+    const __dirname = (await import("node:path")).dirname(__filename);
+    `,
+        },
       },
       options,
     );

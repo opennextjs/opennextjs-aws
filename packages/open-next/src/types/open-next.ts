@@ -55,7 +55,7 @@ export type Converter<
   R extends BaseEventOrResult = InternalResult,
 > = {
   convertFrom: (event: any) => Promise<E>;
-  convertTo: (result: R) => any;
+  convertTo: (result: R, originalRequest?: any) => any;
 };
 
 export type WrapperHandler<

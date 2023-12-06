@@ -64,9 +64,7 @@ export async function bundleNextServer(outputDir: string, appPath: string) {
           // This was an attempt at reducing server bundle size
           // It might be the better way to go in the future
           build.onResolve({ filter: /\.\/module.compiled/ }, (args) => {
-            console.log(args);
             const dir = args.resolveDir.split("/").slice(-1);
-            console.log(dir);
             return {
               path: path.join(
                 "next/dist/compiled/next-server/",

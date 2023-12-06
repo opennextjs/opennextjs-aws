@@ -83,7 +83,7 @@ export async function generateOutput(
   if (isExternalMiddleware) {
     edgeFunctions.middleware = {
       bundle: ".open-next/middleware",
-      handler: "index.handler",
+      handler: "handler.handler",
     };
   }
   // Add edge functions

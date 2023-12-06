@@ -1,5 +1,3 @@
-//TODO: Replace this with injected values in case of external routing
-// We could use open-next plugins to replace these values at build time
 import {
   BuildId,
   ConfigHeaders,

@@ -1,5 +1,6 @@
 import { InternalEvent } from "types/open-next";
 
+import { debug } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
 import routingHandler from "../core/routingHandler";
 
@@ -8,6 +9,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
   // We should probably create an host resolver to redirect correctly
   const result = await routingHandler(internalEvent);
   if ("internalEvent" in result) {
+    debug("Middleware intercepted event", internalEvent);
     return {
       type: "middleware",
       internalEvent: result.internalEvent,
@@ -15,6 +17,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
       isExternalRewrite: result.isExternalRewrite,
     };
   } else {
+    debug("Middleware response", result);
     return result;
   }
 };

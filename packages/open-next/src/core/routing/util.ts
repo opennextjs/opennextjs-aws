@@ -121,6 +121,28 @@ export function unescapeRegex(str: string) {
   return path;
 }
 
+function filterHeadersForProxy(
+  headers: Record<string, string | string[] | undefined>,
+) {
+  const filteredHeaders: Record<string, string | string[]> = {};
+  const disallowedHeaders = [
+    "host",
+    "connection",
+    "via",
+    "x-cache",
+    "transfer-encoding",
+  ];
+  Object.entries(headers).forEach(([key, value]) => {
+    const lowerKey = key.toLowerCase();
+    if (disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz"))
+      return;
+    else {
+      filteredHeaders[key] = value?.toString() ?? "";
+    }
+  });
+  return filteredHeaders;
+}
+
 export async function proxyRequest(
   internalEvent: InternalEvent,
   res: OpenNextNodeResponse,
@@ -128,7 +150,7 @@ export async function proxyRequest(
   const { url, headers, method, body } = internalEvent;
   debug("proxyRequest", url);
   await new Promise<void>((resolve, reject) => {
-    const { host: _host, ...filteredHeaders } = headers;
+    const filteredHeaders = filterHeadersForProxy(headers);
     debug("filteredHeaders", filteredHeaders);
     const req = request(
       url,
@@ -138,7 +160,10 @@ export async function proxyRequest(
         rejectUnauthorized: false,
       },
       (_res) => {
-        res.writeHead(_res.statusCode ?? 200, _res.headers);
+        res.writeHead(
+          _res.statusCode ?? 200,
+          filterHeadersForProxy(_res.headers),
+        );
         if (_res.headers["content-encoding"] === "br") {
           _res.pipe(require("node:zlib").createBrotliDecompress()).pipe(res);
         } else if (_res.headers["content-encoding"] === "gzip") {
@@ -152,7 +177,7 @@ export async function proxyRequest(
           res.end();
           reject(e);
         });
-        res.on("end", () => {
+        _res.on("end", () => {
           resolve();
         });
       },

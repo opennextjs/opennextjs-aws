@@ -1,12 +1,21 @@
 import {
   CloudFrontHeaders,
+  CloudFrontRequest,
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
+import { OutgoingHttpHeader } from "http";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../adapters/logger";
-import { convertToQuery } from "../core/routing/util";
+import {
+  convertRes,
+  convertToQuery,
+  convertToQueryString,
+  createServerResponse,
+  proxyRequest,
+} from "../core/routing/util";
+import { MiddlewareOutputEvent } from "../core/routingHandler";
 
 function normalizeCloudFrontRequestEventHeaders(
   rawHeaders: CloudFrontHeaders,
@@ -49,25 +58,88 @@ async function convertFromCloudFrontRequestEvent(
   };
 }
 
-function convertToCloudFrontRequestResult(
-  result: InternalResult,
-): CloudFrontRequestResult {
-  const headers: CloudFrontHeaders = {};
-  Object.entries(result.headers)
+type MiddlewareEvent = {
+  type: "middleware";
+} & MiddlewareOutputEvent;
+
+function convertToCloudfrontHeaders(
+  headers: Record<string, OutgoingHttpHeader>,
+) {
+  const cloudfrontHeaders: CloudFrontHeaders = {};
+  Object.entries(headers)
     .filter(([key]) => key.toLowerCase() !== "content-length")
     .forEach(([key, value]) => {
-      headers[key] = [
-        ...(headers[key] || []),
+      cloudfrontHeaders[key] = [
+        ...(cloudfrontHeaders[key] || []),
         ...(Array.isArray(value)
           ? value.map((v) => ({ key, value: v }))
           : [{ key, value: value.toString() }]),
       ];
     });
+  return cloudfrontHeaders;
+}
+
+async function convertToCloudFrontRequestResult(
+  result: InternalResult | MiddlewareEvent,
+  originalRequest: CloudFrontRequestEvent,
+): Promise<CloudFrontRequestResult> {
+  let responseHeaders =
+    result.type === "middleware"
+      ? result.internalEvent.headers
+      : result.headers;
+  if (result.type === "middleware") {
+    const { method, clientIp, origin } = originalRequest.Records[0].cf.request;
+    const overwrittenResponseHeaders: Record<string, OutgoingHttpHeader> = {};
+    Object.entries(result.headers).forEach(([key, value]) => {
+      //TODO: handle those headers inside plugin
+      if (value)
+        overwrittenResponseHeaders[`x-middleware-response-${key}`] = value;
+    });
+
+    // Handle external rewrite
+    if (result.isExternalRewrite) {
+      const serverResponse = createServerResponse(result.internalEvent, {});
+      await proxyRequest(result.internalEvent, serverResponse);
+      const externalResult = convertRes(serverResponse);
+      debug("externalResult", {
+        status: externalResult.statusCode.toString(),
+        statusDescription: "OK",
+        headers: convertToCloudfrontHeaders(externalResult.headers),
+        bodyEncoding: externalResult.isBase64Encoded ? "base64" : "text",
+        body: externalResult.body,
+      });
+      return {
+        status: externalResult.statusCode.toString(),
+        statusDescription: "OK",
+        headers: convertToCloudfrontHeaders(externalResult.headers),
+        bodyEncoding: externalResult.isBase64Encoded ? "base64" : "text",
+        body: externalResult.body,
+      };
+    }
+
+    const response: CloudFrontRequest = {
+      clientIp,
+      method,
+      uri: result.internalEvent.rawPath,
+      querystring: convertToQueryString(result.internalEvent.query).replace(
+        "?",
+        "",
+      ),
+      headers: convertToCloudfrontHeaders({
+        ...responseHeaders,
+        ...overwrittenResponseHeaders,
+      }),
+      origin,
+    };
+    debug("response rewrite", response);
+
+    return response;
+  }
 
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
     statusDescription: "OK",
-    headers,
+    headers: convertToCloudfrontHeaders(responseHeaders),
     bodyEncoding: result.isBase64Encoded ? "base64" : "text",
     body: result.body,
   };

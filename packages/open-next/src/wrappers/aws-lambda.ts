@@ -28,7 +28,7 @@ const handler: WrapperHandler =
 
     const response = await handler(internalEvent);
 
-    return converter.convertTo(response);
+    return converter.convertTo(response, event);
   };
 
 export default {

@@ -84,7 +84,8 @@ export function openNextReplacementPlugin({
               const replacement = match[2];
               const id = match[1];
               const pattern = new RegExp(
-                `\/\/#override (${id})\n([\\s\\S]*?)\n\/\/#endOverride`,
+                `\/\/#override (${id})\n([\\s\\S]*?)\/\/#endOverride`,
+                "g",
               );
               logger.debug(
                 `Open-next plugin ${name} -- Applying override for ${id} from ${fp}`,

@@ -59,7 +59,6 @@ export async function createServerBundle(
       (file) => {
         if (file.endsWith("page.js") || file.endsWith("route.js")) {
           const route = `app/${file.replace(/\.js$/, "")}`;
-          // console.log(`Found remaining route: ${route}`);
           if (!foundRoutes.has(route)) {
             remainingRoutes.add(route);
           }
