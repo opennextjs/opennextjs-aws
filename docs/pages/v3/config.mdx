@@ -23,15 +23,19 @@ const config = {
   },
   functions: { // here we define the functions that we want to deploy in a different server
     ssr: {
-      routes: ["app/api/isr/route", "app/api/sse/route", "app/api/revalidateTag/route"], // For app dir, you need to include route|page, no need to include layout or loading
-      patterns: ['api/*'], // patterns needs to be in a cloudfront compatible format, this will be used to generate the output
+      routes: [
+        "app/api/isr/route", "app/api/sse/route", "app/api/revalidateTag/route", // app dir Api routes
+        "app/route1/page", "app/route2/page", // app dir pages
+        "pages/route3" // page dir pages
+        ], // For app dir, you need to include route|page, no need to include layout or loading
+      patterns: ['api/*', 'route1', 'route2', 'route3'], // patterns needs to be in a cloudfront compatible format, this will be used to generate the output
       override: {
         wrapper: "aws-lambda-streaming",
       },
       experimentalBundledNextServer: true // This enables the bundled next server which is faster and reduce the size of the server
     },
     pageSsr: {
-      routes: ["pages/pageSsr"], // Routes should be in the form `pages/${route}` without the extension, it should match the filesystem
+      routes: ["pages/pageSsr"], // For page dir routes should be in the form `pages/${route}` without the extension, it should match the filesystem
       patterns: [ 'pageSsr', "_next/data/BUILD_ID/pageSsr.json"],
       override: {
         wrapper: "node",
