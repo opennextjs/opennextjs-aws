@@ -1,0 +1,60 @@
+Here is a simple example of an `open-next.config.ts` file: 
+This file need to be at the same place as your `next.config.js` file
+
+`server` in here could refer to a lambda function, a docker container, a node server or whatever that can support running nodejs code. (Even cloudflare workers in the future)
+
+For more information about the options here, just look at the source file
+
+```ts
+import type { BuildOptions } from 'open-next/types/open-next'
+const config = {
+  default: { // This is the default server, similar to the server-function in open-next v2
+    // You don't have to provide the below, by default it will generate an output 
+    // for normal lambda as in open-next v2
+    override: { 
+      wrapper: "aws-lambda-streaming", // This is necessary to enable lambda streaming
+      // You can override any part that is a `LazyLoadedOverride` this way
+      queue: () => Promise.resolve({
+        send: async (message) => {
+          //Your custom code here
+        }
+      })
+    },
+  },
+  functions: { // here we define the functions that we want to deploy in a different server
+    ssr: {
+      routes: [
+        "app/api/isr/route", "app/api/sse/route", "app/api/revalidateTag/route", // app dir Api routes
+        "app/route1/page", "app/route2/page", // app dir pages
+        "pages/route3" // page dir pages
+        ], // For app dir, you need to include route|page, no need to include layout or loading
+      patterns: ['api/*', 'route1', 'route2', 'route3'], // patterns needs to be in a cloudfront compatible format, this will be used to generate the output
+      override: {
+        wrapper: "aws-lambda-streaming",
+      },
+      experimentalBundledNextServer: true // This enables the bundled next server which is faster and reduce the size of the server
+    },
+    pageSsr: {
+      routes: ["pages/pageSsr"], // For page dir routes should be in the form `pages/${route}` without the extension, it should match the filesystem
+      patterns: [ 'pageSsr', "_next/data/BUILD_ID/pageSsr.json"],
+      override: {
+        wrapper: "node",
+        converter: "node",
+        generateDockerfile: true,
+      },
+    },    
+  },
+  // By setting this, it will create another bundle for the middleware, 
+  // and the middleware will be deployed in a separate server. 
+  // If not set middleware will be bundled inside the servers
+  // It could be in lambda@edge, cloudflare workers, or anywhere else
+  // By default it uses lambda@edge
+  middleware: {
+    external: true 
+  }
+  buildCommand: "echo 'hello world'",
+} satisfies BuildOptions
+
+module.exports = config
+export type OpenNextConfig = typeof config
+```
