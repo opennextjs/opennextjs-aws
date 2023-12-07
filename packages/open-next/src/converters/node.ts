@@ -20,7 +20,7 @@ const converter: Converter = {
       type: "core",
       method: req.method ?? "GET",
       rawPath: url.pathname,
-      url: url.toString(),
+      url: url.pathname + url.search,
       body,
       headers: Object.fromEntries(
         Object.entries(req.headers ?? {})

@@ -18,8 +18,14 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         // Is it necessary to do something here?
       },
     };
-
-    await handler(internalEvent, _res);
+    if (internalEvent.rawPath === "/__health") {
+      res.writeHead(200, {
+        "Content-Type": "text/plain",
+      });
+      res.end("OK");
+    } else {
+      await handler(internalEvent, _res);
+    }
   });
 
   await new Promise<void>((resolve) => {
