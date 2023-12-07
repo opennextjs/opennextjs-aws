@@ -1,0 +1,74 @@
+In this version of open-next, you could override a lot of the default behaviour.
+
+For some real example of how to override each behaviour: 
+- [Wrapper](https://github.com/conico974/open-next/blob/feat/splitting/packages/open-next/src/wrappers/aws-lambda.ts)
+- [Converter](https://github.com/conico974/open-next/blob/feat/splitting/packages/open-next/src/converters/aws-apigw-v2.ts)
+- [IncrementalCache](https://github.com/conico974/open-next/blob/feat/splitting/packages/open-next/src/cache/incremental/s3.ts)
+- [TagCache](
+  https://github.com/conico974/open-next/blob/feat/splitting/packages/open-next/src/cache/tag/dynamoDb.ts
+)
+- [Queue](
+  https://github.com/conico974/open-next/blob/feat/splitting/packages/open-next/src/queue/sqs.ts
+)
+
+This means it could allow people to write their own custom open-next.
+For example you could create a custom `withGcp` plugin to allow to deploy open-next on GCP functions
+
+A boilerplate for such a plugin could look like this (This is not real code):
+
+```ts
+
+import { BuildOptions } from "open-next/types/open-next";
+
+function withGcp(config: TrimmedDownConfig): BuildOptions {
+  return {
+    default: {
+        override: {
+          wrapper: async () => (await import("./gcp-wrapper")).default,
+          converter: async () => (await import("./gcp-converter")).default,
+          incrementalCache: async () => (await import("./gcp-incremental-cache")).default,
+          tagCache: async () => (await import("./gcp-tag-cache")).default,
+          queue: async () => (await import("./gcp-queue")).default,
+        },
+        ...config.default,
+    },
+    functions: {
+      // Same as default but for each splitted function
+      //...
+    }
+    warmer: {
+      override: {
+        wrapper: async () => (await import("./gcp-wrapper")).default,
+        converter: async () => (await import("./gcp-converter")).default,
+      },
+      invokeFunction: async () => (await import("./gcp-invoke-function")).default,
+    },
+    revalidate: {
+      override: {
+        wrapper: async () => (await import("./gcp-wrapper")).default,
+        converter: async () => (await import("./gcp-queue-converter")).default,
+      },
+    },
+    imageOptimization: {
+      override: {
+        wrapper: async () => (await import("./gcp-wrapper")).default,
+        converter: async () => (await import("./gcp-converter")).default,
+      },
+      loader: async () => (await import("./gcp-object-loader")).default,
+    },
+  }
+}
+```
+
+Using this plugin would look like this inside `open-next.config.ts`:
+
+```ts
+import { withGcp } from "./with-gcp";
+const config = withGcp({
+  default: {
+    // ...
+  },
+});
+
+module.exports = config;
+```
