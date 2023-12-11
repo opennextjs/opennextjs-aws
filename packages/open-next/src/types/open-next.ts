@@ -75,15 +75,7 @@ export type Wrapper<
   supportStreaming: boolean;
 };
 
-type Warmer = (warmerId: string) => Promise<
-  {
-    statusCode: number;
-    payload: {
-      serverId: string;
-    };
-    type: "warmer";
-  }[]
->;
+type Warmer = (warmerId: string) => Promise<void>;
 
 type ImageLoader = (url: string) => Promise<{
   body?: Readable;
@@ -214,6 +206,7 @@ export interface SplittedFunctionOptions extends FunctionOptions {
   patterns: string[];
 }
 
+//TODO: rename to OpenNextConfig or something similar
 export interface BuildOptions {
   default: FunctionOptions;
   functions: Record<string, SplittedFunctionOptions>;
@@ -222,7 +215,6 @@ export interface BuildOptions {
    * Override the default middleware
    * If you set this options, the middleware need to be deployed separately.
    * It supports both edge and node runtime.
-   * TODO: actually implement it
    * @default undefined
    */
   middleware?: DefaultFunctionOptions & {

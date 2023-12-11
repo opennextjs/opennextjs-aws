@@ -6,14 +6,30 @@ import { StreamCreator } from "http/index.js";
 import { WrapperHandler } from "types/open-next";
 
 import { error } from "../adapters/logger";
-import { WarmerEvent } from "../adapters/warmer-function";
+import { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
 
 type AwsLambdaReturn = void;
+
+function formatWarmerResponse(event: WarmerEvent) {
+  const result = new Promise<WarmerResponse>((resolve) => {
+    setTimeout(() => {
+      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
+    }, event.delay);
+  });
+  return result;
+}
+
 const handler: WrapperHandler = async (handler, converter) =>
   awslambda.streamifyResponse(
     async (event: AwsLambdaEvent, responseStream): Promise<AwsLambdaReturn> => {
+      if ("type" in event) {
+        const result = await formatWarmerResponse(event);
+        responseStream.end(Buffer.from(JSON.stringify(result)), "utf-8");
+        return;
+      }
+
       const internalEvent = await converter.convertFrom(event);
       let _hasWriten = false;
       let _headersSent = false;
