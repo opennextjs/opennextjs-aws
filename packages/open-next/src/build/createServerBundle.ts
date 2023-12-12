@@ -11,6 +11,7 @@ import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { bundleNextServer } from "./bundleNextServer.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
+import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import type { Options } from "./helper.js";
 import { compareSemver, esbuildAsync, traverseFiles } from "./helper.js";
 
@@ -29,8 +30,14 @@ export async function createServerBundle(
   const promises = functions.map(async ([name, fnOptions]) => {
     const routes = fnOptions.routes;
     routes.forEach((route) => foundRoutes.add(route));
-    await generateBundle(name, buildRuntimeOptions, fnOptions);
+    if (fnOptions.runtime === "edge") {
+      await generateEdgeBundle(name, buildRuntimeOptions, fnOptions);
+    } else {
+      await generateBundle(name, buildRuntimeOptions, fnOptions);
+    }
   });
+
+  //TODO: throw an error if not all edge runtime routes has been bundled in a separate function
 
   // We build every other function than default before so we know which route there is left
   await Promise.all(promises);

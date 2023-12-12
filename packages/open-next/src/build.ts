@@ -4,8 +4,10 @@ import path from "node:path";
 import url from "node:url";
 
 import { buildSync } from "esbuild";
+import { MiddlewareManifest } from "types/next-types.js";
 
 import { createServerBundle } from "./build/createServerBundle.js";
+import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import {
   esbuildAsync,
@@ -19,7 +21,6 @@ import {
 } from "./build/helper.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
-import { openNextEdgePlugins } from "./plugins/edge.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
 import { BuildOptions } from "./types/open-next.js";
 
@@ -639,8 +640,7 @@ function compileCache(options: Options) {
 async function createMiddleware() {
   console.info(`Bundling middleware function...`);
 
-  const { appBuildOutputPath, outputDir, externalMiddleware, tempDir } =
-    options;
+  const { appBuildOutputPath, outputDir, externalMiddleware } = options;
 
   // Get middleware manifest
   const middlewareManifest = JSON.parse(
@@ -648,7 +648,7 @@ async function createMiddleware() {
       path.join(appBuildOutputPath, ".next/server/middleware-manifest.json"),
       "utf8",
     ),
-  );
+  ) as MiddlewareManifest;
 
   const entry = middlewareManifest.middleware["/"];
   if (!entry) {
@@ -657,6 +657,20 @@ async function createMiddleware() {
 
   // Create output folder
   let outputPath = path.join(outputDir, "server-function");
+
+  const commonMiddlewareOptions = {
+    files: entry.files,
+    routes: [
+      {
+        name: entry.name || "/",
+        page: entry.page,
+        regex: entry.matchers.map((m) => m.regexp),
+      },
+    ],
+    options,
+    appBuildOutputPath,
+  };
+
   if (externalMiddleware) {
     outputPath = path.join(outputDir, "middleware");
     fs.mkdirSync(outputPath, { recursive: true });
@@ -668,94 +682,19 @@ async function createMiddleware() {
     );
 
     // Bundle middleware
-    await esbuildAsync(
-      {
-        entryPoints: [path.join(__dirname, "adapters", "middleware.js")],
-        // inject: ,
-        bundle: true,
-        outfile: path.join(outputPath, "handler.mjs"),
-        external: ["node:*", "next", "@aws-sdk/*"],
-        target: "es2022",
-        platform: "neutral",
-        plugins: [
-          openNextResolvePlugin({
-            overrides: {
-              wrapper: "aws-lambda",
-              converter: "aws-cloudfront",
-            },
-          }),
-          openNextEdgePlugins({
-            entryFiles: entry.files.map((file: string) =>
-              path.join(appBuildOutputPath, ".next", file),
-            ),
-            nextDir: path.join(appBuildOutputPath, ".next"),
-            edgeFunctionHandlerPath: path.join(
-              __dirname,
-              "core",
-              "edgeFunctionHandler.js",
-            ),
-          }),
-        ],
-        treeShaking: true,
-        alias: {
-          path: "node:path",
-          stream: "node:stream",
-        },
-        conditions: ["module"],
-        mainFields: ["module", "main"],
-        banner: {
-          js: `
-    const require = (await import("node:module")).createRequire(import.meta.url);
-    const __filename = (await import("node:url")).fileURLToPath(import.meta.url);
-    const __dirname = (await import("node:path")).dirname(__filename);
-    `,
-        },
-      },
-      options,
-    );
+    await buildEdgeBundle({
+      entrypoint: path.join(__dirname, "adapters", "middleware.js"),
+      outfile: path.join(outputPath, "handler.mjs"),
+      ...commonMiddlewareOptions,
+      defaultConverter: "aws-cloudfront",
+    });
   } else {
-    buildEdgeFunction(
-      entry,
-      path.join(__dirname, "core", "edgeFunctionHandler.js"),
-      path.join(outputDir, ".build", "middleware.mjs"),
-      appBuildOutputPath,
-    );
+    await buildEdgeBundle({
+      entrypoint: path.join(__dirname, "core", "edgeFunctionHandler.js"),
+      outfile: path.join(outputDir, ".build", "middleware.mjs"),
+      ...commonMiddlewareOptions,
+    });
   }
-}
-
-function buildEdgeFunction(
-  entry: any,
-  entrypoint: string,
-  outfile: string,
-  appBuildOutputPath: string,
-) {
-  esbuildSync(
-    {
-      entryPoints: [entrypoint],
-      inject: entry.files.map((file: string) =>
-        path.join(appBuildOutputPath, ".next", file),
-      ),
-      bundle: true,
-      outfile,
-      external: ["node:*"],
-      target: "es2022",
-      platform: "neutral",
-      banner: {
-        js: `
-globalThis._ENTRIES = {};
-globalThis.self = globalThis;
-
-import {Buffer} from "node:buffer";
-globalThis.Buffer = Buffer;
-
-import {AsyncLocalStorage} from "node:async_hooks";
-globalThis.AsyncLocalStorage = AsyncLocalStorage;
-
-`,
-      },
-    },
-    options,
-  );
 }
 
 //TODO: Why do we need this? People have access to the headers in the middleware
@@ -792,34 +731,4 @@ function injectMiddlewareGeolocation(outputPath: string, packagePath: string) {
       ),
     );
   }
-}
-
-function addPublicFilesList(outputPath: string, packagePath: string) {
-  // Get a list of all files in /public
-  const { appPublicPath } = options;
-  const acc: PublicFiles = { files: [] };
-
-  function processDirectory(pathInPublic: string) {
-    const files = fs.readdirSync(path.join(appPublicPath, pathInPublic), {
-      withFileTypes: true,
-    });
-
-    for (const file of files) {
-      file.isDirectory()
-        ? processDirectory(path.join(pathInPublic, file.name))
-        : acc.files.push(path.posix.join(pathInPublic, file.name));
-    }
-  }
-
-  if (fs.existsSync(appPublicPath)) {
-    processDirectory("/");
-  }
-
-  // Save the list
-  const outputOpenNextPath = path.join(outputPath, packagePath, ".open-next");
-  fs.mkdirSync(outputOpenNextPath, { recursive: true });
-  fs.writeFileSync(
-    path.join(outputOpenNextPath, "public-files.json"),
-    JSON.stringify(acc),
-  );
 }
