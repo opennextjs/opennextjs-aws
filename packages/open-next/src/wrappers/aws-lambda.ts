@@ -8,7 +8,7 @@ import type {
 } from "aws-lambda";
 import type { WrapperHandler } from "types/open-next";
 
-import { WarmerEvent } from "../adapters/warmer-function";
+import { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 
 type AwsLambdaEvent =
   | APIGatewayProxyEventV2
@@ -19,11 +19,25 @@ type AwsLambdaEvent =
 type AwsLambdaReturn =
   | APIGatewayProxyResultV2
   | APIGatewayProxyResult
-  | CloudFrontRequestResult;
+  | CloudFrontRequestResult
+  | WarmerResponse;
+
+function formatWarmerResponse(event: WarmerEvent) {
+  return new Promise<WarmerResponse>((resolve) => {
+    setTimeout(() => {
+      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
+    }, event.delay);
+  });
+}
 
 const handler: WrapperHandler =
   async (handler, converter) =>
   async (event: AwsLambdaEvent): Promise<AwsLambdaReturn> => {
+    // Handle warmer event
+    if ("type" in event) {
+      return formatWarmerResponse(event);
+    }
+
     const internalEvent = await converter.convertFrom(event);
 
     const response = await handler(internalEvent);

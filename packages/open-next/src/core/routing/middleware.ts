@@ -9,6 +9,7 @@ import { InternalEvent, InternalResult } from "types/open-next.js";
 //   signalFromNodeResponse,
 // } = require("next/dist/server/web/spec-extension/adapters/next-request");
 import {
+  convertBodyToReadableStream,
   convertToQueryString,
   getMiddlewareMatch,
   isExternal,
@@ -38,17 +39,6 @@ export async function handleMiddleware(
   // We bypass the middleware if the request is internal
   if (internalEvent.headers["x-isr"]) return internalEvent;
 
-  // const req = new IncomingMessage(internalEvent);
-  // const res = new OpenNextNodeResponse(
-  //   () => void 0,
-  //   () => Promise.resolve(),
-  // );
-
-  // NOTE: Next middleware was originally developed to support nested middlewares
-  // but that was discarded for simplicity. The MiddlewareInfo type still has the original
-  // structure, but as of now, the only useful property on it is the "/" key (ie root).
-  const middlewareInfo = middlewareManifest.middleware["/"];
-
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`
     : "http://localhost:3000";
@@ -56,39 +46,20 @@ export async function handleMiddleware(
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
 
-  const convertBodyToReadableStream = (body: string | Buffer) => {
-    const readable = new ReadableStream({
-      start(controller) {
-        controller.enqueue(body);
-        controller.close();
-      },
-    });
-    return readable;
-  };
-
   // @ts-expect-error - This is bundled
   const middleware = await import("./middleware.mjs");
 
-  const result: Response = await middleware.default(
-    [
-      {
-        name: middlewareInfo.name || "/",
-        page: middlewareInfo.page,
-        regex: middlewareInfo.matchers[0].regexp,
-      },
-    ],
-    {
-      headers: internalEvent.headers,
-      method: internalEvent.method || "GET",
-      nextConfig: {
-        basePath: NextConfig.basePath,
-        i18n: NextConfig.i18n,
-        trailingSlash: NextConfig.trailingSlash,
-      },
-      url,
-      body: convertBodyToReadableStream(internalEvent.body ?? ""),
+  const result: Response = await middleware.default({
+    headers: internalEvent.headers,
+    method: internalEvent.method || "GET",
+    nextConfig: {
+      basePath: NextConfig.basePath,
+      i18n: NextConfig.i18n,
+      trailingSlash: NextConfig.trailingSlash,
     },
-  );
+    url,
+    body: convertBodyToReadableStream(internalEvent.method, internalEvent.body),
+  });
   const statusCode = result.status;
 
   /* Apply override headers from middleware

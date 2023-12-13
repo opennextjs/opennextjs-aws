@@ -75,21 +75,21 @@ export type Wrapper<
   supportStreaming: boolean;
 };
 
-type Warmer = (warmerId: string) => Promise<
-  {
-    statusCode: number;
-    payload: {
-      serverId: string;
-    };
-    type: "warmer";
-  }[]
->;
+type Warmer = (warmerId: string) => Promise<void>;
 
 type ImageLoader = (url: string) => Promise<{
   body?: Readable;
   contentType?: string;
   cacheControl?: string;
 }>;
+
+export interface Origin {
+  host: string;
+  protocol: "http" | "https";
+  port?: number;
+  customHeaders?: Record<string, string>;
+}
+type OriginResolver = (path: string) => Promise<Origin | false>;
 
 export type IncludedWrapper =
   | "aws-lambda"
@@ -214,6 +214,7 @@ export interface SplittedFunctionOptions extends FunctionOptions {
   patterns: string[];
 }
 
+//TODO: rename to OpenNextConfig or something similar
 export interface BuildOptions {
   default: FunctionOptions;
   functions: Record<string, SplittedFunctionOptions>;
@@ -222,12 +223,20 @@ export interface BuildOptions {
    * Override the default middleware
    * If you set this options, the middleware need to be deployed separately.
    * It supports both edge and node runtime.
-   * TODO: actually implement it
    * @default undefined
    */
   middleware?: DefaultFunctionOptions & {
     //We force the middleware to be a function
     external: true;
+
+    /**
+     * Origin resolver is used to resolve the origin for internal rewrite.
+     * By default, it uses the pattern-env origin resolver.
+     * Pattern env uses pattern set in split function options and an env variable OPEN_NEXT_ORIGIN
+     * OPEN_NEXT_ORIGIN should be a json stringified object with the key of the splitted function as key and the origin as value
+     * @default "pattern-env"
+     */
+    originResolver?: "pattern-env" | LazyLoadedOverride<OriginResolver>;
   };
 
   /**

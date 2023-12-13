@@ -12,11 +12,13 @@ import {
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "../adapters/config/util.js";
+import { EdgeRoute } from "../core/edgeFunctionHandler.js";
 
 export interface IPluginSettings {
   nextDir: string;
   edgeFunctionHandlerPath?: string;
   entryFiles: string[];
+  routes: EdgeRoute[];
 }
 
 /**
@@ -30,6 +32,7 @@ export function openNextEdgePlugins({
   nextDir,
   edgeFunctionHandlerPath,
   entryFiles,
+  routes,
 }: IPluginSettings): Plugin {
   return {
     name: "opennext-edge",
@@ -43,16 +46,27 @@ export function openNextEdgePlugins({
         });
       }
 
+      build.onResolve({ filter: /.mjs$/g }, (args) => {
+        return {
+          external: true,
+        };
+      });
+
       // We inject the entry files into the edgeFunctionHandler
       build.onLoad({ filter: /\/edgeFunctionHandler.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         contents = `
 globalThis._ENTRIES = {};
 globalThis.self = globalThis;
-globalThis.process = {env: {}}
+if(!globalThis.process){
+  globalThis.process = {env: {}};
+}
+globalThis._ROUTES = ${JSON.stringify(routes)};
 
 import {Buffer} from "node:buffer";
 globalThis.Buffer = Buffer;
+import crypto from "node:crypto";
+globalThis.crypto = crypto;
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
@@ -64,7 +78,7 @@ ${contents}
         };
       });
 
-      build.onLoad({ filter: /adapters\/config\/index.ts/g }, async () => {
+      build.onLoad({ filter: /adapters\/config\/index/g }, async () => {
         console.log("opennext-config-plugin");
         const NextConfig = loadConfig(nextDir);
         const BuildId = loadBuildId(nextDir);

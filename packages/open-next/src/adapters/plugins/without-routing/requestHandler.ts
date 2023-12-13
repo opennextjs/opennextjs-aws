@@ -18,6 +18,7 @@ const preprocessResult: MiddlewareOutputEvent = {
   internalEvent: internalEvent,
   isExternalRewrite: false,
   headers: overwrittenResponseHeaders,
+  origin: false,
 };
 //#endOverride
 

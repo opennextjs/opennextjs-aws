@@ -41,9 +41,7 @@ export async function createGenericHandler<
     (m) => m.default,
   );
 
-  globalThis.openNextConfig = {
-    [handler.type]: config[handler.type],
-  };
+  globalThis.openNextConfig = config;
   const override = config[handler.type]
     ?.override as any as DefaultOverrideOptions<E, R>;
 

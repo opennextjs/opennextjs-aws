@@ -37,25 +37,28 @@ interface Entries {
 }
 declare global {
   var _ENTRIES: Entries;
+  var _ROUTES: EdgeRoute[];
   var __storage__: Map<unknown, unknown>;
   var AsyncContext: any;
   //@ts-ignore
   var AsyncLocalStorage: any;
 }
 
-interface Route {
+export interface EdgeRoute {
   name: string;
   page: string;
-  regex: string;
+  regex: string[];
 }
 
+type EdgeRequest = Omit<RequestData, "page">;
+
 export default async function edgeFunctionHandler(
-  routes: Route[],
-  request: RequestData,
+  request: EdgeRequest,
 ): Promise<Response> {
   const path = new URL(request.url).pathname;
+  const routes = globalThis._ROUTES;
   const correspondingRoute = routes.find((route) =>
-    new RegExp(route.regex).test(path),
+    route.regex.some((r) => new RegExp(r).test(path)),
   );
 
   if (!correspondingRoute) {
@@ -67,10 +70,7 @@ export default async function edgeFunctionHandler(
   ].default({
     page: correspondingRoute.page,
     request: {
-      headers: request.headers,
-      method: request.method,
-      url: request.url,
-      signal: request.signal,
+      ...request,
       page: {
         name: correspondingRoute.name,
       },
@@ -80,31 +80,3 @@ export default async function edgeFunctionHandler(
   const response = result.response;
   return response;
 }
-
-// const route = "/ssr/page";
-
-// const toExport = {
-//   async fetch(req: Request, env: any, context: any) {
-//     const headers: Record<string, string> = {};
-//     req.headers.forEach((value, key) => {
-//       headers[key] = value;
-//     });
-//     const result = await self._ENTRIES[`middleware_app${route}`].default({
-//       page: route,
-//       request: {
-//         headers: headers,
-//         method: req.method,
-//         url: req.url,
-//         signal: req.signal,
-//         page: {
-//           name: route,
-//         },
-//       },
-//     });
-//     const response = result.response;
-//     context.waitUntil(result.waitUntil);
-//     return response;
-//   },
-// };
-
-// export default toExport;

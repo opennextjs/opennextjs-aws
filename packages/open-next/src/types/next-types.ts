@@ -113,23 +113,25 @@ export interface RoutesManifest {
   headers?: Header[];
 }
 
+interface MiddlewareInfo {
+  files: string[];
+  paths?: string[];
+  name: string;
+  page: string;
+  matchers: {
+    regexp: string;
+    originalSource: string;
+  }[];
+  wasm: string[];
+  assets: string[];
+}
+
 export interface MiddlewareManifest {
   sortedMiddleware: string[];
   middleware: {
-    [key: string]: {
-      files: string[];
-      paths?: string[];
-      name: string;
-      page: string;
-      matchers: {
-        regexp: string;
-        originalSource: string;
-      }[];
-      wasm: string[];
-      assets: string[];
-    };
+    [key: string]: MiddlewareInfo;
   };
-  functions: { [key: string]: any };
+  functions: { [key: string]: MiddlewareInfo };
   version: number;
 }
 

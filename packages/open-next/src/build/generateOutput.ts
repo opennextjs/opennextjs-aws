@@ -88,7 +88,7 @@ export async function generateOutput(
   }
   // Add edge functions
   Object.entries(buildOptions.functions).forEach(([key, value]) => {
-    if (value.runtime === "edge") {
+    if (value.placement === "global") {
       edgeFunctions[key] = {
         bundle: `.open-next/functions/${key}`,
         handler: "index.handler",
@@ -144,7 +144,7 @@ export async function generateOutput(
   // Then add function origins
   await Promise.all(
     Object.entries(buildOptions.functions).map(async ([key, value]) => {
-      if (!value.runtime || value.runtime === "node") {
+      if (!value.placement || value.placement === "regional") {
         if (value.override?.generateDockerfile) {
           origins[key] = {
             type: "ecs",
