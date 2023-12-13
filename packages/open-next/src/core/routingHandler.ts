@@ -5,7 +5,7 @@ import {
   RoutesManifest,
 } from "config/index";
 import type { OutgoingHttpHeaders } from "http";
-import { InternalEvent, InternalResult } from "types/open-next";
+import { InternalEvent, InternalResult, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import {
@@ -21,6 +21,7 @@ export interface MiddlewareOutputEvent {
   internalEvent: InternalEvent;
   headers: OutgoingHttpHeaders;
   isExternalRewrite: boolean;
+  origin: Origin | false;
 }
 
 export default async function routingHandler(
@@ -91,5 +92,6 @@ export default async function routingHandler(
       ...middlewareResponseHeaders,
     },
     isExternalRewrite,
+    origin: false,
   };
 }

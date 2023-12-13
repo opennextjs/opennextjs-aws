@@ -1,4 +1,5 @@
 import {
+  CloudFrontCustomOrigin,
   CloudFrontHeaders,
   CloudFrontRequest,
   CloudFrontRequestEvent,
@@ -116,6 +117,18 @@ async function convertToCloudFrontRequestResult(
         body: externalResult.body,
       };
     }
+    let customOrigin = origin?.custom as CloudFrontCustomOrigin;
+    let host = responseHeaders["host"] ?? responseHeaders["Host"];
+    if (result.origin) {
+      customOrigin = {
+        ...customOrigin,
+        domainName: result.origin.host,
+        port: result.origin.port ?? 443,
+        protocol: result.origin.protocol ?? "https",
+        customHeaders: {},
+      };
+      host = result.origin.host;
+    }
 
     const response: CloudFrontRequest = {
       clientIp,
@@ -128,9 +141,15 @@ async function convertToCloudFrontRequestResult(
       headers: convertToCloudfrontHeaders({
         ...responseHeaders,
         ...overwrittenResponseHeaders,
+        host,
       }),
-      origin,
+      origin: origin?.custom
+        ? {
+            custom: customOrigin,
+          }
+        : origin,
     };
+
     debug("response rewrite", response);
 
     return response;
