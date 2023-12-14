@@ -21,7 +21,8 @@ const config = {
       })
     },
   },
-  functions: { // here we define the functions that we want to deploy in a different server
+  // Below we define the functions that we want to deploy in a different server
+  functions: { 
     ssr: {
       routes: [
         "app/api/isr/route", "app/api/sse/route", "app/api/revalidateTag/route", // app dir Api routes
@@ -40,15 +41,23 @@ const config = {
       override: {
         wrapper: "node",
         converter: "node",
+        // This is necessary to generate the dockerfile and for the implementation to know that it needs to deploy on docker
         generateDockerfile: true,
       },
-    },    
+    },
+    edge: {
+      runtime: "edge",
+      routes: ["app/ssr/page"],
+      patterns: ["ssr"],
+      override: {}
+    }    
   },
   // By setting this, it will create another bundle for the middleware, 
   // and the middleware will be deployed in a separate server. 
   // If not set middleware will be bundled inside the servers
   // It could be in lambda@edge, cloudflare workers, or anywhere else
   // By default it uses lambda@edge
+  // This is not implemented in the reference construct implementation.
   middleware: {
     external: true 
   }
