@@ -105,9 +105,14 @@ export function addNextConfigHeaders(
       const fromSource = match(source);
       const _match = fromSource(rawPath);
       headers.forEach((h) => {
-        const key = convertMatch(_match, compile(h.key), h.key);
-        const value = convertMatch(_match, compile(h.value), h.value);
-        requestHeaders[key] = value;
+        try {
+          const key = convertMatch(_match, compile(h.key), h.key);
+          const value = convertMatch(_match, compile(h.value), h.value);
+          requestHeaders[key] = value;
+        } catch {
+          debug("Error matching header ", h.key, ' with value ', h.value);
+          requestHeaders[h.key] = h.value;
+        }
       });
     }
   }
