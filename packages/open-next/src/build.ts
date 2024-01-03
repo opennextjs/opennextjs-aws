@@ -735,7 +735,12 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
   fs.writeFileSync(
     path.join(outputPath, "index.mjs"),
-    [`export * from "./${packagePosixPath}/index.mjs";`].join(""),
+    [
+      `export const handler = async (event, context) => {`,
+      ` const fn = await import("./${packagePosixPath}/index.mjs");`,
+      ` return fn.handler(event, context);`,
+      `};`,
+    ].join(""),
   );
 }
 
