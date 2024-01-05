@@ -10,6 +10,7 @@ import {
   buildSync,
 } from "esbuild";
 
+import { isBinaryContentType } from "./adapters/binary.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import openNextPlugin from "./plugin.js";
@@ -494,17 +495,26 @@ function createCacheAssets(monorepoRoot: string, disableDynamoDBCache = false) {
 
   // Generate cache file
   Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileMeta = files.meta
+      ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+      : undefined;
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
-      meta: files.meta
-        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
-        : undefined,
+      meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
       json: files.json
         ? JSON.parse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
-      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+      body: files.body
+        ? fs
+            .readFileSync(files.body)
+            .toString(
+              isBinaryContentType(cacheFileMeta.headers["content-type"])
+                ? "base64"
+                : "utf8",
+            )
+        : undefined,
     };
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });

@@ -13,6 +13,7 @@ import {
 } from "@aws-sdk/client-s3";
 import path from "path";
 
+import { isBinaryContentType } from "./binary.js";
 import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "./constants.js";
 import { debug, error, warn } from "./logger.js";
 import { chunk } from "./util.js";
@@ -226,7 +227,12 @@ export default class S3Cache {
           lastModified: LastModified?.getTime(),
           value: {
             kind: "ROUTE",
-            body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
+            body: Buffer.from(
+              cacheData.body ?? Buffer.alloc(0),
+              isBinaryContentType(String(meta?.headers?.["content-type"]))
+                ? "base64"
+                : "utf8",
+            ),
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -276,7 +282,11 @@ export default class S3Cache {
         "cache",
         JSON.stringify({
           type: "route",
-          body: body.toString("utf8"),
+          body: body.toString(
+            isBinaryContentType(String(headers["content-type"]))
+              ? "base64"
+              : "utf8",
+          ),
           meta: {
             status,
             headers,
