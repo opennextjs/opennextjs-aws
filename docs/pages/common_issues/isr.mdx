@@ -30,7 +30,7 @@ import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-clo
 
 const cloudFront = new CloudFrontClient({});
 
-function invalidateCFPaths(paths: string[]) {
+async function invalidateCFPaths(paths: string[]) {
   cloudFront.send(
     new CreateInvalidationCommand({
       // Set CloudFront distribution ID here
