@@ -110,7 +110,7 @@ export function addNextConfigHeaders(
           const value = convertMatch(_match, compile(h.value), h.value);
           requestHeaders[key] = value;
         } catch {
-          debug("Error matching header ", h.key, ' with value ', h.value);
+          debug("Error matching header ", h.key, " with value ", h.value);
           requestHeaders[h.key] = h.value;
         }
       });
