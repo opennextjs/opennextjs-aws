@@ -170,6 +170,7 @@ function findMonorepoRoot(appPath: string) {
       { file: "package-lock.json", packager: "npm" as const },
       { file: "yarn.lock", packager: "yarn" as const },
       { file: "pnpm-lock.yaml", packager: "pnpm" as const },
+      { file: "bun.lockb", packager: "bun" as const },
     ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
 
     if (found) {
@@ -201,11 +202,13 @@ function setStandaloneBuildMode(monorepoRoot: string) {
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
-function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
   const { nextPackageJsonPath } = options;
   const command =
     options.buildCommand ??
-    (packager === "npm" ? "npm run build" : `${packager} build`);
+    (["bun", "npm"].includes(packager)
+      ? `${packager} run build`
+      : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
     cwd: path.dirname(nextPackageJsonPath),
