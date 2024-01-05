@@ -1,5 +1,14 @@
 # open-next
 
+## 2.3.4
+
+### Patch Changes
+
+- e773e67: try to match errors, fallback to raw key/value pair
+- 83b0838: add support for bun lockfile
+- bbf9b30: use dynamic import handler for monorepo entrypoint
+- fd90b26: Changes encoding on cache.body for binary data
+
 ## 2.3.3
 
 ### Patch Changes
