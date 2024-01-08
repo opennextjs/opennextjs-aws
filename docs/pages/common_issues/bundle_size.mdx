@@ -33,7 +33,17 @@ eg: `--arch=arm64 --platform=linux --target=18 --libc=glibc`
 
 ##### pdfjs
 
-If you need to use pdfjs, you should install it with `npm i pdfjs-dist--no-optional` because the optional dep: `canvas` takes about 180MB.
+- If you need to use pdfjs, you should install it with `npm i pdfjs-dist--no-optional` because the optional dep: `canvas` takes about 180MB.
+
+- If the above dosn't work (or gives some compilation errors) you can try:
+
+```js
+  experimental: {
+    outputFileTracingExcludes: {
+      "*": ["node_modules/canvas"],
+    },
+  },
+```
 
 ##### Others
 
