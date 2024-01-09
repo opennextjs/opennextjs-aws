@@ -6,6 +6,7 @@ import url from "node:url";
 import { buildSync } from "esbuild";
 import { MiddlewareManifest } from "types/next-types.js";
 
+import { isBinaryContentType } from "./adapters/binary.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
@@ -115,6 +116,7 @@ function findMonorepoRoot(appPath: string) {
       { file: "package-lock.json", packager: "npm" as const },
       { file: "yarn.lock", packager: "yarn" as const },
       { file: "pnpm-lock.yaml", packager: "pnpm" as const },
+      { file: "bun.lockb", packager: "bun" as const },
     ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
 
     if (found) {
@@ -139,11 +141,13 @@ function setStandaloneBuildMode(monorepoRoot: string) {
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
-function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
   const { nextPackageJsonPath } = options;
   const command =
     options.buildCommand ??
-    (packager === "npm" ? "npm run build" : `${packager} build`);
+    (["bun", "npm"].includes(packager)
+      ? `${packager} run build`
+      : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
     cwd: path.dirname(nextPackageJsonPath),
@@ -485,17 +489,26 @@ async function createCacheAssets(
 
   // Generate cache file
   Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileMeta = files.meta
+      ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+      : undefined;
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
-      meta: files.meta
-        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
-        : undefined,
+      meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
       json: files.json
         ? JSON.parse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
-      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+      body: files.body
+        ? fs
+            .readFileSync(files.body)
+            .toString(
+              isBinaryContentType(cacheFileMeta.headers["content-type"])
+                ? "base64"
+                : "utf8",
+            )
+        : undefined,
     };
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });

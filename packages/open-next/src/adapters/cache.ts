@@ -1,5 +1,6 @@
 import { IncrementalCache } from "../cache/incremental/types.js";
 import { TagCache } from "../cache/tag/types.js";
+import { isBinaryContentType } from "./binary.js";
 import { debug, error, warn } from "./logger.js";
 
 interface CachedFetchValue {
@@ -177,7 +178,12 @@ export default class S3Cache {
           lastModified: _lastModified,
           value: {
             kind: "ROUTE",
-            body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
+            body: Buffer.from(
+              cacheData.body ?? Buffer.alloc(0),
+              isBinaryContentType(String(meta?.headers?.["content-type"]))
+                ? "base64"
+                : "utf8",
+            ),
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -226,7 +232,11 @@ export default class S3Cache {
         key,
         {
           type: "route",
-          body: body.toString("utf8"),
+          body: body.toString(
+            isBinaryContentType(String(headers["content-type"]))
+              ? "base64"
+              : "utf8",
+          ),
           meta: {
             status,
             headers,

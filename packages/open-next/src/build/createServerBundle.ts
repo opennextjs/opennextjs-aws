@@ -269,6 +269,7 @@ function shouldGenerateDockerfile(options: FunctionOptions) {
   return options.override?.generateDockerfile ?? false;
 }
 
+//TODO: check if this PR is still necessary https://github.com/sst/open-next/pull/341
 function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   // Note: in the monorepo case, the handler file is output to
   //       `.next/standalone/package/path/index.mjs`, but we want
