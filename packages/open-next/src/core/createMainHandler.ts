@@ -1,3 +1,5 @@
+import type { AsyncLocalStorage } from "node:async_hooks";
+
 import type { BuildOptions, OverrideOptions } from "types/open-next";
 
 import { debug } from "../adapters/logger";
@@ -12,6 +14,7 @@ declare global {
   var incrementalCache: IncrementalCache;
   var fnName: string | undefined;
   var serverId: string;
+  var __als: AsyncLocalStorage<string>;
 }
 
 async function resolveQueue(queue: OverrideOptions["queue"]) {
@@ -60,6 +63,8 @@ export async function createMainHandler() {
   );
 
   globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
+
+  globalThis.lastModified = {};
 
   // From the config, we create the adapter
   const adapter = await resolveConverter(thisFunction.override?.converter);

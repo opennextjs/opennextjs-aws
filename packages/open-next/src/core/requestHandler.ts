@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import {
   IncomingMessage,
   OpenNextNodeResponse,
@@ -9,6 +11,9 @@ import { debug, error } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import routingHandler from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
+
+// This is used to identify requests in the cache
+globalThis.__als = new AsyncLocalStorage<string>();
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -47,30 +52,37 @@ export async function openNextHandler(
       body: preprocessedEvent.body,
       remoteAddress: preprocessedEvent.remoteAddress,
     };
-    const req = new IncomingMessage(reqProps);
-    const res = createServerResponse(
-      preprocessedEvent,
-      preprocessResult.headers as Record<string, string | string[]>,
-      responseStreaming,
-    );
+    const requestId = Math.random().toString(36);
+    const internalResult = await globalThis.__als.run(requestId, async () => {
+      const req = new IncomingMessage(reqProps);
+      const res = createServerResponse(
+        preprocessedEvent,
+        preprocessResult.headers as Record<string, string | string[]>,
+        responseStreaming,
+      );
 
-    await processRequest(
-      req,
-      res,
-      preprocessedEvent,
-      preprocessResult.isExternalRewrite,
-    );
+      await processRequest(
+        req,
+        res,
+        preprocessedEvent,
+        preprocessResult.isExternalRewrite,
+      );
 
-    const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
+      const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
 
-    const internalResult = {
-      type: internalEvent.type,
-      statusCode,
-      headers,
-      body,
-      isBase64Encoded,
-    };
+      const internalResult = {
+        type: internalEvent.type,
+        statusCode,
+        headers,
+        body,
+        isBase64Encoded,
+      };
 
+      // reset lastModified. We need to do this to avoid memory leaks
+      delete globalThis.lastModified[requestId];
+
+      return internalResult;
+    });
     return internalResult;
   }
 }

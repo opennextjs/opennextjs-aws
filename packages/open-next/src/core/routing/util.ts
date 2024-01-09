@@ -250,7 +250,7 @@ export async function proxyRequest(
 declare global {
   var openNextDebug: boolean;
   var openNextVersion: string;
-  var lastModified: number;
+  var lastModified: Record<string, number>;
 }
 
 enum CommonHeaders {
@@ -299,6 +299,7 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   headers["X-OpenNext"] = "1";
   if (globalThis.openNextDebug) {
     headers["X-OpenNext-Version"] = globalThis.openNextVersion;
+    headers["X-OpenNext-RequestId"] = globalThis.__als.getStore();
   }
 }
 
@@ -312,8 +313,6 @@ export async function revalidateIfRequired(
   headers: OutgoingHttpHeaders,
   req?: IncomingMessage,
 ) {
-  fixISRHeaders(headers);
-
   if (headers[CommonHeaders.NEXT_CACHE] === "STALE") {
     // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
     // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
@@ -340,9 +339,12 @@ export async function revalidateIfRequired(
     try {
       const hash = (str: string) =>
         crypto.createHash("md5").update(str).digest("hex");
+      const requestId = globalThis.__als.getStore() ?? "";
 
       const lastModified =
-        globalThis.lastModified > 0 ? globalThis.lastModified : "";
+        globalThis.lastModified[requestId] > 0
+          ? globalThis.lastModified[requestId]
+          : "";
 
       // await sqsClient.send(
       //   new SendMessageCommand({
@@ -419,12 +421,11 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  if (
-    headers[CommonHeaders.NEXT_CACHE] === "HIT" &&
-    globalThis.lastModified > 0
-  ) {
+  const requestId = globalThis.__als.getStore() ?? "";
+  const _lastModified = globalThis.lastModified[requestId] ?? 0;
+  if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
     // calculate age
-    const age = Math.round((Date.now() - globalThis.lastModified) / 1000);
+    const age = Math.round((Date.now() - _lastModified) / 1000);
     // extract s-maxage from cache-control
     const regex = /s-maxage=(\d+)/;
     const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
@@ -440,9 +441,6 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
         CommonHeaders.CACHE_CONTROL
       ] = `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
     }
-
-    // reset lastModified
-    globalThis.lastModified = 0;
   }
   if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
 

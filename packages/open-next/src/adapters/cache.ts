@@ -92,7 +92,7 @@ declare global {
   var tagCache: TagCache;
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
-  var lastModified: number;
+  var lastModified: Record<string, number>;
 }
 
 export default class S3Cache {
@@ -170,7 +170,8 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
-      globalThis.lastModified = _lastModified;
+      const requestId = globalThis.__als.getStore() ?? "";
+      globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
