@@ -9,4 +9,5 @@ export interface QueueMessage {
 
 export interface Queue {
   send(message: QueueMessage): Promise<void>;
+  name: string;
 }

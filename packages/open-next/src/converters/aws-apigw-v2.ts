@@ -88,4 +88,5 @@ function convertToApiGatewayProxyResultV2(
 export default {
   convertFrom: convertFromAPIGatewayProxyEventV2,
   convertTo: convertToApiGatewayProxyResultV2,
+  name: "aws-apigw-v2",
 } as Converter;

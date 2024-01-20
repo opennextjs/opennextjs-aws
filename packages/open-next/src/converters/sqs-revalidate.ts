@@ -19,6 +19,7 @@ const converter: Converter<RevalidateEvent, { type: "revalidate" }> = {
       type: "revalidate",
     });
   },
+  name: "sqs-revalidate",
 };
 
 export default converter;

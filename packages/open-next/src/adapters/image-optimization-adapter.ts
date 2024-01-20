@@ -19,7 +19,7 @@ import {
 } from "next/dist/server/image-optimizer";
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
-import { InternalEvent, InternalResult } from "types/open-next.js";
+import { ImageLoader, InternalEvent, InternalResult } from "types/open-next.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { awsLogger, debug, error } from "./logger.js";
@@ -167,21 +167,25 @@ const resolveLoader = () => {
   if (typeof openNextParams?.loader === "function") {
     return openNextParams.loader();
   } else {
-    return Promise.resolve(async (key: string) => {
-      const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
-      const response = await s3Client.send(
-        new GetObjectCommand({
-          Bucket: BUCKET_NAME,
-          Key: keyPrefix
-            ? keyPrefix + "/" + key.replace(/^\//, "")
-            : key.replace(/^\//, ""),
-        }),
-      );
-      return {
-        body: response.Body,
-        contentType: response.ContentType,
-        cacheControl: response.CacheControl,
-      };
+    return Promise.resolve<ImageLoader>({
+      name: "s3",
+      // @ts-ignore
+      load: async (key: string) => {
+        const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
+        const response = await s3Client.send(
+          new GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: keyPrefix
+              ? keyPrefix + "/" + key.replace(/^\//, "")
+              : key.replace(/^\//, ""),
+          }),
+        );
+        return {
+          body: response.Body,
+          contentType: response.ContentType,
+          cacheControl: response.CacheControl,
+        };
+      },
     });
   }
 };
@@ -220,7 +224,7 @@ async function downloadHandler(
       // Download image from S3
       // note: S3 expects keys without leading `/`
 
-      const response = await loader(url.href);
+      const response = await loader.load(url.href);
 
       if (!response.body) {
         throw new Error("Empty response body from the S3 request.");

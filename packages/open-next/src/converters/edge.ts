@@ -68,6 +68,7 @@ const converter: Converter<
       });
     }
   },
+  name: "edge",
 };
 
 export default converter;

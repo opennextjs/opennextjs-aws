@@ -5,4 +5,5 @@ export type TagCache = {
   writeTags(
     tags: { tag: string; path: string; revalidatedAt?: number }[],
   ): Promise<void>;
+  name: string;
 };

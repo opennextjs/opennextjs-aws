@@ -43,7 +43,10 @@ export interface DangerousOptions {
   disableIncrementalCache?: boolean;
 }
 
-export type LazyLoadedOverride<T> = () => Promise<T>;
+export type BaseOverride = {
+  name: string;
+};
+export type LazyLoadedOverride<T extends BaseOverride> = () => Promise<T>;
 
 export type OpenNextHandler<
   E extends BaseEventOrResult = InternalEvent,
@@ -53,7 +56,7 @@ export type OpenNextHandler<
 export type Converter<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
-> = {
+> = BaseOverride & {
   convertFrom: (event: any) => Promise<E>;
   convertTo: (result: R, originalRequest?: any) => any;
 };
@@ -69,19 +72,22 @@ export type WrapperHandler<
 export type Wrapper<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
-> = {
+> = BaseOverride & {
   wrapper: WrapperHandler<E, R>;
-  name: string;
   supportStreaming: boolean;
 };
 
-type Warmer = (warmerId: string) => Promise<void>;
+export type Warmer = BaseOverride & {
+  invoke: (warmerId: string) => Promise<void>;
+};
 
-type ImageLoader = (url: string) => Promise<{
-  body?: Readable;
-  contentType?: string;
-  cacheControl?: string;
-}>;
+export type ImageLoader = BaseOverride & {
+  load: (url: string) => Promise<{
+    body?: Readable;
+    contentType?: string;
+    cacheControl?: string;
+  }>;
+};
 
 export interface Origin {
   host: string;
@@ -89,7 +95,9 @@ export interface Origin {
   port?: number;
   customHeaders?: Record<string, string>;
 }
-type OriginResolver = (path: string) => Promise<Origin | false>;
+export type OriginResolver = BaseOverride & {
+  resolve: (path: string) => Promise<Origin | false>;
+};
 
 export type IncludedWrapper =
   | "aws-lambda"

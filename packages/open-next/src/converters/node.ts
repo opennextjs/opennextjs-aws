@@ -49,6 +49,7 @@ const converter: Converter = {
     headers: internalResult.headers,
     statusCode: internalResult.statusCode,
   }),
+  name: "node",
 };
 
 export default converter;

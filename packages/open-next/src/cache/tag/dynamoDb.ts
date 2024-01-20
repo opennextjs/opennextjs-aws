@@ -144,6 +144,7 @@ const tagCache: TagCache = {
       error("Failed to batch write dynamo item", e);
     }
   },
+  name: "dynamoDb",
 };
 
 export default tagCache;
