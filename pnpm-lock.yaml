@@ -267,6 +267,9 @@ importers:
       '@tsconfig/node18':
         specifier: ^1.0.1
         version: 1.0.3
+      chalk:
+        specifier: ^5.3.0
+        version: 5.3.0
       esbuild:
         specifier: 0.19.2
         version: 0.19.2
@@ -7588,7 +7591,6 @@ packages:
   /chalk@5.3.0:
     resolution: {integrity: sha512-dLitG79d+GV1Nb/VYcCDFivJeK1hiukt9QjRNVOsUtTy1rR1YJsmpGGTZ3qJos+uw7WmWF4wUwBd9jxjocFC2w==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
-    dev: true
 
   /character-entities-html4@1.1.4:
     resolution: {integrity: sha512-HRcDxZuZqMx3/a+qrzxdBKBPUpxWEq9xw2OPZ3a/174ihfrQKVsFhqtthBInFy1zZ9GgZyFXOatNujm8M+El3g==}

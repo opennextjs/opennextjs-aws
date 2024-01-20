@@ -9,6 +9,8 @@ import type {
   IncludedWrapper,
 } from "types/open-next";
 
+import logger from "../logger.js";
+
 export interface IPluginSettings {
   overrides: {
     wrapper?: IncludedWrapper;
@@ -18,16 +20,21 @@ export interface IPluginSettings {
     queue?: IncludedQueue;
     incrementalCache?: IncludedIncrementalCache;
   };
+  fnName?: string;
 }
 
 /**
  * @param opts.overrides - The name of the overrides to use
  * @returns
  */
-export function openNextResolvePlugin({ overrides }: IPluginSettings): Plugin {
+export function openNextResolvePlugin({
+  overrides,
+  fnName,
+}: IPluginSettings): Plugin {
   return {
     name: "opennext-resolve",
     setup(build) {
+      logger.debug(`OpenNext Resolve plugin for ${fnName}`);
       build.onLoad({ filter: /core\/resolve.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         if (overrides?.wrapper) {

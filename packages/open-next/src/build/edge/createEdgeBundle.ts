@@ -3,7 +3,7 @@ import url from "node:url";
 import fs from "fs";
 import path from "path";
 import { MiddlewareManifest } from "types/next-types";
-import { BuildOptions, IncludedConverter } from "types/open-next";
+import { IncludedConverter, SplittedFunctionOptions } from "types/open-next";
 
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
@@ -89,7 +89,7 @@ export async function buildEdgeBundle({
 export async function generateEdgeBundle(
   name: string,
   options: Options,
-  fnOptions: BuildOptions["functions"][string],
+  fnOptions: SplittedFunctionOptions,
 ) {
   const { appBuildOutputPath, outputDir } = options;
 

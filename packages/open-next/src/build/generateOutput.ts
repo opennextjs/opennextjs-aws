@@ -87,7 +87,7 @@ export async function generateOutput(
     };
   }
   // Add edge functions
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
+  Object.entries(buildOptions.functions ?? {}).forEach(([key, value]) => {
     if (value.placement === "global") {
       edgeFunctions[key] = {
         bundle: `.open-next/functions/${key}`,
@@ -115,7 +115,7 @@ export async function generateOutput(
           : [
               {
                 from: ".open-next/cache",
-                to: "cache",
+                to: "_cache",
                 cached: false,
               },
             ]),
@@ -143,7 +143,7 @@ export async function generateOutput(
 
   // Then add function origins
   await Promise.all(
-    Object.entries(buildOptions.functions).map(async ([key, value]) => {
+    Object.entries(buildOptions.functions ?? {}).map(async ([key, value]) => {
       if (!value.placement || value.placement === "regional") {
         if (value.override?.generateDockerfile) {
           origins[key] = {
@@ -170,7 +170,7 @@ export async function generateOutput(
   ];
 
   // Then we add the routes
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
+  Object.entries(buildOptions.functions ?? {}).forEach(([key, value]) => {
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
@@ -220,12 +220,12 @@ export async function generateOutput(
     behaviors,
     additionalProps: {
       disableIncrementalCache: buildOptions.dangerous?.disableIncrementalCache,
-      disableTagCache: buildOptions.dangerous?.disableDynamoDBCache,
+      disableTagCache: buildOptions.dangerous?.disableTagCache,
       warmer: {
         handler: "index.handler",
         bundle: ".open-next/warmer-function",
       },
-      initializationFunction: buildOptions.dangerous?.disableDynamoDBCache
+      initializationFunction: buildOptions.dangerous?.disableTagCache
         ? undefined
         : {
             handler: "index.handler",

@@ -3,7 +3,11 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 
 import fs from "fs";
 import path from "path";
-import { BuildOptions, FunctionOptions } from "types/open-next";
+import {
+  BuildOptions,
+  FunctionOptions,
+  SplittedFunctionOptions,
+} from "types/open-next";
 import url from "url";
 
 import logger from "../logger.js";
@@ -25,7 +29,7 @@ export async function createServerBundle(
   const foundRoutes = new Set<string>();
   // Get all functions to build
   const defaultFn = options.default;
-  const functions = Object.entries(options.functions);
+  const functions = Object.entries(options.functions ?? {});
 
   const promises = functions.map(async ([name, fnOptions]) => {
     const routes = fnOptions.routes;
@@ -105,7 +109,7 @@ export async function createServerBundle(
 async function generateBundle(
   name: string,
   options: Options,
-  fnOptions: BuildOptions["functions"][string],
+  fnOptions: SplittedFunctionOptions,
 ) {
   const { appPath, appBuildOutputPath, outputDir, monorepoRoot } = options;
 
@@ -178,7 +182,7 @@ async function generateBundle(
   const disableRouting = isBefore13413 || options.externalMiddleware;
   const plugins = [
     openNextReplacementPlugin({
-      name: "requestHandlerOverride",
+      name: `requestHandlerOverride ${name}`,
       target: /core\/requestHandler.js/g,
       deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
       replacements: disableRouting
@@ -190,7 +194,7 @@ async function generateBundle(
         : [],
     }),
     openNextReplacementPlugin({
-      name: "core/util",
+      name: `utilOverride ${name}`,
       target: /core\/util.js/g,
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
@@ -200,6 +204,7 @@ async function generateBundle(
     }),
 
     openNextResolvePlugin({
+      fnName: name,
       overrides: {
         converter:
           typeof overrides.converter === "function"

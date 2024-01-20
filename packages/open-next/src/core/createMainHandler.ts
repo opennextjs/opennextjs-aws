@@ -50,7 +50,7 @@ export async function createMainHandler() {
   ).then((m) => m.default);
 
   const thisFunction = globalThis.fnName
-    ? config.functions[globalThis.fnName]
+    ? config.functions![globalThis.fnName]
     : config.default;
 
   globalThis.serverId = generateUniqueId();

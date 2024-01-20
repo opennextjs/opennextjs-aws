@@ -20,6 +20,7 @@ import {
   removeFiles,
   traverseFiles,
 } from "./build/helper.js";
+import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
 import { minifyAll } from "./minimize-js.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
@@ -40,6 +41,7 @@ export async function build() {
 
   const config = await import(outputTmpPath + "/open-next.config.js");
   const opts = config.default as BuildOptions;
+  validateConfig(opts);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
     path.join(process.cwd(), opts.appPath || "."),
@@ -73,7 +75,7 @@ export async function build() {
   if (!options.dangerous?.disableIncrementalCache) {
     await createCacheAssets(
       monorepoRoot,
-      options.dangerous?.disableDynamoDBCache,
+      options.dangerous?.disableTagCache,
     );
   }
   await createServerBundle(opts, options);
@@ -640,7 +642,7 @@ function compileCache(options: Options) {
             dangerousOptions?.disableIncrementalCache ?? false
           };`,
           `globalThis.disableDynamoDBCache = ${
-            dangerousOptions?.disableDynamoDBCache ?? false
+            dangerousOptions?.disableTagCache ?? false
           };`,
         ].join(""),
       },

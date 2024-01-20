@@ -31,10 +31,10 @@ export type InternalResult = {
 
 export interface DangerousOptions {
   /**
-   * The dynamo db cache is used for revalidateTags and revalidatePath.
+   * The tag cache is used for revalidateTags and revalidatePath.
    * @default false
    */
-  disableDynamoDBCache?: boolean;
+  disableTagCache?: boolean;
   /**
    * The incremental cache is used for ISR and SSG.
    * Disable this only if you use only SSR
@@ -217,7 +217,7 @@ export interface SplittedFunctionOptions extends FunctionOptions {
 //TODO: rename to OpenNextConfig or something similar
 export interface BuildOptions {
   default: FunctionOptions;
-  functions: Record<string, SplittedFunctionOptions>;
+  functions?: Record<string, SplittedFunctionOptions>;
 
   /**
    * Override the default middleware
