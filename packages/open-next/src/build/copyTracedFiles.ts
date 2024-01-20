@@ -4,12 +4,13 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import path from "path";
 
-//TODO: need to make it work with monorepo
 export async function copyTracedFiles(
   buildOutputPath: string,
   packagePath: string,
@@ -110,7 +111,25 @@ export async function copyTracedFiles(
       return;
     }
     mkdirSync(path.dirname(to), { recursive: true });
-    copyFileSync(from, to);
+    let symlink = null;
+    // For pnpm symlink we need to do that
+    // see https://github.com/vercel/next.js/blob/498f342b3552d6fc6f1566a1cc5acea324ce0dec/packages/next/src/build/utils.ts#L1932
+    try {
+      symlink = readlinkSync(from);
+    } catch (e) {
+      //Ignore
+    }
+    if (symlink) {
+      try {
+        symlinkSync(symlink, to);
+      } catch (e: any) {
+        if (e.code !== "EEXIST") {
+          throw e;
+        }
+      }
+    } else {
+      copyFileSync(from, to);
+    }
   });
 
   mkdirSync(path.join(outputDir, ".next"), { recursive: true });
