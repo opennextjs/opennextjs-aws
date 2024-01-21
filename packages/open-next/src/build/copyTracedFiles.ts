@@ -176,14 +176,29 @@ export async function copyTracedFiles(
   //TODO: Find what else we need to copy
   const copyStaticFile = (filePath: string) => {
     if (existsSync(path.join(standaloneNextDir, filePath))) {
+      mkdirSync(path.dirname(path.join(outputDir, ".next", filePath)), {
+        recursive: true,
+      });
       copyFileSync(
         path.join(standaloneNextDir, filePath),
         path.join(outputDir, ".next", filePath),
       );
     }
   };
-  copyStaticFile("server/pages/404.html");
-  copyStaticFile("server/pages/500.html");
+  // Get all the static files - Should be only for pages dir
+  if (hasPageDir) {
+    const staticFiles: Record<string, string> = JSON.parse(
+      readFileSync(
+        path.join(standaloneNextDir, "server/pages-manifest.json"),
+        "utf8",
+      ),
+    );
+    Object.values(staticFiles).forEach((f: string) => {
+      if (f.endsWith(".html")) {
+        copyStaticFile(`server/${f}`);
+      }
+    });
+  }
 
   console.timeEnd("copyTracedFiles");
 }
