@@ -1,6 +1,6 @@
 import {
-  BuildOptions,
   FunctionOptions,
+  OpenNextConfig,
   SplittedFunctionOptions,
 } from "types/open-next";
 
@@ -36,7 +36,7 @@ function validateSplittedFunctionOptions(
   }
 }
 
-export function validateConfig(config: BuildOptions) {
+export function validateConfig(config: OpenNextConfig) {
   validateFunctionOptions(config.default);
   Object.entries(config.functions ?? {}).forEach(([name, fnOptions]) => {
     validateSplittedFunctionOptions(fnOptions, name);

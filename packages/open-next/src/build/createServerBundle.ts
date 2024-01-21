@@ -4,27 +4,28 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 import fs from "fs";
 import path from "path";
 import {
-  BuildOptions,
   FunctionOptions,
+  OpenNextConfig,
   SplittedFunctionOptions,
 } from "types/open-next";
 import url from "url";
 
 import logger from "../logger.js";
+import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { bundleNextServer } from "./bundleNextServer.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
-import type { Options } from "./helper.js";
+import type { BuildOptions } from "./helper.js";
 import { compareSemver, esbuildAsync, traverseFiles } from "./helper.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export async function createServerBundle(
-  options: BuildOptions,
-  buildRuntimeOptions: Options,
+  options: OpenNextConfig,
+  buildRuntimeOptions: BuildOptions,
 ) {
   const foundRoutes = new Set<string>();
   // Get all functions to build
@@ -108,7 +109,7 @@ export async function createServerBundle(
 
 async function generateBundle(
   name: string,
-  options: Options,
+  options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
   const { appPath, appBuildOutputPath, outputDir, monorepoRoot } = options;
@@ -253,6 +254,10 @@ async function generateBundle(
     addMonorepoEntrypoint(outputPath, packagePath);
   }
 
+  if (fnOptions.minify) {
+    await minifyServerBundle(outputPath);
+  }
+
   const shouldGenerateDocker = shouldGenerateDockerfile(fnOptions);
   if (shouldGenerateDocker) {
     fs.writeFileSync(
@@ -288,4 +293,13 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
     path.join(outputPath, "index.mjs"),
     [`export * from "./${packagePosixPath}/index.mjs";`].join(""),
   );
+}
+
+async function minifyServerBundle(outputDir: string) {
+  logger.info(`Minimizing server function...`);
+
+  await minifyAll(outputDir, {
+    compress_json: true,
+    mangle: true,
+  });
 }

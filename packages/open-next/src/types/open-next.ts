@@ -222,8 +222,7 @@ export interface SplittedFunctionOptions extends FunctionOptions {
   patterns: string[];
 }
 
-//TODO: rename to OpenNextConfig or something similar
-export interface BuildOptions {
+export interface OpenNextConfig {
   default: FunctionOptions;
   functions?: Record<string, SplittedFunctionOptions>;
 

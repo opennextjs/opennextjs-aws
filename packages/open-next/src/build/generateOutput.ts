@@ -3,10 +3,10 @@ import path from "node:path";
 
 import {
   BaseOverride,
-  BuildOptions,
   DefaultOverrideOptions,
   FunctionOptions,
   LazyLoadedOverride,
+  OpenNextConfig,
   OverrideOptions,
 } from "types/open-next";
 
@@ -153,7 +153,7 @@ async function extractCommonOverride(override?: OverrideOptions) {
 
 export async function generateOutput(
   outputPath: string,
-  buildOptions: BuildOptions,
+  buildOptions: OpenNextConfig,
 ) {
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
   const isExternalMiddleware = buildOptions.middleware?.external ?? false;

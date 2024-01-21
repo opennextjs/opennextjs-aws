@@ -1,6 +1,6 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 
-import type { BuildOptions, OverrideOptions } from "types/open-next";
+import type { OpenNextConfig, OverrideOptions } from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
@@ -45,7 +45,7 @@ async function resolveIncrementalCache(
 
 export async function createMainHandler() {
   //First we load the config
-  const config: BuildOptions = await import(
+  const config: OpenNextConfig = await import(
     process.cwd() + "/open-next.config.js"
   ).then((m) => m.default);
 

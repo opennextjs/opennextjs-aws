@@ -7,7 +7,7 @@ import { IncludedConverter, SplittedFunctionOptions } from "types/open-next";
 
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import { esbuildAsync, Options } from "../helper.js";
+import { BuildOptions, esbuildAsync } from "../helper.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -21,7 +21,7 @@ interface BuildEdgeBundleOptions {
   }[];
   entrypoint: string;
   outfile: string;
-  options: Options;
+  options: BuildOptions;
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
 }
@@ -88,7 +88,7 @@ export async function buildEdgeBundle({
 
 export async function generateEdgeBundle(
   name: string,
-  options: Options,
+  options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
   const { appBuildOutputPath, outputDir } = options;

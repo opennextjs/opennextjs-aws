@@ -11,23 +11,22 @@ import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import {
+  BuildOptions,
   esbuildAsync,
   esbuildSync,
   getBuildId,
   getHtmlPages,
   normalizeOptions,
-  Options,
   removeFiles,
   traverseFiles,
 } from "./build/helper.js";
 import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
-import { minifyAll } from "./minimize-js.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
-import { BuildOptions } from "./types/open-next.js";
+import { OpenNextConfig } from "./types/open-next.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-let options: Options;
+let options: BuildOptions;
 
 export type PublicFiles = {
   files: string[];
@@ -40,7 +39,7 @@ export async function build() {
   createOpenNextConfigBundle(outputTmpPath);
 
   const config = await import(outputTmpPath + "/open-next.config.js");
-  const opts = config.default as BuildOptions;
+  const opts = config.default as OpenNextConfig;
   validateConfig(opts);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
@@ -73,19 +72,13 @@ export async function build() {
 
   createStaticAssets();
   if (!options.dangerous?.disableIncrementalCache) {
-    await createCacheAssets(
-      monorepoRoot,
-      options.dangerous?.disableTagCache,
-    );
+    await createCacheAssets(monorepoRoot, options.dangerous?.disableTagCache);
   }
   await createServerBundle(opts, options);
   await createRevalidationBundle();
   createImageOptimizationBundle();
   await createWarmerBundle();
   await generateOutput(options.appBuildOutputPath, opts);
-  if (options.minify) {
-    await minifyServerBundle();
-  }
 }
 
 function createOpenNextConfigBundle(tempDir: string) {
@@ -243,15 +236,6 @@ async function createWarmerBundle() {
     },
     options,
   );
-}
-
-async function minifyServerBundle() {
-  logger.info(`Minimizing server function...`);
-  const { outputDir } = options;
-  await minifyAll(path.join(outputDir, "server-function"), {
-    compress_json: true,
-    mangle: true,
-  });
 }
 
 async function createRevalidationBundle() {
@@ -626,7 +610,7 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
-function compileCache(options: Options) {
+function compileCache(options: BuildOptions) {
   const outfile = path.join(options.outputDir, ".build", "cache.cjs");
   const dangerousOptions = options.dangerous;
   esbuildSync(
