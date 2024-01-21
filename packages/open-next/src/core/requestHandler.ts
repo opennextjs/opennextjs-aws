@@ -7,9 +7,9 @@ import {
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
 
-import { debug, error } from "../adapters/logger";
+import { debug, error, warn } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
-import routingHandler from "./routingHandler";
+import routingHandler, { MiddlewareOutputEvent } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
@@ -25,7 +25,17 @@ export async function openNextHandler(
   debug("internalEvent", internalEvent);
 
   //#override withRouting
-  const preprocessResult = await routingHandler(internalEvent);
+  let preprocessResult: InternalResult | MiddlewareOutputEvent = {
+    internalEvent: internalEvent,
+    isExternalRewrite: false,
+    headers: {},
+    origin: false,
+  };
+  try {
+    preprocessResult = await routingHandler(internalEvent);
+  } catch (e) {
+    warn("Routing failed.", e);
+  }
   //#endOverride
 
   if ("type" in preprocessResult) {
@@ -54,10 +64,11 @@ export async function openNextHandler(
     };
     const requestId = Math.random().toString(36);
     const internalResult = await globalThis.__als.run(requestId, async () => {
+      const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
         preprocessedEvent,
-        preprocessResult.headers as Record<string, string | string[]>,
+        preprocessedResult.headers as Record<string, string | string[]>,
         responseStreaming,
       );
 
@@ -65,7 +76,7 @@ export async function openNextHandler(
         req,
         res,
         preprocessedEvent,
-        preprocessResult.isExternalRewrite,
+        preprocessedResult.isExternalRewrite,
       );
 
       const { statusCode, headers, isBase64Encoded, body } = convertRes(res);

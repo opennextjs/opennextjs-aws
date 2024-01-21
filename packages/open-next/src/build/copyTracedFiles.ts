@@ -49,8 +49,13 @@ export async function copyTracedFiles(
   });
 
   // create directory for pages
-  mkdirSync(path.join(outputDir, ".next/server/pages"), { recursive: true });
-  mkdirSync(path.join(outputDir, ".next/server/app"), { recursive: true });
+  if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
+    mkdirSync(path.join(outputDir, ".next/server/pages"), { recursive: true });
+  }
+  if (existsSync(path.join(standaloneDir, ".next/server/app"))) {
+    mkdirSync(path.join(outputDir, ".next/server/app"), { recursive: true });
+  }
+
   mkdirSync(path.join(outputDir, ".next/server/chunks"), { recursive: true });
 
   const computeCopyFilesForPage = (pagePath: string) => {
