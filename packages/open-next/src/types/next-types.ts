@@ -66,6 +66,7 @@ export interface NextConfig {
   skipTrailingSlashRedirect?: boolean;
   i18n?: {
     locales: string[];
+    defaultLocale: string;
   };
   experimental: {
     serverActions?: boolean;

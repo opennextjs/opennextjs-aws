@@ -126,8 +126,34 @@ async function processRequest(
       await requestHandler(req, res);
     }
   } catch (e: any) {
+    // This might fail when using bundled next, importing won't do the trick either
+    if (e.constructor.name === "NoFallbackError") {
+      // Do we need to handle _not-found
+      // Ideally this should never get triggered and be intercepted by the routing handler
+      tryRenderError("404", res, internalEvent);
+    } else {
+      error("NextJS request failed.", e);
+      tryRenderError("500", res, internalEvent);
+    }
+  }
+}
+
+async function tryRenderError(
+  type: "404" | "500",
+  res: OpenNextNodeResponse,
+  internalEvent: InternalEvent,
+) {
+  try {
+    const _req = new IncomingMessage({
+      method: "GET",
+      url: `/${type}`,
+      headers: internalEvent.headers,
+      body: internalEvent.body,
+      remoteAddress: internalEvent.remoteAddress,
+    });
+    await requestHandler(_req, res);
+  } catch (e) {
     error("NextJS request failed.", e);
-    //TODO: we could return the next 500 page here
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify(

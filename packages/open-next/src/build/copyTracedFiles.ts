@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from "fs";
 import path from "path";
+import { NextConfig, PrerenderManifest } from "types/next-types";
 
 export async function copyTracedFiles(
   buildOutputPath: string,
@@ -186,14 +187,45 @@ export async function copyTracedFiles(
     }
   };
   // Get all the static files - Should be only for pages dir
+  // Ideally we would filter only those that might get accessed in this specific functions
+  // Maybe even move this to s3 directly
   if (hasPageDir) {
-    const staticFiles: Record<string, string> = JSON.parse(
-      readFileSync(
-        path.join(standaloneNextDir, "server/pages-manifest.json"),
-        "utf8",
+    // First we get truly static files - i.e. pages without getStaticProps
+    const staticFiles: Array<string> = Object.values(
+      JSON.parse(
+        readFileSync(
+          path.join(standaloneNextDir, "server/pages-manifest.json"),
+          "utf8",
+        ),
       ),
     );
-    Object.values(staticFiles).forEach((f: string) => {
+    // Then we need to get all fallback: true dynamic routes html
+    const prerenderManifest = JSON.parse(
+      readFileSync(
+        path.join(standaloneNextDir, "prerender-manifest.json"),
+        "utf8",
+      ),
+    ) as PrerenderManifest;
+    const config = JSON.parse(
+      readFileSync(
+        path.join(standaloneNextDir, "required-server-files.json"),
+        "utf8",
+      ),
+    ).config as NextConfig;
+    const locales = config.i18n?.locales;
+    Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
+      if (typeof route.fallback === "string") {
+        if (locales) {
+          locales.forEach((locale) => {
+            staticFiles.push(`pages/${locale}${route.fallback}`);
+          });
+        } else {
+          staticFiles.push(`pages${route.fallback}`);
+        }
+      }
+    });
+
+    staticFiles.forEach((f: string) => {
       if (f.endsWith(".html")) {
         copyStaticFile(`server/${f}`);
       }

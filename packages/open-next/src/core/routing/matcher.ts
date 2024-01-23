@@ -263,7 +263,13 @@ export function handleFallbackFalse(
       const routeRegexExp = new RegExp(routeRegex);
       return routeRegexExp.test(rawPath);
     });
-  if (routeFallback && !Object.keys(routes).includes(rawPath)) {
+  const locales = NextConfig.i18n?.locales;
+  const routesAlreadyHaveLocale =
+    locales !== undefined && locales.includes(rawPath.split("/")[1]);
+  const localizedPath = routesAlreadyHaveLocale
+    ? rawPath
+    : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
+  if (routeFallback && !Object.keys(routes).includes(localizedPath)) {
     return {
       ...internalEvent,
       rawPath: "/404",
