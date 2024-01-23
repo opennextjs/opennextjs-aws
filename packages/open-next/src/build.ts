@@ -1,5 +1,6 @@
 import cp from "node:child_process";
 import fs, { readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
@@ -34,6 +35,14 @@ export type PublicFiles = {
 
 export async function build() {
   const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
+
+  if (os.platform() === "win32") {
+    logger.error(
+      "OpenNext is not properly supported on Windows. On windows you should use WSL. It might works or it might fail in unpredictable way at runtime",
+    );
+    // Wait 10s here so that the user see this message
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
 
   // Compile open-next.config.ts
   createOpenNextConfigBundle(outputTmpPath);
