@@ -46,7 +46,7 @@ async function resolveIncrementalCache(
 export async function createMainHandler() {
   //First we load the config
   const config: OpenNextConfig = await import(
-    process.cwd() + "/open-next.config.js"
+    process.cwd() + "/open-next.config.mjs"
   ).then((m) => m.default);
 
   const thisFunction = globalThis.fnName

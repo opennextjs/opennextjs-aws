@@ -70,7 +70,7 @@ export function esbuildSync(
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
     ...esbuildOptions,
-    external: ["./open-next.config.js", ...(esbuildOptions.external ?? [])],
+    external: ["./open-next.config.mjs", ...(esbuildOptions.external ?? [])],
     banner: {
       ...esbuildOptions.banner,
       js: [
@@ -109,7 +109,7 @@ export async function esbuildAsync(
     external: [
       ...(esbuildOptions.external ?? []),
       "next",
-      "./open-next.config.js",
+      "./open-next.config.mjs",
     ],
     banner: {
       ...esbuildOptions.banner,
@@ -228,4 +228,12 @@ export function compareSemver(v1: string, v2: string): number {
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
   return patch1 - patch2;
+}
+
+export function copyOpenNextConfig(tempDir: string, outputPath: string) {
+  // Copy open-next.config.mjs
+  fs.copyFileSync(
+    path.join(tempDir, "open-next.config.mjs"),
+    path.join(outputPath, "open-next.config.mjs"),
+  );
 }

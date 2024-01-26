@@ -50,12 +50,15 @@ const converter: Converter<
     if ("internalEvent" in result) {
       const url = result.isExternalRewrite
         ? result.internalEvent.url
-        : `https://${result.internalEvent.headers.host}${result.internalEvent.url}`;
+        : `https://${result.origin ?? result.internalEvent.headers.host}${
+            result.internalEvent.url
+          }`;
       const req = new Request(url, {
         body: result.internalEvent.body,
         method: result.internalEvent.method,
         headers: result.internalEvent.headers,
       });
+
       return fetch(req);
     } else {
       const headers = new Headers();

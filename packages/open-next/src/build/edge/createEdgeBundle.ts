@@ -3,11 +3,15 @@ import url from "node:url";
 import fs from "fs";
 import path from "path";
 import { MiddlewareManifest } from "types/next-types";
-import { IncludedConverter, SplittedFunctionOptions } from "types/open-next";
+import {
+  DefaultOverrideOptions,
+  IncludedConverter,
+  SplittedFunctionOptions,
+} from "types/open-next";
 
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import { BuildOptions, esbuildAsync } from "../helper.js";
+import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -22,6 +26,7 @@ interface BuildEdgeBundleOptions {
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
+  overrides?: DefaultOverrideOptions;
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
 }
@@ -34,6 +39,7 @@ export async function buildEdgeBundle({
   outfile,
   options,
   defaultConverter,
+  overrides,
   additionalInject,
 }: BuildEdgeBundleOptions) {
   await esbuildAsync(
@@ -48,8 +54,14 @@ export async function buildEdgeBundle({
       plugins: [
         openNextResolvePlugin({
           overrides: {
-            wrapper: "aws-lambda",
-            converter: defaultConverter,
+            wrapper:
+              typeof overrides?.wrapper === "string"
+                ? overrides.wrapper
+                : "aws-lambda",
+            converter:
+              typeof overrides?.converter === "string"
+                ? overrides.converter
+                : defaultConverter,
           },
         }),
         openNextEdgePlugins({
@@ -75,9 +87,15 @@ export async function buildEdgeBundle({
       mainFields: ["module", "main"],
       banner: {
         js: `
+  ${
+    overrides?.wrapper === "cloudflare"
+      ? ""
+      : `
   const require = (await import("node:module")).createRequire(import.meta.url);
   const __filename = (await import("node:url")).fileURLToPath(import.meta.url);
   const __dirname = (await import("node:path")).dirname(__filename);
+  `
+  }
   ${additionalInject ?? ""}
   `,
       },
@@ -85,6 +103,8 @@ export async function buildEdgeBundle({
     options,
   );
 }
+
+export function copyMiddlewareAssetsAndWasm({}) {}
 
 export async function generateEdgeBundle(
   name: string,
@@ -97,11 +117,8 @@ export async function generateEdgeBundle(
   const outputPath = path.join(outputDir, "server-functions", name);
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Copy open-next.config.js
-  fs.copyFileSync(
-    path.join(outputDir, ".build", "open-next.config.js"),
-    path.join(outputPath, "open-next.config.js"),
-  );
+  // Copy open-next.config.mjs
+  copyOpenNextConfig(path.join(outputDir, ".build"), outputPath);
 
   // Load middleware manifest
   const middlewareManifest = JSON.parse(
@@ -134,5 +151,6 @@ export async function generateEdgeBundle(
     entrypoint: path.join(__dirname, "../../adapters", "edge-adapter.js"),
     outfile: path.join(outputPath, "index.mjs"),
     options,
+    overrides: fnOptions.override,
   });
 }

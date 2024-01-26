@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import { OutgoingHttpHeaders } from "node:http";
-import { request } from "node:https";
 
 import { BuildId, HtmlPages } from "config/index.js";
 import type { IncomingMessage, StreamCreator } from "http/index.js";
@@ -202,6 +201,7 @@ export async function proxyRequest(
   res: OpenNextNodeResponse,
 ) {
   const { url, headers, method, body } = internalEvent;
+  const request = await import("node:https").then((m) => m.request);
   debug("proxyRequest", url);
   await new Promise<void>((resolve, reject) => {
     const filteredHeaders = filterHeadersForProxy(headers);

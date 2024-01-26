@@ -18,7 +18,12 @@ import { bundleNextServer } from "./bundleNextServer.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import type { BuildOptions } from "./helper.js";
-import { compareSemver, esbuildAsync, traverseFiles } from "./helper.js";
+import {
+  compareSemver,
+  copyOpenNextConfig,
+  esbuildAsync,
+  traverseFiles,
+} from "./helper.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -153,11 +158,12 @@ async function generateBundle(
     );
   }
 
-  // Copy open-next.config.js
-  fs.copyFileSync(
-    path.join(outputDir, ".build", "open-next.config.js"),
-    path.join(outputPath, packagePath, "open-next.config.js"),
+  // Copy open-next.config.mjs
+  copyOpenNextConfig(
+    path.join(outputDir, ".build"),
+    path.join(outputPath, packagePath),
   );
+
   // Copy all necessary traced files
   copyTracedFiles(
     appBuildOutputPath,

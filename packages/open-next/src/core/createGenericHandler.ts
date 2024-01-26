@@ -37,7 +37,7 @@ export async function createGenericHandler<
 >(handler: GenericHandler<Type, E, R>) {
   //First we load the config
   // @ts-expect-error
-  const config: OpenNextConfig = await import("./open-next.config.js").then(
+  const config: OpenNextConfig = await import("./open-next.config.mjs").then(
     (m) => m.default,
   );
 

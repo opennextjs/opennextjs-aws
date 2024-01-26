@@ -52,6 +52,29 @@ export function openNextEdgePlugins({
         };
       });
 
+      //COpied from https://github.com/cloudflare/next-on-pages/blob/7a18efb5cab4d86c8e3e222fc94ea88ac05baffd/packages/next-on-pages/src/buildApplication/processVercelFunctions/build.ts#L86-L112
+
+      build.onResolve({ filter: /^node:/ }, ({ kind, path }) => {
+        // this plugin converts `require("node:*")` calls, those are the only ones that
+        // need updating (esm imports to "node:*" are totally valid), so here we tag with the
+        // node-buffer namespace only imports that are require calls
+        return kind === "require-call"
+          ? { path, namespace: "node-built-in-modules" }
+          : undefined;
+      });
+
+      // we convert the imports we tagged with the node-built-in-modules namespace so that instead of `require("node:*")`
+      // they import from `export * from "node:*";`
+      build.onLoad(
+        { filter: /.*/, namespace: "node-built-in-modules" },
+        ({ path }) => {
+          return {
+            contents: `export * from '${path}'`,
+            loader: "js",
+          };
+        },
+      );
+
       // We inject the entry files into the edgeFunctionHandler
       build.onLoad({ filter: /\/edgeFunctionHandler.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");

@@ -18,7 +18,7 @@ const resolveOriginResolver = () => {
           ) as Record<string, Origin>;
           for (const [key, value] of Object.entries(
             globalThis.openNextConfig.functions ?? {},
-          )) {
+          ).filter(([key]) => key !== "default")) {
             if (
               value.patterns.some((pattern) => {
                 // Convert cloudfront pattern to regex
@@ -52,8 +52,6 @@ const resolveOriginResolver = () => {
 };
 
 const defaultHandler = async (internalEvent: InternalEvent) => {
-  // TODO: We need to handle splitted function here
-  // We should probably create an host resolver to redirect correctly
   const originResolver = await resolveOriginResolver();
   const result = await routingHandler(internalEvent);
   if ("internalEvent" in result) {
