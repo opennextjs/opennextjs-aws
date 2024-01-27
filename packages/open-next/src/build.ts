@@ -656,14 +656,7 @@ async function createMiddleware(config: OpenNextConfig) {
   let outputPath = path.join(outputDir, "server-function");
 
   const commonMiddlewareOptions = {
-    files: entry.files,
-    routes: [
-      {
-        name: entry.name || "/",
-        page: entry.page,
-        regex: entry.matchers.map((m) => m.regexp),
-      },
-    ],
+    middlewareInfo: entry,
     options,
     appBuildOutputPath,
   };

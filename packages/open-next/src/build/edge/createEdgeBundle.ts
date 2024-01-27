@@ -1,8 +1,9 @@
+import { mkdirSync } from "node:fs";
 import url from "node:url";
 
 import fs from "fs";
 import path from "path";
-import { MiddlewareManifest } from "types/next-types";
+import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import {
   DefaultOverrideOptions,
   IncludedConverter,
@@ -17,12 +18,7 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 interface BuildEdgeBundleOptions {
   appBuildOutputPath: string;
-  files: string[];
-  routes: {
-    name: string;
-    page: string;
-    regex: string[];
-  }[];
+  middlewareInfo: MiddlewareInfo;
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
@@ -33,8 +29,7 @@ interface BuildEdgeBundleOptions {
 
 export async function buildEdgeBundle({
   appBuildOutputPath,
-  files,
-  routes,
+  middlewareInfo,
   entrypoint,
   outfile,
   options,
@@ -65,10 +60,7 @@ export async function buildEdgeBundle({
           },
         }),
         openNextEdgePlugins({
-          entryFiles: files.map((file: string) =>
-            path.join(appBuildOutputPath, ".next", file),
-          ),
-          routes,
+          middlewareInfo,
           nextDir: path.join(appBuildOutputPath, ".next"),
           edgeFunctionHandlerPath: path.join(
             __dirname,
@@ -138,16 +130,29 @@ export async function generateEdgeBundle(
   }
   const fn = functions[0];
 
+  //Copy wasm files
+  const wasmFiles = fn.wasm;
+  mkdirSync(path.join(outputPath, "wasm"), { recursive: true });
+  for (const wasmFile of wasmFiles) {
+    fs.copyFileSync(
+      path.join(appBuildOutputPath, ".next", wasmFile.filePath),
+      path.join(outputPath, `wasm/${wasmFile.name}.wasm`),
+    );
+  }
+
+  // Copy assets
+  const assets = fn.assets;
+  mkdirSync(path.join(outputPath, "assets"), { recursive: true });
+  for (const asset of assets) {
+    fs.copyFileSync(
+      path.join(appBuildOutputPath, ".next", asset.filePath),
+      path.join(outputPath, `assets/${asset.name}`),
+    );
+  }
+
   await buildEdgeBundle({
     appBuildOutputPath,
-    files: fn.files,
-    routes: [
-      {
-        name: fn.name,
-        page: fn.page,
-        regex: fn.matchers.map((m) => m.regexp),
-      },
-    ],
+    middlewareInfo: fn,
     entrypoint: path.join(__dirname, "../../adapters", "edge-adapter.js"),
     outfile: path.join(outputPath, "index.mjs"),
     options,

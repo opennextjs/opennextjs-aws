@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { Plugin } from "esbuild";
+import { MiddlewareInfo } from "types/next-types.js";
 
 import {
   loadAppPathsManifestKeys,
@@ -12,13 +14,11 @@ import {
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "../adapters/config/util.js";
-import { EdgeRoute } from "../core/edgeFunctionHandler.js";
 
 export interface IPluginSettings {
   nextDir: string;
   edgeFunctionHandlerPath?: string;
-  entryFiles: string[];
-  routes: EdgeRoute[];
+  middlewareInfo: MiddlewareInfo;
 }
 
 /**
@@ -31,9 +31,19 @@ export interface IPluginSettings {
 export function openNextEdgePlugins({
   nextDir,
   edgeFunctionHandlerPath,
-  entryFiles,
-  routes,
+  middlewareInfo,
 }: IPluginSettings): Plugin {
+  const entryFiles = middlewareInfo.files.map((file: string) =>
+    path.join(nextDir, file),
+  );
+  const routes = [
+    {
+      name: middlewareInfo.name || "/",
+      page: middlewareInfo.page,
+      regex: middlewareInfo.matchers.map((m) => m.regexp),
+    },
+  ];
+  const wasmFiles = middlewareInfo.wasm ?? [];
   return {
     name: "opennext-edge",
     setup(build) {
@@ -46,7 +56,7 @@ export function openNextEdgePlugins({
         });
       }
 
-      build.onResolve({ filter: /.mjs$/g }, (args) => {
+      build.onResolve({ filter: /\.(mjs|wasm)$/g }, (args) => {
         return {
           external: true,
         };
@@ -93,6 +103,9 @@ globalThis.crypto = crypto;
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
+${wasmFiles
+  .map((file) => `import ${file.name} from './wasm/${file.name}.wasm';`)
+  .join("\n")}
 ${entryFiles?.map((file) => `require("${file}");`).join("\n")}
 ${contents}        
         `;
