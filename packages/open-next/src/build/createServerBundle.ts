@@ -185,6 +185,7 @@ async function generateBundle(
   const overrides = fnOptions.override ?? {};
 
   const isBefore13413 = compareSemver(options.nextVersion, "13.4.13") <= 0;
+  const isAfter141 = compareSemver(options.nextVersion, "14.0.4") >= 0;
 
   const disableRouting = isBefore13413 || options.externalMiddleware;
   const plugins = [
@@ -207,6 +208,8 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(disableRouting ? ["trustHostHeader"] : []),
         ...(!isBefore13413 ? ["requestHandlerHost"] : []),
+        ...(!isAfter141 ? ["stableIncrementalCache"] : []),
+        ...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : []),
       ],
     }),
 

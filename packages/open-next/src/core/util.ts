@@ -41,6 +41,10 @@ export const requestHandler = new NextServer.default({
     compress: false,
     // By default, Next.js uses local disk to store ISR cache. We will use
     // our own cache handler to store the cache on S3.
+    //#override stableIncrementalCache
+    cacheHandler: `./cache.cjs`,
+    cacheMaxMemorySize: 0, // We need to disable memory cache
+    //#endOverride
     experimental: {
       ...NextConfig.experimental,
       // This uses the request.headers.host as the URL
@@ -48,8 +52,9 @@ export const requestHandler = new NextServer.default({
       //#override trustHostHeader
       trustHostHeader: true,
       //#endOverride
-
+      //#override experimentalIncrementalCacheHandler
       incrementalCacheHandlerPath: `./cache.cjs`,
+      //#endOverride
     },
   },
   customServer: false,
