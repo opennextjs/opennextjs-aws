@@ -1,4 +1,6 @@
-import type { BuildOptions, OverrideOptions } from "types/open-next";
+import type { AsyncLocalStorage } from "node:async_hooks";
+
+import type { OpenNextConfig, OverrideOptions } from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
@@ -12,6 +14,7 @@ declare global {
   var incrementalCache: IncrementalCache;
   var fnName: string | undefined;
   var serverId: string;
+  var __als: AsyncLocalStorage<string>;
 }
 
 async function resolveQueue(queue: OverrideOptions["queue"]) {
@@ -42,12 +45,12 @@ async function resolveIncrementalCache(
 
 export async function createMainHandler() {
   //First we load the config
-  const config: BuildOptions = await import(
-    process.cwd() + "/open-next.config.js"
+  const config: OpenNextConfig = await import(
+    process.cwd() + "/open-next.config.mjs"
   ).then((m) => m.default);
 
   const thisFunction = globalThis.fnName
-    ? config.functions[globalThis.fnName]
+    ? config.functions![globalThis.fnName]
     : config.default;
 
   globalThis.serverId = generateUniqueId();
@@ -60,6 +63,8 @@ export async function createMainHandler() {
   );
 
   globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
+
+  globalThis.lastModified = {};
 
   // From the config, we create the adapter
   const adapter = await resolveConverter(thisFunction.override?.converter);

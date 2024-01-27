@@ -4,12 +4,14 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import path from "path";
+import { NextConfig, PrerenderManifest } from "types/next-types";
 
-//TODO: need to make it work with monorepo
 export async function copyTracedFiles(
   buildOutputPath: string,
   packagePath: string,
@@ -48,8 +50,13 @@ export async function copyTracedFiles(
   });
 
   // create directory for pages
-  mkdirSync(path.join(outputDir, ".next/server/pages"), { recursive: true });
-  mkdirSync(path.join(outputDir, ".next/server/app"), { recursive: true });
+  if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
+    mkdirSync(path.join(outputDir, ".next/server/pages"), { recursive: true });
+  }
+  if (existsSync(path.join(standaloneDir, ".next/server/app"))) {
+    mkdirSync(path.join(outputDir, ".next/server/app"), { recursive: true });
+  }
+
   mkdirSync(path.join(outputDir, ".next/server/chunks"), { recursive: true });
 
   const computeCopyFilesForPage = (pagePath: string) => {
@@ -110,7 +117,25 @@ export async function copyTracedFiles(
       return;
     }
     mkdirSync(path.dirname(to), { recursive: true });
-    copyFileSync(from, to);
+    let symlink = null;
+    // For pnpm symlink we need to do that
+    // see https://github.com/vercel/next.js/blob/498f342b3552d6fc6f1566a1cc5acea324ce0dec/packages/next/src/build/utils.ts#L1932
+    try {
+      symlink = readlinkSync(from);
+    } catch (e) {
+      //Ignore
+    }
+    if (symlink) {
+      try {
+        symlinkSync(symlink, to);
+      } catch (e: any) {
+        if (e.code !== "EEXIST") {
+          throw e;
+        }
+      }
+    } else {
+      copyFileSync(from, to);
+    }
   });
 
   mkdirSync(path.join(outputDir, ".next"), { recursive: true });
@@ -152,14 +177,60 @@ export async function copyTracedFiles(
   //TODO: Find what else we need to copy
   const copyStaticFile = (filePath: string) => {
     if (existsSync(path.join(standaloneNextDir, filePath))) {
+      mkdirSync(path.dirname(path.join(outputDir, ".next", filePath)), {
+        recursive: true,
+      });
       copyFileSync(
         path.join(standaloneNextDir, filePath),
         path.join(outputDir, ".next", filePath),
       );
     }
   };
-  copyStaticFile("server/pages/404.html");
-  copyStaticFile("server/pages/500.html");
+  // Get all the static files - Should be only for pages dir
+  // Ideally we would filter only those that might get accessed in this specific functions
+  // Maybe even move this to s3 directly
+  if (hasPageDir) {
+    // First we get truly static files - i.e. pages without getStaticProps
+    const staticFiles: Array<string> = Object.values(
+      JSON.parse(
+        readFileSync(
+          path.join(standaloneNextDir, "server/pages-manifest.json"),
+          "utf8",
+        ),
+      ),
+    );
+    // Then we need to get all fallback: true dynamic routes html
+    const prerenderManifest = JSON.parse(
+      readFileSync(
+        path.join(standaloneNextDir, "prerender-manifest.json"),
+        "utf8",
+      ),
+    ) as PrerenderManifest;
+    const config = JSON.parse(
+      readFileSync(
+        path.join(standaloneNextDir, "required-server-files.json"),
+        "utf8",
+      ),
+    ).config as NextConfig;
+    const locales = config.i18n?.locales;
+    Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
+      if (typeof route.fallback === "string") {
+        if (locales) {
+          locales.forEach((locale) => {
+            staticFiles.push(`pages/${locale}${route.fallback}`);
+          });
+        } else {
+          staticFiles.push(`pages${route.fallback}`);
+        }
+      }
+    });
+
+    staticFiles.forEach((f: string) => {
+      if (f.endsWith(".html")) {
+        copyStaticFile(`server/${f}`);
+      }
+    });
+  }
 
   console.timeEnd("copyTracedFiles");
 }

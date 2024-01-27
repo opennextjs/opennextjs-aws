@@ -46,4 +46,5 @@ export type IncrementalCache = {
     isFetch?: IsFetch,
   ): Promise<void>;
   delete(key: string): Promise<void>;
+  name: string;
 };

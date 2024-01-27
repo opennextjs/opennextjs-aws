@@ -31,8 +31,6 @@ export default async function routingHandler(
 
   let internalEvent = fixDataPage(event, BuildId);
 
-  internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
-
   const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
   if (redirect) {
     debug("redirect", redirect);
@@ -71,6 +69,9 @@ export default async function routingHandler(
     internalEvent = afterRewrites.internalEvent;
     isExternalRewrite = afterRewrites.isExternalRewrite;
   }
+
+  // We want to run this just before the dynamic route check
+  internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
 
   const isDynamicRoute = RoutesManifest.routes.dynamic.some((route) =>
     new RegExp(route.regex).test(event.rawPath),

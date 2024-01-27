@@ -66,6 +66,7 @@ export interface NextConfig {
   skipTrailingSlashRedirect?: boolean;
   i18n?: {
     locales: string[];
+    defaultLocale: string;
   };
   experimental: {
     serverActions?: boolean;
@@ -113,7 +114,7 @@ export interface RoutesManifest {
   headers?: Header[];
 }
 
-interface MiddlewareInfo {
+export interface MiddlewareInfo {
   files: string[];
   paths?: string[];
   name: string;
@@ -122,8 +123,14 @@ interface MiddlewareInfo {
     regexp: string;
     originalSource: string;
   }[];
-  wasm: string[];
-  assets: string[];
+  wasm: {
+    filePath: string;
+    name: string;
+  }[];
+  assets: {
+    filePath: string;
+    name: string;
+  }[];
 }
 
 export interface MiddlewareManifest {

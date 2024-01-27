@@ -169,4 +169,5 @@ async function convertToCloudFrontRequestResult(
 export default {
   convertFrom: convertFromCloudFrontRequestEvent,
   convertTo: convertToCloudFrontRequestResult,
+  name: "aws-cloudfront",
 } as Converter;

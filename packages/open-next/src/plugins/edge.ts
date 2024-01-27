@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { Plugin } from "esbuild";
+import { MiddlewareInfo } from "types/next-types.js";
 
 import {
   loadAppPathsManifestKeys,
@@ -12,13 +14,12 @@ import {
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "../adapters/config/util.js";
-import { EdgeRoute } from "../core/edgeFunctionHandler.js";
 
 export interface IPluginSettings {
   nextDir: string;
   edgeFunctionHandlerPath?: string;
-  entryFiles: string[];
-  routes: EdgeRoute[];
+  middlewareInfo: MiddlewareInfo;
+  isInCloudfare?: boolean;
 }
 
 /**
@@ -31,9 +32,20 @@ export interface IPluginSettings {
 export function openNextEdgePlugins({
   nextDir,
   edgeFunctionHandlerPath,
-  entryFiles,
-  routes,
+  middlewareInfo,
+  isInCloudfare,
 }: IPluginSettings): Plugin {
+  const entryFiles = middlewareInfo.files.map((file: string) =>
+    path.join(nextDir, file),
+  );
+  const routes = [
+    {
+      name: middlewareInfo.name || "/",
+      page: middlewareInfo.page,
+      regex: middlewareInfo.matchers.map((m) => m.regexp),
+    },
+  ];
+  const wasmFiles = middlewareInfo.wasm ?? [];
   return {
     name: "opennext-edge",
     setup(build) {
@@ -46,11 +58,34 @@ export function openNextEdgePlugins({
         });
       }
 
-      build.onResolve({ filter: /.mjs$/g }, (args) => {
+      build.onResolve({ filter: /\.(mjs|wasm)$/g }, (args) => {
         return {
           external: true,
         };
       });
+
+      //COpied from https://github.com/cloudflare/next-on-pages/blob/7a18efb5cab4d86c8e3e222fc94ea88ac05baffd/packages/next-on-pages/src/buildApplication/processVercelFunctions/build.ts#L86-L112
+
+      build.onResolve({ filter: /^node:/ }, ({ kind, path }) => {
+        // this plugin converts `require("node:*")` calls, those are the only ones that
+        // need updating (esm imports to "node:*" are totally valid), so here we tag with the
+        // node-buffer namespace only imports that are require calls
+        return kind === "require-call"
+          ? { path, namespace: "node-built-in-modules" }
+          : undefined;
+      });
+
+      // we convert the imports we tagged with the node-built-in-modules namespace so that instead of `require("node:*")`
+      // they import from `export * from "node:*";`
+      build.onLoad(
+        { filter: /.*/, namespace: "node-built-in-modules" },
+        ({ path }) => {
+          return {
+            contents: `export * from '${path}'`,
+            loader: "js",
+          };
+        },
+      );
 
       // We inject the entry files into the edgeFunctionHandler
       build.onLoad({ filter: /\/edgeFunctionHandler.js/g }, async (args) => {
@@ -70,6 +105,19 @@ globalThis.crypto = crypto;
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
+${
+  isInCloudfare
+    ? ""
+    : `import {readFileSync} from "node:fs";
+import path from "node:path";`
+}
+${wasmFiles
+  .map((file) =>
+    isInCloudfare
+      ? `import ${file.name} from './wasm/${file.name}.wasm';`
+      : `const ${file.name} = readFileSync(path.join(__dirname,'/wasm/${file.name}.wasm'));`,
+  )
+  .join("\n")}
 ${entryFiles?.map((file) => `require("${file}");`).join("\n")}
 ${contents}        
         `;

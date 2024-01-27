@@ -1,5 +1,6 @@
 import { IncrementalCache } from "../cache/incremental/types.js";
 import { TagCache } from "../cache/tag/types.js";
+import { isBinaryContentType } from "./binary.js";
 import { debug, error, warn } from "./logger.js";
 
 interface CachedFetchValue {
@@ -92,7 +93,7 @@ declare global {
   var tagCache: TagCache;
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
-  var lastModified: number;
+  var lastModified: Record<string, number>;
 }
 
 export default class S3Cache {
@@ -170,13 +171,19 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
-      globalThis.lastModified = _lastModified;
+      const requestId = globalThis.__als.getStore() ?? "";
+      globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
           value: {
             kind: "ROUTE",
-            body: Buffer.from(cacheData.body ?? Buffer.alloc(0)),
+            body: Buffer.from(
+              cacheData.body ?? Buffer.alloc(0),
+              isBinaryContentType(String(meta?.headers?.["content-type"]))
+                ? "base64"
+                : "utf8",
+            ),
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -225,7 +232,11 @@ export default class S3Cache {
         key,
         {
           type: "route",
-          body: body.toString("utf8"),
+          body: body.toString(
+            isBinaryContentType(String(headers["content-type"]))
+              ? "base64"
+              : "utf8",
+          ),
           meta: {
             status,
             headers,

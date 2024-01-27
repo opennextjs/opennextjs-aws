@@ -22,6 +22,7 @@ const queue: Queue = {
       }),
     );
   },
+  name: "sqs",
 };
 
 export default queue;

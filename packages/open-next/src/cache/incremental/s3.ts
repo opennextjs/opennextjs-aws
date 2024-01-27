@@ -72,6 +72,7 @@ const incrementalCache: IncrementalCache = {
       }),
     );
   },
+  name: "s3",
 };
 
 export default incrementalCache;

@@ -110,9 +110,14 @@ export function addNextConfigHeaders(
       const fromSource = match(source);
       const _match = fromSource(rawPath);
       headers.forEach((h) => {
-        const key = convertMatch(_match, compile(h.key), h.key);
-        const value = convertMatch(_match, compile(h.value), h.value);
-        requestHeaders[key] = value;
+        try {
+          const key = convertMatch(_match, compile(h.key), h.key);
+          const value = convertMatch(_match, compile(h.value), h.value);
+          requestHeaders[key] = value;
+        } catch {
+          debug("Error matching header ", h.key, " with value ", h.value);
+          requestHeaders[h.key] = h.value;
+        }
       });
     }
   }
@@ -258,7 +263,13 @@ export function handleFallbackFalse(
       const routeRegexExp = new RegExp(routeRegex);
       return routeRegexExp.test(rawPath);
     });
-  if (routeFallback && !Object.keys(routes).includes(rawPath)) {
+  const locales = NextConfig.i18n?.locales;
+  const routesAlreadyHaveLocale =
+    locales !== undefined && locales.includes(rawPath.split("/")[1]);
+  const localizedPath = routesAlreadyHaveLocale
+    ? rawPath
+    : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
+  if (routeFallback && !Object.keys(routes).includes(localizedPath)) {
     return {
       ...internalEvent,
       rawPath: "/404",

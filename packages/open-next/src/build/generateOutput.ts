@@ -1,7 +1,14 @@
 import * as fs from "node:fs";
 import path from "node:path";
 
-import { BuildOptions, FunctionOptions } from "types/open-next";
+import {
+  BaseOverride,
+  DefaultOverrideOptions,
+  FunctionOptions,
+  LazyLoadedOverride,
+  OpenNextConfig,
+  OverrideOptions,
+} from "types/open-next";
 
 import { getBuildId } from "./helper.js";
 
@@ -13,13 +20,26 @@ type BaseFunction = {
 type OpenNextFunctionOrigin = {
   type: "function";
   streaming?: boolean;
+  wrapper: string;
+  converter: string;
 } & BaseFunction;
 
 type OpenNextECSOrigin = {
   type: "ecs";
   bundle: string;
+  wrapper: string;
+  converter: string;
   dockerfile: string;
 };
+
+type CommonOverride = {
+  queue: string;
+  incrementalCache: string;
+  tagCache: string;
+};
+
+type OpenNextServerFunctionOrigin = OpenNextFunctionOrigin & CommonOverride;
+type OpenNextServerECSOrigin = OpenNextECSOrigin & CommonOverride;
 
 type OpenNextS3Origin = {
   type: "s3";
@@ -33,18 +53,28 @@ type OpenNextS3Origin = {
 };
 
 type OpenNextOrigins =
-  | OpenNextFunctionOrigin
-  | OpenNextECSOrigin
+  | OpenNextServerFunctionOrigin
+  | OpenNextServerECSOrigin
   | OpenNextS3Origin;
+
+type ImageFnOrigins = OpenNextFunctionOrigin & { imageLoader: string };
+type ImageECSOrigins = OpenNextECSOrigin & { imageLoader: string };
+
+type ImageOrigins = ImageFnOrigins | ImageECSOrigins;
+
+type DefaultOrigins = {
+  s3: OpenNextS3Origin;
+  default: OpenNextServerFunctionOrigin | OpenNextServerECSOrigin;
+  imageOptimizer: ImageOrigins;
+};
 
 interface OpenNextOutput {
   edgeFunctions: {
     [key: string]: BaseFunction;
+  } & {
+    middleware?: BaseFunction & { pathResolver: string };
   };
-  origins: {
-    s3: OpenNextS3Origin;
-    default: OpenNextFunctionOrigin | OpenNextECSOrigin;
-    imageOptimizer: OpenNextFunctionOrigin | OpenNextECSOrigin;
+  origins: DefaultOrigins & {
     [key: string]: OpenNextOrigins;
   };
   behaviors: {
@@ -74,9 +104,56 @@ async function canStream(opts: FunctionOptions) {
   }
 }
 
+async function extractOverrideName(
+  defaultName: string,
+  override?: LazyLoadedOverride<BaseOverride> | string,
+) {
+  if (!override) {
+    return defaultName;
+  }
+  if (typeof override === "string") {
+    return override;
+  } else {
+    const overrideModule = await override();
+    return overrideModule.name;
+  }
+}
+
+async function extractOverrideFn(override?: DefaultOverrideOptions) {
+  if (!override) {
+    return {
+      wrapper: "aws-lambda",
+      converter: "aws-apigw-v2",
+    };
+  }
+  const wrapper = await extractOverrideName("aws-lambda", override.wrapper);
+  const converter = await extractOverrideName(
+    "aws-apigw-v2",
+    override.converter,
+  );
+  return { wrapper, converter };
+}
+
+async function extractCommonOverride(override?: OverrideOptions) {
+  if (!override) {
+    return {
+      queue: "sqs",
+      incrementalCache: "s3",
+      tagCache: "dynamodb",
+    };
+  }
+  const queue = await extractOverrideName("sqs", override.queue);
+  const incrementalCache = await extractOverrideName(
+    "s3",
+    override.incrementalCache,
+  );
+  const tagCache = await extractOverrideName("dynamodb", override.tagCache);
+  return { queue, incrementalCache, tagCache };
+}
+
 export async function generateOutput(
   outputPath: string,
-  buildOptions: BuildOptions,
+  buildOptions: OpenNextConfig,
 ) {
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
   const isExternalMiddleware = buildOptions.middleware?.external ?? false;
@@ -84,14 +161,20 @@ export async function generateOutput(
     edgeFunctions.middleware = {
       bundle: ".open-next/middleware",
       handler: "handler.handler",
+      pathResolver: await extractOverrideName(
+        "pattern-env",
+        buildOptions.middleware!.originResolver,
+      ),
+      ...(await extractOverrideFn(buildOptions.middleware?.override)),
     };
   }
   // Add edge functions
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
+  Object.entries(buildOptions.functions ?? {}).forEach(async ([key, value]) => {
     if (value.placement === "global") {
       edgeFunctions[key] = {
         bundle: `.open-next/functions/${key}`,
         handler: "index.handler",
+        ...(await extractOverrideFn(value.override)),
       };
     }
   });
@@ -99,7 +182,8 @@ export async function generateOutput(
   const defaultOriginCanstream = await canStream(buildOptions.default);
 
   // First add s3 origins and image optimization
-  const origins: OpenNextOutput["origins"] = {
+
+  const defaultOrigins: DefaultOrigins = {
     s3: {
       type: "s3",
       originPath: "_assets",
@@ -115,7 +199,7 @@ export async function generateOutput(
           : [
               {
                 from: ".open-next/cache",
-                to: "cache",
+                to: "_cache",
                 cached: false,
               },
             ]),
@@ -126,30 +210,44 @@ export async function generateOutput(
       handler: "index.handler",
       bundle: ".open-next/image-optimization-function",
       streaming: false,
+      imageLoader: await extractOverrideName(
+        "s3",
+        buildOptions.imageOptimization?.loader,
+      ),
+      ...(await extractOverrideFn(buildOptions.imageOptimization?.override)),
     },
     default: buildOptions.default.override?.generateDockerfile
       ? {
           type: "ecs",
           bundle: ".open-next/server-functions/default",
           dockerfile: ".open-next/server-functions/default/Dockerfile",
+          ...(await extractOverrideFn(buildOptions.default.override)),
+          ...(await extractCommonOverride(buildOptions.default.override)),
         }
       : {
           type: "function",
           handler: "index.handler",
           bundle: ".open-next/server-functions/default",
           streaming: defaultOriginCanstream,
+          ...(await extractOverrideFn(buildOptions.default.override)),
+          ...(await extractCommonOverride(buildOptions.default.override)),
         },
   };
 
+  //@ts-expect-error - Not sure how to fix typing here, it complains about the type of imageOptimizer and s3
+  const origins: OpenNextOutput["origins"] = defaultOrigins;
+
   // Then add function origins
   await Promise.all(
-    Object.entries(buildOptions.functions).map(async ([key, value]) => {
+    Object.entries(buildOptions.functions ?? {}).map(async ([key, value]) => {
       if (!value.placement || value.placement === "regional") {
         if (value.override?.generateDockerfile) {
           origins[key] = {
             type: "ecs",
             bundle: `.open-next/server-functions/${key}`,
             dockerfile: `.open-next/server-functions/${key}/Dockerfile`,
+            ...(await extractOverrideFn(value.override)),
+            ...(await extractCommonOverride(value.override)),
           };
         } else {
           const streaming = await canStream(value);
@@ -158,6 +256,8 @@ export async function generateOutput(
             handler: "index.handler",
             bundle: `.open-next/server-functions/${key}`,
             streaming,
+            ...(await extractOverrideFn(value.override)),
+            ...(await extractCommonOverride(value.override)),
           };
         }
       }
@@ -170,7 +270,7 @@ export async function generateOutput(
   ];
 
   // Then we add the routes
-  Object.entries(buildOptions.functions).forEach(([key, value]) => {
+  Object.entries(buildOptions.functions ?? {}).forEach(([key, value]) => {
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
@@ -220,12 +320,12 @@ export async function generateOutput(
     behaviors,
     additionalProps: {
       disableIncrementalCache: buildOptions.dangerous?.disableIncrementalCache,
-      disableTagCache: buildOptions.dangerous?.disableDynamoDBCache,
+      disableTagCache: buildOptions.dangerous?.disableTagCache,
       warmer: {
         handler: "index.handler",
         bundle: ".open-next/warmer-function",
       },
-      initializationFunction: buildOptions.dangerous?.disableDynamoDBCache
+      initializationFunction: buildOptions.dangerous?.disableTagCache
         ? undefined
         : {
             handler: "index.handler",

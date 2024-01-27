@@ -8,16 +8,16 @@ import {
   BuildOptions as ESBuildOptions,
   buildSync,
 } from "esbuild";
-import { BuildOptions } from "types/open-next.js";
+import { OpenNextConfig } from "types/open-next.js";
 
 import logger from "../logger.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
-export type Options = ReturnType<typeof normalizeOptions>;
+export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
-export function normalizeOptions(opts: BuildOptions, root: string) {
+export function normalizeOptions(opts: OpenNextConfig, root: string) {
   const appPath = path.join(process.cwd(), opts.appPath || ".");
   const buildOutputPath = path.join(process.cwd(), opts.buildOutputPath || ".");
   const outputDir = path.join(buildOutputPath, ".open-next");
@@ -40,9 +40,7 @@ export function normalizeOptions(opts: BuildOptions, root: string) {
     appPublicPath: path.join(appPath, "public"),
     outputDir,
     tempDir: path.join(outputDir, ".build"),
-    minify:
-      opts.default.minify ?? Boolean(process.env.OPEN_NEXT_MINIFY) ?? false,
-    debug: opts.default.debug ?? Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+    debug: Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
     buildCommand: opts.buildCommand,
     dangerous: opts.dangerous,
     externalMiddleware: opts.middleware?.external ?? false,
@@ -57,7 +55,10 @@ function findNextPackageJsonPath(appPath: string, root: string) {
     : path.join(root, "./package.json");
 }
 
-export function esbuildSync(esbuildOptions: ESBuildOptions, options: Options) {
+export function esbuildSync(
+  esbuildOptions: ESBuildOptions,
+  options: BuildOptions,
+) {
   const { openNextVersion, debug } = options;
   const result = buildSync({
     target: "esnext",
@@ -69,7 +70,7 @@ export function esbuildSync(esbuildOptions: ESBuildOptions, options: Options) {
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
     ...esbuildOptions,
-    external: ["./open-next.config.js", ...(esbuildOptions.external ?? [])],
+    external: ["./open-next.config.mjs", ...(esbuildOptions.external ?? [])],
     banner: {
       ...esbuildOptions.banner,
       js: [
@@ -92,7 +93,7 @@ export function esbuildSync(esbuildOptions: ESBuildOptions, options: Options) {
 
 export async function esbuildAsync(
   esbuildOptions: ESBuildOptions,
-  options: Options,
+  options: BuildOptions,
 ) {
   const { openNextVersion, debug } = options;
   const result = await buildAsync({
@@ -108,7 +109,7 @@ export async function esbuildAsync(
     external: [
       ...(esbuildOptions.external ?? []),
       "next",
-      "./open-next.config.js",
+      "./open-next.config.mjs",
     ],
     banner: {
       ...esbuildOptions.banner,
@@ -197,11 +198,11 @@ export function getBuildId(dotNextPath: string) {
     .trim();
 }
 
-export function getOpenNextVersion() {
+export function getOpenNextVersion(): string {
   return require(path.join(__dirname, "../../package.json")).version;
 }
 
-export function getNextVersion(nextPackageJsonPath: string) {
+export function getNextVersion(nextPackageJsonPath: string): string {
   const version = require(nextPackageJsonPath)?.dependencies?.next;
   // require('next/package.json').version
 
@@ -227,4 +228,12 @@ export function compareSemver(v1: string, v2: string): number {
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
   return patch1 - patch2;
+}
+
+export function copyOpenNextConfig(tempDir: string, outputPath: string) {
+  // Copy open-next.config.mjs
+  fs.copyFileSync(
+    path.join(tempDir, "open-next.config.mjs"),
+    path.join(outputPath, "open-next.config.mjs"),
+  );
 }

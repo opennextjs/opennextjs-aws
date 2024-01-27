@@ -1,39 +1,40 @@
+import { mkdirSync } from "node:fs";
 import url from "node:url";
 
 import fs from "fs";
 import path from "path";
-import { MiddlewareManifest } from "types/next-types";
-import { BuildOptions, IncludedConverter } from "types/open-next";
+import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
+import {
+  DefaultOverrideOptions,
+  IncludedConverter,
+  SplittedFunctionOptions,
+} from "types/open-next";
 
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import { esbuildAsync, Options } from "../helper.js";
+import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 interface BuildEdgeBundleOptions {
   appBuildOutputPath: string;
-  files: string[];
-  routes: {
-    name: string;
-    page: string;
-    regex: string[];
-  }[];
+  middlewareInfo: MiddlewareInfo;
   entrypoint: string;
   outfile: string;
-  options: Options;
+  options: BuildOptions;
+  overrides?: DefaultOverrideOptions;
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
 }
 
 export async function buildEdgeBundle({
   appBuildOutputPath,
-  files,
-  routes,
+  middlewareInfo,
   entrypoint,
   outfile,
   options,
   defaultConverter,
+  overrides,
   additionalInject,
 }: BuildEdgeBundleOptions) {
   await esbuildAsync(
@@ -48,21 +49,25 @@ export async function buildEdgeBundle({
       plugins: [
         openNextResolvePlugin({
           overrides: {
-            wrapper: "aws-lambda",
-            converter: defaultConverter,
+            wrapper:
+              typeof overrides?.wrapper === "string"
+                ? overrides.wrapper
+                : "aws-lambda",
+            converter:
+              typeof overrides?.converter === "string"
+                ? overrides.converter
+                : defaultConverter,
           },
         }),
         openNextEdgePlugins({
-          entryFiles: files.map((file: string) =>
-            path.join(appBuildOutputPath, ".next", file),
-          ),
-          routes,
+          middlewareInfo,
           nextDir: path.join(appBuildOutputPath, ".next"),
           edgeFunctionHandlerPath: path.join(
             __dirname,
             "../../core",
             "edgeFunctionHandler.js",
           ),
+          isInCloudfare: overrides?.wrapper === "cloudflare",
         }),
       ],
       treeShaking: true,
@@ -75,9 +80,15 @@ export async function buildEdgeBundle({
       mainFields: ["module", "main"],
       banner: {
         js: `
+  ${
+    overrides?.wrapper === "cloudflare"
+      ? ""
+      : `
   const require = (await import("node:module")).createRequire(import.meta.url);
   const __filename = (await import("node:url")).fileURLToPath(import.meta.url);
   const __dirname = (await import("node:path")).dirname(__filename);
+  `
+  }
   ${additionalInject ?? ""}
   `,
       },
@@ -86,10 +97,12 @@ export async function buildEdgeBundle({
   );
 }
 
+export function copyMiddlewareAssetsAndWasm({}) {}
+
 export async function generateEdgeBundle(
   name: string,
-  options: Options,
-  fnOptions: BuildOptions["functions"][string],
+  options: BuildOptions,
+  fnOptions: SplittedFunctionOptions,
 ) {
   const { appBuildOutputPath, outputDir } = options;
 
@@ -97,11 +110,8 @@ export async function generateEdgeBundle(
   const outputPath = path.join(outputDir, "server-functions", name);
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Copy open-next.config.js
-  fs.copyFileSync(
-    path.join(outputDir, ".build", "open-next.config.js"),
-    path.join(outputPath, "open-next.config.js"),
-  );
+  // Copy open-next.config.mjs
+  copyOpenNextConfig(path.join(outputDir, ".build"), outputPath);
 
   // Load middleware manifest
   const middlewareManifest = JSON.parse(
@@ -121,18 +131,32 @@ export async function generateEdgeBundle(
   }
   const fn = functions[0];
 
+  //Copy wasm files
+  const wasmFiles = fn.wasm;
+  mkdirSync(path.join(outputPath, "wasm"), { recursive: true });
+  for (const wasmFile of wasmFiles) {
+    fs.copyFileSync(
+      path.join(appBuildOutputPath, ".next", wasmFile.filePath),
+      path.join(outputPath, `wasm/${wasmFile.name}.wasm`),
+    );
+  }
+
+  // Copy assets
+  const assets = fn.assets;
+  mkdirSync(path.join(outputPath, "assets"), { recursive: true });
+  for (const asset of assets) {
+    fs.copyFileSync(
+      path.join(appBuildOutputPath, ".next", asset.filePath),
+      path.join(outputPath, `assets/${asset.name}`),
+    );
+  }
+
   await buildEdgeBundle({
     appBuildOutputPath,
-    files: fn.files,
-    routes: [
-      {
-        name: fn.name,
-        page: fn.page,
-        regex: fn.matchers.map((m) => m.regexp),
-      },
-    ],
+    middlewareInfo: fn,
     entrypoint: path.join(__dirname, "../../adapters", "edge-adapter.js"),
     outfile: path.join(outputPath, "index.mjs"),
     options,
+    overrides: fnOptions.override,
   });
 }

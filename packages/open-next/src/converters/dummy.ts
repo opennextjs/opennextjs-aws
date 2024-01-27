@@ -18,6 +18,7 @@ const converter: Converter<DummyEventOrResult, DummyEventOrResult> = {
       original: internalResult,
     });
   },
+  name: "dummy",
 };
 
 export default converter;

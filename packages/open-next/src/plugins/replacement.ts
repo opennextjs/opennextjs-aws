@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 
+import chalk from "chalk";
 import { Plugin } from "esbuild";
 
 import logger from "../logger.js";
@@ -66,7 +67,8 @@ export function openNextReplacementPlugin({
               `\/\/#override (${id})\n([\\s\\S]*?)\/\/#endOverride`,
             );
             logger.debug(
-              `Open-next plugin ${name} -- Deleting override for ${id}`,
+              chalk.blue(`Open-next replacement plugin ${name}`),
+              ` -- Deleting override for ${id}`,
             );
             contents = contents.replace(pattern, "");
           }),
@@ -88,7 +90,8 @@ export function openNextReplacementPlugin({
                 "g",
               );
               logger.debug(
-                `Open-next plugin ${name} -- Applying override for ${id} from ${fp}`,
+                chalk.blue(`Open-next replacement plugin ${name}`),
+                `-- Applying override for ${id} from ${fp}`,
               );
               contents = contents.replace(pattern, replacement);
             }

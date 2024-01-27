@@ -1,31 +1,34 @@
 import cp from "node:child_process";
 import fs, { readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
 import { buildSync } from "esbuild";
 import { MiddlewareManifest } from "types/next-types.js";
 
+import { isBinaryContentType } from "./adapters/binary.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import {
+  BuildOptions,
+  copyOpenNextConfig,
   esbuildAsync,
   esbuildSync,
   getBuildId,
   getHtmlPages,
   normalizeOptions,
-  Options,
   removeFiles,
   traverseFiles,
 } from "./build/helper.js";
+import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
-import { minifyAll } from "./minimize-js.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
-import { BuildOptions } from "./types/open-next.js";
+import { OpenNextConfig } from "./types/open-next.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-let options: Options;
+let options: BuildOptions;
 
 export type PublicFiles = {
   files: string[];
@@ -34,11 +37,20 @@ export type PublicFiles = {
 export async function build() {
   const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
 
+  if (os.platform() === "win32") {
+    logger.error(
+      "OpenNext is not properly supported on Windows. On windows you should use WSL. It might works or it might fail in unpredictable way at runtime",
+    );
+    // Wait 10s here so that the user see this message
+    await new Promise((resolve) => setTimeout(resolve, 10000));
+  }
+
   // Compile open-next.config.ts
   createOpenNextConfigBundle(outputTmpPath);
 
-  const config = await import(outputTmpPath + "/open-next.config.js");
-  const opts = config.default as BuildOptions;
+  const config = await import(outputTmpPath + "/open-next.config.mjs");
+  const opts = config.default as OpenNextConfig;
+  validateConfig(opts);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
     path.join(process.cwd(), opts.appPath || "."),
@@ -66,31 +78,25 @@ export async function build() {
   compileCache(options);
 
   // Compile middleware
-  await createMiddleware();
+  await createMiddleware(opts);
 
   createStaticAssets();
   if (!options.dangerous?.disableIncrementalCache) {
-    await createCacheAssets(
-      monorepoRoot,
-      options.dangerous?.disableDynamoDBCache,
-    );
+    await createCacheAssets(monorepoRoot, options.dangerous?.disableTagCache);
   }
   await createServerBundle(opts, options);
   await createRevalidationBundle();
   createImageOptimizationBundle();
   await createWarmerBundle();
   await generateOutput(options.appBuildOutputPath, opts);
-  if (options.minify) {
-    await minifyServerBundle();
-  }
 }
 
 function createOpenNextConfigBundle(tempDir: string) {
   buildSync({
     entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
-    outfile: path.join(tempDir, "open-next.config.js"),
+    outfile: path.join(tempDir, "open-next.config.mjs"),
     bundle: true,
-    format: "cjs",
+    format: "esm",
     target: ["node18"],
   });
 }
@@ -115,6 +121,7 @@ function findMonorepoRoot(appPath: string) {
       { file: "package-lock.json", packager: "npm" as const },
       { file: "yarn.lock", packager: "yarn" as const },
       { file: "pnpm-lock.yaml", packager: "pnpm" as const },
+      { file: "bun.lockb", packager: "bun" as const },
     ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
 
     if (found) {
@@ -139,11 +146,13 @@ function setStandaloneBuildMode(monorepoRoot: string) {
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
 }
 
-function buildNextjsApp(packager: "npm" | "yarn" | "pnpm") {
+function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
   const { nextPackageJsonPath } = options;
   const command =
     options.buildCommand ??
-    (packager === "npm" ? "npm run build" : `${packager} build`);
+    (["bun", "npm"].includes(packager)
+      ? `${packager} run build`
+      : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
     cwd: path.dirname(nextPackageJsonPath),
@@ -187,12 +196,12 @@ function printOpenNextVersion() {
 function initOutputDir() {
   const { outputDir, tempDir } = options;
   const openNextConfig = readFileSync(
-    path.join(tempDir, "open-next.config.js"),
+    path.join(tempDir, "open-next.config.mjs"),
     "utf8",
   );
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
-  fs.writeFileSync(path.join(tempDir, "open-next.config.js"), openNextConfig);
+  fs.writeFileSync(path.join(tempDir, "open-next.config.mjs"), openNextConfig);
 }
 
 async function createWarmerBundle() {
@@ -204,11 +213,8 @@ async function createWarmerBundle() {
   const outputPath = path.join(outputDir, "warmer-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Copy open-next.config.js into the bundle
-  fs.copyFileSync(
-    path.join(options.tempDir, "open-next.config.js"),
-    path.join(outputPath, "open-next.config.js"),
-  );
+  // Copy open-next.config.mjs into the bundle
+  copyOpenNextConfig(options.tempDir, outputPath);
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
@@ -239,15 +245,6 @@ async function createWarmerBundle() {
   );
 }
 
-async function minifyServerBundle() {
-  logger.info(`Minimizing server function...`);
-  const { outputDir } = options;
-  await minifyAll(path.join(outputDir, "server-function"), {
-    compress_json: true,
-    mangle: true,
-  });
-}
-
 async function createRevalidationBundle() {
   logger.info(`Bundling revalidation function...`);
 
@@ -257,11 +254,8 @@ async function createRevalidationBundle() {
   const outputPath = path.join(outputDir, "revalidation-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
-  //Copy open-next.config.js into the bundle
-  fs.copyFileSync(
-    path.join(options.tempDir, "open-next.config.js"),
-    path.join(outputPath, "open-next.config.js"),
-  );
+  //Copy open-next.config.mjs into the bundle
+  copyOpenNextConfig(options.tempDir, outputPath);
 
   // Build Lambda code
   esbuildAsync(
@@ -296,11 +290,8 @@ function createImageOptimizationBundle() {
   const outputPath = path.join(outputDir, "image-optimization-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Copy open-next.config.js into the bundle
-  fs.copyFileSync(
-    path.join(options.tempDir, "open-next.config.js"),
-    path.join(outputPath, "open-next.config.js"),
-  );
+  // Copy open-next.config.mjs into the bundle
+  copyOpenNextConfig(options.tempDir, outputPath);
 
   // Build Lambda code (1st pass)
   // note: bundle in OpenNext package b/c the adapter relies on the
@@ -485,17 +476,26 @@ async function createCacheAssets(
 
   // Generate cache file
   Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+    const cacheFileMeta = files.meta
+      ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+      : undefined;
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
-      meta: files.meta
-        ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
-        : undefined,
+      meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
       json: files.json
         ? JSON.parse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
-      body: files.body ? fs.readFileSync(files.body, "utf8") : undefined,
+      body: files.body
+        ? fs
+            .readFileSync(files.body)
+            .toString(
+              isBinaryContentType(cacheFileMeta.headers["content-type"])
+                ? "base64"
+                : "utf8",
+            )
+        : undefined,
     };
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });
@@ -589,11 +589,8 @@ async function createCacheAssets(
         options,
       );
 
-      //Copy open-next.config.js into the bundle
-      fs.copyFileSync(
-        path.join(options.tempDir, "open-next.config.js"),
-        path.join(providerPath, "open-next.config.js"),
-      );
+      //Copy open-next.config.mjs into the bundle
+      copyOpenNextConfig(options.tempDir, providerPath);
 
       // TODO: check if metafiles doesn't contain duplicates
       fs.writeFileSync(
@@ -611,7 +608,7 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
-function compileCache(options: Options) {
+function compileCache(options: BuildOptions) {
   const outfile = path.join(options.outputDir, ".build", "cache.cjs");
   const dangerousOptions = options.dangerous;
   esbuildSync(
@@ -627,7 +624,7 @@ function compileCache(options: Options) {
             dangerousOptions?.disableIncrementalCache ?? false
           };`,
           `globalThis.disableDynamoDBCache = ${
-            dangerousOptions?.disableDynamoDBCache ?? false
+            dangerousOptions?.disableTagCache ?? false
           };`,
         ].join(""),
       },
@@ -637,7 +634,7 @@ function compileCache(options: Options) {
   return outfile;
 }
 
-async function createMiddleware() {
+async function createMiddleware(config: OpenNextConfig) {
   console.info(`Bundling middleware function...`);
 
   const { appBuildOutputPath, outputDir, externalMiddleware } = options;
@@ -659,14 +656,7 @@ async function createMiddleware() {
   let outputPath = path.join(outputDir, "server-function");
 
   const commonMiddlewareOptions = {
-    files: entry.files,
-    routes: [
-      {
-        name: entry.name || "/",
-        page: entry.page,
-        regex: entry.matchers.map((m) => m.regexp),
-      },
-    ],
+    middlewareInfo: entry,
     options,
     appBuildOutputPath,
   };
@@ -675,17 +665,15 @@ async function createMiddleware() {
     outputPath = path.join(outputDir, "middleware");
     fs.mkdirSync(outputPath, { recursive: true });
 
-    // Copy open-next.config.js
-    fs.copyFileSync(
-      path.join(options.tempDir, "open-next.config.js"),
-      path.join(outputPath, "open-next.config.js"),
-    );
+    // Copy open-next.config.mjs
+    copyOpenNextConfig(options.tempDir, outputPath);
 
     // Bundle middleware
     await buildEdgeBundle({
       entrypoint: path.join(__dirname, "adapters", "middleware.js"),
       outfile: path.join(outputPath, "handler.mjs"),
       ...commonMiddlewareOptions,
+      overrides: config.middleware?.override,
       defaultConverter: "aws-cloudfront",
     });
   } else {
