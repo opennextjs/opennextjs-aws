@@ -18,9 +18,9 @@ A boilerplate for such a plugin could look like this (This is not real code):
 
 ```ts
 
-import { BuildOptions } from "open-next/types/open-next";
+import { OpenNextConfig } from "open-next/types/open-next";
 
-function withGcp(config: TrimmedDownConfig): BuildOptions {
+function withGcp(config: TrimmedDownConfig): OpenNextConfig {
   return {
     default: {
         override: {
@@ -70,5 +70,5 @@ const config = withGcp({
   },
 });
 
-module.exports = config;
+export default config;
 ```
