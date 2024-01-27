@@ -19,6 +19,7 @@ export interface IPluginSettings {
   nextDir: string;
   edgeFunctionHandlerPath?: string;
   middlewareInfo: MiddlewareInfo;
+  isInCloudfare?: boolean;
 }
 
 /**
@@ -32,6 +33,7 @@ export function openNextEdgePlugins({
   nextDir,
   edgeFunctionHandlerPath,
   middlewareInfo,
+  isInCloudfare,
 }: IPluginSettings): Plugin {
   const entryFiles = middlewareInfo.files.map((file: string) =>
     path.join(nextDir, file),
@@ -103,8 +105,18 @@ globalThis.crypto = crypto;
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
+${
+  isInCloudfare
+    ? ""
+    : `import {readFileSync} from "node:fs";
+import path from "node:path";`
+}
 ${wasmFiles
-  .map((file) => `import ${file.name} from './wasm/${file.name}.wasm';`)
+  .map((file) =>
+    isInCloudfare
+      ? `import ${file.name} from './wasm/${file.name}.wasm';`
+      : `const ${file.name} = readFileSync(path.join(__dirname,'/wasm/${file.name}.wasm'));`,
+  )
   .join("\n")}
 ${entryFiles?.map((file) => `require("${file}");`).join("\n")}
 ${contents}        

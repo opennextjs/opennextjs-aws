@@ -67,6 +67,7 @@ export async function buildEdgeBundle({
             "../../core",
             "edgeFunctionHandler.js",
           ),
+          isInCloudfare: overrides?.wrapper === "cloudflare",
         }),
       ],
       treeShaking: true,
