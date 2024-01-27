@@ -6,7 +6,7 @@ This file need to be at the same place as your `next.config.js` file
 For more information about the options here, just look at the source file
 
 ```ts
-import type { BuildOptions } from 'open-next/types/open-next'
+import type { OpenNextConfig } from 'open-next/types/open-next'
 const config = {
   default: { // This is the default server, similar to the server-function in open-next v2
     // You don't have to provide the below, by default it will generate an output 
@@ -62,8 +62,8 @@ const config = {
     external: true 
   }
   buildCommand: "echo 'hello world'",
-} satisfies BuildOptions
+} satisfies OpenNextConfig
 
-module.exports = config
-export type OpenNextConfig = typeof config
+export default config;
+export type Config = typeof config
 ```

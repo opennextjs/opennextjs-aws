@@ -1,0 +1,59 @@
+There is a couple of requirements necessary for open-next V3 to work.
+It will be divided by functionality. This is still WIP, feel free to open a PR if you think something is missing.
+
+## General
+- For the node runtime, you need at least Node 18.
+- For the edge runtime, you can use both Node 18+ or cloudflare workers with `node_compat` flag enabled (Cloudflare workers support is experimental)
+- Open-next doesn't work well on Windows. We recommend using WSL2 or a Linux VM.
+
+## ISR/SSG
+ISR/SSG has 2 types of cache, the Incremental Cache and the Tag Cache. To actually trigger the ISR revalidation, we use a Queue system. 
+
+The tag cache is only used in app router.
+### Incremental Cache
+By default we use S3 as the incremental cache. You can override this in `open-next.config.ts`. For this to work you need to provide server functions with the following environment variables:
+- CACHE_BUCKET_REGION
+- CACHE_BUCKET_NAME
+- CACHE_BUCKET_KEY_PREFIX
+
+### Tag Cache
+By default we use DynamoDb as the tag cache. For this to work you need to provide server functions with the following environment variables:
+- CACHE_DYNAMO_TABLE
+- CACHE_BUCKET_REGION
+
+### Queue
+By default we use SQS as the queue. fFr this to work you need to provide server functions with the following environment variables:
+- REVALIDATION_QUEUE_REGION
+- REVALIDATION_QUEUE_URL
+
+## External Middleware
+If you decide to use external middleware, you need to provide the following environment variables:
+- OPEN_NEXT_ORIGIN
+
+This env variable should contain a stringified version of this, with every key corresponding to the key used in functions inside `open-next.config.ts`: 
+```ts
+// For cloudflare workers
+// THIS IS TEMPORARY, WE WILL CHANGE THIS TO USE THE SAME FORMAT AS NODE
+{
+  default: "example.com",
+  ssr: "example2.com",
+  ssg: "example3.com"
+}
+// Or for node
+{
+  default: {
+    host: "example.com",
+    protocol: "https",
+    port: 443 // Optional
+    customHeaders: {
+      "x-custom-header": "value"
+    } // Optional, headers that you'd want to pass to the origin
+  },
+  ...
+}
+```
+
+## Image Optimization
+For image optimization to work, you need to provide the following environment variables:
+- BUCKET_NAME
+- BUCKET_KEY_PREFIX
