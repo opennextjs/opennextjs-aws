@@ -673,10 +673,8 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
       : undefined;
 
   if (compareSemver(options.nextVersion, "13.5.1") >= 0) {
-    const utilReplacement =
-      compareSemver(options.nextVersion, "14.1.0") >= 0
-        ? "./14.1.util.js"
-        : "./13.5/util.js";
+    const isAfter141 = compareSemver(options.nextVersion, "14.1.0") >= 0;
+    const utilReplacement = isAfter141 ? "./14.1/util.js" : "./13.5/util.js";
     plugins = [
       openNextPlugin({
         name: "opennext-13.5-serverHandler",
@@ -686,7 +684,10 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
       openNextPlugin({
         name: "opennext-13.5-util",
         target: /plugins\/util\.js/g,
-        replacements: [utilReplacement, "./util.replacement.js"],
+        replacements: [
+          utilReplacement,
+          ...(isAfter141 ? [] : ["./util.replacement.js"]),
+        ],
       }),
       openNextPlugin({
         name: "opennext-13.5-default",
