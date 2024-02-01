@@ -1,5 +1,13 @@
 # open-next
 
+## 2.3.5
+
+### Patch Changes
+
+- b9eefca: Fix Cache Support for Next@14.1.0
+- c80f1be: Fix trailing slash redirect to external domain
+- 186e28f: fix(open-next): correctly set cache control for html pages
+
 ## 2.3.4
 
 ### Patch Changes
