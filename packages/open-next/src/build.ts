@@ -692,7 +692,7 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     ];
   }
 
-  if(compareSemver(options.nextVersion, "14.1.0") >= 0){
+  if (compareSemver(options.nextVersion, "14.1.0") >= 0) {
     plugins = [
       openNextPlugin({
         name: "opennext-14.1-serverHandler",
