@@ -692,6 +692,26 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     ];
   }
 
+  if(compareSemver(options.nextVersion, "14.1.0") >= 0){
+    plugins = [
+      openNextPlugin({
+        name: "opennext-14.1-serverHandler",
+        target: /plugins\/serverHandler\.js/g,
+        replacements: ["./14.1/serverHandler.js"],
+      }),
+      openNextPlugin({
+        name: "opennext-14.1-util",
+        target: /plugins\/util\.js/g,
+        replacements: ["./14.1/util.js", "./util.replacement.js"],
+      }),
+      openNextPlugin({
+        name: "opennext-14.1-default",
+        target: /plugins\/routing\/default\.js/g,
+        replacements: ["./default.replacement.js"],
+      }),
+    ];
+  }
+
   if (streaming) {
     const streamingPlugin = openNextPlugin({
       name: "opennext-streaming",
