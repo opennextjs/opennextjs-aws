@@ -12,6 +12,7 @@ export const requestHandler = new NextServer.default({
     // By default, Next.js uses local disk to store ISR cache. We will use
     // our own cache handler to store the cache on S3.
     cacheHandler: `${process.env.LAMBDA_TASK_ROOT}/cache.cjs`,
+    cacheMaxMemorySize: 0,
     experimental: {
       ...NextConfig.experimental,
       // This uses the request.headers.host as the URL
