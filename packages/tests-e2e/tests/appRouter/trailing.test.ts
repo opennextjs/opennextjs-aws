@@ -15,3 +15,8 @@ test("trailingSlash redirect with search parameters", async ({ page }) => {
   );
   expect(response?.request().url()).toMatch(/\/ssr\?happy=true$/);
 });
+
+test("trailingSlash redirect to external domain", async ({ page, baseURL }) => {
+  const response = await page.goto(`${baseURL}//sst.dev/`);
+  expect(response?.status()).toBe(404);
+});

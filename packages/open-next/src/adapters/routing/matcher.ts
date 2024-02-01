@@ -169,11 +169,13 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
-export function handleRedirects(
-  event: InternalEvent,
-  redirects: RedirectDefinition[],
-): InternalResult | undefined {
+function handleTrailingSlashRedirect(event: InternalEvent) {
   if (!NextConfig.skipTrailingSlashRedirect) {
+    const url = new URL(event.url, "http://localhost");
+    // Someone is trying to redirect to a different origin, let's not do that
+    if (url.host !== "localhost") {
+      return false;
+    }
     if (
       NextConfig.trailingSlash &&
       !event.headers["x-nextjs-data"] &&
@@ -211,7 +213,15 @@ export function handleRedirects(
         isBase64Encoded: false,
       };
     }
-  }
+  } else return false;
+}
+
+export function handleRedirects(
+  event: InternalEvent,
+  redirects: RedirectDefinition[],
+): InternalResult | undefined {
+  const trailingSlashRedirect = handleTrailingSlashRedirect(event);
+  if (trailingSlashRedirect) return trailingSlashRedirect;
   const { internalEvent, __rewrite } = handleRewrites(
     event,
     redirects.filter((r) => !r.internal),
