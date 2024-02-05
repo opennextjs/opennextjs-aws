@@ -118,6 +118,14 @@ export function addNextConfigHeaders(
           debug("Error matching header ", h.key, " with value ", h.value);
           requestHeaders[h.key] = h.value;
         }
+        try {
+          const key = convertMatch(_match, compile(h.key), h.key);
+          const value = convertMatch(_match, compile(h.value), h.value);
+          requestHeaders[key] = value;
+        } catch {
+          debug("Error matching header ", h.key, " with value ", h.value);
+          requestHeaders[h.key] = h.value;
+        }
       });
     }
   }
@@ -174,10 +182,12 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
-export function handleRedirects(
-  event: InternalEvent,
-  redirects: RedirectDefinition[],
-): InternalResult | undefined {
+function handleTrailingSlashRedirect(event: InternalEvent) {
+  const url = new URL(event.url, "http://localhost");
+  // Someone is trying to redirect to a different origin, let's not do that
+  if (url.host !== "localhost") {
+    return false;
+  }
   if (
     NextConfig.trailingSlash &&
     !event.headers["x-nextjs-data"] &&
@@ -214,7 +224,15 @@ export function handleRedirects(
       body: "",
       isBase64Encoded: false,
     };
-  }
+  } else return false;
+}
+
+export function handleRedirects(
+  event: InternalEvent,
+  redirects: RedirectDefinition[],
+): InternalResult | undefined {
+  const trailingSlashRedirect = handleTrailingSlashRedirect(event);
+  if (trailingSlashRedirect) return trailingSlashRedirect;
   const { internalEvent, __rewrite } = handleRewrites(
     event,
     redirects.filter((r) => !r.internal),

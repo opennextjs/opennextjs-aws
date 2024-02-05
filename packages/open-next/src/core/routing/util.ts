@@ -267,7 +267,7 @@ export function fixCacheHeaderForHtmlPages(
   headers: OutgoingHttpHeaders,
 ) {
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (HtmlPages.includes(rawPath) && headers[CommonHeaders.CACHE_CONTROL]) {
+  if (HtmlPages.includes(rawPath)) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
