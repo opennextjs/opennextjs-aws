@@ -34,7 +34,7 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build() {
+export async function build(openNextConfigPath?: string) {
   const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
 
   if (os.platform() === "win32") {
@@ -46,7 +46,7 @@ export async function build() {
   }
 
   // Compile open-next.config.ts
-  createOpenNextConfigBundle(outputTmpPath);
+  createOpenNextConfigBundle(outputTmpPath, openNextConfigPath);
 
   const config = await import(outputTmpPath + "/open-next.config.mjs");
   const opts = config.default as OpenNextConfig;
@@ -91,14 +91,41 @@ export async function build() {
   await generateOutput(options.appBuildOutputPath, opts);
 }
 
-function createOpenNextConfigBundle(tempDir: string) {
-  buildSync({
-    entryPoints: [path.join(process.cwd(), "open-next.config.ts")],
-    outfile: path.join(tempDir, "open-next.config.mjs"),
-    bundle: true,
-    format: "esm",
-    target: ["node18"],
-  });
+function createOpenNextConfigBundle(
+  tempDir: string,
+  openNextConfigPath?: string,
+) {
+  //Check if open-next.config.ts exists
+  const pathToOpenNextConfig = path.join(
+    process.cwd(),
+    openNextConfigPath ?? "open-next.config.ts",
+  );
+  if (!fs.existsSync(pathToOpenNextConfig)) {
+    //Create a simple open-next.config.mjs file
+    logger.warn(
+      "You don't have an open-next.config.ts file. Using default configuration.",
+    );
+    fs.writeFileSync(
+      path.join(tempDir, "open-next.config.mjs"),
+      `var config = {
+        default: {
+        },
+      };
+      var open_next_config_default = config;
+      export {
+        open_next_config_default as default
+      };
+      `,
+    );
+  } else {
+    buildSync({
+      entryPoints: [pathToOpenNextConfig],
+      outfile: path.join(tempDir, "open-next.config.mjs"),
+      bundle: true,
+      format: "esm",
+      target: ["node18"],
+    });
+  }
 }
 
 function checkRunningInsideNextjsApp() {
