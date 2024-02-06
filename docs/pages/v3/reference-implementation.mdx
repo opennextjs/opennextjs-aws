@@ -38,6 +38,10 @@ import {
 	Distribution,
 	ICachePolicy,
 	ViewerProtocolPolicy,
+	FunctionEventType,
+	OriginRequestPolicy,
+	Function as CloudfrontFunction,
+	FunctionCode,
 } from "aws-cdk-lib/aws-cloudfront";
 import { HttpOrigin, S3Origin } from "aws-cdk-lib/aws-cloudfront-origins";
 import {
@@ -347,6 +351,22 @@ export class OpenNextCdkReferenceImplementation extends Construct {
 	}
 
 	private createDistribution(origins: Record<string, HttpOrigin | S3Origin>) {
+		const cloudfrontFunction = new CloudfrontFunction(this, 'OpenNextCfFunction', {
+			code: FunctionCode.fromInline(`
+			function handler(event) {
+				var request = event.request;
+				request.headers["x-forwarded-host"] = request.headers.host;
+				return request;
+			}
+			`)
+		})
+		const fnAssociations = [
+			{
+				function: cloudfrontFunction ,
+				eventType: FunctionEventType.VIEWER_REQUEST,
+			},
+		]
+
 		const distribution = new Distribution(this, "OpenNextDistribution", {
 			defaultBehavior: {
 				origin: origins.default,
@@ -354,6 +374,8 @@ export class OpenNextCdkReferenceImplementation extends Construct {
 				allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
 				cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
 				cachePolicy: this.serverCachePolicy,
+				originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+				functionAssociations: fnAssociations
 			},
 			additionalBehaviors: this.openNextOutput.behaviors
 				.filter((b) => b.pattern !== "*")
@@ -372,6 +394,11 @@ export class OpenNextCdkReferenceImplementation extends Construct {
 									behavior.origin === "s3"
 										? this.staticCachePolicy
 										: this.serverCachePolicy,
+								originRequestPolicy: 
+									behavior.origin === "s3" 
+										? undefined 
+										: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+								functionAssociations: fnAssociations
 							},
 						};
 					},

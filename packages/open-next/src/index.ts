@@ -8,7 +8,7 @@ if (command !== "build") printHelp();
 const args = parseArgs();
 if (Object.keys(args).includes("--help")) printHelp();
 
-build();
+build(args["--config-path"]);
 
 function parseArgs() {
   return process.argv.slice(2).reduce(
@@ -33,7 +33,9 @@ function printHelp() {
   console.log("");
   console.log("Usage:");
   console.log("  npx open-next build");
-  console.log("  npx open-next build --build-command 'npm run custom:build'");
+  console.log(
+    "  npx open-next build --config-path ./path/to/open-next.config.ts",
+  );
   console.log("");
 
   process.exit(1);

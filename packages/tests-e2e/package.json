@@ -12,5 +12,6 @@
     "@open-next/utils": "workspace:*",
     "start-server-and-test": "2.0.0",
     "ts-node": "10.9.1"
-  }
+  },
+  "version": null
 }
