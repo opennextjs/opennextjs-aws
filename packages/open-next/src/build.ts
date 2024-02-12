@@ -367,7 +367,7 @@ function createImageOptimizationBundle() {
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
   const nodeOutputPath = path.resolve(outputPath);
-  const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
+  const sharpVersion = process.env.SHARP_VERSION ?? "0.33.2";
 
   //check if we are running in Windows environment then set env variables accordingly.
   try {
