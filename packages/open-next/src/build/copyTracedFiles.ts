@@ -11,6 +11,7 @@ import {
 } from "fs";
 import path from "path";
 import { NextConfig, PrerenderManifest } from "types/next-types";
+import logger from "../logger";
 
 export async function copyTracedFiles(
   buildOutputPath: string,
@@ -19,7 +20,7 @@ export async function copyTracedFiles(
   routes: string[],
   bundledNextServer: boolean,
 ) {
-  console.time("copyTracedFiles");
+  const tsStart = Date.now();
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
   const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
@@ -232,5 +233,5 @@ export async function copyTracedFiles(
     });
   }
 
-  console.timeEnd("copyTracedFiles");
+  logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 }
