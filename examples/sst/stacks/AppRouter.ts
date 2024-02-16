@@ -1,18 +1,22 @@
-import { NextjsSite } from "sst/constructs";
+import { OpenNextCdkReferenceImplementation } from "./OpenNextReferenceImplementation";
 
 export function AppRouter({ stack }) {
-  const site = new NextjsSite(stack, "approuter", {
+  // We should probably switch to ion once it's ready
+  const site = new OpenNextCdkReferenceImplementation(stack, "approuter", {
     path: "../app-router",
-    buildCommand: "npm run openbuild",
-    bind: [],
-    environment: {},
-    timeout: "20 seconds",
-    experimental: {
-      streaming: true,
-    },
   });
+  // const site = new NextjsSite(stack, "approuter", {
+  //   path: "../app-router",
+  //   buildCommand: "npm run openbuild",
+  //   bind: [],
+  //   environment: {},
+  //   timeout: "20 seconds",
+  //   experimental: {
+  //     streaming: true,
+  //   },
+  // });
 
   stack.addOutputs({
-    url: site.url,
+    url: site.distribution.domainName,
   });
 }
