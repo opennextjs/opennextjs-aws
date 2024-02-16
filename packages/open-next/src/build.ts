@@ -79,6 +79,7 @@ export async function build(openNextConfigPath?: string) {
   createImageOptimizationBundle();
   await createWarmerBundle();
   await generateOutput(options.appBuildOutputPath, config);
+  logger.info("OpenNext build complete.");
 }
 
 function showWindowsWarning() {

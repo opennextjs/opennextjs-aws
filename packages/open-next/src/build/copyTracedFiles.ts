@@ -11,6 +11,7 @@ import {
 } from "fs";
 import path from "path";
 import { NextConfig, PrerenderManifest } from "types/next-types";
+
 import logger from "../logger";
 
 export async function copyTracedFiles(
@@ -24,6 +25,7 @@ export async function copyTracedFiles(
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
   const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
+  const outputNextDir = path.join(outputDir, packagePath, ".next");
 
   const extractFiles = (files: string[], from = standaloneNextDir) => {
     return files.map((f) => path.resolve(from, f));
@@ -52,13 +54,19 @@ export async function copyTracedFiles(
 
   // create directory for pages
   if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
-    mkdirSync(path.join(outputDir, ".next/server/pages"), { recursive: true });
+    mkdirSync(path.join(outputNextDir, "server/pages"), {
+      recursive: true,
+    });
   }
   if (existsSync(path.join(standaloneDir, ".next/server/app"))) {
-    mkdirSync(path.join(outputDir, ".next/server/app"), { recursive: true });
+    mkdirSync(path.join(outputNextDir, "server/app"), {
+      recursive: true,
+    });
   }
 
-  mkdirSync(path.join(outputDir, ".next/server/chunks"), { recursive: true });
+  mkdirSync(path.join(outputNextDir, "server/chunks"), {
+    recursive: true,
+  });
 
   const computeCopyFilesForPage = (pagePath: string) => {
     const fullFilePath = `server/${pagePath}.js`;
@@ -139,19 +147,14 @@ export async function copyTracedFiles(
     }
   });
 
-  mkdirSync(path.join(outputDir, ".next"), { recursive: true });
-
   readdirSync(standaloneNextDir).forEach((f) => {
     if (statSync(path.join(standaloneNextDir, f)).isDirectory()) return;
-    copyFileSync(
-      path.join(standaloneNextDir, f),
-      path.join(path.join(outputDir, ".next"), f),
-    );
+    copyFileSync(path.join(standaloneNextDir, f), path.join(outputNextDir, f));
   });
 
   // We then need to copy all the files at the root of server
 
-  mkdirSync(path.join(outputDir, ".next/server"), { recursive: true });
+  mkdirSync(path.join(outputNextDir, "server"), { recursive: true });
 
   readdirSync(path.join(standaloneNextDir, "server")).forEach((f) => {
     if (statSync(path.join(standaloneNextDir, "server", f)).isDirectory())
@@ -159,7 +162,7 @@ export async function copyTracedFiles(
     if (f !== "server.js") {
       copyFileSync(
         path.join(standaloneNextDir, "server", f),
-        path.join(path.join(outputDir, ".next/server"), f),
+        path.join(path.join(outputNextDir, "server"), f),
       );
     }
   });
@@ -169,21 +172,18 @@ export async function copyTracedFiles(
   // we replace the pages-manifest.json with an empty one if we don't have a pages dir so that
   // next doesn't try to load _app, _document
   if (!hasPageDir) {
-    writeFileSync(
-      path.join(outputDir, ".next/server/pages-manifest.json"),
-      "{}",
-    );
+    writeFileSync(path.join(outputNextDir, "server/pages-manifest.json"), "{}");
   }
 
   //TODO: Find what else we need to copy
   const copyStaticFile = (filePath: string) => {
     if (existsSync(path.join(standaloneNextDir, filePath))) {
-      mkdirSync(path.dirname(path.join(outputDir, ".next", filePath)), {
+      mkdirSync(path.dirname(path.join(outputNextDir, filePath)), {
         recursive: true,
       });
       copyFileSync(
         path.join(standaloneNextDir, filePath),
-        path.join(outputDir, ".next", filePath),
+        path.join(outputNextDir, filePath),
       );
     }
   };
