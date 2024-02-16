@@ -153,23 +153,23 @@ async function extractCommonOverride(override?: OverrideOptions) {
 
 export async function generateOutput(
   outputPath: string,
-  buildOptions: OpenNextConfig,
+  config: OpenNextConfig,
 ) {
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
-  const isExternalMiddleware = buildOptions.middleware?.external ?? false;
+  const isExternalMiddleware = config.middleware?.external ?? false;
   if (isExternalMiddleware) {
     edgeFunctions.middleware = {
       bundle: ".open-next/middleware",
       handler: "handler.handler",
       pathResolver: await extractOverrideName(
         "pattern-env",
-        buildOptions.middleware!.originResolver,
+        config.middleware!.originResolver,
       ),
-      ...(await extractOverrideFn(buildOptions.middleware?.override)),
+      ...(await extractOverrideFn(config.middleware?.override)),
     };
   }
   // Add edge functions
-  Object.entries(buildOptions.functions ?? {}).forEach(async ([key, value]) => {
+  Object.entries(config.functions ?? {}).forEach(async ([key, value]) => {
     if (value.placement === "global") {
       edgeFunctions[key] = {
         bundle: `.open-next/functions/${key}`,
@@ -179,7 +179,7 @@ export async function generateOutput(
     }
   });
 
-  const defaultOriginCanstream = await canStream(buildOptions.default);
+  const defaultOriginCanstream = await canStream(config.default);
 
   // First add s3 origins and image optimization
 
@@ -194,7 +194,7 @@ export async function generateOutput(
           cached: true,
           versionedSubDir: "_next",
         },
-        ...(buildOptions.dangerous?.disableIncrementalCache
+        ...(config.dangerous?.disableIncrementalCache
           ? []
           : [
               {
@@ -212,25 +212,25 @@ export async function generateOutput(
       streaming: false,
       imageLoader: await extractOverrideName(
         "s3",
-        buildOptions.imageOptimization?.loader,
+        config.imageOptimization?.loader,
       ),
-      ...(await extractOverrideFn(buildOptions.imageOptimization?.override)),
+      ...(await extractOverrideFn(config.imageOptimization?.override)),
     },
-    default: buildOptions.default.override?.generateDockerfile
+    default: config.default.override?.generateDockerfile
       ? {
           type: "ecs",
           bundle: ".open-next/server-functions/default",
           dockerfile: ".open-next/server-functions/default/Dockerfile",
-          ...(await extractOverrideFn(buildOptions.default.override)),
-          ...(await extractCommonOverride(buildOptions.default.override)),
+          ...(await extractOverrideFn(config.default.override)),
+          ...(await extractCommonOverride(config.default.override)),
         }
       : {
           type: "function",
           handler: "index.handler",
           bundle: ".open-next/server-functions/default",
           streaming: defaultOriginCanstream,
-          ...(await extractOverrideFn(buildOptions.default.override)),
-          ...(await extractCommonOverride(buildOptions.default.override)),
+          ...(await extractOverrideFn(config.default.override)),
+          ...(await extractCommonOverride(config.default.override)),
         },
   };
 
@@ -239,7 +239,7 @@ export async function generateOutput(
 
   // Then add function origins
   await Promise.all(
-    Object.entries(buildOptions.functions ?? {}).map(async ([key, value]) => {
+    Object.entries(config.functions ?? {}).map(async ([key, value]) => {
       if (!value.placement || value.placement === "regional") {
         if (value.override?.generateDockerfile) {
           origins[key] = {
@@ -270,7 +270,7 @@ export async function generateOutput(
   ];
 
   // Then we add the routes
-  Object.entries(buildOptions.functions ?? {}).forEach(([key, value]) => {
+  Object.entries(config.functions ?? {}).forEach(([key, value]) => {
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
@@ -319,19 +319,19 @@ export async function generateOutput(
     origins,
     behaviors,
     additionalProps: {
-      disableIncrementalCache: buildOptions.dangerous?.disableIncrementalCache,
-      disableTagCache: buildOptions.dangerous?.disableTagCache,
+      disableIncrementalCache: config.dangerous?.disableIncrementalCache,
+      disableTagCache: config.dangerous?.disableTagCache,
       warmer: {
         handler: "index.handler",
         bundle: ".open-next/warmer-function",
       },
-      initializationFunction: buildOptions.dangerous?.disableTagCache
+      initializationFunction: config.dangerous?.disableTagCache
         ? undefined
         : {
             handler: "index.handler",
             bundle: ".open-next/initialization-function",
           },
-      revalidationFunction: buildOptions.dangerous?.disableIncrementalCache
+      revalidationFunction: config.dangerous?.disableIncrementalCache
         ? undefined
         : {
             handler: "index.handler",

@@ -29,21 +29,21 @@ const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export async function createServerBundle(
-  options: OpenNextConfig,
-  buildRuntimeOptions: BuildOptions,
+  config: OpenNextConfig,
+  options: BuildOptions,
 ) {
   const foundRoutes = new Set<string>();
   // Get all functions to build
-  const defaultFn = options.default;
-  const functions = Object.entries(options.functions ?? {});
+  const defaultFn = config.default;
+  const functions = Object.entries(config.functions ?? {});
 
   const promises = functions.map(async ([name, fnOptions]) => {
     const routes = fnOptions.routes;
     routes.forEach((route) => foundRoutes.add(route));
     if (fnOptions.runtime === "edge") {
-      await generateEdgeBundle(name, buildRuntimeOptions, fnOptions);
+      await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, buildRuntimeOptions, fnOptions);
+      await generateBundle(name, config, options, fnOptions);
     }
   });
 
@@ -54,13 +54,13 @@ export async function createServerBundle(
 
   const remainingRoutes = new Set<string>();
 
-  const { monorepoRoot, appBuildOutputPath } = buildRuntimeOptions;
+  const { monorepoRoot, appBuildOutputPath } = options;
 
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
 
   // Find remaining routes
   const serverPath = path.join(
-    buildRuntimeOptions.appBuildOutputPath,
+    appBuildOutputPath,
     ".next",
     "standalone",
     packagePath,
@@ -105,7 +105,7 @@ export async function createServerBundle(
   }
 
   // Generate default function
-  await generateBundle("default", buildRuntimeOptions, {
+  await generateBundle("default", config, options, {
     ...defaultFn,
     routes: Array.from(remainingRoutes),
     patterns: ["*"],
@@ -114,6 +114,7 @@ export async function createServerBundle(
 
 async function generateBundle(
   name: string,
+  config: OpenNextConfig,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
@@ -149,7 +150,7 @@ async function generateBundle(
 
   // // Copy middleware
   if (
-    !options.externalMiddleware &&
+    !config.middleware?.external &&
     existsSync(path.join(outputDir, ".build", "middleware.mjs"))
   ) {
     fs.copyFileSync(
@@ -187,7 +188,7 @@ async function generateBundle(
   const isBefore13413 = compareSemver(options.nextVersion, "13.4.13") <= 0;
   const isAfter141 = compareSemver(options.nextVersion, "14.0.4") >= 0;
 
-  const disableRouting = isBefore13413 || options.externalMiddleware;
+  const disableRouting = isBefore13413 || config.middleware?.external;
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,

@@ -29,35 +29,27 @@ import { OpenNextConfig } from "./types/open-next.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 let options: BuildOptions;
+let config: OpenNextConfig;
 
 export type PublicFiles = {
   files: string[];
 };
 
 export async function build(openNextConfigPath?: string) {
-  const outputTmpPath = path.join(process.cwd(), ".open-next", ".build");
+  showWindowsWarning();
 
-  if (os.platform() === "win32") {
-    logger.error(
-      "OpenNext is not properly supported on Windows. On windows you should use WSL. It might works or it might fail in unpredictable way at runtime",
-    );
-    // Wait 10s here so that the user see this message
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-  }
-
-  // Compile open-next.config.ts
-  createOpenNextConfigBundle(outputTmpPath, openNextConfigPath);
-
-  const config = await import(outputTmpPath + "/open-next.config.mjs");
-  const opts = config.default as OpenNextConfig;
-  validateConfig(opts);
+  // Load open-next.config.ts
+  const tempDir = initTempDir();
+  const configPath = compileOpenNextConfig(tempDir, openNextConfigPath);
+  config = (await import(configPath)).default as OpenNextConfig;
+  validateConfig(config);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
-    path.join(process.cwd(), opts.appPath || "."),
+    path.join(process.cwd(), config.appPath || "."),
   );
 
   // Initialize options
-  options = normalizeOptions(opts, monorepoRoot);
+  options = normalizeOptions(config, monorepoRoot);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
@@ -75,57 +67,70 @@ export async function build(openNextConfigPath?: string) {
   initOutputDir();
 
   // Compile cache.ts
-  compileCache(options);
+  compileCache();
 
   // Compile middleware
-  await createMiddleware(opts);
+  await createMiddleware();
 
   createStaticAssets();
-  if (!options.dangerous?.disableIncrementalCache) {
-    await createCacheAssets(monorepoRoot, options.dangerous?.disableTagCache);
-  }
-  await createServerBundle(opts, options);
+  await createCacheAssets(monorepoRoot);
+  await createServerBundle(config, options);
   await createRevalidationBundle();
   createImageOptimizationBundle();
   await createWarmerBundle();
-  await generateOutput(options.appBuildOutputPath, opts);
+  await generateOutput(options.appBuildOutputPath, config);
 }
 
-function createOpenNextConfigBundle(
-  tempDir: string,
-  openNextConfigPath?: string,
-) {
-  //Check if open-next.config.ts exists
-  const pathToOpenNextConfig = path.join(
+function showWindowsWarning() {
+  if (os.platform() !== "win32") return;
+
+  logger.warn("OpenNext is not fully compatible with Windows.");
+  logger.warn(
+    "For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).",
+  );
+  logger.warn(
+    "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
+  );
+}
+
+function initTempDir() {
+  const dir = path.join(process.cwd(), ".open-next");
+  const tempDir = path.join(dir, ".build");
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(tempDir, { recursive: true });
+  return tempDir;
+}
+
+function compileOpenNextConfig(tempDir: string, openNextConfigPath?: string) {
+  const sourcePath = path.join(
     process.cwd(),
     openNextConfigPath ?? "open-next.config.ts",
   );
-  if (!fs.existsSync(pathToOpenNextConfig)) {
+  const outputPath = path.join(tempDir, "open-next.config.mjs");
+
+  //Check if open-next.config.ts exists
+  if (!fs.existsSync(sourcePath)) {
     //Create a simple open-next.config.mjs file
-    logger.warn(
-      "You don't have an open-next.config.ts file. Using default configuration.",
-    );
+    logger.debug("Cannot find open-next.config.ts. Using default config.");
     fs.writeFileSync(
-      path.join(tempDir, "open-next.config.mjs"),
-      `var config = {
-        default: {
-        },
-      };
-      var open_next_config_default = config;
-      export {
-        open_next_config_default as default
-      };
-      `,
+      outputPath,
+      [
+        "var config = { default: { } };",
+        "var open_next_config_default = config;",
+        "export { open_next_config_default as default };",
+      ].join("\n"),
     );
   } else {
     buildSync({
-      entryPoints: [pathToOpenNextConfig],
-      outfile: path.join(tempDir, "open-next.config.mjs"),
+      entryPoints: [sourcePath],
+      outfile: outputPath,
       bundle: true,
       format: "esm",
       target: ["node18"],
     });
   }
+
+  return outputPath;
 }
 
 function checkRunningInsideNextjsApp() {
@@ -176,7 +181,7 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
   const { nextPackageJsonPath } = options;
   const command =
-    options.buildCommand ??
+    config.buildCommand ??
     (["bun", "npm"].includes(packager)
       ? `${packager} run build`
       : `${packager} build`);
@@ -430,10 +435,9 @@ function createStaticAssets() {
   }
 }
 
-async function createCacheAssets(
-  monorepoRoot: string,
-  disableDynamoDBCache = false,
-) {
+async function createCacheAssets(monorepoRoot: string) {
+  if (config.dangerous?.disableIncrementalCache) return;
+
   logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -527,7 +531,7 @@ async function createCacheAssets(
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });
 
-  if (!disableDynamoDBCache) {
+  if (!config.dangerous?.disableTagCache) {
     // Generate dynamodb data
     // We need to traverse the cache to find every .meta file
     const metaFiles: {
@@ -635,9 +639,8 @@ async function createCacheAssets(
 /* Server Helper Functions */
 /***************************/
 
-function compileCache(options: BuildOptions) {
+function compileCache() {
   const outfile = path.join(options.outputDir, ".build", "cache.cjs");
-  const dangerousOptions = options.dangerous;
   esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
@@ -648,10 +651,10 @@ function compileCache(options: BuildOptions) {
       banner: {
         js: [
           `globalThis.disableIncrementalCache = ${
-            dangerousOptions?.disableIncrementalCache ?? false
+            config.dangerous?.disableIncrementalCache ?? false
           };`,
           `globalThis.disableDynamoDBCache = ${
-            dangerousOptions?.disableTagCache ?? false
+            config.dangerous?.disableTagCache ?? false
           };`,
         ].join(""),
       },
@@ -661,10 +664,10 @@ function compileCache(options: BuildOptions) {
   return outfile;
 }
 
-async function createMiddleware(config: OpenNextConfig) {
+async function createMiddleware() {
   console.info(`Bundling middleware function...`);
 
-  const { appBuildOutputPath, outputDir, externalMiddleware } = options;
+  const { appBuildOutputPath, outputDir } = options;
 
   // Get middleware manifest
   const middlewareManifest = JSON.parse(
@@ -688,7 +691,7 @@ async function createMiddleware(config: OpenNextConfig) {
     appBuildOutputPath,
   };
 
-  if (externalMiddleware) {
+  if (config.middleware?.external) {
     outputPath = path.join(outputDir, "middleware");
     fs.mkdirSync(outputPath, { recursive: true });
 
