@@ -23,7 +23,7 @@ type DataType = {
   };
 };
 
-interface InitializationFunctionEvent {
+export interface InitializationFunctionEvent {
   type: "initializationFunction";
   requestType: "create" | "update" | "delete";
   resourceId: typeof PHYSICAL_RESOURCE_ID;

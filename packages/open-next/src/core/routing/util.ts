@@ -346,18 +346,13 @@ export async function revalidateIfRequired(
           ? globalThis.lastModified[requestId]
           : "";
 
-      // await sqsClient.send(
-      //   new SendMessageCommand({
-      //     QueueUrl: REVALIDATION_QUEUE_URL,
-      //     MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
-      //     MessageBody: JSON.stringify({ host, url: revalidateUrl }),
-      //     MessageGroupId: generateMessageGroupId(rawPath),
-      //   }),
-      // );
+      // For some weird cases, lastModified is not set, haven't been able to figure out yet why
+      // For those cases we add the etag to the deduplication id, it might help
+      const etag = headers["etag"] ?? headers["ETag"] ?? "";
 
       await globalThis.queue.send({
         MessageBody: { host, url: revalidateUrl },
-        MessageDeduplicationId: hash(`${rawPath}-${lastModified}`),
+        MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${etag}`),
         MessageGroupId: generateMessageGroupId(rawPath),
       });
     } catch (e) {

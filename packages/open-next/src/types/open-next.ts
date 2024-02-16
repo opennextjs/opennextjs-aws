@@ -112,6 +112,7 @@ export type IncludedConverter =
   | "edge"
   | "node"
   | "sqs-revalidate"
+  | "custom-resource"
   | "dummy";
 
 export type IncludedQueue = "sqs";

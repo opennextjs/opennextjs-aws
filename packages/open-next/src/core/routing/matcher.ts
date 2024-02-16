@@ -184,8 +184,14 @@ export function handleRewrites<T extends RewriteDefinition>(
 
 function handleTrailingSlashRedirect(event: InternalEvent) {
   const url = new URL(event.url, "http://localhost");
-  // Someone is trying to redirect to a different origin, let's not do that
-  if (url.host !== "localhost") {
+
+  if (
+    // Someone is trying to redirect to a different origin, let's not do that
+    url.host !== "localhost" ||
+    NextConfig.skipTrailingSlashRedirect ||
+    // We should not apply trailing slash redirect to API routes
+    event.rawPath.startsWith("/api/")
+  ) {
     return false;
   }
   if (
