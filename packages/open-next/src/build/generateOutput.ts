@@ -314,6 +314,11 @@ export async function generateOutput(
     }
   });
 
+  // Check if we produced a dynamodb provider output
+  const isTagCacheDisabled =
+    config.dangerous?.disableTagCache ||
+    !fs.existsSync(path.join(outputPath, ".open-next", "dynamodb-provider"));
+
   const output: OpenNextOutput = {
     edgeFunctions,
     origins,
@@ -325,11 +330,11 @@ export async function generateOutput(
         handler: "index.handler",
         bundle: ".open-next/warmer-function",
       },
-      initializationFunction: config.dangerous?.disableTagCache
+      initializationFunction: isTagCacheDisabled
         ? undefined
         : {
             handler: "index.handler",
-            bundle: ".open-next/initialization-function",
+            bundle: ".open-next/dynamodb-provider",
           },
       revalidationFunction: config.dangerous?.disableIncrementalCache
         ? undefined
