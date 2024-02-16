@@ -94,7 +94,11 @@ const handler: WrapperHandler = async (handler, converter) =>
 
           if (responseStream.writableCorked) {
             for (let i = 0; i < responseStream.writableCorked; i++) {
-              responseStream.uncork();
+              // For some reason, putting this in a setImmediate makes it work more often
+              // process.nextTick does not, which should be what we should use
+              setImmediate(() => {
+                responseStream.uncork();
+              });
             }
           }
 
