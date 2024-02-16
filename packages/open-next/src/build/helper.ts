@@ -17,14 +17,17 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
-export function normalizeOptions(opts: OpenNextConfig, root: string) {
-  const appPath = path.join(process.cwd(), opts.appPath || ".");
-  const buildOutputPath = path.join(process.cwd(), opts.buildOutputPath || ".");
+export function normalizeOptions(config: OpenNextConfig, root: string) {
+  const appPath = path.join(process.cwd(), config.appPath || ".");
+  const buildOutputPath = path.join(
+    process.cwd(),
+    config.buildOutputPath || ".",
+  );
   const outputDir = path.join(buildOutputPath, ".open-next");
 
   let nextPackageJsonPath: string;
-  if (opts.packageJsonPath) {
-    const _pkgPath = path.join(process.cwd(), opts.packageJsonPath);
+  if (config.packageJsonPath) {
+    const _pkgPath = path.join(process.cwd(), config.packageJsonPath);
     nextPackageJsonPath = _pkgPath.endsWith("package.json")
       ? _pkgPath
       : path.join(_pkgPath, "./package.json");
@@ -41,9 +44,6 @@ export function normalizeOptions(opts: OpenNextConfig, root: string) {
     outputDir,
     tempDir: path.join(outputDir, ".build"),
     debug: Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
-    buildCommand: opts.buildCommand,
-    dangerous: opts.dangerous,
-    externalMiddleware: opts.middleware?.external ?? false,
     monorepoRoot: root,
   };
 }
