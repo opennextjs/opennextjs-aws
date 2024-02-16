@@ -12,7 +12,7 @@ import {
 import path from "path";
 import { NextConfig, PrerenderManifest } from "types/next-types";
 
-import logger from "../logger";
+import logger from "../logger.js";
 
 export async function copyTracedFiles(
   buildOutputPath: string,
@@ -86,7 +86,7 @@ export async function copyTracedFiles(
 
     filesToCopy.set(
       path.join(standaloneNextDir, fullFilePath),
-      path.join(outputDir, ".next", fullFilePath),
+      path.join(outputNextDir, fullFilePath),
     );
   };
 
