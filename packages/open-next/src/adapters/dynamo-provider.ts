@@ -42,11 +42,12 @@ async function defaultHandler(
   event: InitializationFunctionEvent,
 ): Promise<InitializationFunctionEvent> {
   switch (event.requestType) {
-    case "create":
-    case "update":
-      return insert(event.requestType);
     case "delete":
       return remove();
+    case "create":
+    case "update":
+    default:
+      return insert(event.requestType);
   }
 }
 
