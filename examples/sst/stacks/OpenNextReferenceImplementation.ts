@@ -31,7 +31,6 @@ import {
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { BlockPublicAccess, Bucket } from "aws-cdk-lib/aws-s3";
 import { BucketDeployment, Source } from "aws-cdk-lib/aws-s3-deployment";
 import { Queue } from "aws-cdk-lib/aws-sqs";
@@ -42,7 +41,11 @@ import {
   RemovalPolicy,
   Stack,
 } from "aws-cdk-lib/core";
-import { Provider } from "aws-cdk-lib/custom-resources";
+import {
+  AwsCustomResource,
+  AwsCustomResourcePolicy,
+  PhysicalResourceId,
+} from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { readFileSync } from "fs";
 import path from "path";
@@ -199,16 +202,22 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         ],
       });
 
-      const provider = new Provider(this, "RevalidationProvider", {
-        onEventHandler: insertFn,
-        logRetention: RetentionDays.ONE_DAY,
-      });
-
-      new CustomResource(this, "RevalidationResource", {
-        serviceToken: provider.serviceToken,
-        properties: {
-          version: Date.now().toString(),
+      new AwsCustomResource(this, "RevalidationInitResource", {
+        onUpdate: {
+          service: "Lambda",
+          action: "invoke",
+          parameters: {
+            FunctionName: insertFn.functionArn,
+          },
+          physicalResourceId: PhysicalResourceId.of("dynamodb-cache"),
         },
+
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new PolicyStatement({
+            actions: ["lambda:InvokeFunction"],
+            resources: [insertFn.functionArn],
+          }),
+        ]),
       });
     }
 

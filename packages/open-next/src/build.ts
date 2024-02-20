@@ -613,7 +613,7 @@ async function createCacheAssets(monorepoRoot: string) {
           plugins: [
             openNextResolvePlugin({
               overrides: {
-                converter: "custom-resource",
+                converter: "dummy",
               },
             }),
           ],
