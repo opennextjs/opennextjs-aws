@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
-import { buildSync } from "esbuild";
 import { MiddlewareManifest } from "types/next-types.js";
 
 import { isBinaryContentType } from "./adapters/binary.js";
@@ -35,13 +34,8 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build(openNextConfigPath?: string) {
+export async function build(config: OpenNextConfig) {
   showWindowsWarning();
-
-  // Load open-next.config.ts
-  const tempDir = initTempDir();
-  const configPath = compileOpenNextConfig(tempDir, openNextConfigPath);
-  config = (await import(configPath)).default as OpenNextConfig;
   validateConfig(config);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
@@ -94,46 +88,6 @@ function showWindowsWarning() {
   );
 }
 
-function initTempDir() {
-  const dir = path.join(process.cwd(), ".open-next");
-  const tempDir = path.join(dir, ".build");
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(tempDir, { recursive: true });
-  return tempDir;
-}
-
-function compileOpenNextConfig(tempDir: string, openNextConfigPath?: string) {
-  const sourcePath = path.join(
-    process.cwd(),
-    openNextConfigPath ?? "open-next.config.ts",
-  );
-  const outputPath = path.join(tempDir, "open-next.config.mjs");
-
-  //Check if open-next.config.ts exists
-  if (!fs.existsSync(sourcePath)) {
-    //Create a simple open-next.config.mjs file
-    logger.debug("Cannot find open-next.config.ts. Using default config.");
-    fs.writeFileSync(
-      outputPath,
-      [
-        "var config = { default: { } };",
-        "var open_next_config_default = config;",
-        "export { open_next_config_default as default };",
-      ].join("\n"),
-    );
-  } else {
-    buildSync({
-      entryPoints: [sourcePath],
-      outfile: outputPath,
-      bundle: true,
-      format: "esm",
-      target: ["node18"],
-    });
-  }
-
-  return outputPath;
-}
-
 function checkRunningInsideNextjsApp() {
   const { appPath } = options;
   const extension = ["js", "cjs", "mjs"].find((ext) =>
@@ -182,7 +136,7 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
   const { nextPackageJsonPath } = options;
   const command =
-    config.buildCommand ??
+    config?.buildCommand ??
     (["bun", "npm"].includes(packager)
       ? `${packager} run build`
       : `${packager} build`);
