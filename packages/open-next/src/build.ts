@@ -697,6 +697,19 @@ async function createServerBundle(monorepoRoot: string, streaming = false) {
     ];
   }
 
+  if (compareSemver(options.nextVersion, "14.1.1") >= 0) {
+    const imageOptimizationPlugin = openNextPlugin({
+      name: "opennext-14.1.1-image-optimization",
+      target: /plugins\/image-optimization\.js/g,
+      replacements: ["./image-optimization.replacement.js"],
+    });
+    if (plugins) {
+      plugins.push(imageOptimizationPlugin);
+    } else {
+      plugins = [imageOptimizationPlugin];
+    }
+  }
+
   if (streaming) {
     const streamingPlugin = openNextPlugin({
       name: "opennext-streaming",
