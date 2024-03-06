@@ -4,8 +4,8 @@ export default function ImageOptimization() {
   return (
     <div>
       <Image
-        src="/static/corporate_holiday_card.jpg"
-        alt="Corporate Holiday Card"
+        src="https://open-next.js.org/architecture.png"
+        alt="Open Next architecture"
         width={300}
         height={300}
       />
