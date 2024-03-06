@@ -14,7 +14,6 @@ import type {
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
-  imageOptimizer,
   ImageOptimizerCache,
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
@@ -23,6 +22,7 @@ import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
 import { loadConfig } from "./config/util.js";
 import { awsLogger, debug, error } from "./logger.js";
+import { optimizeImage } from "./plugins/image-optimization.js";
 import { setNodeEnv } from "./util.js";
 
 // Expected environment variables
@@ -64,7 +64,12 @@ export async function handler(
       headers,
       queryString === null ? undefined : queryString,
     );
-    const result = await optimizeImage(headers, imageParams);
+    const result = await optimizeImage(
+      headers,
+      imageParams,
+      nextConfig,
+      downloadHandler,
+    );
 
     return buildSuccessResponse(result);
   } catch (e: any) {
@@ -108,23 +113,6 @@ function validateImageParams(
     throw new Error(imageParams.errorMessage);
   }
   return imageParams;
-}
-
-async function optimizeImage(
-  headers: APIGatewayProxyEventHeaders,
-  imageParams: any,
-) {
-  const result = await imageOptimizer(
-    // @ts-ignore
-    { headers },
-    {}, // res object is not necessary as it's not actually used.
-    imageParams,
-    nextConfig,
-    false, // not in dev mode
-    downloadHandler,
-  );
-  debug("optimized result", result);
-  return result;
 }
 
 function buildSuccessResponse(result: any) {

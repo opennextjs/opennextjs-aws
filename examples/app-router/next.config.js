@@ -8,6 +8,14 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "open-next.js.org",
+      },
+    ],
+  },
   redirects: () => {
     return [
       {

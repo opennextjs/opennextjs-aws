@@ -112,7 +112,7 @@ export async function build(opts: BuildOptions = {}) {
   }
   await createServerBundle(monorepoRoot, options.streaming);
   createRevalidationBundle();
-  createImageOptimizationBundle();
+  await createImageOptimizationBundle();
   createWarmerBundle();
   if (options.minify) {
     await minifyServerBundle();
@@ -315,7 +315,7 @@ function createRevalidationBundle() {
   );
 }
 
-function createImageOptimizationBundle() {
+async function createImageOptimizationBundle() {
   logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -324,16 +324,36 @@ function createImageOptimizationBundle() {
   const outputPath = path.join(outputDir, "image-optimization-function");
   fs.mkdirSync(outputPath, { recursive: true });
 
+  const plugins =
+    compareSemver(options.nextVersion, "14.1.1") >= 0
+      ? [
+          openNextPlugin({
+            name: "opennext-14.1.1-image-optimization",
+            target: /plugins\/image-optimization\.js/g,
+            replacements: ["./image-optimization.replacement.js"],
+          }),
+        ]
+      : undefined;
+
+  if (plugins && plugins.length > 0) {
+    logger.debug(
+      `Applying plugins:: [${plugins
+        .map(({ name }) => name)
+        .join(",")}] for Next version: ${options.nextVersion}`,
+    );
+  }
+
   // Build Lambda code (1st pass)
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync({
+  await esbuildAsync({
     entryPoints: [
       path.join(__dirname, "adapters", "image-optimization-adapter.js"),
     ],
     external: ["sharp", "next"],
     outfile: path.join(outputPath, "index.mjs"),
+    plugins,
   });
 
   // Build Lambda code (2nd pass)
@@ -367,7 +387,7 @@ function createImageOptimizationBundle() {
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
   const nodeOutputPath = path.resolve(outputPath);
-  const sharpVersion = process.env.SHARP_VERSION ?? "0.33.2";
+  const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
 
   //check if we are running in Windows environment then set env variables accordingly.
   try {
