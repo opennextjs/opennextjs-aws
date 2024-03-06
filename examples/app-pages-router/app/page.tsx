@@ -33,6 +33,9 @@ export default function Home() {
         <Nav href={"/parallel"} title="Parallel">
           Parallel routing
         </Nav>
+        <Nav href={"/image-optimization"} title="Image Optimization">
+          Image Optimization with next/image
+        </Nav>
       </main>
       <h1>Pages Router</h1>
       <main className="grid grid-cols-2 gap-4 p-10 [&>a]:border">
