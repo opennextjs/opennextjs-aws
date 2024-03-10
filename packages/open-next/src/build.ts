@@ -1,5 +1,6 @@
 import cp from "node:child_process";
 import fs, { readFileSync } from "node:fs";
+import { createRequire as topLevelCreateRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import url from "node:url";
@@ -13,6 +14,7 @@ import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import {
   BuildOptions,
+  compareSemver,
   copyOpenNextConfig,
   esbuildAsync,
   esbuildSync,
@@ -24,9 +26,11 @@ import {
 } from "./build/helper.js";
 import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
+import { openNextReplacementPlugin } from "./plugins/replacement.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
 import { OpenNextConfig } from "./types/open-next.js";
 
+const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 let options: BuildOptions;
 let config: OpenNextConfig;
@@ -74,9 +78,10 @@ export async function build(openNextConfigPath?: string) {
 
   createStaticAssets();
   await createCacheAssets(monorepoRoot);
+
   await createServerBundle(config, options);
   await createRevalidationBundle();
-  createImageOptimizationBundle();
+  await createImageOptimizationBundle();
   await createWarmerBundle();
   await generateOutput(options.appBuildOutputPath, config);
   logger.info("OpenNext build complete.");
@@ -314,7 +319,7 @@ async function createRevalidationBundle() {
   );
 }
 
-function createImageOptimizationBundle() {
+async function createImageOptimizationBundle() {
   logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -326,17 +331,33 @@ function createImageOptimizationBundle() {
   // Copy open-next.config.mjs into the bundle
   copyOpenNextConfig(options.tempDir, outputPath);
 
+  const plugins =
+    compareSemver(options.nextVersion, "14.1.1") >= 0
+      ? [
+          openNextReplacementPlugin({
+            name: "opennext-14.1.1-image-optimization",
+            target: /plugins\/image-optimization\/image-optimization\.js/g,
+            replacements: [
+              require.resolve(
+                "./adapters/plugins/image-optimization/image-optimization.replacement.js",
+              ),
+            ],
+          }),
+        ]
+      : undefined;
+
   // Build Lambda code (1st pass)
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
-  esbuildSync(
+  await esbuildAsync(
     {
       entryPoints: [
         path.join(__dirname, "adapters", "image-optimization-adapter.js"),
       ],
       external: ["sharp", "next"],
       outfile: path.join(outputPath, "index.mjs"),
+      plugins,
     },
     options,
   );
@@ -375,7 +396,7 @@ function createImageOptimizationBundle() {
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
   const nodeOutputPath = path.resolve(outputPath);
-  const sharpVersion = process.env.SHARP_VERSION ?? "0.32.5";
+  const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
 
   //check if we are running in Windows environment then set env variables accordingly.
   try {

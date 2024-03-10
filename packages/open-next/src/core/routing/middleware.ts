@@ -122,21 +122,19 @@ export async function handleMiddleware(
   // If the middleware returned a Redirect, we set the `Location` header with
   // the redirected url and end the response.
   if (statusCode >= 300 && statusCode < 400) {
-    const location = result.headers
-      .get("location")
-      ?.replace(
-        "http://localhost:3000",
-        `https://${internalEvent.headers.host}`,
-      );
+    resHeaders.location =
+      responseHeaders
+        .get("location")
+        ?.replace(
+          "http://localhost:3000",
+          `https://${internalEvent.headers.host}`,
+        ) ?? resHeaders.location;
     // res.setHeader("Location", location);
     return {
       body: "",
       type: internalEvent.type,
       statusCode: statusCode,
-      headers: {
-        ...resHeaders,
-        Location: location ?? "",
-      },
+      headers: resHeaders,
       isBase64Encoded: false,
     };
   }

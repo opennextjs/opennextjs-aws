@@ -8,12 +8,10 @@ import path from "node:path";
 import { Writable } from "node:stream";
 
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import type { APIGatewayProxyEventHeaders } from "aws-lambda";
 import { loadConfig } from "config/util.js";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
-  imageOptimizer,
   ImageOptimizerCache,
   // @ts-ignore
 } from "next/dist/server/image-optimizer";
@@ -23,6 +21,7 @@ import { ImageLoader, InternalEvent, InternalResult } from "types/open-next.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { awsLogger, debug, error } from "./logger.js";
+import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
 
 // Expected environment variables
@@ -69,7 +68,12 @@ export async function defaultHandler(
       headers,
       queryString === null ? undefined : queryString,
     );
-    const result = await optimizeImage(headers, imageParams);
+    const result = await optimizeImage(
+      headers,
+      imageParams,
+      nextConfig,
+      downloadHandler,
+    );
 
     return buildSuccessResponse(result);
   } catch (e: any) {
@@ -113,23 +117,6 @@ function validateImageParams(
     throw new Error(imageParams.errorMessage);
   }
   return imageParams;
-}
-
-async function optimizeImage(
-  headers: APIGatewayProxyEventHeaders,
-  imageParams: any,
-) {
-  const result = await imageOptimizer(
-    // @ts-ignore
-    { headers },
-    {}, // res object is not necessary as it's not actually used.
-    imageParams,
-    nextConfig,
-    false, // not in dev mode
-    downloadHandler,
-  );
-  debug("optimized result", result);
-  return result;
 }
 
 function buildSuccessResponse(result: any): InternalResult {

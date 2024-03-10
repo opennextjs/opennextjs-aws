@@ -1,5 +1,18 @@
 # open-next
 
+## 2.3.7
+
+### Patch Changes
+
+- 3235392: fix: prevent duplication of location header
+- af2d3ce: Fix Image Optimization Support for Next@14.1.1
+
+## 2.3.6
+
+### Patch Changes
+
+- f9b90b6: Security fix: sharp@0.33.2
+
 ## 2.3.5
 
 ### Patch Changes
