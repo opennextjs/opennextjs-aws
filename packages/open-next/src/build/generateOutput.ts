@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import path from "node:path";
 
+import { NextConfig } from "types/next-types.js";
 import {
   BaseOverride,
   DefaultOverrideOptions,
@@ -151,7 +152,17 @@ async function extractCommonOverride(override?: OverrideOptions) {
   return { queue, incrementalCache, tagCache };
 }
 
+function prefixPattern(basePath: string) {
+  // Prefix CloudFront distribution behavior path patterns with `basePath` if configured
+  return (pattern: string) => {
+    return basePath && basePath.length > 0
+      ? `${basePath.slice(1)}/${pattern}`
+      : pattern;
+  };
+}
+
 export async function generateOutput(
+  appPath: string,
   outputPath: string,
   config: OpenNextConfig,
 ) {
@@ -181,6 +192,15 @@ export async function generateOutput(
 
   const defaultOriginCanstream = await canStream(config.default);
 
+  //Load required-server-files.json
+  const requiredServerFiles = JSON.parse(
+    fs.readFileSync(
+      path.join(appPath, ".next", "required-server-files.json"),
+      "utf-8",
+    ),
+  ).config as NextConfig;
+  const prefixer = prefixPattern(requiredServerFiles.basePath ?? "");
+
   // First add s3 origins and image optimization
 
   const defaultOrigins: DefaultOrigins = {
@@ -190,9 +210,11 @@ export async function generateOutput(
       copy: [
         {
           from: ".open-next/assets",
-          to: "_assets",
+          to: requiredServerFiles.basePath
+            ? `_assets${requiredServerFiles.basePath}`
+            : "_assets",
           cached: true,
-          versionedSubDir: "_next",
+          versionedSubDir: prefixer("_next"),
         },
         ...(config.dangerous?.disableIncrementalCache
           ? []
@@ -266,7 +288,7 @@ export async function generateOutput(
 
   // Then we need to compute the behaviors
   const behaviors: OpenNextOutput["behaviors"] = [
-    { pattern: "_next/image*", origin: "imageOptimizer" },
+    { pattern: prefixer("_next/image*"), origin: "imageOptimizer" },
   ];
 
   // Then we add the routes
@@ -274,7 +296,7 @@ export async function generateOutput(
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
-        pattern: pattern.replace(/BUILD_ID/, getBuildId(outputPath)),
+        pattern: prefixer(pattern.replace(/BUILD_ID/, getBuildId(outputPath))),
         origin: value.placement === "global" ? undefined : key,
         edgeFunction:
           value.placement === "global"
@@ -288,12 +310,12 @@ export async function generateOutput(
 
   // We finish with the default behavior so that they don't override the others
   behaviors.push({
-    pattern: "_next/data/*",
+    pattern: prefixer("_next/data/*"),
     origin: "default",
     edgeFunction: isExternalMiddleware ? "middleware" : undefined,
   });
   behaviors.push({
-    pattern: "*",
+    pattern: "*", // This is the default behavior
     origin: "default",
     edgeFunction: isExternalMiddleware ? "middleware" : undefined,
   });
@@ -303,12 +325,12 @@ export async function generateOutput(
   fs.readdirSync(assetPath).forEach((item) => {
     if (fs.statSync(path.join(assetPath, item)).isDirectory()) {
       behaviors.push({
-        pattern: `${item}/*`,
+        pattern: prefixer(`${item}/*`),
         origin: "s3",
       });
     } else {
       behaviors.push({
-        pattern: item,
+        pattern: prefixer(item),
         origin: "s3",
       });
     }

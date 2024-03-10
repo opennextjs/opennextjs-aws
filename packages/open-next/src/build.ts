@@ -83,7 +83,7 @@ export async function build(openNextConfigPath?: string) {
   await createRevalidationBundle();
   await createImageOptimizationBundle();
   await createWarmerBundle();
-  await generateOutput(options.appBuildOutputPath, config);
+  await generateOutput(options.appPath, options.appBuildOutputPath, config);
   logger.info("OpenNext build complete.");
 }
 
