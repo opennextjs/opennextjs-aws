@@ -132,14 +132,9 @@ async function generateBundle(
   const isMonorepo = monorepoRoot !== appPath;
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
 
-  // Copy cache file
-  // It needs to be inside ".next"
-  fs.mkdirSync(path.join(outputPath, packagePath, ".next"), {
-    recursive: true,
-  });
   fs.copyFileSync(
     path.join(outputDir, ".build", "cache.cjs"),
-    path.join(outputPath, packagePath, ".next", "cache.cjs"),
+    path.join(outputPath, packagePath, "cache.cjs"),
   );
 
   // Bundle next server if necessary

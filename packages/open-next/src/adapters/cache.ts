@@ -95,15 +95,9 @@ declare global {
   var disableIncrementalCache: boolean;
   var lastModified: Record<string, number>;
 }
-
+// We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class S3Cache {
-  private client: IncrementalCache;
-  private tagClient: TagCache;
-
-  constructor(_ctx: CacheHandlerContext) {
-    this.client = globalThis.incrementalCache;
-    this.tagClient = globalThis.tagCache;
-  }
+  constructor(_ctx: CacheHandlerContext) {}
 
   public async get(
     key: string,
@@ -129,9 +123,12 @@ export default class S3Cache {
   async getFetchCache(key: string) {
     debug("get fetch cache", { key });
     try {
-      const { value, lastModified } = await this.client.get(key, true);
+      const { value, lastModified } = await globalThis.incrementalCache.get(
+        key,
+        true,
+      );
       // const { Body, LastModified } = await this.getS3Object(key, "fetch");
-      const _lastModified = await this.tagClient.getLastModified(
+      const _lastModified = await globalThis.tagCache.getLastModified(
         key,
         lastModified,
       );
@@ -154,16 +151,14 @@ export default class S3Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     try {
-      const { value: cacheData, lastModified } = await this.client.get(
-        key,
-        false,
-      );
+      const { value: cacheData, lastModified } =
+        await globalThis.incrementalCache.get(key, false);
       // const { Body, LastModified } = await this.getS3Object(key, "cache");
       // const cacheData = JSON.parse(
       //   (await Body?.transformToString()) ?? "{}",
       // ) as S3CachedFile;
       const meta = cacheData?.meta;
-      const _lastModified = await this.tagClient.getLastModified(
+      const _lastModified = await globalThis.tagCache.getLastModified(
         key,
         lastModified,
       );
@@ -228,7 +223,7 @@ export default class S3Cache {
     }
     if (data?.kind === "ROUTE") {
       const { body, status, headers } = data;
-      await this.client.set(
+      await globalThis.incrementalCache.set(
         key,
         {
           type: "route",
@@ -248,7 +243,7 @@ export default class S3Cache {
       const { html, pageData } = data;
       const isAppPath = typeof pageData === "string";
       if (isAppPath) {
-        this.client.set(
+        globalThis.incrementalCache.set(
           key,
           {
             type: "app",
@@ -258,7 +253,7 @@ export default class S3Cache {
           false,
         );
       } else {
-        this.client.set(
+        globalThis.incrementalCache.set(
           key,
           {
             type: "page",
@@ -269,9 +264,9 @@ export default class S3Cache {
         );
       }
     } else if (data?.kind === "FETCH") {
-      await this.client.set<true>(key, data, true);
+      await globalThis.incrementalCache.set<true>(key, data, true);
     } else if (data?.kind === "REDIRECT") {
-      await this.client.set(
+      await globalThis.incrementalCache.set(
         key,
         {
           type: "redirect",
@@ -280,7 +275,7 @@ export default class S3Cache {
         false,
       );
     } else if (data === null || data === undefined) {
-      await this.client.delete(key);
+      await globalThis.incrementalCache.delete(key);
     }
     // Write derivedTags to dynamodb
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
@@ -293,10 +288,10 @@ export default class S3Cache {
     debug("derivedTags", derivedTags);
     // Get all tags stored in dynamodb for the given key
     // If any of the derived tags are not stored in dynamodb for the given key, write them
-    const storedTags = await this.tagClient.getByPath(key);
+    const storedTags = await globalThis.tagCache.getByPath(key);
     const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
     if (tagsToWrite.length > 0) {
-      await this.tagClient.writeTags(
+      await globalThis.tagCache.writeTags(
         tagsToWrite.map((tag) => ({
           path: key,
           tag: tag,
@@ -311,10 +306,10 @@ export default class S3Cache {
     }
     debug("revalidateTag", tag);
     // Find all keys with the given tag
-    const paths = await this.tagClient.getByTag(tag);
+    const paths = await globalThis.tagCache.getByTag(tag);
     debug("Items", paths);
     // Update all keys with the given tag with revalidatedAt set to now
-    await this.tagClient.writeTags(
+    await globalThis.tagCache.writeTags(
       paths?.map((path) => ({
         path: path,
         tag: tag,

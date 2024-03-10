@@ -120,7 +120,7 @@ export async function copyTracedFiles(
       from.includes("node_modules") &&
       //TODO: we need to figure which packages we could safely remove
       (from.includes("caniuse-lite") ||
-        from.includes("jest-worker") ||
+        // from.includes("jest-worker") || This ones seems necessary for next 12
         from.includes("sharp"))
     ) {
       return;

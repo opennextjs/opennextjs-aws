@@ -47,6 +47,12 @@ export class OpenNextNodeResponse extends Transform {
     });
   }
 
+  // Necessary for next 12
+  // We might have to implement all the methods here
+  get originalResponse() {
+    return this;
+  }
+
   get finished() {
     return this.writableFinished && this.responseStream?.writableFinished;
   }

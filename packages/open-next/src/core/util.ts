@@ -27,7 +27,7 @@ import {
 overrideNextjsRequireHooks(NextConfig);
 applyNextjsRequireHooksOverride();
 //#endOverride
-
+const cacheHandlerPath = require.resolve("./cache.cjs");
 // @ts-ignore
 export const requestHandler = new NextServer.default({
   //#override requestHandlerHost
@@ -42,7 +42,7 @@ export const requestHandler = new NextServer.default({
     // By default, Next.js uses local disk to store ISR cache. We will use
     // our own cache handler to store the cache on S3.
     //#override stableIncrementalCache
-    cacheHandler: `./cache.cjs`,
+    cacheHandler: cacheHandlerPath,
     cacheMaxMemorySize: 0, // We need to disable memory cache
     //#endOverride
     experimental: {
@@ -53,7 +53,7 @@ export const requestHandler = new NextServer.default({
       trustHostHeader: true,
       //#endOverride
       //#override experimentalIncrementalCacheHandler
-      incrementalCacheHandlerPath: `./cache.cjs`,
+      incrementalCacheHandlerPath: cacheHandlerPath,
       //#endOverride
     },
   },
