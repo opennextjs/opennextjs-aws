@@ -127,7 +127,6 @@ ${contents}
       });
 
       build.onLoad({ filter: /adapters\/config\/index/g }, async () => {
-        console.log("opennext-config-plugin");
         const NextConfig = loadConfig(nextDir);
         const BuildId = loadBuildId(nextDir);
         const HtmlPages = loadHtmlPages(nextDir);

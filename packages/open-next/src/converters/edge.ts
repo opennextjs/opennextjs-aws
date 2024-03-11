@@ -48,15 +48,24 @@ const converter: Converter<
   },
   convertTo: async (result) => {
     if ("internalEvent" in result) {
-      const url = result.isExternalRewrite
-        ? result.internalEvent.url
-        : `https://${result.origin ?? result.internalEvent.headers.host}${
-            result.internalEvent.url
-          }`;
+      let url = result.internalEvent.url;
+      if (!result.isExternalRewrite) {
+        if (result.origin) {
+          url = `${result.origin.protocol}://${result.origin.host}${
+            result.origin.port ? `:${result.origin.port}` : ""
+          }${url}`;
+        } else {
+          url = `https://${result.internalEvent.headers.host}${url}`;
+        }
+      }
+
       const req = new Request(url, {
         body: result.internalEvent.body,
         method: result.internalEvent.method,
-        headers: result.internalEvent.headers,
+        headers: {
+          ...result.internalEvent.headers,
+          "x-forwarded-host": result.internalEvent.headers.host,
+        },
       });
 
       return fetch(req);
