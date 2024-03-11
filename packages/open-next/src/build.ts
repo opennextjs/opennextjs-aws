@@ -81,7 +81,7 @@ export async function build(openNextConfigPath?: string) {
 
   await createServerBundle(config, options);
   await createRevalidationBundle();
-  await createImageOptimizationBundle();
+  await createImageOptimizationBundle(config);
   await createWarmerBundle();
   await generateOutput(options.appPath, options.appBuildOutputPath, config);
   logger.info("OpenNext build complete.");
@@ -319,7 +319,7 @@ async function createRevalidationBundle() {
   );
 }
 
-async function createImageOptimizationBundle() {
+async function createImageOptimizationBundle(config: OpenNextConfig) {
   logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -398,10 +398,14 @@ async function createImageOptimizationBundle() {
   const nodeOutputPath = path.resolve(outputPath);
   const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
 
+  const arch = config.imageOptimization?.arch ?? "arm64";
+  const nodeVersion = config.imageOptimization?.nodeVersion ?? "18";
+
   //check if we are running in Windows environment then set env variables accordingly.
   try {
     cp.execSync(
-      `npm install --arch=arm64 --platform=linux --target=18 --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
+      // We might want to change the arch args to cpu args, it seems to be the documented way
+      `npm install --arch=${arch} --platform=linux --target=${nodeVersion} --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
       {
         stdio: "pipe",
         cwd: appPath,

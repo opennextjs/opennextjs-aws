@@ -273,6 +273,8 @@ export interface OpenNextConfig {
    */
   imageOptimization?: DefaultFunctionOptions & {
     loader?: "s3" | LazyLoadedOverride<ImageLoader>;
+    arch: "x64" | "arm64";
+    nodeVersion: "18" | "20";
   };
 
   /**
