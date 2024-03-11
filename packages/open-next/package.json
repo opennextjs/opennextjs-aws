@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "open-next",
-  "version": "3.0.0-rc.6",
+  "version": "3.0.0-rc.7",
   "bin": {
     "open-next": "./dist/index.js"
   },
