@@ -55,10 +55,10 @@ Due to these costs, if multiple paths require invalidation, it is more economica
 
 ```ts
 // This costs $0.005 x 3 = $0.015 after the first 1000 paths
-await invalidateCFPaths(["/page/a", "/page/b", "/page/c"]);
+await invalidateCloudFrontPaths(["/page/a", "/page/b", "/page/c"]);
 
 // This costs $0.005, but also invalidates other routes such as "page/d"
-await invalidateCFPaths(["/page/*"]);
+await invalidateCloudFrontPaths(["/page/*"]);
 ```
 
 For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
