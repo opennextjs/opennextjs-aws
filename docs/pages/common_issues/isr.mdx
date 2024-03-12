@@ -6,7 +6,7 @@ import {Callout} from 'nextra/components'
 
 #### On-demand revalidation
 
-When you manualy revalidates the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:
+When you manually revalidate the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:
 
 ```ts
 // pages/api/revalidate.js
@@ -30,7 +30,7 @@ import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-clo
 
 const cloudFront = new CloudFrontClient({});
 
-async function invalidateCFPaths(paths: string[]) {
+async function invalidateCloudFrontPaths(paths: string[]) {
   await cloudFront.send(
     new CreateInvalidationCommand({
       // Set CloudFront distribution ID here
