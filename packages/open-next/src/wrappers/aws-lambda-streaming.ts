@@ -119,6 +119,7 @@ const handler: WrapperHandler = async (handler, converter) =>
             compressedStream?.end(new Uint8Array(8));
           }
         },
+        waitForFirstWrite: true,
       };
 
       const response = await handler(internalEvent, streamCreator);
