@@ -122,7 +122,6 @@ async function generateBundle(
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-functions", name);
-  fs.mkdirSync(outputPath, { recursive: true });
 
   // Resolve path to the Next.js app if inside the monorepo
   // note: if user's app is inside a monorepo, standalone mode places
@@ -131,6 +130,7 @@ async function generateBundle(
   //       We need to output the handler file inside the package path.
   const isMonorepo = monorepoRoot !== appPath;
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
 
   fs.copyFileSync(
     path.join(outputDir, ".build", "cache.cjs"),
