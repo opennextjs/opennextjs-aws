@@ -119,6 +119,7 @@ async function generateBundle(
   fnOptions: SplittedFunctionOptions,
 ) {
   const { appPath, appBuildOutputPath, outputDir, monorepoRoot } = options;
+  logger.info(`Building server function: ${name}...`);
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-functions", name);

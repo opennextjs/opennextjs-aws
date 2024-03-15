@@ -133,6 +133,8 @@ function compileOpenNextConfig(tempDir: string, openNextConfigPath?: string) {
       bundle: true,
       format: "esm",
       target: ["node18"],
+      external: ["node:*"],
+      platform: "neutral",
     });
   }
 

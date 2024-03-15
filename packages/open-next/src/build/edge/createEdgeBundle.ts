@@ -10,6 +10,7 @@ import {
   SplittedFunctionOptions,
 } from "types/open-next";
 
+import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
@@ -105,6 +106,7 @@ export async function generateEdgeBundle(
   fnOptions: SplittedFunctionOptions,
 ) {
   const { appBuildOutputPath, outputDir } = options;
+  logger.info(`Generating edge bundle for: ${name}`);
 
   // Create output folder
   const outputPath = path.join(outputDir, "server-functions", name);
