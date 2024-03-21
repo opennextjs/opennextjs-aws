@@ -1,0 +1,16 @@
+The revalidation backend is used to read the queue and revalidate the routes. It is used for ISR only.
+For every received message it will trigger a `HEAD` request with `x-prerender-revalidate` header to the host.
+
+### Special Event and Result types
+```typescript
+interface RevalidateEvent {
+  type: "revalidate";
+  records: {
+    host: string;
+    url: string;
+  }[];
+}
+ interface RevalidateResult {
+  type: "revalidate";
+ }
+```

@@ -1,0 +1,25 @@
+It should be noted that open-next does not actually deploy the app. It only bundles everything for your IAC to deploy it. 
+
+Here is a table comparing the different options to deploy a next.js app:
+
+| Features | OpenNext | Vercel | AWS Amplify | Docker Standalone |
+| --- | --- | --- | --- | --- |
+| **Function splitting** | Yes | Yes | No | No |
+| **Multiple deployment target** ¹ | Yes | Yes ² | No | No |
+| **Serverless** | Yes | Yes | Yes | No ³ |
+| **Warmer function** | Yes | No | No | Not necessary |
+| **External middleware** | Yes ⁴ | Yes | No | No |
+| **Edge runtime support** | Partial Support ⁵ | Yes | Embedded ⁶ | Embedded ⁶ |
+| **ISR** | Yes | Yes | Yes | Yes ⁷ |
+| **On-Demand Revalidation** | Yes ⁸ | Yes | No | Yes ⁸ |
+| **Custom server** | Yes ⁹ | No | No | Yes |
+
+1. Multiple deployment target means that you can deploy the same app to different target like some part to ECS, some part to Lambda etc...
+2. Vercel supports only serverless Node (backed by AWS Lambda) and Edge runtime (backed by cloudflare workers)
+2. You can deploy a dockerized next.js app to AWS lambda using AWS Lambda Web adapter, but some part like ISR will not work as expected
+3. OpenNext supports external middleware, but it is not enabled by default.
+4. OpenNext supports edge runtime in node, but every route needs to be deployed separately. OpenNext supports edge runtime in cloudflare workers, but only for app router api routes.
+5. Embedded means that the edge runtime is embedded inside the bundle. It emulates a fake edge runtime inside the prod environment.
+6. You might experience some inconsistencies with ISR if you have a CDN in front of your app. Next always set the cache-control header to `s-maxage=REVALIDATION_TIME, stale-while-revalidate`, it means that your data (json or rsc) and your html might be out of sync.
+7. You need to invalidate the CDN manually. For OpenNext, here is an example for cloudfront
+8. OpenNext supports custom server, but it is not enabled by default. You can have a custom server even in a serverless environment.

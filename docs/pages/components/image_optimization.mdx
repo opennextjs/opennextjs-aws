@@ -1,0 +1,23 @@
+The image optimization backend is used to transform images to the desired format and quality. 
+It should be accessible at `/_next/image?url=URL_OF_THE_IMAGE&q=QUALITY&w=WIDTH` and should be used as a proxy to the image source.
+
+### Environment Variables
+  - BUCKET_NAME: The name of the bucket where the images are stored
+  - BUCKET_KEY_PREFIX: The prefix of the key where the images are stored
+
+### Special Overrides
+
+#### Loader
+It is used to load **internal** images. By default, it uses S3 API to load the images from the bucket.
+
+You can customize the loader by providing a custom loader function to the `loader` prop.
+It should return 
+```typescript
+type ImageLoader = BaseOverride & {
+  load: (url: string) => Promise<{
+    body?: Readable;
+    contentType?: string;
+    cacheControl?: string;
+  }>;
+}
+```

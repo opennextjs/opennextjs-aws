@@ -1,8 +1,10 @@
 {
   "index": "Home",
   "get_started": "Getting started",
-  "common_issues": "Common issues",
+  "config": "Configuration",
+  "architecture": "Architecture",
+  "components": "Components",
+  "comparison": "Comparison",
   "inner_workings": "How does it work?",
-  "advanced": "Advanced",
   "faq": "FAQ"
 }
