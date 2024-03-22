@@ -218,6 +218,17 @@ function convertToCloudFrontRequestResult(
   Object.entries(result.headers)
     .filter(([key]) => key.toLowerCase() !== "content-length")
     .forEach(([key, value]) => {
+      if (key === "set-cookie") {
+        const cookies = parseCookies(value);
+        if (cookies) {
+          headers[key] = cookies.map((cookie) => ({
+            key,
+            value: cookie,
+          }));
+        }
+        return;
+      }
+
       headers[key] = [
         ...(headers[key] || []),
         ...(Array.isArray(value)
