@@ -1,5 +1,11 @@
 # open-next
 
+## 2.3.8
+
+### Patch Changes
+
+- 8cfb801: fix(open-next): parse cookies when converting response to cloudfront
+
 ## 2.3.7
 
 ### Patch Changes
