@@ -6,6 +6,7 @@ import {
   CloudFrontRequestResult,
 } from "aws-lambda";
 import { OutgoingHttpHeader } from "http";
+import { parseCookies } from "http/util";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../adapters/logger";
@@ -70,6 +71,16 @@ function convertToCloudfrontHeaders(
   Object.entries(headers)
     .filter(([key]) => key.toLowerCase() !== "content-length")
     .forEach(([key, value]) => {
+      if (key === "set-cookie") {
+        const cookies = parseCookies(`${value}`);
+        if (cookies) {
+          cloudfrontHeaders[key] = cookies.map((cookie) => ({
+            key,
+            value: cookie,
+          }));
+        }
+        return;
+      }
       cloudfrontHeaders[key] = [
         ...(cloudfrontHeaders[key] || []),
         ...(Array.isArray(value)
