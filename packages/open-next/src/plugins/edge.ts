@@ -101,7 +101,9 @@ globalThis._ROUTES = ${JSON.stringify(routes)};
 import {Buffer} from "node:buffer";
 globalThis.Buffer = Buffer;
 import crypto from "node:crypto";
-globalThis.crypto = crypto;
+if(!globalThis.crypto){
+  globalThis.crypto = crypto;
+}
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
