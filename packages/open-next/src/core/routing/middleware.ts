@@ -68,7 +68,7 @@ export async function handleMiddleware(
   const initialUrl = new URL(normalizedPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
-  console.log("url", url, normalizedPath);
+  // console.log("url", url, normalizedPath);
 
   // @ts-expect-error - This is bundled
   const middleware = await import("./middleware.mjs");

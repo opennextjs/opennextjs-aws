@@ -49,9 +49,9 @@ const defaultHandler = async (
       responseHeaders[key] = value;
     }
   });
-  console.log("responseHeaders", responseHeaders);
+  // console.log("responseHeaders", responseHeaders);
   const body = buffer.toString();
-  console.log("body", body);
+  // console.log("body", body);
 
   return {
     type: "core",

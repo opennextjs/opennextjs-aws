@@ -9,6 +9,7 @@ import { Writable } from "node:stream";
 
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { loadConfig } from "config/util.js";
+import { OpenNextNodeResponse, StreamCreator } from "http/openNextResponse.js";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
@@ -26,8 +27,6 @@ import { setNodeEnv } from "./util.js";
 
 // Expected environment variables
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
-
-const s3Client = new S3Client({ logger: awsLogger });
 
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
@@ -56,6 +55,7 @@ export const handler = await createGenericHandler({
 
 export async function defaultHandler(
   event: InternalEvent,
+  streamCreator?: StreamCreator,
 ): Promise<InternalResult> {
   // Images are handled via header and query param information.
   debug("handler event", event);
@@ -63,7 +63,7 @@ export async function defaultHandler(
 
   try {
     // const headers = normalizeHeaderKeysToLowercase(rawHeaders);
-    ensureBucketExists();
+
     const imageParams = validateImageParams(
       headers,
       queryString === null ? undefined : queryString,
@@ -75,9 +75,9 @@ export async function defaultHandler(
       downloadHandler,
     );
 
-    return buildSuccessResponse(result);
+    return buildSuccessResponse(result, streamCreator);
   } catch (e: any) {
-    return buildFailureResponse(e);
+    return buildFailureResponse(e, streamCreator);
   }
 }
 
@@ -119,7 +119,23 @@ function validateImageParams(
   return imageParams;
 }
 
-function buildSuccessResponse(result: any): InternalResult {
+function buildSuccessResponse(
+  result: any,
+  streamCreator?: StreamCreator,
+): InternalResult {
+  if (streamCreator) {
+    const response = new OpenNextNodeResponse(
+      () => void 0,
+      async () => void 0,
+      streamCreator,
+    );
+    response.writeHead(200, {
+      Vary: "Accept",
+      "Cache-Control": `public,max-age=${result.maxAge},immutable`,
+      "Content-Type": result.contentType,
+    });
+    response.end(result.buffer);
+  }
   return {
     type: "core",
     statusCode: 200,
@@ -133,8 +149,24 @@ function buildSuccessResponse(result: any): InternalResult {
   };
 }
 
-function buildFailureResponse(e: any): InternalResult {
+function buildFailureResponse(
+  e: any,
+  streamCreator?: StreamCreator,
+): InternalResult {
   debug(e);
+  if (streamCreator) {
+    const response = new OpenNextNodeResponse(
+      () => void 0,
+      async () => void 0,
+      streamCreator,
+    );
+    response.writeHead(500, {
+      Vary: "Accept",
+      "Cache-Control": `public,max-age=60,immutable`,
+      "Content-Type": "application/json",
+    });
+    response.end(e?.message || e?.toString() || e);
+  }
   return {
     type: "core",
     isBase64Encoded: false,
@@ -154,10 +186,12 @@ const resolveLoader = () => {
   if (typeof openNextParams?.loader === "function") {
     return openNextParams.loader();
   } else {
+    const s3Client = new S3Client({ logger: awsLogger });
     return Promise.resolve<ImageLoader>({
       name: "s3",
       // @ts-ignore
       load: async (key: string) => {
+        ensureBucketExists();
         const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
         const response = await s3Client.send(
           new GetObjectCommand({

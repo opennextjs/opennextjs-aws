@@ -80,9 +80,9 @@ export async function build(openNextConfigPath?: string) {
   await createCacheAssets(monorepoRoot);
 
   await createServerBundle(config, options);
-  await createRevalidationBundle();
+  await createRevalidationBundle(config);
   await createImageOptimizationBundle(config);
-  await createWarmerBundle();
+  await createWarmerBundle(config);
   await generateOutput(options.appPath, options.appBuildOutputPath, config);
   logger.info("OpenNext build complete.");
 }
@@ -244,7 +244,7 @@ function initOutputDir() {
   fs.writeFileSync(path.join(tempDir, "open-next.config.mjs"), openNextConfig);
 }
 
-async function createWarmerBundle() {
+async function createWarmerBundle(config: OpenNextConfig) {
   logger.info(`Bundling warmer function...`);
 
   const { outputDir } = options;
@@ -268,8 +268,10 @@ async function createWarmerBundle() {
       plugins: [
         openNextResolvePlugin({
           overrides: {
-            converter: "dummy",
+            converter: config.warmer?.override?.converter ?? "dummy",
+            wrapper: config.warmer?.override?.wrapper,
           },
+          fnName: "warmer",
         }),
       ],
       banner: {
@@ -285,7 +287,7 @@ async function createWarmerBundle() {
   );
 }
 
-async function createRevalidationBundle() {
+async function createRevalidationBundle(config: OpenNextConfig) {
   logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -305,8 +307,11 @@ async function createRevalidationBundle() {
       outfile: path.join(outputPath, "index.mjs"),
       plugins: [
         openNextResolvePlugin({
+          fnName: "revalidate",
           overrides: {
-            converter: "sqs-revalidate",
+            converter:
+              config.revalidate?.override?.converter ?? "sqs-revalidate",
+            wrapper: config.revalidate?.override?.wrapper,
           },
         }),
       ],
@@ -333,20 +338,29 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
   // Copy open-next.config.mjs into the bundle
   copyOpenNextConfig(options.tempDir, outputPath);
 
-  const plugins =
-    compareSemver(options.nextVersion, "14.1.1") >= 0
-      ? [
-          openNextReplacementPlugin({
-            name: "opennext-14.1.1-image-optimization",
-            target: /plugins\/image-optimization\/image-optimization\.js/g,
-            replacements: [
-              require.resolve(
-                "./adapters/plugins/image-optimization/image-optimization.replacement.js",
-              ),
-            ],
-          }),
-        ]
-      : undefined;
+  const plugins = [
+    openNextResolvePlugin({
+      fnName: "imageOptimization",
+      overrides: {
+        converter: config.imageOptimization?.override?.converter,
+        wrapper: config.imageOptimization?.override?.wrapper,
+      },
+    }),
+  ];
+
+  if (compareSemver(options.nextVersion, "14.1.1") >= 0) {
+    plugins.push(
+      openNextReplacementPlugin({
+        name: "opennext-14.1.1-image-optimization",
+        target: /plugins\/image-optimization\/image-optimization\.js/g,
+        replacements: [
+          require.resolve(
+            "./adapters/plugins/image-optimization/image-optimization.replacement.js",
+          ),
+        ],
+      }),
+    );
+  }
 
   // Build Lambda code (1st pass)
   // note: bundle in OpenNext package b/c the adapter relies on the
@@ -639,8 +653,11 @@ async function createCacheAssets(monorepoRoot: string) {
           target: ["node18"],
           plugins: [
             openNextResolvePlugin({
+              fnName: "initializationFunction",
               overrides: {
-                converter: "dummy",
+                converter:
+                  config.initializationFunction?.override?.converter ?? "dummy",
+                wrapper: config.initializationFunction?.override?.wrapper,
               },
             }),
           ],

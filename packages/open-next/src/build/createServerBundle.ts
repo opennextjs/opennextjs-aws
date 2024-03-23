@@ -213,14 +213,8 @@ async function generateBundle(
     openNextResolvePlugin({
       fnName: name,
       overrides: {
-        converter:
-          typeof overrides.converter === "function"
-            ? "dummy"
-            : overrides.converter,
-        wrapper:
-          typeof overrides.wrapper === "function"
-            ? "aws-lambda"
-            : overrides.wrapper,
+        converter: overrides.converter,
+        wrapper: overrides.wrapper,
       },
     }),
   ];

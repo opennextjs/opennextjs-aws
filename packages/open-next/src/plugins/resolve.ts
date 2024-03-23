@@ -2,19 +2,18 @@ import { readFileSync } from "node:fs";
 
 import { Plugin } from "esbuild";
 import type {
-  IncludedConverter,
+  DefaultOverrideOptions,
   IncludedIncrementalCache,
   IncludedQueue,
   IncludedTagCache,
-  IncludedWrapper,
 } from "types/open-next";
 
 import logger from "../logger.js";
 
 export interface IPluginSettings {
-  overrides: {
-    wrapper?: IncludedWrapper;
-    converter?: IncludedConverter;
+  overrides?: {
+    wrapper?: DefaultOverrideOptions<any, any>["wrapper"];
+    converter?: DefaultOverrideOptions<any, any>["converter"];
     // Right now theses do nothing since there is only one implementation
     tag?: IncludedTagCache;
     queue?: IncludedQueue;
@@ -37,17 +36,24 @@ export function openNextResolvePlugin({
       logger.debug(`OpenNext Resolve plugin for ${fnName}`);
       build.onLoad({ filter: /core\/resolve.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
-        if (overrides?.wrapper) {
+        if (overrides?.wrapper && typeof overrides.wrapper === "string") {
           contents = contents.replace(
             "../wrappers/aws-lambda.js",
             `../wrappers/${overrides.wrapper}.js`,
           );
         }
         if (overrides?.converter) {
-          contents = contents.replace(
-            "../converters/aws-apigw-v2.js",
-            `../converters/${overrides.converter}.js`,
-          );
+          if (typeof overrides.converter === "function") {
+            contents = contents.replace(
+              "../converters/aws-apigw-v2.js",
+              `../converters/dummy.js`,
+            );
+          } else {
+            contents = contents.replace(
+              "../converters/aws-apigw-v2.js",
+              `../converters/${overrides.converter}.js`,
+            );
+          }
         }
         return {
           contents,
