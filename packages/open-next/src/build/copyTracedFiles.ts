@@ -70,12 +70,26 @@ export async function copyTracedFiles(
 
   const computeCopyFilesForPage = (pagePath: string) => {
     const fullFilePath = `server/${pagePath}.js`;
-    const requiredFiles = JSON.parse(
-      readFileSync(
-        path.join(standaloneNextDir, `${fullFilePath}.nft.json`),
-        "utf8",
-      ),
-    );
+    let requiredFiles;
+    try {
+      requiredFiles = JSON.parse(
+        readFileSync(
+          path.join(standaloneNextDir, `${fullFilePath}.nft.json`),
+          "utf8",
+        ),
+      );
+    } catch (e) {
+      //TODO: add a link to the docs
+      throw new Error(
+        `
+--------------------------------------------------------------------------------
+${pagePath} cannot use the edge runtime.
+OpenNext requires edge runtime function to be defined in a separate function. 
+See the docs for more information on how to bundle edge runtime functions.
+--------------------------------------------------------------------------------
+        `,
+      );
+    }
     const dir = path.dirname(fullFilePath);
     extractFiles(
       requiredFiles.files,
