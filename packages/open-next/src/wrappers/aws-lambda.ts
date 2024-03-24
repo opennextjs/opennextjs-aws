@@ -49,7 +49,11 @@ const handler: WrapperHandler =
     //This is not necessary if the underlying handler does not use OpenNextNodeResponse (At the moment, OpenNextNodeResponse is used by the node runtime servers and the image server)
     const fakeStream: StreamCreator = {
       writeHeaders: () => {
-        return new Writable();
+        return new Writable({
+          write: (_chunk, _encoding, callback) => {
+            callback();
+          },
+        });
       },
       onFinish: () => {
         // Do nothing
