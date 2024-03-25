@@ -211,12 +211,63 @@ function convertToApiGatewayProxyResultV2(
   return response;
 }
 
+const CloudFrontBlacklistedHeaders = [
+  // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers
+  "connection",
+  "expect",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "trailer",
+  "upgrade",
+  "x-accel-buffering",
+  "x-accel-charset",
+  "x-accel-limit-rate",
+  "x-accel-redirect",
+  /x-amz-cf-(.*)/,
+  "x-amzn-auth",
+  "x-amzn-cf-billing",
+  "x-amzn-cf-id",
+  "x-amzn-cf-xff",
+  "x-amzn-errortype",
+  "x-amzn-fle-profile",
+  "x-amzn-header-count",
+  "x-amzn-header-order",
+  "x-amzn-lambda-integration-tag",
+  "x-amzn-requestid",
+  /x-edge-(.*)/,
+  "x-cache",
+  "x-forwarded-proto",
+  "x-real-ip",
+
+  // Read-only headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-read-only-headers
+  "cccept-Encoding",
+  "content-length",
+  "if-modified-Since",
+  "if-none-match",
+  "if-range",
+  "if-unmodified-since",
+  "transfer-encoding",
+  "via",
+];
+
 function convertToCloudFrontRequestResult(
   result: InternalResult,
 ): CloudFrontRequestResult {
+  console.log("result headers", result.headers);
+
   const headers: CloudFrontHeaders = {};
   Object.entries(result.headers)
-    .filter(([key]) => key.toLowerCase() !== "content-length")
+    .filter(
+      ([key]) =>
+        key.toLowerCase() !== "content-length" &&
+        !CloudFrontBlacklistedHeaders.some((header) =>
+          typeof header === "string"
+            ? header === key.toLowerCase()
+            : header.test(key.toLowerCase()),
+        ),
+    )
     .forEach(([key, value]) => {
       if (key === "set-cookie") {
         const cookies = parseCookies(value);

@@ -110,5 +110,35 @@ describe("convertTo", () => {
         ],
       });
     });
+
+    describe("blacklisted headers", () => {
+      it("should not include keep-alive header", () => {
+        const response = convertTo({
+          body: "",
+          headers: {
+            "keep-alive": "timeout=5",
+          },
+          isBase64Encoded: false,
+          statusCode: 200,
+          type: "cf",
+        }) as CloudFrontRequestResult;
+
+        expect(response?.headers).toStrictEqual({});
+      });
+
+      it("should not include x-edge-* headers", () => {
+        const response = convertTo({
+          body: "",
+          headers: {
+            "x-edge-something": "something",
+          },
+          isBase64Encoded: false,
+          statusCode: 200,
+          type: "cf",
+        }) as CloudFrontRequestResult;
+
+        expect(response?.headers).toStrictEqual({});
+      });
+    });
   });
 });
