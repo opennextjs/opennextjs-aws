@@ -255,7 +255,7 @@ const CloudFrontBlacklistedHeaders = [
 function convertToCloudFrontRequestResult(
   result: InternalResult,
 ): CloudFrontRequestResult {
-  console.log("result headers", result.headers);
+  debug("result headers", result.headers);
 
   const headers: CloudFrontHeaders = {};
   Object.entries(result.headers)
