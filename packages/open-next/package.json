@@ -2,8 +2,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "name": "open-next",
-  "version": "2.3.8",
+  "name": "@sstlv/open-next",
+  "version": "2.3.8-beta-4",
   "bin": {
     "open-next": "./dist/index.js"
   },
@@ -56,6 +56,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sst/open-next.git"
+    "url": "git+https://github.com/lucasvieirasilva/open-next.git"
   }
 }

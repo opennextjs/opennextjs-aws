@@ -242,9 +242,9 @@ const CloudFrontBlacklistedHeaders = [
   "x-real-ip",
 
   // Read-only headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-read-only-headers
-  "cccept-Encoding",
+  "accept-encoding",
   "content-length",
-  "if-modified-Since",
+  "if-modified-since",
   "if-none-match",
   "if-range",
   "if-unmodified-since",
@@ -261,7 +261,6 @@ function convertToCloudFrontRequestResult(
   Object.entries(result.headers)
     .filter(
       ([key]) =>
-        key.toLowerCase() !== "content-length" &&
         !CloudFrontBlacklistedHeaders.some((header) =>
           typeof header === "string"
             ? header === key.toLowerCase()
