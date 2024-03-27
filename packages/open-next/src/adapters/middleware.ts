@@ -63,7 +63,6 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
     return {
       type: "middleware",
       internalEvent: result.internalEvent,
-      headers: result.headers,
       isExternalRewrite: result.isExternalRewrite,
       origin,
     };

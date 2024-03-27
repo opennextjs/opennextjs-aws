@@ -4,7 +4,6 @@ import {
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
-import type { OutgoingHttpHeaders } from "http";
 import { InternalEvent, InternalResult, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
@@ -19,7 +18,6 @@ import { handleMiddleware } from "./routing/middleware";
 
 export interface MiddlewareOutputEvent {
   internalEvent: InternalEvent;
-  headers: OutgoingHttpHeaders;
   isExternalRewrite: boolean;
   origin: Origin | false;
 }
@@ -86,12 +84,22 @@ export default async function routingHandler(
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
   }
 
+  // We apply the headers from the middleware response last
+  Object.entries({
+    ...middlewareResponseHeaders,
+    ...nextHeaders,
+  }).forEach(([key, value]) => {
+    if (value) {
+      internalEvent.headers[`x-middleware-response-${key}`] = Array.isArray(
+        value,
+      )
+        ? value.join(",")
+        : value;
+    }
+  });
+
   return {
     internalEvent,
-    headers: {
-      ...nextHeaders,
-      ...middlewareResponseHeaders,
-    },
     isExternalRewrite,
     origin: false,
   };

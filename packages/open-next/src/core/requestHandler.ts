@@ -28,7 +28,6 @@ export async function openNextHandler(
   let preprocessResult: InternalResult | MiddlewareOutputEvent = {
     internalEvent: internalEvent,
     isExternalRewrite: false,
-    headers: {},
     origin: false,
   };
   try {
@@ -38,9 +37,28 @@ export async function openNextHandler(
   }
   //#endOverride
 
+  const headers =
+    "type" in preprocessResult
+      ? preprocessResult.headers
+      : preprocessResult.internalEvent.headers;
+
+  const overwrittenResponseHeaders = Object.entries(
+    "type" in preprocessResult
+      ? preprocessResult.headers
+      : preprocessResult.internalEvent.headers,
+  ).reduce((acc, [key, value]) => {
+    if (!key.startsWith("x-middleware-response-")) {
+      return acc;
+    } else {
+      const newKey = key.replace("x-middleware-response-", "");
+      delete headers[key];
+      headers[newKey] = value;
+      return { ...acc, [newKey]: value };
+    }
+  }, {});
+
   if ("type" in preprocessResult) {
     // res is used only in the streaming case
-    const headers = preprocessResult.headers;
     const res = createServerResponse(internalEvent, headers, responseStreaming);
     res.statusCode = preprocessResult.statusCode;
     res.flushHeaders();
@@ -58,7 +76,7 @@ export async function openNextHandler(
       // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
       // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
       // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
-      headers: { ...preprocessedEvent.headers, purpose: "prefetch" },
+      headers: { ...headers, purpose: "prefetch" },
       body: preprocessedEvent.body,
       remoteAddress: preprocessedEvent.remoteAddress,
     };
@@ -68,7 +86,7 @@ export async function openNextHandler(
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
         preprocessedEvent,
-        preprocessedResult.headers as Record<string, string | string[]>,
+        overwrittenResponseHeaders,
         responseStreaming,
       );
 

@@ -101,12 +101,6 @@ async function convertToCloudFrontRequestResult(
       : result.headers;
   if (result.type === "middleware") {
     const { method, clientIp, origin } = originalRequest.Records[0].cf.request;
-    const overwrittenResponseHeaders: Record<string, OutgoingHttpHeader> = {};
-    Object.entries(result.headers).forEach(([key, value]) => {
-      //TODO: handle those headers inside plugin
-      if (value)
-        overwrittenResponseHeaders[`x-middleware-response-${key}`] = value;
-    });
 
     // Handle external rewrite
     if (result.isExternalRewrite) {
@@ -151,7 +145,6 @@ async function convertToCloudFrontRequestResult(
       ),
       headers: convertToCloudfrontHeaders({
         ...responseHeaders,
-        ...overwrittenResponseHeaders,
         host,
       }),
       origin: origin?.custom

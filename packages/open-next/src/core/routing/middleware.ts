@@ -147,7 +147,8 @@ export async function handleMiddleware(
   let middlewareQueryString = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
-    if (isExternal(rewriteUrl, internalEvent.headers.host)) {
+    // If not a string, it should probably throw
+    if (isExternal(rewriteUrl, internalEvent.headers.host as string)) {
       newUrl = rewriteUrl;
       rewritten = true;
       externalRewrite = true;
