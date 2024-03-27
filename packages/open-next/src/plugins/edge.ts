@@ -109,9 +109,24 @@ import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 ${
   isInCloudfare
-    ? ""
-    : `import {readFileSync} from "node:fs";
-import path from "node:path";`
+    ? ``
+    : `
+import {readFileSync} from "node:fs";
+import path from "node:path";
+function addDuplexToInit(init) {
+  return typeof init === 'undefined' ||
+    (typeof init === 'object' && init.duplex === undefined)
+    ? { duplex: 'half', ...init }
+    : init
+}
+// We need to override Request to add duplex to the init, it seems Next expects it to work like this
+class OverrideRequest extends Request {
+  constructor(input, init) {
+    super(input, addDuplexToInit(init))
+  }
+}
+globalThis.Request = OverrideRequest;
+`
 }
 ${wasmFiles
   .map((file) =>
