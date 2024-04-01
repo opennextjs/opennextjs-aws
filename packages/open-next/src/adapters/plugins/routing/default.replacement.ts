@@ -42,6 +42,11 @@ export const processInternalEvent: ProcessInternalEvent = async (
   const nextHeaders = addNextConfigHeaders(event, ConfigHeaders) ?? {};
 
   let internalEvent = fixDataPage(event, BuildId);
+  // If we return InternalResult, it means that the build id is not correct
+  // We should return a 404
+  if ("statusCode" in internalEvent) {
+    return internalEvent;
+  }
 
   internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
 

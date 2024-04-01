@@ -239,9 +239,24 @@ export function handleRedirects(
   }
 }
 
-export function fixDataPage(internalEvent: InternalEvent, buildId: string) {
+export function fixDataPage(
+  internalEvent: InternalEvent,
+  buildId: string,
+): InternalEvent | InternalResult {
   const { rawPath, query } = internalEvent;
   const dataPattern = `/_next/data/${buildId}`;
+  // Return 404 for data requests that don't match the buildId
+  if (rawPath.startsWith("/_next/data") && !rawPath.startsWith(dataPattern)) {
+    return {
+      type: internalEvent.type,
+      statusCode: 404,
+      body: "{}",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      isBase64Encoded: false,
+    };
+  }
 
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
     let newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
