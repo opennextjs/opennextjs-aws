@@ -2,8 +2,6 @@
   "index": "Home",
   "get_started": "Getting started",
   "config": "Configuration",
-  "architecture": "Architecture",
-  "components": "Components",
   "comparison": "Comparison",
   "inner_workings": "How does it work?",
   "faq": "FAQ"

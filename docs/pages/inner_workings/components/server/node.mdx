@@ -116,6 +116,10 @@ export interface Queue {
 ```
 The send function will be called when a page is marked as `STALE`. You don't have to use a queue here, you can use any other mechanism to send the message to the revalidation worker or even do the revalidation in the same process.
 
+#### Shared Environment Variables
+
+- MAX_REVALIDATE_CONCURRENCY: The number of revalidation requests processed at a time. - Optional Default to 10
+
 ##### Default SQS Revalidation Queue
 
 The default SQS Revalidation Queue uses the `@aws-sdk/client-sqs` to interact with the SQS queue. It needs to have the proper permissions to send messages to the queue.
