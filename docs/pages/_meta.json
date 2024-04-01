@@ -4,5 +4,7 @@
   "config": "Configuration",
   "comparison": "Comparison",
   "inner_workings": "How does it work?",
-  "faq": "FAQ"
+  "faq": "FAQ",
+  "common_issues": "Troubleshooting",
+  "contribute": "Contributing"
 }

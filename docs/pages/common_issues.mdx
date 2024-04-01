@@ -1,6 +1,16 @@
+#### Debug mode 
+
+OpenNext can be executed in debug mode by setting the environment variable `OPEN_NEXT_DEBUG=true`. 
+
+This will output **A LOT** of additional logs to the console.This also disable minifying in esbuild, and add source maps to the output. This can result in code that might be up to 2-3X larger than the production build. **Do not enable this in production**
+
+```bash
+OPEN_NEXT_DEBUG=true npx open-next@latest build
+```
+
 #### Cannot find module next
 
-You might stumble upon this error inside cloudwatch logs: Cannot find module 'next'. It is likely that you are in a monorepo and you have several lock files. Just make sure that you have a single lock file in the root of your project.
+You might stumble upon this error inside cloudwatch logs: `Cannot find module 'next'`. It is likely that you are in a monorepo and you have several lock files. **Just make sure that you have a single lock file in the root of your project.**
 
 #### Reducing bundle size
 

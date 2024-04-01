@@ -16,6 +16,7 @@ By default, the middleware is inside the server, but you can move it outside by 
 }
 ```
 It uses the `aws-lambda` wrapper and the `aws-cloudfront` converter by default so that you can use it with AWS Lambda@edge and Cloudfront.
+You can also use it inside Cloudflare Workers by setting the wrapper to `cloudflare` and the converter to `edge`.
 
 ### Special overrides
 

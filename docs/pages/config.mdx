@@ -1,4 +1,11 @@
-Since V3 you don't pass build options using args anymore, you need to create a file called `open-next.config.ts` at the root of your project, and export a default object that satisfies the `OpenNextConfig` interface. You can also pass another file using the `--config-path` args.
+### Build Arguments
+
+There is a single build argument that you can pass to the `open-next build` command: 
+- `--config-path` - This is the path to the configuration file that you want to use. By default, it will look for `open-next.config.ts` in the current working directory. This needs to be relative to the current working directory.
+
+### Configuration File
+
+For personalisation you need to create a file `open-next.config.ts` at the same place as your `next.config.js`, and export a default object that satisfies the `OpenNextConfig` interface.
 
 Here is a detailed example of an `open-next.config.ts` file: 
 This file need to be at the same place as your `next.config.js` file
