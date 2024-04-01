@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { IncomingMessage, ServerResponse } from "node:http";
 import https from "node:https";
 import path from "node:path";
@@ -20,7 +21,7 @@ import {
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
-import { loadConfig } from "./config/util.js";
+import { loadBuildId, loadConfig } from "./config/util.js";
 import { awsLogger, debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -33,6 +34,7 @@ const s3Client = new S3Client({ logger: awsLogger });
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
+const buildId = loadBuildId(nextDir);
 const nextConfig = {
   ...defaultConfig,
   images: {
@@ -64,6 +66,16 @@ export async function handler(
       headers,
       queryString === null ? undefined : queryString,
     );
+    let etag: string | undefined;
+    // We don't cache any images, so in order to be able to return 304 responses, we compute an ETag from what is assumed to be static
+    if (process.env.OPENNEXT_STATIC_ETAG) {
+      etag = computeEtag(imageParams);
+    }
+    if (etag && headers["if-none-match"] === etag) {
+      return {
+        statusCode: 304,
+      };
+    }
     const result = await optimizeImage(
       headers,
       imageParams,
@@ -71,7 +83,7 @@ export async function handler(
       downloadHandler,
     );
 
-    return buildSuccessResponse(result);
+    return buildSuccessResponse(result, etag);
   } catch (e: any) {
     return buildFailureResponse(e);
   }
@@ -115,16 +127,38 @@ function validateImageParams(
   return imageParams;
 }
 
-function buildSuccessResponse(result: any) {
+function computeEtag(imageParams: {
+  href: string;
+  width: number;
+  quality: number;
+}) {
+  return createHash("sha1")
+    .update(
+      JSON.stringify({
+        href: imageParams.href,
+        width: imageParams.width,
+        quality: imageParams.quality,
+        buildId,
+      }),
+    )
+    .digest("base64");
+}
+
+function buildSuccessResponse(result: any, etag?: string) {
+  const headers: Record<string, string> = {
+    Vary: "Accept",
+    "Content-Type": result.contentType,
+    "Cache-Control": `public,max-age=${result.maxAge},immutable`,
+  };
+  if (etag) {
+    headers["ETag"] = etag;
+  }
+
   return {
     statusCode: 200,
     body: result.buffer.toString("base64"),
     isBase64Encoded: true,
-    headers: {
-      Vary: "Accept",
-      "Cache-Control": `public,max-age=${result.maxAge},immutable`,
-      "Content-Type": result.contentType,
-    },
+    headers,
   };
 }
 
