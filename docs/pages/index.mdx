@@ -1,17 +1,31 @@
 import {SITE} from "../config"
+import { Callout } from 'nextra/components'
 
-### Open source Next.js serverless adapter
+<Callout>
+This docs is for the V3 of OpenNext. If you are looking for the V2 docs, you can find them [here](/v2).
+
+If you're migrating from V2 to V3, you can find the migration guide [here](/migration#from-opennext-v2).
+</Callout>
+
+### Open source Next.js adapter
 
 ---
 
-OpenNext takes the Next.js build output and converts it into a package that can be deployed to any functions as a service platform. As of now only AWS Lambda is supported.
 
+OpenNext takes the Next.js build output and converts it into packages that can be deployed  across a variety of environments. 
+Natively OpenNext has support for AWS Lambda and classic Node Server. It also offer partial support for the `edge` runtime in Cloudflare Workers.
+
+One notable feature of OpenNext is its ability to split the Next.js output, enabling selective deployment to different targets such as AWS Lambda, Cloudflare Workers, or Amazon ECS. This facilitates a tailored deployment strategy that aligns with the specific needs of your application.
+
+Thanks to this, you could deploy part of your API to ECS, another part to Cloudflare Workers, your SSR routes to another ECS cluster, and your ISR/SSG routes to Lambda.
 
 ---
 
 While Vercel is great, it's not a good option if all your infrastructure is on AWS. Hosting it in your AWS account makes it easy to integrate with your backend. And it's a lot cheaper than Vercel.
 
-Next.js, unlike Remix or Astro, doesn't have a way to self-host using serverless. You can run it as a Node application. This however doesn't work the same way as it does on Vercel.
+Vercel is also limited to serverless and to their way of doing things. OpenNext is open source and can be deployed to any platform that supports Node.js.
+
+Next.js, unlike Remix or Astro, doesn't have a way to self-host using **serverless**. You can run it as a Node application. This however doesn't work the same way as it does on Vercel.
 
 ---
 
@@ -22,10 +36,6 @@ Most of the open source options, like [serverless-nextjs](https://github.com/ser
 Closed source SaaS products like [Amplify](https://aws.amazon.com/amplify/) have incomplete or incorrect implementations. And because they are closed source, you'll need to file a support ticket to get them updated.
 
 ---
-
-The goal of OpenNext is to create an open source, framework agnostic, serverless adapter for Next.js.
-
-OpenNext is currently built for AWS but we plan to support any functions as a service platform.
 
 We need your help keeping it up to date and feature complete. Make sure to [**join us on Discord**](https://sst.dev/discord) and [**star us on GitHub**](https://github.com/sst/open-next).
 ## Features
@@ -49,3 +59,4 @@ OpenNext aims to support all Next.js 13 features. Some features are work in prog
 
 [NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext),
 [Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c)
+[Gymshark UK](https://uk.gymshark.com)

@@ -1,0 +1,9 @@
+{
+  "overview": "Overview",
+  "server": "Server",
+  "middleware": "Middleware",
+  "image_optimization": "Image Optimization",
+  "revalidation": "Revalidation",
+  "warmer": "Warmer",
+  "initializer": "Initializer"
+}

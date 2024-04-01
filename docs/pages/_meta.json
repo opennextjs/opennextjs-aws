@@ -1,8 +1,10 @@
 {
   "index": "Home",
   "get_started": "Getting started",
-  "common_issues": "Common issues",
+  "config": "Configuration",
+  "comparison": "Comparison",
   "inner_workings": "How does it work?",
-  "advanced": "Advanced",
-  "faq": "FAQ"
+  "faq": "FAQ",
+  "common_issues": "Troubleshooting",
+  "contribute": "Contributing"
 }

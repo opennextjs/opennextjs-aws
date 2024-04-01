@@ -1,0 +1,108 @@
+## Caching in Next and OpenNext
+
+Caching could be become tricky very fast when using Next outside of Vercel. There is a lot of things that need to be taken into account.
+
+Usually, you'll deploy your Next app with a CDN in front of it. This CDN will cache the responses from your Next app and serve them to the users. This is great for performance, but it can also be a problem when you need to invalidate the cache. We provide some code examples in this doc to help with [cloudfront cache invalidation](#cloudfront-cache-invalidation). **In OpenNext, you only need to do this if you do On Demand Revalidation**.
+
+Also the default Next.js standalone output (or `next start`) does not work in a serverless environment because it tries to do the revalidation in the background.
+
+Default Next.js also uses the file system to cache files. You can override it by providing your own cache implementation. This is done **automatically** when using OpenNext.
+
+There is also 2 issues with the default `Cache-Control` headers that Next.js sets. 
+They use this header by default `s-maxage=YOUR_REVALIDATION_TIME, stale-while-revalidate`. There is 2 issue with that: 
+- `stale-while-revalidate` is not the proper syntax for the `Cache-Control` header. It should be `stale-while-revalidate=TIME_WHERE_YOU_SERVE_STALE`. They added this [undocumented options](https://github.com/vercel/next.js/blob/952da876f7bb8590d0222b2579117f8a2bd301bb/packages/next/src/server/config-shared.ts#L202) to remedy this in recent version of Next
+- Setting `s-maxage` to the same value for every request to the same page could be a bad idea.
+Next can serve different content based on if you request the full html or are doing client side navigation (RSC or JSON for page router)
+  
+  This can cause inconsistencies in the cache with ISR especially when you can have big revalidation time.
+  
+  For example, let's assume you use app router, you have a link to your homepage in your main navbar and you set ISR to 1 day. Every other page will have a different RSC cache entry (for client side navigation). This will result in as many cache entry as you have pages in your app which all will have that same 1 day `s-maxage` value but could have been requested at very different time. This could lead to some pages being served with stale content for as long as 2 day.
+
+**All of these issues are automatically fixed for you in OpenNext**
+
+### Cloudfront cache invalidation
+
+When you manually revalidate the Next.js cache for a specific page, the ISR cache files stored on S3 will be updated. However, it is still necessary to invalidate the CloudFront cache:
+
+```ts
+// pages/api/revalidate.js
+export default async function handler(req, res) {
+  await res.revalidate("/foo");
+  await invalidateCloudFrontPaths(["/foo"]);
+  // ...
+}
+```
+
+If the pages router is in use, you must also invalidate the `_next/data/BUILD_ID/foo.json` path. The value for `BUILD_ID` can be found in the `.next/BUILD_ID` build output and can be accessed at runtime via the `process.env.NEXT_BUILD_ID` environment variable.
+
+```ts
+await invalidateCloudFrontPaths(["/foo", `/_next/data/${process.env.NEXT_BUILD_ID}/foo.json`]);
+```
+
+And here is an example of the `invalidateCloudFrontPaths()` function:
+
+```ts
+import { CloudFrontClient, CreateInvalidationCommand } from "@aws-sdk/client-cloudfront";
+
+const cloudFront = new CloudFrontClient({});
+
+async function invalidateCloudFrontPaths(paths: string[]) {
+  await cloudFront.send(
+    new CreateInvalidationCommand({
+      // Set CloudFront distribution ID here
+      DistributionId: distributionId,
+      InvalidationBatch: {
+        CallerReference: `${Date.now()}`,
+        Paths: {
+          Quantity: paths.length,
+          Items: paths,
+        },
+      },
+    }),
+  );
+}
+```
+
+Note that manual CloudFront path invalidation incurs costs. According to the [AWS CloudFront pricing page](https://aws.amazon.com/cloudfront/pricing/):
+
+> No additional charge for the first 1,000 paths requested for invalidation each month. Thereafter, $0.005 per path requested for invalidation.
+
+Due to these costs, if multiple paths require invalidation, it is more economical to invalidate a wildcard path `/*`. For example:
+
+```ts
+// This costs $0.005 x 3 = $0.015 after the first 1000 paths
+await invalidateCloudFrontPaths(["/page/a", "/page/b", "/page/c"]);
+
+// This costs $0.005, but also invalidates other routes such as "page/d"
+await invalidateCloudFrontPaths(["/page/*"]);
+```
+
+For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
+
+```ts
+function getByTag(tag: string) {
+  try {
+    const { Items } = await this.dynamoClient.send(
+      new QueryCommand({
+        TableName: process.env.CACHE_DYNAMO_TABLE,
+        KeyConditionExpression: "#tag = :tag",
+        ExpressionAttributeNames: {
+          "#tag": "tag",
+        },
+        ExpressionAttributeValues: {
+          ":tag": { S: `${process.env.NEXT_BUILD_ID}/${tag}` },
+        },
+      }),
+    );
+    return (
+      // We need to remove the buildId from the path
+      Items?.map(
+        ({ path: { S: key } }) => key?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
+      ) ?? []
+    );
+  } catch (e) {
+    error("Failed to get by tag", e);
+    return [];
+  }
+}
+```

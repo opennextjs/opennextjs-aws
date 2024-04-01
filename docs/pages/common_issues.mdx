@@ -1,23 +1,42 @@
+#### Debug mode 
+
+OpenNext can be executed in debug mode by setting the environment variable `OPEN_NEXT_DEBUG=true`. 
+
+This will output **A LOT** of additional logs to the console.This also disable minifying in esbuild, and add source maps to the output. This can result in code that might be up to 2-3X larger than the production build. **Do not enable this in production**
+
+```bash
+OPEN_NEXT_DEBUG=true npx open-next@latest build
+```
+
 #### Cannot find module next
 
-You might stumble upon this error inside cloudwatch logs: `Cannot find module 'next'`.
-It is likely that you are in a monorepo and you have several lock files.
-Just make sure that you have a single lock file in the root of your project.
+You might stumble upon this error inside cloudwatch logs: `Cannot find module 'next'`. It is likely that you are in a monorepo and you have several lock files. **Just make sure that you have a single lock file in the root of your project.**
 
-#### headers, redirect, rewrites in `next-config` and middleware are not working in next 13.4.12+
+#### Reducing bundle size
 
-If you use a version of nextjs >= 13.4.12, you'll need to use an open-next version >= 2.1
+Next might incorrectly include some dependencies in the bundle. To remove them you can use this configuration inside `next.config.js`:
 
-#### My api route are returning empty response and i'm using sentry
+```javascript
+experimental: {
+    outputFileTracingExcludes: {
+      "*": ["node_modules/the-unwanted-package"],
+    },
+  },
+```
+Also you should not add sharp as a dependencies unless absolutely necessary, the image optimization already has it's own version of sharp.
 
-If you are using sentry, API routes returns empty body. You could try configuring sentry to ignore API routes. You can read more about it [here](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/?opt-out-of-auto-instrumentation-on-specific-routes)
+#### Patch fetch behaviour for ISR. Only for next@13.5.1+
 
-#### My ISR page has this cache-control header `s-maxage=2, stale-while-revalidate=2592000`
+If you use ISR and fetch in your app, you may encounter a bug that makes your revalidate values inconsistent. 
+The issue is that it revalidates using the lowest revalidate of all fetch calls in your page, regardless of their individual values. To fix this bug, you need to modify the fetch function in your root layout component with the following code snippet
 
-Given how ISR works, while waiting for the revalidation to happen, the page will be served using this cache control header. This prevent your server from being overloaded by a lot of requests while the revalidation is done. You can read more about it [here](/inner_workings/isr).
-
-#### Unzipped size must be smaller than 262144000 bytes
-
-AWS Lambda has an unzipped size limit of 250MB. If your app is over this limit, then it is most likely using a node_module library that is too large for serverless or there is a large dev dependency getting bundled.
-For example, `pdfjs` has `canvas` optional dependency which takes up 180MB. For more details, [read me](/common_issues/bundle_size).
-Note: a large bundle size will increase cold start significantly.
+```ts
+export default function RootLayout() {
+  const asyncStorage = require("next/dist/client/components/static-generation-async-storage.external");
+  //@ts-ignore
+  const staticStore = (fetch as any).__nextGetStaticStore?.() || asyncStorage.staticGenerationAsyncStorage;
+  const store = staticStore.getStore();
+  store.isOnDemandRevalidate = store.isOnDemandRevalidate && !(process.env.OPEN_NEXT_ISR === 'true');
+  return <>...</>;
+}
+```

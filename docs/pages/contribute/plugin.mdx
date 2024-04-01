@@ -1,0 +1,71 @@
+OpenNext use 3 different esbuild plugins internally to recompile or modify the source code depending on some condition like the next version or the runtime used
+
+#### OpenNext Replacement Plugin
+
+This plugin is used to replace some code in the source code with some other code. 
+
+Here is a very simple example of how to use it:
+
+```typescript
+openNextPlugin({
+    // The target file to replace code in
+    target: /plugins\/default\.js/g,
+    // This is where the plugin will look for the code to replace
+    replacements: [require.resolve("./plugins/default.js")],
+    // This is to delete some code from the target file
+    deletes: ["id1"],
+  })
+ 
+  //To inject arbritary code by using (import at top of file):
+ 
+  //#import
+ 
+  import data from 'data'
+  const datum = data.datum
+ 
+  //#endImport
+ 
+  To replace code:
+ 
+  //#override id1
+ 
+  export function overrideMe() {
+     // I will replace the "id1" block in the target file
+  }
+ 
+  //#endOverride
+```
+
+#### OpenNext Resolve Plugin
+
+This plugin is used to avoid having to bundle the whole library in the final bundle. It will replace the dynamic import of the overrides with the one that we want to use.
+
+Here is a very simple example of how to use it:
+
+```typescript
+openNextResolvePlugin({
+  overrides: {
+    wrapper: "node",
+    converter: "node",
+  }
+})
+```
+
+#### OpenNext Edge Plugin
+
+This plugin is used to properly compile routes or middleware built for the `edge` runtime. 
+
+Here is a very simple example of how to use it:
+
+```typescript
+openNextEdgePlugin({
+  // The path to the .next directory
+  nextDir: "next",
+  // The path to the edgeFunctionHandler.js file that we'll use to bundle the routing
+  edgeFunctionHandlerPath: "./edgeFunctionHandler.js",
+  // The middlewareInfo from the middlware manifest file
+  middlewareInfo: middlewareInfo
+  // If the app should be bundled for cloudflare workers
+  isInCloudflare: true
+})
+```

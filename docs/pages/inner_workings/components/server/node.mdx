@@ -1,0 +1,132 @@
+This is the main entrypoint for SSR, ISR or SSG routes.
+This docs only apply for the node runtime.
+
+### ISR/SSG
+
+In standalone mode, Next.js prebuilds the ISR/SSG cache during the build process. And at runtime, **NextServer** expects this cache locally on the server. This works effectively when the server is run on a single web server machine, sharing the cache across all requests. In a serverless environment, the cache needs to be housed centrally in a location accessible by all server Lambda function instances.By default S3 serves as this central location.
+
+To facilitate this:
+
+- ISR cache files are excluded from the `server-function` bundle and instead are uploaded to the cache bucket.
+- The default cache handler is replaced with a custom cache handler by configuring the [`incrementalCacheHandlerPath`](https://nextjs.org/docs/app/api-reference/next-config-js/incrementalCacheHandlerPath) field in `next.config.js`.
+- The custom cache handler manages the cache files on S3 by default, handling both reading and writing operations.
+- Since we're using FIFO queue, if we want to process more than one revalidation at a time, we need to have separate Message Group IDs. We generate a Message Group ID for each revalidation request based on the route path. This ensures that revalidation requests for the same route are processed only once. You can use `MAX_REVALIDATE_CONCURRENCY` environment variable to control the number of revalidation requests processed at a time. By default, it is set to 10.
+- The `revalidation-function` polls the message from the queue and makes a `HEAD` request to the route with the `x-prerender-revalidate` header.
+- The `server-function` receives the `HEAD` request and revalidates the cache.
+- Tags are handled differently in a dynamodb table. We use a separate table to store the tags for each route. The custom cache handler will update the tags in the table when it updates the cache.
+
+#### Lifetime of an ISR request for a stale page
+
+1. Cloudfront receives a request for a page. Let's assume the page is stale in Cloudfront.
+2. Cloudfront forwards the request to the `server-function` in the background but still returns the cached version.
+3. The `server-function` checks in the incremental cache. If the page is stale, it sends the stale response back to Cloudfront while sending a message to the revalidation queue to trigger background revalidation. It will also change the cache-control header to `s-maxage=2, stale-while-revalidate=2592000`
+4. A new request comes in for the same page after 2 seconds. Cloudfront sends the cached version back to the user and forwards the request to the `server-function`.
+5. If the revalidation is done, the `server-function` will update the cache and send the updated response back to Cloudfront. Subsequent request will then get the updated version. Otherwise, we go back to step 3.
+
+#### Lifetime of an SSG request for a page revalidated using `revalidateTag`
+
+1. You revalidate the page using `revalidateTag` or `revalidatePath`. You should also invalidate the cache in Cloudfront
+2. Cloudfront receives a request for a page. 
+3. Cloudfront forwards the request to the `server-function`.
+4. The `server-function` checks in the incremental cache, then in the tag cache. If the page is stale in the tag cache, it will trigger an immediate revalidation and send the updated response back to Cloudfront.
+5. The user will receive the updated version of the page with the `x-next-cache` header set to `MISS`.
+
+### Special Overrides
+
+All these overrides apply on a per function basis. You need to specify them for each function you want to override.
+
+#### Incremental Cache
+
+The Incremental Cache is a cache that is used to store the results of the ISR **and** SSG pages as well as the fetch cache.
+By default, OpenNext uses S3 as the default incremental cache.
+
+You can override the default cache by setting the `override.incrementalCache` property in the `open-next.config.ts` file.
+You can look at the expected types [here](https://github.com/sst/open-next/blob/f1b2b78ce622ceae496ee566abf74f07018619f4/packages/open-next/src/cache/incremental/types.ts#L38)
+
+##### Default S3 Incremental Cache
+
+The default S3 Incremental Cache uses the `@aws-sdk/client-s3` to interact with the S3 bucket. It needs to have the proper permissions to read and write to the bucket.
+
+File in S3 should follow the following structure:
+- `Key_Prefix/BUILD_ID/path/to/page.cache` - For the cache of a page
+- `Key_Prefix/__fetch/BUILD_ID/fetch-cache-key` - For the fetch cache
+
+The default S3 Incremental Cache can be configured using the following environment variables:
+
+###### Environment Variables
+- CACHE_BUCKET_REGION: The region of the S3 bucket
+- CACHE_BUCKET_NAME: The name of the S3 bucket
+- CACHE_BUCKET_KEY_PREFIX: The prefix of the keys in the S3 bucket - Optional
+- AWS_SDK_S3_MAX_ATTEMPTS: The maximum number of attempts to make to the S3 bucket - Optional
+
+#### Tag Cache
+
+The Tag Cache is a cache that is used to store the tags for the ISR/SSG pages as well as the fetch cache.
+By default, OpenNext uses DynamoDB as the default incremental cache.
+
+You can override the default cache by setting the `override.tagCache` property in the `open-next.config.ts` file.
+You can look at the expected types [here](https://github.com/sst/open-next/blob/f1b2b78ce622ceae496ee566abf74f07018619f4/packages/open-next/src/cache/tag/types.ts#L1)
+
+##### Default DynamoDB Tag Cache
+
+The default DynamoDB Tag Cache uses the `@aws-sdk/client-dynamodb` to interact with the DynamoDB table. It needs to have the proper permissions to read and write to the table.
+
+Tags in DynamoDB should follow the following structure:
+```typescript 
+type Tag = {
+  path: string, // The path of the page
+  tag: string, // The tag of the page
+  revalidatedAt: number, // The time at which the page has been revalidated
+}
+
+```
+We use an index called `revalidate` with `path` as a partition key and `revalidatedAt` as the sort key.
+It needs to be pre-populated with the tags of the pages that are being generated.
+
+The default DynamoDB Tag Cache can be configured using the following environment variables:
+
+###### Environment Variables
+- CACHE_BUCKET_REGION: The region of the DynamoDB table
+- CACHE_DYNAMO_TABLE: The name of the DynamoDB table
+- AWS_SDK_DYNAMODB_MAX_ATTEMPTS: The maximum number of attempts to make to the DynamoDB table - Optional
+- DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY: The number of concurrent batch write commands to make to the DynamoDB table - Optional Default to 4
+
+#### Revalidation queue
+
+The revalidation queue is a queue that is used to store the pages that need to be revalidated.
+By default, OpenNext uses SQS as the default revalidation queue.
+
+You can override the default queue by setting the `override.queue` property in the `open-next.config.ts` file.
+
+Here is the expected type for the queue override:
+```ts
+interface QueueMessage {
+  MessageDeduplicationId: string;
+  MessageBody: {
+    host: string;
+    url: string;
+  };
+  MessageGroupId: string;
+}
+
+export interface Queue {
+  send(message: QueueMessage): Promise<void>;
+  name: string;
+}
+```
+The send function will be called when a page is marked as `STALE`. You don't have to use a queue here, you can use any other mechanism to send the message to the revalidation worker or even do the revalidation in the same process.
+
+#### Shared Environment Variables
+
+- MAX_REVALIDATE_CONCURRENCY: The number of revalidation requests processed at a time. - Optional Default to 10
+
+##### Default SQS Revalidation Queue
+
+The default SQS Revalidation Queue uses the `@aws-sdk/client-sqs` to interact with the SQS queue. It needs to have the proper permissions to send messages to the queue.
+
+The default SQS Revalidation Queue can be configured using the following environment variables:
+
+###### Environment Variables
+
+- REVALIDATION_QUEUE_REGION: The region of the SQS queue
+- REVALIDATION_QUEUE_URL: The URL of the SQS queue
