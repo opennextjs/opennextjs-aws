@@ -50,7 +50,6 @@ function normalizeLocalePath(pathname: string) {
 
   return locales && !pathname.endsWith("/") ? `${pathname}/` : pathname;
 }
-
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
   internalEvent: InternalEvent,

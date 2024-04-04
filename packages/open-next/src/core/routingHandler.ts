@@ -28,6 +28,9 @@ export default async function routingHandler(
   const nextHeaders = addNextConfigHeaders(event, ConfigHeaders) ?? {};
 
   let internalEvent = fixDataPage(event, BuildId);
+  if ("statusCode" in internalEvent) {
+    return internalEvent;
+  }
 
   const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
   if (redirect) {

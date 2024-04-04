@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   IncomingMessage,
   OutgoingHttpHeaders,
@@ -8,7 +9,7 @@ import path from "node:path";
 import { Writable } from "node:stream";
 
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { loadConfig } from "config/util.js";
+import { loadBuildId, loadConfig } from "config/util.js";
 import { OpenNextNodeResponse, StreamCreator } from "http/openNextResponse.js";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
@@ -31,6 +32,7 @@ const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
+const buildId = loadBuildId(nextDir);
 const nextConfig = {
   ...defaultConfig,
   images: {
@@ -68,6 +70,20 @@ export async function defaultHandler(
       headers,
       queryString === null ? undefined : queryString,
     );
+    let etag: string | undefined;
+    // We don't cache any images, so in order to be able to return 304 responses, we compute an ETag from what is assumed to be static
+    if (process.env.OPENNEXT_STATIC_ETAG) {
+      etag = computeEtag(imageParams);
+    }
+    if (etag && headers["if-none-match"] === etag) {
+      return {
+        statusCode: 304,
+        headers: {},
+        body: "",
+        isBase64Encoded: false,
+        type: "core",
+      };
+    }
     const result = await optimizeImage(
       headers,
       imageParams,
@@ -75,7 +91,7 @@ export async function defaultHandler(
       downloadHandler,
     );
 
-    return buildSuccessResponse(result, streamCreator);
+    return buildSuccessResponse(result, etag);
   } catch (e: any) {
     return buildFailureResponse(e, streamCreator);
   }
@@ -119,33 +135,39 @@ function validateImageParams(
   return imageParams;
 }
 
-function buildSuccessResponse(
-  result: any,
-  streamCreator?: StreamCreator,
-): InternalResult {
-  if (streamCreator) {
-    const response = new OpenNextNodeResponse(
-      () => void 0,
-      async () => void 0,
-      streamCreator,
-    );
-    response.writeHead(200, {
-      Vary: "Accept",
-      "Cache-Control": `public,max-age=${result.maxAge},immutable`,
-      "Content-Type": result.contentType,
-    });
-    response.end(result.buffer);
+function computeEtag(imageParams: {
+  href: string;
+  width: number;
+  quality: number;
+}) {
+  return createHash("sha1")
+    .update(
+      JSON.stringify({
+        href: imageParams.href,
+        width: imageParams.width,
+        quality: imageParams.quality,
+        buildId,
+      }),
+    )
+    .digest("base64");
+}
+
+function buildSuccessResponse(result: any, etag?: string): InternalResult {
+  const headers: Record<string, string> = {
+    Vary: "Accept",
+    "Content-Type": result.contentType,
+    "Cache-Control": `public,max-age=${result.maxAge},immutable`,
+  };
+  if (etag) {
+    headers["ETag"] = etag;
   }
+
   return {
     type: "core",
     statusCode: 200,
     body: result.buffer.toString("base64"),
     isBase64Encoded: true,
-    headers: {
-      Vary: "Accept",
-      "Cache-Control": `public,max-age=${result.maxAge},immutable`,
-      "Content-Type": result.contentType,
-    },
+    headers,
   };
 }
 

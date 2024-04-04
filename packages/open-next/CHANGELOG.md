@@ -1,5 +1,13 @@
 # open-next
 
+## 2.3.9
+
+### Patch Changes
+
+- 5c80192: Fix incorrect 200 with wrong buildId for page router
+- 2118ba2: Feat add a static etag for Image Optimization
+- 6a3c69a: fix(edge): remove read-only and blacklisted headers from cloudfront response
+
 ## 2.3.8
 
 ### Patch Changes
