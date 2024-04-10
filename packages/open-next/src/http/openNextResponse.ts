@@ -14,7 +14,6 @@ export interface StreamCreator {
   // Just to fix an issue with aws lambda streaming with empty body
   onWrite?: () => void;
   onFinish: () => void;
-  waitForFirstWrite?: boolean;
 }
 
 // We only need to implement the methods that are used by next.js
@@ -146,18 +145,8 @@ export class OpenNextNodeResponse extends Transform {
     if (!this.headersSent) {
       this.flushHeaders();
     }
-    if (this.streamCreator?.waitForFirstWrite && !this.hasDoneFirstWrite) {
-      const waitTime = parseInt(
-        process.env.STREAMING_INITIAL_WRITE_WAIT_TIME ?? "25",
-      );
-      new Promise((resolve) => setTimeout(resolve, waitTime)).then(() => {
-        this._internalWrite(chunk, encoding);
-        this.hasDoneFirstWrite = true;
-        callback();
-      });
-    } else {
-      this._internalWrite(chunk, encoding);
-      callback();
-    }
+
+    this._internalWrite(chunk, encoding);
+    callback();
   }
 }

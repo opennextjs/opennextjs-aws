@@ -32,7 +32,6 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       const internalEvent = await converter.convertFrom(event);
       let _hasWriten = false;
-      let _headersSent = false;
 
       //Handle compression
       const acceptEncoding = internalEvent.headers?.["accept-encoding"] ?? "";
@@ -70,56 +69,23 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       const streamCreator: StreamCreator = {
         writeHeaders: (_prelude) => {
-          responseStream.cork();
-          // FIXME: This is extracted from the docker lambda node 18 runtime
-          // https://gist.github.com/conico974/13afd708af20711b97df439b910ceb53#file-index-mjs-L921-L932
-          // We replace their write with ours which are inside a setImmediate
-          // This way it seems to work all the time
-          // I think we can't ship this code as it is, it could break at anytime if they decide to change the runtime and they already did it in the past
-
-          responseStream.setContentType(
-            "application/vnd.awslambda.http-integration-response",
-          );
           _prelude.headers["content-encoding"] = contentEncoding;
-          const prelude = JSON.stringify(_prelude);
 
-          // Try to flush the buffer to the client to invoke
-          // the streaming. This does not work 100% of the time.
-
-          responseStream.write("\n\n");
-
-          responseStream.write(prelude);
-
-          responseStream.write(new Uint8Array(8));
-
-          if (responseStream.writableCorked) {
-            for (let i = 0; i < responseStream.writableCorked; i++) {
-              // For some reason, putting this in a setImmediate makes it work more often
-              // process.nextTick does not, which should be what we should use
-              setImmediate(() => {
-                responseStream.uncork();
-              });
-            }
-          }
-
-          _headersSent = true;
+          responseStream = awslambda.HttpResponseStream.from(
+            responseStream,
+            _prelude,
+          );
 
           return compressedStream ?? responseStream;
         },
         onWrite: () => {
           _hasWriten = true;
-          // Force flushing data, seems necessary for aws lambda streaming to work reliably
-          // We need to reevaluate this if it causes issues on other platforms
-          if (compressedStream?.writableCorked) {
-            compressedStream?.uncork();
-          }
         },
         onFinish: () => {
           if (!_hasWriten) {
             compressedStream?.end(new Uint8Array(8));
           }
         },
-        waitForFirstWrite: true,
       };
 
       const response = await handler(internalEvent, streamCreator);
