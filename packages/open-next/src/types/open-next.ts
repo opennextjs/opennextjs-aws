@@ -206,13 +206,24 @@ export interface FunctionOptions extends DefaultFunctionOptions {
   experimentalBundledNextServer?: boolean;
 }
 
+export type RouteTemplate =
+  | `app/${string}/route`
+  | `app/${string}/page`
+  | `app/page`
+  | `app/route`
+  | `page/${string}`;
+
 export interface SplittedFunctionOptions extends FunctionOptions {
   /**
    * Here you should specify all the routes you want to use.
-   * If not provided, all the routes will be used.
-   * @default []
+   * For app routes, you should use the `app/${name}/route` format or `app/${name}/page` for pages.
+   * For pages, you should use the `page/${name}` format.
+   * @example
+   * ```ts
+   * routes: ["app/api/test/route", "app/page", "page/admin"]
+   * ```
    */
-  routes: string[];
+  routes: RouteTemplate[];
 
   /**
    * Cloudfront compatible patterns.
@@ -273,8 +284,15 @@ export interface OpenNextConfig {
    */
   imageOptimization?: DefaultFunctionOptions & {
     loader?: "s3" | LazyLoadedOverride<ImageLoader>;
-    arch: "x64" | "arm64";
-    nodeVersion: "18" | "20";
+    /**
+     * @default "arm64"
+     */
+    arch?: "x64" | "arm64";
+    /**
+     * @default "18"
+     */
+
+    nodeVersion?: "18" | "20";
   };
 
   /**

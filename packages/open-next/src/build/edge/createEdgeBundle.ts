@@ -7,6 +7,7 @@ import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import {
   DefaultOverrideOptions,
   IncludedConverter,
+  RouteTemplate,
   SplittedFunctionOptions,
 } from "types/open-next";
 
@@ -125,7 +126,7 @@ export async function generateEdgeBundle(
 
   // Find functions
   const functions = Object.values(middlewareManifest.functions).filter((fn) =>
-    fnOptions.routes.includes(fn.name),
+    fnOptions.routes.includes(fn.name as RouteTemplate),
   );
 
   if (functions.length > 1) {
