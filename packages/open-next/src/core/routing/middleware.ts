@@ -73,6 +73,13 @@ export async function handleMiddleware(
   const middleware = await import("./middleware.mjs");
 
   const result: Response = await middleware.default({
+    geo: {
+      city: internalEvent.headers["x-open-next-city"],
+      country: internalEvent.headers["x-open-next-country"],
+      region: internalEvent.headers["x-open-next-region"],
+      latitude: internalEvent.headers["x-open-next-latitude"],
+      longitude: internalEvent.headers["x-open-next-longitude"],
+    },
     headers: internalEvent.headers,
     method: internalEvent.method || "GET",
     nextConfig: {
