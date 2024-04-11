@@ -203,23 +203,28 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         ],
       });
 
-      new AwsCustomResource(this, "RevalidationInitResource", {
-        onUpdate: {
-          service: "Lambda",
-          action: "invoke",
-          parameters: {
-            FunctionName: insertFn.functionName,
+      const customResource = new AwsCustomResource(
+        this,
+        "RevalidationInitResource",
+        {
+          onUpdate: {
+            service: "Lambda",
+            action: "invoke",
+            parameters: {
+              FunctionName: insertFn.functionName,
+            },
+            physicalResourceId: PhysicalResourceId.of(Date.now().toString()),
           },
-          physicalResourceId: PhysicalResourceId.of("dynamodb-cache"),
-        },
 
-        policy: AwsCustomResourcePolicy.fromStatements([
-          new PolicyStatement({
-            actions: ["lambda:InvokeFunction"],
-            resources: [insertFn.functionArn],
-          }),
-        ]),
-      });
+          policy: AwsCustomResourcePolicy.fromStatements([
+            new PolicyStatement({
+              actions: ["lambda:InvokeFunction"],
+              resources: [insertFn.functionArn],
+            }),
+          ]),
+        },
+      );
+      customResource.node.addDependency(insertFn);
     }
 
     return table;

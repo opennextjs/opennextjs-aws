@@ -2,7 +2,17 @@ import { expect, test } from "@playwright/test";
 
 test("Revalidate tag", async ({ page, request }) => {
   test.setTimeout(45000);
+  // We need to hit the page twice to make sure it's properly cached
+  // Turbo might cache next build result, resulting in the tag being newer than the page
+  // This can lead to the cache thinking that revalidate tag has been called when it hasn't
+  // This is because S3 cache files are not uploaded if they have the same BuildId
   let responsePromise = page.waitForResponse((response) => {
+    return response.status() === 200;
+  });
+  await page.goto("/revalidate-tag");
+  await responsePromise;
+
+  responsePromise = page.waitForResponse((response) => {
     return response.status() === 200;
   });
   await page.goto("/revalidate-tag");
