@@ -24,6 +24,7 @@ import {
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
+  Architecture,
   Code,
   Function as CdkFunction,
   FunctionUrlAuthType,
@@ -207,7 +208,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
           service: "Lambda",
           action: "invoke",
           parameters: {
-            FunctionName: insertFn.functionArn,
+            FunctionName: insertFn.functionName,
           },
           physicalResourceId: PhysicalResourceId.of("dynamodb-cache"),
         },
@@ -313,6 +314,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
   private createFunctionOrigin(key: string, origin: OpenNextFunctionOrigin) {
     const environment = this.getEnvironment();
     const fn = new CdkFunction(this, `${key}Function`, {
+      architecture: Architecture.ARM_64,
       runtime: Runtime.NODEJS_18_X,
       handler: origin.handler,
       code: Code.fromAsset(path.join(this.openNextBasePath, origin.bundle)),

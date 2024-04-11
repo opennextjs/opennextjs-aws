@@ -91,7 +91,7 @@ export async function defaultHandler(
       downloadHandler,
     );
 
-    return buildSuccessResponse(result, etag);
+    return buildSuccessResponse(result, streamCreator, etag);
   } catch (e: any) {
     return buildFailureResponse(e, streamCreator);
   }
@@ -152,14 +152,29 @@ function computeEtag(imageParams: {
     .digest("base64");
 }
 
-function buildSuccessResponse(result: any, etag?: string): InternalResult {
+function buildSuccessResponse(
+  result: any,
+  streamCreator?: StreamCreator,
+  etag?: string,
+): InternalResult {
   const headers: Record<string, string> = {
     Vary: "Accept",
     "Content-Type": result.contentType,
     "Cache-Control": `public,max-age=${result.maxAge},immutable`,
   };
+  debug("result", result);
   if (etag) {
     headers["ETag"] = etag;
+  }
+
+  if (streamCreator) {
+    const response = new OpenNextNodeResponse(
+      () => void 0,
+      async () => void 0,
+      streamCreator,
+    );
+    response.writeHead(200, headers);
+    response.end(result.buffer);
   }
 
   return {

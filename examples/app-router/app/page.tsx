@@ -44,9 +44,6 @@ export default function Home() {
         <Nav href={"/sse"} title="Server Sent Events">
           Server Sent Events via Streaming
         </Nav>
-        <Nav href={"/revalidate-tag"} title="Revalidate Tag">
-          Revalidate Tag
-        </Nav>
         <Nav href={"/image-optimization"} title="Image Optimization">
           Image Optimization with next/image
         </Nav>
