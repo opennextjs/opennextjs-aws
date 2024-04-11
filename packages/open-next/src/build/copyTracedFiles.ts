@@ -120,7 +120,12 @@ See the docs for more information on how to bundle edge runtime functions.
 
   if (hasAppDir) {
     //App dir
-    computeCopyFilesForPage("app/_not-found");
+    try {
+      computeCopyFilesForPage("app/_not-found");
+    } catch (e) {
+      // In next 14.2.0, _not-found is at 'app/_not-found/page'
+      computeCopyFilesForPage("app/_not-found/page");
+    }
   }
 
   //Files we actually want to include

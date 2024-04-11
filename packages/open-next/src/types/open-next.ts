@@ -201,6 +201,8 @@ export interface FunctionOptions extends DefaultFunctionOptions {
   /**
    * Bundle Next server into a single file.
    * This results in a way smaller bundle but it might break for some cases.
+   * This option will probably break on every new Next.js version.
+   * Broken in 14.2+
    * @default false
    */
   experimentalBundledNextServer?: boolean;
@@ -211,7 +213,7 @@ export type RouteTemplate =
   | `app/${string}/page`
   | `app/page`
   | `app/route`
-  | `page/${string}`;
+  | `pages/${string}`;
 
 export interface SplittedFunctionOptions extends FunctionOptions {
   /**
@@ -220,7 +222,7 @@ export interface SplittedFunctionOptions extends FunctionOptions {
    * For pages, you should use the `page/${name}` format.
    * @example
    * ```ts
-   * routes: ["app/api/test/route", "app/page", "page/admin"]
+   * routes: ["app/api/test/route", "app/page", "pages/admin"]
    * ```
    */
   routes: RouteTemplate[];
