@@ -1,0 +1,16 @@
+The Initializer is a special backend that should run only once during deployment. It's default role is to populate the tag cache with the prerendered tags.
+
+It uses these events and results: 
+```typescript
+interface InitializationFunctionEvent {
+  type: "initializationFunction";
+  requestType: "create" | "update" | "delete";
+  resourceId: typeof PHYSICAL_RESOURCE_ID;
+}
+
+type InitializationFunctionResult = InitializationFunctionEvent;
+```
+
+### Special Overrides
+
+The initializer uses the tag cache to store the prerendered tags. 

@@ -1,0 +1,45 @@
+import { Callout } from 'nextra/components'
+
+<Callout type="warning" emoji="⚠️">
+  When we talk about middleware in this docs, we are referring both to the next `middleware` as well as the whole `routing` layer of next.
+  For example, `next.config.js` headers, redirects, rewrites, etc. are all considered `routing` in this context.
+</Callout>
+
+Since V3, you can decide to move the middleware outside of the server into it's own function that you can place in front of your others backend functions.
+
+By default, the middleware is inside the server, but you can move it outside by setting `middleware.external` to `true` in your `open-next.config.ts` file.
+```ts
+{
+  middleware: {
+    external: true
+  }
+}
+```
+It uses the `aws-lambda` wrapper and the `aws-cloudfront` converter by default so that you can use it with AWS Lambda@edge and Cloudfront.
+You can also use it inside Cloudflare Workers by setting the wrapper to `cloudflare` and the converter to `edge`.
+
+### Special overrides
+
+#### Origin resolver
+
+Since your app could be split into different origins, you need to be able to retrieve the right origin for the request. That's the purpose of the `originResolver` function. 
+
+By default, it uses the `pattern-env` resolver which uses an `OPEN_NEXT_ORIGIN` environment variable to resolve the origin as well as the pattern defined in your `open-next.config.ts`. This env var should be a stringified version of an object of this shape:
+```ts
+{
+  // Key should be the same as the one used in `open-next.config.ts` for the functions
+  [origin: string]: {
+    host: string;
+    protocol: "http" | "https";
+    port?: number;
+    customHeaders?: Record<string, string>;
+  }
+}
+```
+You can of course override this behavior by providing your own `originResolver` function in your `open-next.config.ts` file.
+This is the type of the `originResolver` function:
+```ts
+type OriginResolver = BaseOverride & {
+  resolve: (path: string) => Promise<Origin | false>;
+};
+```

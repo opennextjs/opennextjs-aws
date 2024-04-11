@@ -1,0 +1,28 @@
+The warmer backend is used to warm up the server lambda in case of serverless. This is useful to avoid cold starts.
+
+### Special Event and Result
+```typescript
+interface WarmerEvent {
+  type: "warmer";
+  warmerId: string;
+  index: number;
+  concurrency: number;
+  delay: number;
+}
+
+interface WarmerResponse {
+  type: "warmer";
+  serverId: string;
+}
+```
+
+### Special Overrides
+
+#### Invoke function
+You can customize the `invoke` function to handle the `warmer` event. By default it uses lambda invoke command. The default invoke needs a `WARM_PARAMS` environment variable that is a stringified version of this 
+```typescript
+{
+  concurrency: number;
+  function: string;
+}[]
+```

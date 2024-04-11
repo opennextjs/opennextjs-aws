@@ -1,0 +1,94 @@
+import { Callout } from 'nextra/components'
+
+<Callout>
+  This documentation is still a work in progress. Some parts might be missing or incomplete.
+
+  This is also mostly for advanced use cases (Overriding some default, provide support for another Cloud provider, creating your own IAC component ...), most people won't need to use this.
+</Callout>
+
+## Backends
+
+Every backend is a separate module. The following backends are available:
+  - Servers (Node or Edge runtime)
+  - Middleware (If manually set to external)
+  - Image Optimization
+  - Revalidation
+  - Warmer
+  - Initializer
+
+All these backends can be overrided to fit your needs. They share some common ground for the configuration and the way they are used.
+
+### Common Overrides
+
+Every custom overrides (not `string`) share a `BaseOverride` types and needs to be wrapped this way:
+
+```typescript
+type BaseOverride = {
+  name: string;
+};
+
+// This is the type of the override
+type LazyLoadedOverride<T extends BaseOverride> = () => Promise<T>;
+```
+
+#### Wrapper
+
+The wrapper is the main entrypoint for the backend. This is the type of the wrapper:
+
+```typescript
+type WrapperHandler<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = (
+  handler: OpenNextHandler<E, R>,
+  converter: Converter<E, R>,
+) => Promise<(...args: any[]) => any>;
+
+export type Wrapper<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = BaseOverride & {
+  wrapper: WrapperHandler<E, R>;
+  supportStreaming: boolean;
+};
+```
+
+The `handler` is the original handler that is being wrapped. The `converter` is the converter that is being used to convert the event and the result.
+
+Here is a list of the provided wrappers:
+  - `aws-lambda` - The default AWS Lambda wrapper - It is the default wrapper
+  - `aws-lambda-streaming` - The AWS Lambda wrapper with streaming support
+  - `node` - The Node wrapper - Create a node server, not suitable for serverless
+  - `cloudflare` - The Cloudflare wrapper - For Cloudflare Worker
+
+##### Aws Lambda streaming
+
+If you want to enable streaming in lambda, you need to use this wrapper. It is not enabled by default.
+
+Be aware that you might encounter some unexpected behaviors when using streaming. Aws Lambda seems to apply some buffering on the response. In some rare cases it might mean that streaming won't properly start. This is an issue with the lambda runtime itself, but this should only impact TTFB (Time To First Byte) in those cases. See this [github issue](https://github.com/aws/aws-lambda-nodejs-runtime-interface-client/issues/94)
+
+#### Converter
+
+The converter is used to convert the event and the result. This is the type of the converter:
+
+```typescript
+export type Converter<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = BaseOverride & {
+  convertFrom: (event: any) => Promise<E>;
+  convertTo: (result: R, originalRequest?: any) => any;
+};
+```
+
+The `convertFrom` method is used to convert the event to the internal event used by the backend internal handler. The `convertTo` method is used to convert the result to the expected result.
+`convertTo` can usually be ignored when using streaming as the result is being streamed directly.
+
+Here is a list of the provided converters: 
+  - `aws-apigw-v2` - The default AWS API Gateway v2 converter - It is the default converter
+  - `aws-apigw-v1` - The AWS API Gateway v1 converter
+  - `aws-cloudfront` - The AWS CloudFront converter - Used for lambda@edge
+  - `edge` - The Edge converter - Converts from `Request` and to `Response`
+  - `node` - The Node converter - Converts from `IncomingMessage` and to `ServerResponse`
+  - `sqs-revalidate` - The SQS Revalidate converter - Used by default for the revalidation backend
+  - `dummy` - The Dummy converter - Does nothing

@@ -1,0 +1,23 @@
+#### Cannot find module next
+
+You might stumble upon this error inside cloudwatch logs: `Cannot find module 'next'`.
+It is likely that you are in a monorepo and you have several lock files.
+Just make sure that you have a single lock file in the root of your project.
+
+#### headers, redirect, rewrites in `next-config` and middleware are not working in next 13.4.12+
+
+If you use a version of nextjs >= 13.4.12, you'll need to use an open-next version >= 2.1
+
+#### My api route are returning empty response and i'm using sentry
+
+If you are using sentry, API routes returns empty body. You could try configuring sentry to ignore API routes. You can read more about it [here](https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/?opt-out-of-auto-instrumentation-on-specific-routes)
+
+#### My ISR page has this cache-control header `s-maxage=2, stale-while-revalidate=2592000`
+
+Given how ISR works, while waiting for the revalidation to happen, the page will be served using this cache control header. This prevent your server from being overloaded by a lot of requests while the revalidation is done. You can read more about it [here](/inner_workings/isr).
+
+#### Unzipped size must be smaller than 262144000 bytes
+
+AWS Lambda has an unzipped size limit of 250MB. If your app is over this limit, then it is most likely using a node_module library that is too large for serverless or there is a large dev dependency getting bundled.
+For example, `pdfjs` has `canvas` optional dependency which takes up 180MB. For more details, [read me](/common_issues/bundle_size).
+Note: a large bundle size will increase cold start significantly.
