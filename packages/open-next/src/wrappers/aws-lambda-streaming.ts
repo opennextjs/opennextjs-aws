@@ -34,7 +34,7 @@ const handler: WrapperHandler = async (handler, converter) =>
       let _hasWriten = false;
 
       //Handle compression
-      const acceptEncoding = internalEvent.headers?.["accept-encoding"] ?? "";
+      const acceptEncoding = internalEvent.headers?.["Accept-Encoding"] ?? "";
       let contentEncoding: string;
       let compressedStream: Writable | undefined;
 
@@ -71,10 +71,15 @@ const handler: WrapperHandler = async (handler, converter) =>
         writeHeaders: (_prelude) => {
           _prelude.headers["content-encoding"] = contentEncoding;
 
-          responseStream = awslambda.HttpResponseStream.from(
-            responseStream,
-            _prelude,
+          responseStream.setContentType(
+            "application/vnd.awslambda.http-integration-response",
           );
+          _prelude.headers["content-encoding"] = contentEncoding;
+          const prelude = JSON.stringify(_prelude);
+
+          responseStream.write(prelude);
+
+          responseStream.write(new Uint8Array(8));
 
           return compressedStream ?? responseStream;
         },
