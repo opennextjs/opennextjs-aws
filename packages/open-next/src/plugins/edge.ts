@@ -23,7 +23,6 @@ export interface IPluginSettings {
 }
 
 /**
- * TODO: Handle wasm import
  * @param opts.nextDir - The path to the .next directory
  * @param opts.edgeFunctionHandlerPath - The path to the edgeFunctionHandler.js file that we'll use to bundle the routing
  * @param opts.entryFiles - The entry files that we'll inject into the edgeFunctionHandler.js file
@@ -64,7 +63,7 @@ export function openNextEdgePlugins({
         };
       });
 
-      //COpied from https://github.com/cloudflare/next-on-pages/blob/7a18efb5cab4d86c8e3e222fc94ea88ac05baffd/packages/next-on-pages/src/buildApplication/processVercelFunctions/build.ts#L86-L112
+      //Copied from https://github.com/cloudflare/next-on-pages/blob/7a18efb5cab4d86c8e3e222fc94ea88ac05baffd/packages/next-on-pages/src/buildApplication/processVercelFunctions/build.ts#L86-L112
 
       build.onResolve({ filter: /^node:/ }, ({ kind, path }) => {
         // this plugin converts `require("node:*")` calls, those are the only ones that

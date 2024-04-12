@@ -144,6 +144,13 @@ export function removeFiles(
   );
 }
 
+/**
+ * Recursively traverse files in a directory and call `callbackFn` when `conditionFn` returns true
+ * @param root - Root directory to search
+ * @param conditionFn - Called to determine if `callbackFn` should be called
+ * @param callbackFn - Called when `conditionFn` returns true
+ * @param searchingDir - Directory to search (used for recursion)
+ */
 export function traverseFiles(
   root: string,
   conditionFn: (file: string) => boolean,

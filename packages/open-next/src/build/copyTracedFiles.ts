@@ -104,6 +104,19 @@ See the docs for more information on how to bundle edge runtime functions.
     );
   };
 
+  const safeComputeCopyFilesForPage = (
+    pagePath: string,
+    alternativePath?: string,
+  ) => {
+    try {
+      computeCopyFilesForPage(pagePath);
+    } catch (e) {
+      if (alternativePath) {
+        computeCopyFilesForPage(alternativePath);
+      }
+    }
+  };
+
   const hasPageDir = routes.some((route) => route.startsWith("pages/"));
   const hasAppDir = routes.some((route) => route.startsWith("app/"));
 
@@ -116,16 +129,16 @@ See the docs for more information on how to bundle edge runtime functions.
     computeCopyFilesForPage("pages/_app");
     computeCopyFilesForPage("pages/_document");
     computeCopyFilesForPage("pages/_error");
+
+    // These files can be present or not depending on if the user uses getStaticProps
+    safeComputeCopyFilesForPage("pages/404");
+    safeComputeCopyFilesForPage("pages/500");
   }
 
   if (hasAppDir) {
     //App dir
-    try {
-      computeCopyFilesForPage("app/_not-found");
-    } catch (e) {
-      // In next 14.2.0, _not-found is at 'app/_not-found/page'
-      computeCopyFilesForPage("app/_not-found/page");
-    }
+    // In next 14.2.0, _not-found is at 'app/_not-found/page'
+    safeComputeCopyFilesForPage("app/_not-found", "app/_not-found/page");
   }
 
   //Files we actually want to include

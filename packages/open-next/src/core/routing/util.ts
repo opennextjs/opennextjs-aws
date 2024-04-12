@@ -278,7 +278,7 @@ export function fixCacheHeaderForHtmlPages(
  * @__PURE__
  */
 export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
-  // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
+  // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/sst/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
   let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {

@@ -153,20 +153,17 @@ async function convertToCloudFrontRequestResult(
       const serverResponse = createServerResponse(result.internalEvent, {});
       await proxyRequest(result.internalEvent, serverResponse);
       const externalResult = convertRes(serverResponse);
-      debug("externalResult", {
+      const cloudfrontResult = {
         status: externalResult.statusCode.toString(),
         statusDescription: "OK",
         headers: convertToCloudfrontHeaders(externalResult.headers),
-        bodyEncoding: externalResult.isBase64Encoded ? "base64" : "text",
-        body: externalResult.body,
-      });
-      return {
-        status: externalResult.statusCode.toString(),
-        statusDescription: "OK",
-        headers: convertToCloudfrontHeaders(externalResult.headers),
-        bodyEncoding: externalResult.isBase64Encoded ? "base64" : "text",
+        bodyEncoding: externalResult.isBase64Encoded
+          ? ("base64" as const)
+          : ("text" as const),
         body: externalResult.body,
       };
+      debug("externalResult", cloudfrontResult);
+      return cloudfrontResult;
     }
     let customOrigin = origin?.custom as CloudFrontCustomOrigin;
     let host = responseHeaders["host"] ?? responseHeaders["Host"];
