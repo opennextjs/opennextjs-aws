@@ -2,11 +2,6 @@ import { readFileSync } from "fs";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveTagCache } from "../core/resolve.js";
-import {
-  getDynamoBatchWriteCommandConcurrency,
-  MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
-} from "./constants.js";
-import { chunk } from "./util.js";
 
 const PHYSICAL_RESOURCE_ID = "dynamodb-cache" as const;
 
@@ -64,16 +59,7 @@ async function insert(
     revalidatedAt: parseInt(item.revalidatedAt.N),
   }));
 
-  const dataChunks = chunk(parsedData, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT);
-
-  const paramsChunks = chunk(
-    dataChunks,
-    getDynamoBatchWriteCommandConcurrency(),
-  );
-
-  for (const paramsChunk of paramsChunks) {
-    await Promise.all(paramsChunk.map((params) => tagCache.writeTags(params)));
-  }
+  await tagCache.writeTags(parsedData);
 
   return {
     type: "initializationFunction",

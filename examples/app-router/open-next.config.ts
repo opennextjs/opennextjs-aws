@@ -3,7 +3,6 @@ const config = {
     override: {
       wrapper: "aws-lambda-streaming",
     },
-    experimentalBundledNextServer: true,
   },
   functions: {},
   buildCommand: "npx turbo build",

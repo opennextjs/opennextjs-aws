@@ -6,9 +6,12 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import path from "path";
 
-import { MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT } from "../../adapters/constants";
 import { awsLogger, debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
+import {
+  getDynamoBatchWriteCommandConcurrency,
+  MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
+} from "./constants";
 import { TagCache } from "./types";
 
 const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
@@ -119,27 +122,30 @@ const tagCache: TagCache = {
   async writeTags(tags) {
     try {
       if (globalThis.disableDynamoDBCache) return;
-      await Promise.all(
-        chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map((Items) => {
-          return dynamoClient.send(
-            new BatchWriteItemCommand({
-              RequestItems: {
-                [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
-                  PutRequest: {
-                    Item: {
-                      ...buildDynamoObject(
-                        Item.path,
-                        Item.tag,
-                        Item.revalidatedAt,
-                      ),
-                    },
-                  },
-                })),
+      const dataChunks = chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map(
+        (Items) => ({
+          RequestItems: {
+            [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
+              PutRequest: {
+                Item: {
+                  ...buildDynamoObject(Item.path, Item.tag, Item.revalidatedAt),
+                },
               },
-            }),
-          );
+            })),
+          },
         }),
       );
+      const toInsert = chunk(
+        dataChunks,
+        getDynamoBatchWriteCommandConcurrency(),
+      );
+      for (const paramsChunk of toInsert) {
+        await Promise.all(
+          paramsChunk.map(async (params) =>
+            dynamoClient.send(new BatchWriteItemCommand(params)),
+          ),
+        );
+      }
     } catch (e) {
       error("Failed to batch write dynamo item", e);
     }

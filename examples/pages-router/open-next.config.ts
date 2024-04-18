@@ -1,7 +1,5 @@
 const config = {
-  default: {
-    experimentalBundledNextServer: true,
-  },
+  default: {},
   functions: {},
   buildCommand: "npx turbo build",
 };
