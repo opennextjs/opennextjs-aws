@@ -13,6 +13,6 @@ export function AppPagesRouter({ stack }) {
   // });
 
   stack.addOutputs({
-    url: site.distribution.domainName,
+    url: `https://${site.distribution.domainName}`,
   });
 }
