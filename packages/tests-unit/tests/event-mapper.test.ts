@@ -1,5 +1,6 @@
 import { CloudFrontRequestResult } from "aws-lambda";
 
+//TODO: rewrite this test to use converter instead of event-mapper
 import { convertTo } from "../../open-next/src/adapters/event-mapper";
 
 describe("convertTo", () => {

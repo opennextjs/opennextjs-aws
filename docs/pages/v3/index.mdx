@@ -1,0 +1,67 @@
+import { Callout } from 'nextra/components'
+
+<Callout type="warning" emoji="⚠️">
+
+`open-next@3.0.0-rc.3` is here!!! Please report any issues you find on [discord](https://discord.com/channels/983865673656705025/1164872233223729152) or on the github [PR](https://github.com/sst/open-next/pull/327)
+
+  This is a release candidate, it is mostly ready for production (You might still experience some quirks). We are looking for feedback on this release, so please try it out and let us know what you think. See [getting started](#get-started) to quickly test it.
+  
+  It also requires an updated version of the IAC tools that you use, see the sst PR [here](https://github.com/sst/sst/pull/3567) for more information.
+  
+  You could also use SST Ion which should support it out of the box pretty soon. See [here for more info](https://github.com/sst/ion) or in the [ion discord](https://discord.com/channels/983865673656705025/1177071497974648952).
+</Callout>
+
+## What's new in V3?
+
+- Rewritten server (We moved from the serverless-http `ServerResponse` into our own version which respect nodejs stream)
+- A new `open-next.config.ts` file to configure your project
+- Native support for aws lambda, aws lambda streaming, lambda@edge, node and docker
+- In this `open-next.config.ts` you can now override a lot of things which allow for more customization:
+  - Wrapper component
+  - Converter component
+  - Incremental Cache
+  - Tag Cache
+  - Queue
+  - Custom warmer function
+  - Custom revalidation function
+  - Custom loader for image optimization
+  - Custom initialization function
+
+- Allow for splitting, you can now split your next app into multiple servers, which could each have their own configuration
+- Allow to move the middleware/routing part in a separate lambda or cloudflare workers in front of your server functions
+- An experimental bundled `NextServer` could be used which can reduce the size of your lambda by up to 24 MB
+- Experimental support for the `edge` runtime of next with some limitations:
+  - Only app router for now
+  - Only 1 route per function 
+  - Works fine in node, only for api route in cloudflare workers
+  - No support for `revalidateTag` or `revalidatePath` for now
+
+## Get started
+
+The easiest way to get started is to use the [reference implementation construct](/v3/reference-implementation). Copy this reference implementation into your project and then use it like that in your sst or cdk project:
+
+```ts
+import { OpenNextCdkReferenceImplementation } from "path/to/reference-implementation"
+
+const site = new OpenNextCdkReferenceImplementation(stack, "site", {
+  openNextPath: ".open-next",
+})
+```
+
+You also need to create an `open-next.config.ts` file in your project root, you can find more info [here](/v3/config).
+
+A very simple example of this file could be:
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {
+
+  }
+}
+export default config;
+```
+
+Then you need to run `npx open-next@3.0.0-rc.3 build` to build your project before running the `sst deploy` or `cdk deploy` command to deploy your project.
+
+In V3 `open-next build` don't accept any arguments, all the args are passed in the `open-next.config.ts` file.

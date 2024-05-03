@@ -8,22 +8,7 @@ if (command !== "build") printHelp();
 const args = parseArgs();
 if (Object.keys(args).includes("--help")) printHelp();
 
-build({
-  buildCommand: args["--build-command"],
-  buildOutputPath: args["--build-output-path"],
-  appPath: args["--app-path"],
-  packageJsonPath: args["--package-json"],
-  minify: Object.keys(args).includes("--minify"),
-  streaming: Object.keys(args).includes("--streaming"),
-  dangerous: {
-    disableDynamoDBCache: Object.keys(args).includes(
-      "--dangerously-disable-dynamodb-cache",
-    ),
-    disableIncrementalCache: Object.keys(args).includes(
-      "--dangerously-disable-incremental-cache",
-    ),
-  },
-});
+build(args["--config-path"]);
 
 function parseArgs() {
   return process.argv.slice(2).reduce(
@@ -48,7 +33,9 @@ function printHelp() {
   console.log("");
   console.log("Usage:");
   console.log("  npx open-next build");
-  console.log("  npx open-next build --build-command 'npm run custom:build'");
+  console.log(
+    "  npx open-next build --config-path ./path/to/open-next.config.ts",
+  );
   console.log("");
 
   process.exit(1);
