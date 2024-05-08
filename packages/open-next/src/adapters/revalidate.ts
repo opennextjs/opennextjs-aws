@@ -21,10 +21,12 @@ export interface RevalidateEvent {
   records: {
     host: string;
     url: string;
+    id: string;
   }[];
 }
 
 const defaultHandler = async (event: RevalidateEvent) => {
+  const failedRecords: RevalidateEvent["records"] = [];
   for (const record of event.records) {
     const { host, url } = record;
     debug(`Revalidating stale page`, { host, url });
@@ -37,35 +39,53 @@ const defaultHandler = async (event: RevalidateEvent) => {
     // - "previewModeId" is used to ensure the page is revalidated in a
     //   blocking way in lambda
     //   https://github.com/vercel/next.js/blob/1088b3f682cbe411be2d1edc502f8a090e36dee4/packages/next/src/server/api-utils/node.ts#L353
-    await new Promise<IncomingMessage>((resolve, reject) => {
-      const req = https.request(
-        `https://${host}${url}`,
-        {
-          method: "HEAD",
-          headers: {
-            "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
-            "x-isr": "1",
+    try {
+      await new Promise<IncomingMessage>((resolve, reject) => {
+        const req = https.request(
+          `https://${host}${url}`,
+          {
+            method: "HEAD",
+            headers: {
+              "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
+              "x-isr": "1",
+            },
           },
-        },
-        (res) => {
-          debug("revalidating", {
-            url,
-            host,
-            headers: res.headers,
-            statusCode: res.statusCode,
-          });
-          resolve(res);
-        },
-      );
-      req.on("error", (err) => {
-        error(`Error revalidating page`, { host, url });
-        reject(err);
+          (res) => {
+            debug("revalidating", {
+              url,
+              host,
+              headers: res.headers,
+              statusCode: res.statusCode,
+            });
+            if (
+              res.statusCode !== 200 ||
+              res.headers["x-nextjs-cache"] !== "REVALIDATED"
+            ) {
+              failedRecords.push(record);
+            }
+            resolve(res);
+          },
+        );
+        req.on("error", (err) => {
+          error(`Error revalidating page`, { host, url });
+          reject(err);
+        });
+        req.end();
       });
-      req.end();
+    } catch (err) {
+      failedRecords.push(record);
+    }
+  }
+  if (failedRecords.length > 0) {
+    error(`Failed to revalidate ${failedRecords.length} pages`, {
+      failedRecords,
     });
   }
+
   return {
     type: "revalidate",
+    // Records returned here are the ones that failed to revalidate
+    records: failedRecords,
   };
 };
 
