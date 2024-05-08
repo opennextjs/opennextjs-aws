@@ -47,7 +47,15 @@ const defaultHandler = async (event: RevalidateEvent) => {
             "x-isr": "1",
           },
         },
-        (res) => resolve(res),
+        (res) => {
+          debug("revalidating", {
+            url,
+            host,
+            headers: res.headers,
+            statusCode: res.statusCode,
+          });
+          resolve(res);
+        },
       );
       req.on("error", (err) => {
         error(`Error revalidating page`, { host, url });
