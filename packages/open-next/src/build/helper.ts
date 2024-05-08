@@ -36,7 +36,7 @@ export function normalizeOptions(config: OpenNextConfig, root: string) {
   }
   return {
     openNextVersion: getOpenNextVersion(),
-    nextVersion: getNextVersion(nextPackageJsonPath),
+    nextVersion: getNextVersion(appPath),
     nextPackageJsonPath,
     appPath,
     appBuildOutputPath: buildOutputPath,
@@ -209,9 +209,12 @@ export function getOpenNextVersion(): string {
   return require(path.join(__dirname, "../../package.json")).version;
 }
 
-export function getNextVersion(nextPackageJsonPath: string): string {
-  const version = require(nextPackageJsonPath)?.dependencies?.next;
-  // require('next/package.json').version
+export function getNextVersion(appPath: string): string {
+  // We cannot just require("next/package.json") because it could be executed in a different directory
+  const nextPackageJsonPath = require.resolve("next/package.json", {
+    paths: [appPath],
+  });
+  const version = require(nextPackageJsonPath)?.version;
 
   if (!version) {
     throw new Error("Failed to find Next version");

@@ -213,19 +213,8 @@ function printHeader(header: string) {
 }
 
 function printNextjsVersion() {
-  const { appPath } = options;
-  cp.spawnSync(
-    "node",
-    [
-      "-e",
-      `"console.info('Next.js v' + require('next/package.json').version)"`,
-    ],
-    {
-      stdio: "inherit",
-      cwd: appPath,
-      shell: true,
-    },
-  );
+  const { nextVersion } = options;
+  logger.info(`Next.js version : ${nextVersion}`);
 }
 
 function printOpenNextVersion() {
