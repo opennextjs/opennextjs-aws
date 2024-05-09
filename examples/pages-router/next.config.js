@@ -5,7 +5,20 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   outputFileTracing: "../sst",
-  rewrites: () => [{ source: "/rewrite", destination: "/" }],
+  rewrites: () => [
+    { source: "/rewrite", destination: "/" },
+    {
+      source: "/rewriteUsingQuery",
+      destination: "/:destination/",
+      has: [
+        {
+          type: "query",
+          key: "d",
+          value: "(?<destination>\\w+)",
+        },
+      ],
+    },
+  ],
   trailingSlash: true,
 };
 
