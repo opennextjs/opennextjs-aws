@@ -48,16 +48,6 @@ const CloudFrontBlacklistedHeaders = [
   "x-cache",
   "x-forwarded-proto",
   "x-real-ip",
-
-  // Read-only headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-read-only-headers
-  "accept-encoding",
-  "content-length",
-  "if-modified-since",
-  "if-none-match",
-  "if-range",
-  "if-unmodified-since",
-  "transfer-encoding",
-  "via",
 ];
 
 function normalizeCloudFrontRequestEventHeaders(
