@@ -1,5 +1,11 @@
 import { NextConfig } from "config/index";
-import { compile, Match, match, PathFunction } from "path-to-regexp";
+import {
+  compile,
+  Match,
+  match,
+  MatchFunction,
+  PathFunction,
+} from "path-to-regexp";
 import type {
   Header,
   PrerenderManifest,
@@ -11,6 +17,7 @@ import { InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../../adapters/logger";
 import {
+  convertFromQueryString,
   convertToQueryString,
   escapeRegex,
   getUrlParts,
@@ -71,6 +78,40 @@ function checkHas(
     : true;
 }
 
+const getParamsFromSource =
+  (source: MatchFunction<object>) => (value: string) => {
+    debug("value", value);
+    const _match = source(value);
+    return _match ? _match.params : {};
+  };
+
+const computeParamHas =
+  (
+    headers: Record<string, string>,
+    cookies: Record<string, string>,
+    query: Record<string, string | string[]>,
+  ) =>
+  (has: RouteHas): object => {
+    if (!has.value) return {};
+    const matcher = new RegExp(`^${has.value}$`);
+    const fromSource = (value: string) => {
+      const matches = value.match(matcher);
+      return matches?.groups ?? {};
+    };
+    switch (has.type) {
+      case "header":
+        return fromSource(headers[has.key.toLowerCase()] ?? "");
+      case "cookie":
+        return fromSource(cookies[has.key] ?? "");
+      case "query":
+        return Array.isArray(query[has.key])
+          ? fromSource((query[has.key] as string[]).join(","))
+          : fromSource((query[has.key] as string) ?? "");
+      case "host":
+        return fromSource(headers.host ?? "");
+    }
+  };
+
 function convertMatch(
   match: Match,
   toDestination: PathFunction,
@@ -118,14 +159,6 @@ export function addNextConfigHeaders(
           debug("Error matching header ", h.key, " with value ", h.value);
           requestHeaders[h.key] = h.value;
         }
-        try {
-          const key = convertMatch(_match, compile(h.key), h.key);
-          const value = convertMatch(_match, compile(h.value), h.value);
-          requestHeaders[key] = value;
-        } catch {
-          debug("Error matching header ", h.key, " with value ", h.value);
-          requestHeaders[h.key] = h.value;
-        }
       });
     }
   }
@@ -138,44 +171,66 @@ export function handleRewrites<T extends RewriteDefinition>(
 ) {
   const { rawPath, headers, query, cookies } = event;
   const matcher = routeHasMatcher(headers, cookies, query);
+  const computeHas = computeParamHas(headers, cookies, query);
   const rewrite = rewrites.find(
     (route) =>
       new RegExp(route.regex).test(rawPath) &&
       checkHas(matcher, route.has) &&
       checkHas(matcher, route.missing, true),
   );
+  let finalQuery = query;
 
   let rewrittenUrl = rawPath;
   const isExternalRewrite = isExternal(rewrite?.destination);
   debug("isExternalRewrite", isExternalRewrite);
   if (rewrite) {
-    const { pathname, protocol, hostname } = getUrlParts(
+    const { pathname, protocol, hostname, queryString } = getUrlParts(
       rewrite.destination,
       isExternalRewrite,
     );
-    const toDestination = compile(escapeRegex(pathname ?? "") ?? "");
-    const fromSource = match(escapeRegex(rewrite?.source) ?? "");
-    const _match = fromSource(rawPath);
-    if (_match) {
-      const { params } = _match;
-      const isUsingParams = Object.keys(params).length > 0;
-      if (isUsingParams) {
-        const rewrittenPath = unescapeRegex(toDestination(params));
-        rewrittenUrl = isExternalRewrite
-          ? `${protocol}//${hostname}${rewrittenPath}`
-          : `${rewrittenPath}`;
-      } else {
-        rewrittenUrl = rewrite.destination;
-      }
-      debug("rewrittenUrl", rewrittenUrl);
+    debug("urlParts", { pathname, protocol, hostname, queryString });
+    const toDestinationPath = compile(escapeRegex(pathname ?? "") ?? "");
+    const toDestinationHost = compile(escapeRegex(hostname ?? "") ?? "");
+    const toDestinationQuery = compile(escapeRegex(queryString ?? "") ?? "");
+    let params = {
+      // params for the source
+      ...getParamsFromSource(match(escapeRegex(rewrite?.source) ?? ""))(
+        rawPath,
+      ),
+      // params for the has
+      ...rewrite.has?.reduce((acc, cur) => {
+        return { ...acc, ...computeHas(cur) };
+      }, {}),
+      // params for the missing
+      ...rewrite.missing?.reduce((acc, cur) => {
+        return { ...acc, ...computeHas(cur) };
+      }, {}),
+    };
+    const isUsingParams = Object.keys(params).length > 0;
+    let rewrittenQuery = queryString;
+    let rewrittenHost = hostname;
+    let rewrittenPath = pathname;
+    if (isUsingParams) {
+      rewrittenPath = unescapeRegex(toDestinationPath(params));
+      rewrittenHost = unescapeRegex(toDestinationHost(params));
+      rewrittenQuery = unescapeRegex(toDestinationQuery(params));
     }
+    rewrittenUrl = isExternalRewrite
+      ? `${protocol}//${rewrittenHost}${rewrittenPath}`
+      : `/${rewrittenPath}`;
+    // Should we merge the query params or use only the ones from the rewrite?
+    finalQuery = {
+      ...query,
+      ...convertFromQueryString(rewrittenQuery),
+    };
+    debug("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
   }
 
   return {
     internalEvent: {
       ...event,
       rawPath: rewrittenUrl,
-      url: `${rewrittenUrl}${convertToQueryString(query)}`,
+      url: `${rewrittenUrl}${convertToQueryString(finalQuery)}`,
     },
     __rewrite: rewrite,
     isExternalRewrite,

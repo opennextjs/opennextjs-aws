@@ -24,28 +24,44 @@ export function isExternal(url?: string, host?: string) {
   return pattern.test(url);
 }
 
+export function convertFromQueryString(query: string) {
+  if (query === "") return {};
+  const queryParts = query.split("&");
+  return queryParts.reduce(
+    (acc, part) => {
+      const [key, value] = part.split("=");
+      return { ...acc, [key]: value };
+    },
+    {} as Record<string, string>,
+  );
+}
+
 /**
  *
  * @__PURE__
  */
 export function getUrlParts(url: string, isExternal: boolean) {
-  // NOTE: when redirect to a URL that contains search query params,
-  // compile breaks b/c it does not allow for the '?' character
-  // We can't use encodeURIComponent because modal interception contains
-  // characters that can't be encoded
-  url = url.replaceAll("?", "%3F");
   if (!isExternal) {
+    const regex = /\/([^?]*)\??(.*)/;
+    const match = url.match(regex);
     return {
       hostname: "",
-      pathname: url,
+      pathname: match?.[1] ?? url,
       protocol: "",
+      queryString: match?.[2] ?? "",
     };
   }
-  const { hostname, pathname, protocol } = new URL(url);
+
+  const regex = /^(https?:\/\/)?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
+  const match = url.match(regex);
+  if (!match) {
+    throw new Error(`Invalid external URL: ${url}`);
+  }
   return {
-    hostname,
-    pathname,
-    protocol,
+    protocol: match[1] ?? "https://",
+    hostname: match[2],
+    pathname: match[3],
+    queryString: match[4]?.slice(1) ?? "",
   };
 }
 
