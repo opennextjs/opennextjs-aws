@@ -187,7 +187,7 @@ function setStandaloneBuildMode(monorepoRoot: string) {
 }
 
 function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
-  const { nextPackageJsonPath } = options;
+  const { appPackageJsonPath } = options;
   const command =
     config.buildCommand ??
     (["bun", "npm"].includes(packager)
@@ -195,7 +195,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
       : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
-    cwd: path.dirname(nextPackageJsonPath),
+    cwd: path.dirname(appPackageJsonPath),
   });
 }
 
@@ -213,19 +213,8 @@ function printHeader(header: string) {
 }
 
 function printNextjsVersion() {
-  const { appPath } = options;
-  cp.spawnSync(
-    "node",
-    [
-      "-e",
-      `"console.info('Next.js v' + require('next/package.json').version)"`,
-    ],
-    {
-      stdio: "inherit",
-      cwd: appPath,
-      shell: true,
-    },
-  );
+  const { nextVersion } = options;
+  logger.info(`Next.js version : ${nextVersion}`);
 }
 
 function printOpenNextVersion() {
