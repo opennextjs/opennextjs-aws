@@ -1,5 +1,14 @@
 # open-next
 
+## 3.0.1
+
+### Patch Changes
+
+- ff36f10: Fix next rewrites
+- d5efc43: Fix next version check
+- c2817fe: Handle partial failure in ISR revalidation
+- 3b004dd: Fix for external middleware
+
 ## 3.0.0
 
 ### Major Changes
