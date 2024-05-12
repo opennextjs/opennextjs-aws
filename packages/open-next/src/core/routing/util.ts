@@ -56,7 +56,9 @@ export function getUrlParts(url: string, isExternal: boolean) {
 export function convertRes(res: OpenNextNodeResponse) {
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
-  const headers = parseHeaders(res.headers);
+  // When using HEAD requests, it seems that flushHeaders is not called, not sure why
+  // Probably some kind of race condition
+  const headers = parseHeaders(res.getFixedHeaders());
   const isBase64Encoded = isBinaryContentType(
     Array.isArray(headers["content-type"])
       ? headers["content-type"][0]

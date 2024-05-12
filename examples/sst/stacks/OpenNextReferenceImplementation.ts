@@ -292,7 +292,12 @@ export class OpenNextCdkReferenceImplementation extends Construct {
       runtime: Runtime.NODEJS_18_X,
       timeout: Duration.seconds(30),
     });
-    consumer.addEventSource(new SqsEventSource(queue, { batchSize: 5 }));
+    consumer.addEventSource(
+      new SqsEventSource(queue, {
+        batchSize: 5,
+        reportBatchItemFailures: true,
+      }),
+    );
     return queue;
   }
 
