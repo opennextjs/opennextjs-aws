@@ -25,19 +25,19 @@ export function normalizeOptions(config: OpenNextConfig, root: string) {
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
 
-  let nextPackageJsonPath: string;
+  let appPackageJsonPath: string;
   if (config.packageJsonPath) {
     const _pkgPath = path.join(process.cwd(), config.packageJsonPath);
-    nextPackageJsonPath = _pkgPath.endsWith("package.json")
+    appPackageJsonPath = _pkgPath.endsWith("package.json")
       ? _pkgPath
       : path.join(_pkgPath, "./package.json");
   } else {
-    nextPackageJsonPath = findNextPackageJsonPath(appPath, root);
+    appPackageJsonPath = findNextPackageJsonPath(appPath, root);
   }
   return {
     openNextVersion: getOpenNextVersion(),
     nextVersion: getNextVersion(appPath),
-    nextPackageJsonPath,
+    appPackageJsonPath,
     appPath,
     appBuildOutputPath: buildOutputPath,
     appPublicPath: path.join(appPath, "public"),
