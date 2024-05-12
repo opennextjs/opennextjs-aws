@@ -92,8 +92,7 @@ const computeParamHas =
     query: Record<string, string | string[]>,
   ) =>
   (has: RouteHas): object => {
-    let params = {};
-    if (!has.value) return params;
+    if (!has.value) return {};
     const matcher = new RegExp(`^${has.value}$`);
     const fromSource = (value: string) => {
       const matches = value.match(matcher);
@@ -101,20 +100,16 @@ const computeParamHas =
     };
     switch (has.type) {
       case "header":
-        params = fromSource(headers[has.key.toLowerCase()] ?? "");
-        break;
+        return fromSource(headers[has.key.toLowerCase()] ?? "");
       case "cookie":
-        params = fromSource(cookies[has.key] ?? "");
-        break;
+        return fromSource(cookies[has.key] ?? "");
       case "query":
-        params = Array.isArray(query[has.key])
+        return Array.isArray(query[has.key])
           ? fromSource((query[has.key] as string[]).join(","))
           : fromSource((query[has.key] as string) ?? "");
-        break;
       case "host":
-        params = fromSource(headers.host ?? "");
+        return fromSource(headers.host ?? "");
     }
-    return params;
   };
 
 function convertMatch(
