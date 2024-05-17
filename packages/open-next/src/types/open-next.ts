@@ -307,6 +307,10 @@ export interface OpenNextConfig {
   };
 
   /**
+   * Dangerous options. This break some functionnality but can be useful in some cases.
+   */
+  dangerous?: DangerousOptions;
+  /**
    * The command to build the Next.js app.
    * @default `npm run build`, `yarn build`, or `pnpm build` based on the lock file found in the app's directory or any of its parent directories.
    * @example
@@ -316,10 +320,6 @@ export interface OpenNextConfig {
    * });
    * ```
    */
-  /**
-   * Dangerous options. This break some functionnality but can be useful in some cases.
-   */
-  dangerous?: DangerousOptions;
   buildCommand?: string;
   /**
    * The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd().
@@ -336,4 +336,13 @@ export interface OpenNextConfig {
    * @default "."
    */
   packageJsonPath?: string;
+  /**
+   * **Advanced usage**
+   * If you use the edge runtime somewhere (either in the middleware or in the functions), we compile 2 versions of the open-next.config.ts file.
+   * One for the node runtime and one for the edge runtime.
+   * This option allows you to specify the externals for the edge runtime used in esbuild for the compilation of open-next.config.ts
+   * It is especially useful if you use some custom overrides only in node
+   * @default []
+   */
+  edgeExternals?: string[];
 }
