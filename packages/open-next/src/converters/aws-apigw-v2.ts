@@ -6,6 +6,31 @@ import { debug } from "../adapters/logger";
 import { convertToQuery } from "../core/routing/util";
 import { removeUndefinedFromQuery } from "./utils";
 
+// Not sure which one is reallly needed as this is not documented anywhere but server actions redirect are not working without this, it causes a 500 error from cloudfront itself with a 'x-amzErrortype: InternalFailure' header
+const CloudFrontBlacklistedHeaders = [
+  "connection",
+  "expect",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "proxy-connection",
+  "trailer",
+  "upgrade",
+  "x-accel-buffering",
+  "x-accel-charset",
+  "x-accel-limit-rate",
+  "x-accel-redirect",
+  /x-amz-cf-(.*)/,
+  /x-amzn-(.*)/,
+  /x-edge-(.*)/,
+  "x-cache",
+  "x-forwarded-proto",
+  "x-real-ip",
+  "set-cookie",
+  "age",
+  "via",
+];
+
 function normalizeAPIGatewayProxyEventV2Body(
   event: APIGatewayProxyEventV2,
 ): Buffer {
@@ -65,7 +90,12 @@ function convertToApiGatewayProxyResultV2(
 ): APIGatewayProxyResultV2 {
   const headers: Record<string, string> = {};
   Object.entries(result.headers)
-    .filter(([key]) => key.toLowerCase() !== "set-cookie")
+    .filter(
+      ([key]) =>
+        !CloudFrontBlacklistedHeaders.some((header) =>
+          typeof header === "string" ? header === key : header.test(key),
+        ),
+    )
     .forEach(([key, value]) => {
       if (value === null) {
         headers[key] = "";
