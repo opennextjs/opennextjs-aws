@@ -188,7 +188,7 @@ export interface FunctionOptions extends DefaultFunctionOptions {
    * Runtime used
    * @default "node"
    */
-  runtime?: "node" | "edge";
+  runtime?: "node" | "edge" | "deno";
   /**
    * @default "regional"
    */

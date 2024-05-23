@@ -10,6 +10,7 @@ import {
 } from "types/open-next";
 import url from "url";
 
+import { compileCache } from "../build.js";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
@@ -36,6 +37,14 @@ export async function createServerBundle(
   // Get all functions to build
   const defaultFn = config.default;
   const functions = Object.entries(config.functions ?? {});
+
+  // Recompile cache.ts as ESM if any function is using Deno runtime
+  if (
+    defaultFn.runtime === "deno" ||
+    functions.some(([, fn]) => fn.runtime === "deno")
+  ) {
+    compileCache("esm");
+  }
 
   const promises = functions.map(async ([name, fnOptions]) => {
     const routes = fnOptions.routes;
@@ -134,10 +143,15 @@ async function generateBundle(
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
   fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
 
+  const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
   fs.copyFileSync(
-    path.join(outputDir, ".build", "cache.cjs"),
+    path.join(outputDir, ".build", `cache.${ext}`),
     path.join(outputPath, packagePath, "cache.cjs"),
   );
+
+  if (fnOptions.runtime === "deno") {
+    addDenoJson(outputPath, packagePath);
+  }
 
   // Bundle next server if necessary
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
@@ -227,14 +241,18 @@ async function generateBundle(
         .join(",")}] for Next version: ${options.nextVersion}`,
     );
   }
+
+  const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
   await esbuildAsync(
     {
       entryPoints: [path.join(__dirname, "../adapters", "server-adapter.js")],
       external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
-      outfile: path.join(outputPath, packagePath, "index.mjs"),
+      outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
         js: [
           `globalThis.monorepoPackagePath = "${packagePath}";`,
+          "import process from 'node:process';",
+          "import { Buffer } from 'node:buffer';",
           "import { createRequire as topLevelCreateRequire } from 'module';",
           "const require = topLevelCreateRequire(import.meta.url);",
           "import bannerUrl from 'url';",
@@ -278,6 +296,20 @@ CMD ["node", "index.mjs"]
 
 function shouldGenerateDockerfile(options: FunctionOptions) {
   return options.override?.generateDockerfile ?? false;
+}
+
+// Add deno.json file to enable "bring your own node_modules" mode.
+// TODO: this won't be necessary in Deno 2. See https://github.com/denoland/deno/issues/23151
+function addDenoJson(outputPath: string, packagePath: string) {
+  const config = {
+    // Enable "bring your own node_modules" mode
+    // and allow `__proto__`
+    unstable: ["byonm", "fs", "unsafe-proto"],
+  };
+  fs.writeFileSync(
+    path.join(outputPath, packagePath, "deno.json"),
+    JSON.stringify(config, null, 2),
+  );
 }
 
 //TODO: check if this PR is still necessary https://github.com/sst/open-next/pull/341
