@@ -148,7 +148,7 @@ export interface OverrideOptions extends DefaultOverrideOptions {
    * Add possibility to override the default s3 cache. Used for fetch cache and html/rsc/json cache.
    * @default "s3"
    */
-  incrementalCache?: "s3" | LazyLoadedOverride<IncrementalCache>;
+  incrementalCache?: "s3" | "s3-lite" | LazyLoadedOverride<IncrementalCache>;
 
   /**
    * Add possibility to override the default tag cache. Used for revalidateTags and revalidatePath.
