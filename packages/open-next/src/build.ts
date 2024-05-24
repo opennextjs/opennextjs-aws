@@ -5,10 +5,13 @@ import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
-import { buildSync } from "esbuild";
 import { MiddlewareManifest } from "types/next-types.js";
 
 import { isBinaryContentType } from "./adapters/binary.js";
+import {
+  compileOpenNextConfigEdge,
+  compileOpenNextConfigNode,
+} from "./build/compileConfig.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
@@ -39,14 +42,23 @@ export type PublicFiles = {
   files: string[];
 };
 
-export async function build(openNextConfigPath?: string) {
+export async function build(
+  openNextConfigPath?: string,
+  nodeExternals?: string,
+) {
   showWindowsWarning();
 
   // Load open-next.config.ts
   const tempDir = initTempDir();
-  const configPath = compileOpenNextConfig(tempDir, openNextConfigPath);
+  const configPath = compileOpenNextConfigNode(
+    tempDir,
+    openNextConfigPath,
+    nodeExternals,
+  );
   config = (await import(configPath)).default as OpenNextConfig;
   validateConfig(config);
+
+  compileOpenNextConfigEdge(tempDir, config, openNextConfigPath);
 
   const { root: monorepoRoot, packager } = findMonorepoRoot(
     path.join(process.cwd(), config.appPath || "."),
@@ -105,40 +117,6 @@ function initTempDir() {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
   return tempDir;
-}
-
-function compileOpenNextConfig(tempDir: string, openNextConfigPath?: string) {
-  const sourcePath = path.join(
-    process.cwd(),
-    openNextConfigPath ?? "open-next.config.ts",
-  );
-  const outputPath = path.join(tempDir, "open-next.config.mjs");
-
-  //Check if open-next.config.ts exists
-  if (!fs.existsSync(sourcePath)) {
-    //Create a simple open-next.config.mjs file
-    logger.debug("Cannot find open-next.config.ts. Using default config.");
-    fs.writeFileSync(
-      outputPath,
-      [
-        "var config = { default: { } };",
-        "var open_next_config_default = config;",
-        "export { open_next_config_default as default };",
-      ].join("\n"),
-    );
-  } else {
-    buildSync({
-      entryPoints: [sourcePath],
-      outfile: outputPath,
-      bundle: true,
-      format: "esm",
-      target: ["node18"],
-      external: ["node:*"],
-      platform: "neutral",
-    });
-  }
-
-  return outputPath;
 }
 
 function checkRunningInsideNextjsApp() {
@@ -228,9 +206,22 @@ function initOutputDir() {
     path.join(tempDir, "open-next.config.mjs"),
     "utf8",
   );
+  let openNextConfigEdge: string | null = null;
+  if (fs.existsSync(path.join(tempDir, "open-next.config.edge.mjs"))) {
+    openNextConfigEdge = readFileSync(
+      path.join(tempDir, "open-next.config.edge.mjs"),
+      "utf8",
+    );
+  }
   fs.rmSync(outputDir, { recursive: true, force: true });
   fs.mkdirSync(tempDir, { recursive: true });
   fs.writeFileSync(path.join(tempDir, "open-next.config.mjs"), openNextConfig);
+  if (openNextConfigEdge) {
+    fs.writeFileSync(
+      path.join(tempDir, "open-next.config.edge.mjs"),
+      openNextConfigEdge,
+    );
+  }
 }
 
 async function createWarmerBundle(config: OpenNextConfig) {

@@ -240,10 +240,17 @@ export function compareSemver(v1: string, v2: string): number {
   return patch1 - patch2;
 }
 
-export function copyOpenNextConfig(tempDir: string, outputPath: string) {
+export function copyOpenNextConfig(
+  tempDir: string,
+  outputPath: string,
+  isEdge = false,
+) {
   // Copy open-next.config.mjs
   fs.copyFileSync(
-    path.join(tempDir, "open-next.config.mjs"),
+    path.join(
+      tempDir,
+      isEdge ? "open-next.config.edge.mjs" : "open-next.config.mjs",
+    ),
     path.join(outputPath, "open-next.config.mjs"),
   );
 }
