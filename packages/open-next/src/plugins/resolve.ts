@@ -55,6 +55,12 @@ export function openNextResolvePlugin({
             );
           }
         }
+        if (overrides?.tag) {
+          contents = contents.replace(
+            "../cache/tag/dynamodb.js",
+            `../cache/tag/${overrides.tag}.js`,
+          );
+        }
         return {
           contents,
         };

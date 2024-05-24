@@ -114,11 +114,11 @@ export type IncludedConverter =
   | "sqs-revalidate"
   | "dummy";
 
-export type IncludedQueue = "sqs";
+export type IncludedQueue = "sqs" | "sqs-lite";
 
-export type IncludedIncrementalCache = "s3";
+export type IncludedIncrementalCache = "s3" | "s3-lite";
 
-export type IncludedTagCache = "dynamodb";
+export type IncludedTagCache = "dynamodb" | "dynamodb-lite";
 
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
@@ -148,19 +148,21 @@ export interface OverrideOptions extends DefaultOverrideOptions {
    * Add possibility to override the default s3 cache. Used for fetch cache and html/rsc/json cache.
    * @default "s3"
    */
-  incrementalCache?: "s3" | "s3-lite" | LazyLoadedOverride<IncrementalCache>;
+  incrementalCache?:
+    | IncludedIncrementalCache
+    | LazyLoadedOverride<IncrementalCache>;
 
   /**
    * Add possibility to override the default tag cache. Used for revalidateTags and revalidatePath.
    * @default "dynamodb"
    */
-  tagCache?: "dynamodb" | LazyLoadedOverride<TagCache>;
+  tagCache?: IncludedTagCache | LazyLoadedOverride<TagCache>;
 
   /**
    * Add possibility to override the default queue. Used for isr.
    * @default "sqs"
    */
-  queue?: "sqs" | "sqs-lite" | LazyLoadedOverride<Queue>;
+  queue?: IncludedQueue | LazyLoadedOverride<Queue>;
 }
 
 export interface DefaultFunctionOptions<

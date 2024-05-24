@@ -52,7 +52,7 @@ export async function resolveTagCache(
     return tagCache();
   } else {
     // This will be replaced by the bundler
-    const m_1 = await import("../cache/tag/dynamoDb.js");
+    const m_1 = await import("../cache/tag/dynamodb.js");
     return m_1.default;
   }
 }
