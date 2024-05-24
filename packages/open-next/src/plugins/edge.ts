@@ -99,10 +99,6 @@ globalThis._ROUTES = ${JSON.stringify(routes)};
 
 import {Buffer} from "node:buffer";
 globalThis.Buffer = Buffer;
-import crypto from "node:crypto";
-if(!globalThis.crypto){
-  globalThis.crypto = crypto;
-}
 
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
@@ -125,6 +121,26 @@ class OverrideRequest extends Request {
   }
 }
 globalThis.Request = OverrideRequest;
+
+// If we're not in cloudflare, we polyfill crypto
+// https://github.com/vercel/edge-runtime/blob/main/packages/primitives/src/primitives/crypto.js
+import { webcrypto } from 'node:crypto'
+if(!globalThis.crypto){
+  globalThis.crypto = new webcrypto.Crypto()
+}
+if(!globalThis.CryptoKey){
+  globalThis.CryptoKey = webcrypto.CryptoKey
+}
+function SubtleCrypto() {
+  if (!(this instanceof SubtleCrypto)) return new SubtleCrypto()
+  throw TypeError('Illegal constructor')
+}
+if(!globalThis.SubtleCrypto) {
+  globalThis.SubtleCrypto = SubtleCrypto
+}
+if(!globalThis.Crypto) {
+  globalThis.Crypto = webcrypto.Crypto
+}
 `
 }
 ${wasmFiles
