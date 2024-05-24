@@ -677,15 +677,16 @@ async function createCacheAssets(monorepoRoot: string) {
 /* Server Helper Functions */
 /***************************/
 
-function compileCache() {
-  const outfile = path.join(options.outputDir, ".build", "cache.cjs");
+export function compileCache(format: "cjs" | "esm" = "cjs") {
+  const ext = format === "cjs" ? "cjs" : "mjs";
+  const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
   esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
       entryPoints: [path.join(__dirname, "adapters", "cache.js")],
       outfile,
       target: ["node18"],
-      format: "cjs",
+      format,
       banner: {
         js: [
           `globalThis.disableIncrementalCache = ${
