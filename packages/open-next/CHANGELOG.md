@@ -1,5 +1,15 @@
 # open-next
 
+## 3.0.2
+
+### Patch Changes
+
+- 61066fe: Fix polyfill for crypto in the middleware
+- f83d636: Add support for 'deno' server functions
+- 1b3c6fe: Fix static 404 and 500 in page router
+- e98e014: Improve custom config support
+- b3966d2: Fix duplicate cookies
+
 ## 3.0.1
 
 ### Patch Changes
