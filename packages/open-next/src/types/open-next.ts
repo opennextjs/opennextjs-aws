@@ -160,7 +160,7 @@ export interface OverrideOptions extends DefaultOverrideOptions {
    * Add possibility to override the default queue. Used for isr.
    * @default "sqs"
    */
-  queue?: "sqs" | LazyLoadedOverride<Queue>;
+  queue?: "sqs" | "sqs-lite" | LazyLoadedOverride<Queue>;
 }
 
 export interface DefaultFunctionOptions<
