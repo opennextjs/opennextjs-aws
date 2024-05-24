@@ -195,7 +195,7 @@ export async function generateOutput(
   //Load required-server-files.json
   const requiredServerFiles = JSON.parse(
     fs.readFileSync(
-      path.join(appPath, ".next", "required-server-files.json"),
+      path.join(outputPath, ".next", "required-server-files.json"),
       "utf-8",
     ),
   ).config as NextConfig;
