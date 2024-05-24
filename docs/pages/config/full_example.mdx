@@ -1,0 +1,105 @@
+Here is a detailed example of an `open-next.config.ts` file: 
+This file need to be at the same place as your `next.config.js` file
+
+`server` in here could refer to a lambda function, a docker container, a node server or whatever that can support running nodejs code. (Even cloudflare workers in the future)
+
+For more information about the options here, take a look at the [components section](/components/overview).
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: { // This is the default server, similar to the server-function in open-next v2
+    // You don't have to provide the below, by default it will generate an output 
+    // for normal lambda as in open-next v2
+    override: { 
+      wrapper: "aws-lambda-streaming", // This is necessary to enable lambda streaming
+      // You can override any part that is a `LazyLoadedOverride` this way
+      queue: () => Promise.resolve({
+        send: async (message) => {
+          //Your custom code here
+        }
+      })
+    },
+    minify: true, // This will minify the output
+  },
+  // Below we define the functions that we want to deploy in a different server
+  // This is only used if you want to split the server into multiple servers
+  functions: { 
+    ssr: {
+      routes: [
+        "app/api/isr/route", "app/api/sse/route", "app/api/revalidateTag/route", // app dir Api routes
+        "app/route1/page", "app/route2/page", // app dir pages
+        "pages/route3" // page dir pages
+        ], // For app dir, you need to include route|page, no need to include layout or loading
+      patterns: ['api/*', 'route1', 'route2', 'route3'], // patterns needs to be in a cloudfront compatible format, this will be used to generate the output
+      override: {
+        wrapper: "aws-lambda-streaming",
+      },
+      // This enables the bundled next server which is faster and reduce the size of the server
+      // This is also experimental and might not work in all cases
+      experimentalBundledNextServer: true 
+    },
+    pageSsr: {
+      routes: ["pages/pageSsr"], // For page dir routes should be in the form `pages/${route}` without the extension, it should match the filesystem
+      // BUILD_ID is a special case, it will be replaced with the actual build id
+      patterns: [ 'pageSsr', "_next/data/BUILD_ID/pageSsr.json"],
+      override: {
+        wrapper: "node",
+        converter: "node",
+        // This is necessary to generate the dockerfile and for the implementation to know that it needs to deploy on docker
+        // You can also provide a string here which will be used to create the dockerfile
+        generateDockerfile: true,
+      },
+    },
+    edge: {
+      runtime: "edge",
+      routes: ["app/ssr/page"],
+      patterns: ["ssr"],
+      override: {}
+    }    
+  },
+  // By setting this, it will create another bundle for the middleware, 
+  // and the middleware will be deployed in a separate server. 
+  // If not set middleware will be bundled inside the servers
+  // It could be in lambda@edge, cloudflare workers, or anywhere else
+  // By default it uses lambda@edge
+  // This is not implemented in the reference construct implementation.
+  // This is optional, but might be necessary if you split your app into multiple servers
+  middleware: {
+    external: true 
+  }
+
+  // Optional
+  imageOptimization: {
+    // This is the architecture of the image, it could be x64 or arm64
+    // This is necessary to bundle the proper version of sharp
+    arch: "x64", 
+  }
+
+  // If you want to override the default build command, you can do it here
+  // By default it uses `npm run build`
+  buildCommand: "echo 'hello world'",
+
+  dangerous: {
+    // This will disable the tag cache
+    // You can use it safely on page router, on app router it will break revalidateTag and revalidatePath
+    disableTagCache: true, 
+    // This will disable the incremental cache
+    // This is generally not recommended, as this is necessary for ISR AND SSG routes as well as the fetch cache
+    disableIncrementalCache: true, 
+  }
+
+  //The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd() - Optional default to "."
+  buildOutputPath: "build", 
+
+  //The path to the root of the Next.js app's source code. This path is relative from the current process.cwd(). - Optional default to "."
+  appPath: "app",
+
+  //The path to the package.json file of the Next.js app. This path is relative from the current process.cwd(). - Optional
+  packageJsonPath: "package.json",
+
+} satisfies OpenNextConfig
+
+export default config;
+export type Config = typeof config
+```

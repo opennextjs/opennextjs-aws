@@ -1,0 +1,92 @@
+Here you can find the most common `open-next.config.ts` file examples that you could easily take as a starting point for your own configuration.
+
+## Streaming with lambda
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: { 
+    override: { 
+      wrapper: "aws-lambda-streaming", // This is necessary to enable lambda streaming
+    },
+  },
+} satisfies OpenNextConfig
+
+export default config;
+```
+
+## Splitting the server
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  // This is the default server, similar to the server-function in open-next v2
+  // In this case we are not providing any override, so it will generate a normal lambda (i.e. no streaming)
+  default: {},
+  // You can define multiple functions here, each with its own routes, patterns and overrides
+  functions: {
+    myFn: {
+      // Patterns needs to use the glob pattern
+      patterns: ['route1', 'route2', 'route3'],
+      // For app dir, you need to include route|page, no need to include layout or loading
+      // It needs to be prepended with app/ or pages/ depending on the directory used
+      routes: ["app/route1/page", "app/route2/page", "pages/route3"], 
+      override: {
+        wrapper: "aws-lambda-streaming",
+      }
+    },
+  }
+} satisfies OpenNextConfig
+
+export default config;
+```
+
+## Edge runtime splitted function
+
+This will generate 2 server functions, the default one and the edge one. The edge one will still be deployed as a lambda function, but it will be deployed in the edge runtime.
+
+Edge runtime function have less cold start time, but you can only deploy one route per function. They also does not have the middleware bundled in the function, so you need to use external middleware if you need it in front of the edge function.
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {},
+  functions: {
+    edge: {
+      runtime: "edge",
+      //placement: "global", If you want your function to be deployed globally (i.e. lambda@edge) uncomment this line. Otherwise it will be deployed in the region specified in the stack
+      routes: ["app/api/test/route"],
+      patterns: ["api/test"],
+    },
+  }
+} satisfies OpenNextConfig
+
+export default config;
+```
+
+## External middleware
+
+In some cases (edge runtime, function splitting with some middleware rewrites, etc) you might want to use external middleware. 
+With the default middleware configuration, it  is bundled for a deployment in lambda@edge.
+This is how you can do it:
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {},
+  functions: {
+    myFn: {
+      patterns: ['route1', 'route2', 'route3'],
+      routes: ["app/route1/page", "app/route2/page", "pages/route3"], 
+      override: {
+        wrapper: "aws-lambda-streaming",
+      }
+    },
+  },
+  middleware: {
+    external: true
+  }
+} satisfies OpenNextConfig
+
+export default config;
+```

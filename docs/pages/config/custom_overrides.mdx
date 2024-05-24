@@ -1,0 +1,297 @@
+import { Callout } from 'nextra/components'
+
+In some cases the simple example is not enough, and you want to add more customization to your server. This is where the lazy loaded overrides come in. You can override any part of the server by providing a function that returns a promise that resolves to the override object. This is useful when you want to add custom logic to your server, like adding a custom queue, or adding a custom converter.
+
+<Callout>
+Be careful if you use the edge runtime (either in a function or by using the external middleware), we do 2 compilations of the `open-next.config.ts`, one for node and one for the edge runtime. If you're using some custom overrides, you likely want to add 
+```ts
+edgeExternals: ['./customWrapper', './anyOtherOverrideUsed']
+```
+to your `open-next.config.ts` to avoid the edge runtime to try to compile overrides that are not compatible with the edge runtime.
+
+</Callout>
+
+## Custom converter
+
+Sometimes you might want to modify the object received by OpenNext. For example `Config.YOUR_SECRET_KEY` from sst cannot be used in the middleware, so you might want to add it to the headers. This is where the custom converter comes in. You can add a custom converter to modify the object before it is passed to OpenNext. 
+
+You'll still have to use a fallback value during dev as this is not used by the dev server.
+
+```ts
+// customConverter.ts
+import converter from 'open-next/converters/aws-apigw-v2.js'
+import type { Converter } from 'open-next/types/open-next'
+import { Config } from 'sst/node/Config'
+const mySecretKey = Config.YOUR_SECRET_KEY
+
+export default {
+  convertFrom: async (event) => {
+    const result = await converter.convertFrom(event)
+    return {
+      ...result, 
+      headers: {
+        ...result.headers,
+        'inserted-in-converter': '1',
+        'my-super-secret-key': mySecretKey
+      }
+    }
+  },
+  convertTo : async (intResult) => {
+    const result = await converter.convertTo(intResult)
+    return {
+      ...result,
+      headers: {
+        ...result.headers,
+        'x-converter-end': '1'
+      }
+    }
+  },
+  name: 'custom-apigw-v2'
+} as Converter
+```
+
+```ts
+// open-next.config.ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+
+const config = {
+  default: {
+    override: {
+      converter: () => import('./customConverter').then((mod) => mod.default)
+    }
+  }
+} as OpenNextConfig
+```
+
+## Custom wrapper
+Here we provide a few examples for some custom wrapper.
+
+### Define a global to use node in the middleware
+
+```ts
+// customWrapper.ts
+import defaultWrapper from 'open-next/wrappers/aws-lambda.js'
+
+//Here you can define some globals
+declare global {
+  var myApi: () => Promise<number>;
+}
+globalThis.myApi = async () => {
+  const crypto = await import('crypto')
+  return {
+    nb: crypto.randomInt(0, 100)
+  }
+}
+
+export default defaultWrapper
+```
+
+```ts
+// open-next.config.ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {
+    override: {
+      wrapper: () => import('./customWrapper').then((mod) => mod.default)
+    }
+  }
+} as OpenNextConfig
+export default config
+```
+But since Next dev server runs in a fake edge runtime and that the global is defined only for deployment, you'll have to mock the global in your middleware.
+
+```ts
+// middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+// Here you need to mock the global if not present
+// One way to avoid issues with different implementation would be to create an api endpoint 
+// that uses the exact same logic as the global you defined earlier, 
+// and that is only available during development i.e. /api/dev/myApi
+if(!globalThis.myApi) {
+  globalThis.myApi = async () => {
+    return await fetch('http://localhost:3000/api/dev/myApi').then(res => res.json())
+  }
+}
+
+export function middleware(request: NextRequest) {
+  // You can also send an error in the api endpoint itself
+  // Or you could add all the dev endpoint in their own lambda 
+  // that you do not deploy in production
+  if(request.nextUrl.pathname.startsWith('/api/dev') && process.env.NODE_ENV === 'production') {
+    return NextResponse('This route is only available in development',{
+      status: 500,
+    })
+  }
+  // Now you can use Node.js in your middleware
+  const {nb} = await myApi()
+
+  // ... your code here
+}
+ 
+```
+
+
+### Use middy.js with the wrapper
+
+```ts
+// customWrapper.ts
+import streamingWrapper from 'open-next/wrappers/aws-lambda.js'
+import {WrapperHandler} from 'open-next/types/open-next'
+import middy from '@middy/core'
+import httpSecurityHeaders from '@middy/http-security-headers'
+
+const handler : WrapperHandler = async (handler, converter) => {
+  const defaultHandler = await streamingWrapper.wrapper(handler, converter)
+  return middy()
+  .use(httpSecurityHeaders())
+  .handler(defaultHandler)
+}
+
+export default {
+  wrapper: handler,
+  name: "custom-aws-lambda",
+  supportStreaming: false,
+};
+```
+
+```ts
+// open-next.config.ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {
+    override: {
+      wrapper: () => import('./customWrapper').then((mod) => mod.default)
+    }
+  }
+} as OpenNextConfig
+export default config
+```
+
+### Preload some routes during warmer event
+
+In this example the custom wrapper is used to preload some important routes before the first request. This is useful if you have some routes that are slow on coldstart (Next lazily load the routes only when they are needed) and you want to preload them before the first request. This is also useful if you want to add some custom logic to the server, like adding a custom header to the response.
+
+**WARNING**: This one is not properly tested. It's just an example of what you could do. You should test it properly before using it in production. Also preloading too many routes is probably a bad idea.
+
+
+```ts
+// customWrapper.ts
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
+} from "aws-lambda";
+import type { StreamCreator } from "open-next/http/openNextResponse";
+import { Writable } from "node:stream";
+
+import { WarmerEvent, WarmerResponse } from "open-next/adapters/warmer-function";
+import type { WrapperHandler } from "open-next/types/open-next";
+
+type AwsLambdaEvent =
+  | APIGatewayProxyEventV2
+  | WarmerEvent;
+
+type AwsLambdaReturn =
+  | APIGatewayProxyResultV2
+  | WarmerResponse;
+
+
+const serverId = Math.random().toPrecision(5).toString()
+let isPreloaded = false
+
+function formatWarmerResponse(event: WarmerEvent) {
+  return new Promise<WarmerResponse>((resolve) => {
+    setTimeout(() => {
+      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
+    }, event.delay);
+  });
+}
+
+const handler: WrapperHandler =
+  async (handler, converter) =>
+  async (event: AwsLambdaEvent): Promise<AwsLambdaReturn> => {
+    console.log('custom wrapper')
+    // Handle warmer event
+    if ("type" in event) {
+      if(!isPreloaded) {
+        // You could preload every route you want here
+        // Be careful, while the route is preloading the lambda cannot process other requests
+        await handler({
+          type: 'core',
+          url: '/myRoute',
+          method: 'GET',
+          headers: {},
+          query: {},
+          rawPath: '/myRoute',
+          cookies: {},
+          remoteAddress: ''
+        });
+        isPreloaded = true
+      }
+      return formatWarmerResponse(event);
+    }
+
+
+    const internalEvent = await converter.convertFrom(event);
+    internalEvent.headers['inserted-in-wrapper'] = 'hello from wrapper'
+
+    //This is a workaround, there is an issue in node that causes node to crash silently if the OpenNextNodeResponse stream is not consumed
+    //This does not happen everytime, it's probably caused by suspended component in ssr (either via <Suspense> or loading.tsx)
+    //Everyone that wish to create their own wrapper without a StreamCreator should implement this workaround
+    //This is not necessary if the underlying handler does not use OpenNextNodeResponse (At the moment, OpenNextNodeResponse is used by the node runtime servers and the image server)
+    const fakeStream: StreamCreator = {
+      writeHeaders: () => {
+        return new Writable({
+          write: (_chunk, _encoding, callback) => {
+            callback();
+          },
+        });
+      },
+      onFinish: () => {
+        // Do nothing
+      },
+    };
+
+    const response = await handler(internalEvent, fakeStream);
+    response.headers['x-wrapper'] = 'hi'
+
+    return converter.convertTo(response, event);
+  };
+
+export default {
+  wrapper: handler,
+  name: "custom-aws-lambda",
+  supportStreaming: false,
+};
+```
+
+```ts
+// open-next.config.ts
+import type { OpenNextConfig } from 'open-next/types/open-next'
+const config = {
+  default: {
+    override: {
+      wrapper: () => import('./customWrapper').then((mod) => mod.default)
+    }
+  }
+} as OpenNextConfig
+```
+
+## Custom Incremental cache
+TODO
+
+## Custom queue
+TODO
+
+## Custom Tag cache
+TODO
+
+## Custom Origin Resolver
+TODO
+
+## Custom Image Loader
+TODO
+
+## Custom Warmer Invoke
+TODO
