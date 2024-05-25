@@ -1,4 +1,4 @@
-interface BaseOpenNextError {
+export interface BaseOpenNextError {
   readonly __openNextInternal: true;
   readonly canIgnore: boolean;
   // 0 - debug, 1 - warn, 2 - error
