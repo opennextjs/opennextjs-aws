@@ -1,5 +1,7 @@
 import { AwsClient } from "aws4fetch";
+import { RecoverableError } from "utils/error";
 
+import { error } from "../adapters/logger";
 import { Queue } from "./types";
 
 // Expected environment variables
@@ -13,24 +15,29 @@ const awsClient = new AwsClient({
 });
 const queue: Queue = {
   send: async ({ MessageBody, MessageDeduplicationId, MessageGroupId }) => {
-    const result = await awsClient.fetch(
-      `https://sqs.${REVALIDATION_QUEUE_REGION ?? "us-east-1"}.amazonaws.com`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-amz-json-1.0",
-          "X-Amz-Target": "AmazonSQS.SendMessage",
+    try {
+      const result = await awsClient.fetch(
+        `https://sqs.${REVALIDATION_QUEUE_REGION ?? "us-east-1"}.amazonaws.com`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-amz-json-1.0",
+            "X-Amz-Target": "AmazonSQS.SendMessage",
+          },
+          body: JSON.stringify({
+            QueueUrl: REVALIDATION_QUEUE_URL,
+            MessageBody: JSON.stringify(MessageBody),
+            MessageDeduplicationId,
+            MessageGroupId,
+          }),
         },
-        body: JSON.stringify({
-          QueueUrl: REVALIDATION_QUEUE_URL,
-          MessageBody: JSON.stringify(MessageBody),
-          MessageDeduplicationId,
-          MessageGroupId,
-        }),
-      },
-    );
-    const jsonResult = await result.json();
-    console.log("result", result.status, jsonResult, process.env);
+      );
+      if (result.status !== 200) {
+        throw new RecoverableError(`Failed to send message: ${result.status}`);
+      }
+    } catch (e) {
+      error(e);
+    }
   },
   name: "sqs",
 };

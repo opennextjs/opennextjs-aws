@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import path from "path";
+import { IgnorableError, RecoverableError } from "utils/error";
 
 import { parseNumberFromEnv } from "../../adapters/util";
 import { Extension } from "../next-types";
@@ -37,25 +38,22 @@ const incrementalCache: IncrementalCache = {
         isFetch ? "fetch" : "cache",
       )}`,
     );
-    // const result = await s3Client.send(
-    //   new GetObjectCommand({
-    //     Bucket: CACHE_BUCKET_NAME,
-    //     Key: buildS3Key(key, isFetch ? "fetch" : "cache"),
-    //   }),
-    // );
 
     const cacheData = JSON.parse((await result.text()) ?? "{}");
-    console.log("cacheData", cacheData);
-    console.log("headers", result.headers.get("last-modified") ?? "");
-    return {
-      value: cacheData,
-      lastModified: new Date(
-        result.headers.get("last-modified") ?? "",
-      ).getTime(),
-    };
+    if (result.status === 404) {
+      throw new IgnorableError("Not found");
+    } else if (result.status !== 200) {
+      throw new RecoverableError(`Failed to get cache: ${result.status}`);
+    } else
+      return {
+        value: cacheData,
+        lastModified: new Date(
+          result.headers.get("last-modified") ?? "",
+        ).getTime(),
+      };
   },
   async set(key, value, isFetch): Promise<void> {
-    const result = await awsClient.fetch(
+    const response = await awsClient.fetch(
       `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${buildS3Key(
         key,
         isFetch ? "fetch" : "cache",
@@ -65,11 +63,12 @@ const incrementalCache: IncrementalCache = {
         body: JSON.stringify(value),
       },
     );
-    const textResult = await result.text();
-    console.log("set result", result.status, textResult);
+    if (response.status !== 200) {
+      throw new RecoverableError(`Failed to set cache: ${response.status}`);
+    }
   },
   async delete(key): Promise<void> {
-    const result = await awsClient.fetch(
+    const response = await awsClient.fetch(
       `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${buildS3Key(
         key,
         "cache",
@@ -78,8 +77,9 @@ const incrementalCache: IncrementalCache = {
         method: "DELETE",
       },
     );
-    const textResult = await result.text();
-    console.log("delete result", result.status, textResult);
+    if (response.status !== 204) {
+      throw new RecoverableError(`Failed to delete cache: ${response.status}`);
+    }
   },
   name: "s3",
 };

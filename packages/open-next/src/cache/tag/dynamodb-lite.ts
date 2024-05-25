@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import path from "path";
+import { RecoverableError } from "utils/error";
 
 import { debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
@@ -58,6 +59,11 @@ const tagCache: TagCache = {
           }),
         },
       );
+      if (result.status !== 200) {
+        throw new RecoverableError(
+          `Failed to get tags by path: ${result.status}`,
+        );
+      }
       const { Items } = await result.json();
 
       const tags = Items?.map((item: any) => item.tag.S ?? "") ?? [];
@@ -91,6 +97,9 @@ const tagCache: TagCache = {
           }),
         },
       );
+      if (result.status !== 200) {
+        throw new RecoverableError(`Failed to get by tag: ${result.status}`);
+      }
       const { Items } = await result.json();
       return (
         // We need to remove the buildId from the path
@@ -131,6 +140,11 @@ const tagCache: TagCache = {
           }),
         },
       );
+      if (result.status !== 200) {
+        throw new RecoverableError(
+          `Failed to get last modified: ${result.status}`,
+        );
+      }
       const revalidatedTags = (await result.json()).Items ?? [];
       debug("revalidatedTags", revalidatedTags);
       // If we have revalidated tags we return -1 to force revalidation
@@ -162,8 +176,8 @@ const tagCache: TagCache = {
       );
       for (const paramsChunk of toInsert) {
         await Promise.all(
-          paramsChunk.map(async (params) =>
-            awsClient.fetch(
+          paramsChunk.map(async (params) => {
+            const response = await awsClient.fetch(
               `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
               {
                 method: "POST",
@@ -173,8 +187,14 @@ const tagCache: TagCache = {
                 },
                 body: JSON.stringify(params),
               },
-            ),
-          ),
+            );
+            if (response.status !== 200) {
+              throw new RecoverableError(
+                `Failed to batch write dynamo item: ${response.status}`,
+              );
+            }
+            return response;
+          }),
         );
       }
     } catch (e) {
