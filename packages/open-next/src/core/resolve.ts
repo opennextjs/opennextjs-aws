@@ -56,3 +56,35 @@ export async function resolveTagCache(
     return m_1.default;
   }
 }
+
+/**
+ *
+ * @param queue
+ * @returns
+ * @__PURE__
+ */
+export async function resolveQueue(queue: OverrideOptions["queue"]) {
+  if (typeof queue === "function") {
+    return queue();
+  } else {
+    const m_1 = await import("../queue/sqs.js");
+    return m_1.default;
+  }
+}
+
+/**
+ *
+ * @param incrementalCache
+ * @returns
+ * @__PURE__
+ */
+export async function resolveIncrementalCache(
+  incrementalCache: OverrideOptions["incrementalCache"],
+) {
+  if (typeof incrementalCache === "function") {
+    return incrementalCache();
+  } else {
+    const m_1 = await import("../cache/incremental/s3.js");
+    return m_1.default;
+  }
+}

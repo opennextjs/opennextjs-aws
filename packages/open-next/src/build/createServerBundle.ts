@@ -227,10 +227,7 @@ async function generateBundle(
 
     openNextResolvePlugin({
       fnName: name,
-      overrides: {
-        converter: overrides.converter,
-        wrapper: overrides.wrapper,
-      },
+      overrides: overrides,
     }),
   ];
 
