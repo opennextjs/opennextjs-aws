@@ -162,7 +162,6 @@ function prefixPattern(basePath: string) {
 }
 
 export async function generateOutput(
-  appPath: string,
   outputPath: string,
   config: OpenNextConfig,
 ) {
