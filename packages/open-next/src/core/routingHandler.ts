@@ -47,6 +47,8 @@ export default async function routingHandler(
     internalEvent = middleware;
   }
 
+  // At this point internalEvent is an InternalEvent or a MiddlewareOutputEvent
+
   let isExternalRewrite = middleware.externalRewrite ?? false;
   if (!isExternalRewrite) {
     // First rewrite to be applied
@@ -57,9 +59,11 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
-  const isStaticRoute = RoutesManifest.routes.static.some((route) =>
-    new RegExp(route.regex).test(event.rawPath),
-  );
+  const isStaticRoute =
+    !isExternalRewrite &&
+    RoutesManifest.routes.static.some((route) =>
+      new RegExp(route.regex).test((internalEvent as InternalEvent).rawPath),
+    );
 
   if (!isStaticRoute && !isExternalRewrite) {
     // Second rewrite to be applied
@@ -74,9 +78,11 @@ export default async function routingHandler(
   // We want to run this just before the dynamic route check
   internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
 
-  const isDynamicRoute = RoutesManifest.routes.dynamic.some((route) =>
-    new RegExp(route.regex).test(event.rawPath),
-  );
+  const isDynamicRoute =
+    !isExternalRewrite &&
+    RoutesManifest.routes.dynamic.some((route) =>
+      new RegExp(route.regex).test((internalEvent as InternalEvent).rawPath),
+    );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
@@ -85,6 +91,27 @@ export default async function routingHandler(
     );
     internalEvent = fallbackRewrites.internalEvent;
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
+  }
+
+  // If we still haven't found a route, we show the 404 page
+  // Api routes are not present in the routes manifest except if they're not behind /api
+  // Ideally we would need to also check api routes here
+  if (
+    !isDynamicRoute &&
+    !isStaticRoute &&
+    !isExternalRewrite &&
+    !internalEvent.rawPath.startsWith("/api/")
+  ) {
+    internalEvent = {
+      ...internalEvent,
+      rawPath: "/404",
+      url: "/404",
+      headers: {
+        ...internalEvent.headers,
+        "x-middleware-response-cache-control":
+          "private, no-cache, no-store, max-age=0, must-revalidate",
+      },
+    };
   }
 
   // We apply the headers from the middleware response last

@@ -284,6 +284,12 @@ export function fixCacheHeaderForHtmlPages(
   rawPath: string,
   headers: OutgoingHttpHeaders,
 ) {
+  // We don't want to cache error pages
+  if (rawPath === "/404" || rawPath === "/500") {
+    headers[CommonHeaders.CACHE_CONTROL] =
+      "private, no-cache, no-store, max-age=0, must-revalidate";
+    return;
+  }
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (HtmlPages.includes(rawPath)) {
     headers[CommonHeaders.CACHE_CONTROL] =
