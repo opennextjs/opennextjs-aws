@@ -22,6 +22,14 @@ export interface MiddlewareOutputEvent {
   origin: Origin | false;
 }
 
+const staticRegexp = RoutesManifest.routes.static.map(
+  (route) => new RegExp(route.regex),
+);
+
+const dynamicRegexp = RoutesManifest.routes.dynamic.map(
+  (route) => new RegExp(route.regex),
+);
+
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
@@ -61,8 +69,8 @@ export default async function routingHandler(
   }
   const isStaticRoute =
     !isExternalRewrite &&
-    RoutesManifest.routes.static.some((route) =>
-      new RegExp(route.regex).test((internalEvent as InternalEvent).rawPath),
+    staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
     );
 
   if (!isStaticRoute && !isExternalRewrite) {
@@ -80,8 +88,8 @@ export default async function routingHandler(
 
   const isDynamicRoute =
     !isExternalRewrite &&
-    RoutesManifest.routes.dynamic.some((route) =>
-      new RegExp(route.regex).test((internalEvent as InternalEvent).rawPath),
+    dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
     );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
@@ -93,14 +101,28 @@ export default async function routingHandler(
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
   }
 
-  // If we still haven't found a route, we show the 404 page
   // Api routes are not present in the routes manifest except if they're not behind /api
-  // Ideally we would need to also check api routes here
+  // /api even if it's a page route doesn't get generated in the manifest
+  // Ideally we would need to properly check api routes here
+  const isApiRoute =
+    internalEvent.rawPath === "/api" ||
+    internalEvent.rawPath.startsWith("/api/");
+
+  const isRouteFoundBeforeAllRewrites =
+    isStaticRoute || isDynamicRoute || isExternalRewrite;
+
+  // If we still haven't found a route, we show the 404 page
+  // We need to ensure that rewrites are applied before showing the 404 page
   if (
-    !isDynamicRoute &&
-    !isStaticRoute &&
-    !isExternalRewrite &&
-    !internalEvent.rawPath.startsWith("/api/")
+    !isRouteFoundBeforeAllRewrites &&
+    !isApiRoute &&
+    // We need to check again once all rewrites have been applied
+    !staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    ) &&
+    !dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    )
   ) {
     internalEvent = {
       ...internalEvent,
