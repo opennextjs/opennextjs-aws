@@ -26,3 +26,9 @@ test("Server Side Render", async ({ page }) => {
     await wait(250);
   }
 });
+
+test("Server Side Render with env", async ({ page }) => {
+  await page.goto("/ssr/");
+  let el = page.getByText("Env:");
+  expect(await el.textContent()).toEqual("Env: bar");
+});

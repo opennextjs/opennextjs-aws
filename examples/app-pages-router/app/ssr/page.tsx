@@ -18,6 +18,7 @@ export default async function SSR() {
     <div>
       <h1>Time: {time}</h1>
       <div> {headerList.get("host")}</div>
+      <div>Env: {process.env.SOME_ENV_VAR}</div>
     </div>
   );
 }
