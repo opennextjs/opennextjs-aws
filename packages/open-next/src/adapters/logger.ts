@@ -49,7 +49,7 @@ export function error(...args: any[]) {
   if (
     args.some((arg: AwsSdkClientCommandErrorLog) => isDownplayedErrorLog(arg))
   ) {
-    warn(...args);
+    debug(...args);
   } else if (args.some((arg) => arg.__openNextInternal)) {
     // In case of an internal error, we log it with the appropriate log level
     const error = args.find(

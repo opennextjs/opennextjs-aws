@@ -1,6 +1,7 @@
 import { AwsClient } from "aws4fetch";
 import path from "path";
 import { IgnorableError, RecoverableError } from "utils/error";
+import { customFetchClient } from "utils/fetch";
 
 import { parseNumberFromEnv } from "../../adapters/util";
 import { Extension } from "../next-types";
@@ -21,6 +22,8 @@ const awsClient = new AwsClient({
   retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
 });
 
+const awsFetch = customFetchClient(awsClient);
+
 function buildS3Key(key: string, extension: Extension) {
   return path.posix.join(
     CACHE_BUCKET_KEY_PREFIX ?? "",
@@ -32,28 +35,32 @@ function buildS3Key(key: string, extension: Extension) {
 
 const incrementalCache: IncrementalCache = {
   async get(key, isFetch) {
-    const result = await awsClient.fetch(
+    const result = await awsFetch(
       `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${buildS3Key(
         key,
         isFetch ? "fetch" : "cache",
       )}`,
+      {
+        method: "GET",
+      },
     );
 
-    const cacheData = JSON.parse((await result.text()) ?? "{}");
     if (result.status === 404) {
       throw new IgnorableError("Not found");
     } else if (result.status !== 200) {
       throw new RecoverableError(`Failed to get cache: ${result.status}`);
-    } else
+    } else {
+      const cacheData: any = await result.json();
       return {
         value: cacheData,
         lastModified: new Date(
           result.headers.get("last-modified") ?? "",
         ).getTime(),
       };
+    }
   },
   async set(key, value, isFetch): Promise<void> {
-    const response = await awsClient.fetch(
+    const response = await awsFetch(
       `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${buildS3Key(
         key,
         isFetch ? "fetch" : "cache",
@@ -68,7 +75,7 @@ const incrementalCache: IncrementalCache = {
     }
   },
   async delete(key): Promise<void> {
-    const response = await awsClient.fetch(
+    const response = await awsFetch(
       `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${buildS3Key(
         key,
         "cache",

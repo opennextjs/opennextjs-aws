@@ -1,6 +1,7 @@
 import { AwsClient } from "aws4fetch";
 import path from "path";
 import { RecoverableError } from "utils/error";
+import { customFetchClient } from "utils/fetch";
 
 import { debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
@@ -19,6 +20,7 @@ const awsClient = new AwsClient({
   region: CACHE_BUCKET_REGION,
   retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
 });
+const awsFetch = customFetchClient(awsClient);
 
 function buildDynamoKey(key: string) {
   // FIXME: We should probably use something else than path.join here
@@ -38,7 +40,7 @@ const tagCache: TagCache = {
   async getByPath(path) {
     try {
       if (globalThis.disableDynamoDBCache) return [];
-      const result = await awsClient.fetch(
+      const result = await awsFetch(
         `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
         {
           method: "POST",
@@ -64,7 +66,7 @@ const tagCache: TagCache = {
           `Failed to get tags by path: ${result.status}`,
         );
       }
-      const { Items } = await result.json();
+      const { Items } = (await result.json()) as any;
 
       const tags = Items?.map((item: any) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
@@ -77,7 +79,7 @@ const tagCache: TagCache = {
   async getByTag(tag) {
     try {
       if (globalThis.disableDynamoDBCache) return [];
-      const result = await awsClient.fetch(
+      const result = await awsFetch(
         `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
         {
           method: "POST",
@@ -100,7 +102,7 @@ const tagCache: TagCache = {
       if (result.status !== 200) {
         throw new RecoverableError(`Failed to get by tag: ${result.status}`);
       }
-      const { Items } = await result.json();
+      const { Items } = (await result.json()) as any;
       return (
         // We need to remove the buildId from the path
         Items?.map(
@@ -116,7 +118,7 @@ const tagCache: TagCache = {
   async getLastModified(key, lastModified) {
     try {
       if (globalThis.disableDynamoDBCache) return lastModified ?? Date.now();
-      const result = await awsClient.fetch(
+      const result = await awsFetch(
         `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
         {
           method: "POST",
@@ -145,7 +147,7 @@ const tagCache: TagCache = {
           `Failed to get last modified: ${result.status}`,
         );
       }
-      const revalidatedTags = (await result.json()).Items ?? [];
+      const revalidatedTags = ((await result.json()) as any).Items ?? [];
       debug("revalidatedTags", revalidatedTags);
       // If we have revalidated tags we return -1 to force revalidation
       return revalidatedTags.length > 0 ? -1 : lastModified ?? Date.now();

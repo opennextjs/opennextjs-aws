@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import { RecoverableError } from "utils/error";
+import { customFetchClient } from "utils/fetch";
 
 import { error } from "../adapters/logger";
 import { Queue } from "./types";
@@ -13,10 +14,11 @@ const awsClient = new AwsClient({
   sessionToken: process.env.AWS_SESSION_TOKEN,
   region: REVALIDATION_QUEUE_REGION,
 });
+const awsFetch = customFetchClient(awsClient);
 const queue: Queue = {
   send: async ({ MessageBody, MessageDeduplicationId, MessageGroupId }) => {
     try {
-      const result = await awsClient.fetch(
+      const result = await awsFetch(
         `https://sqs.${REVALIDATION_QUEUE_REGION ?? "us-east-1"}.amazonaws.com`,
         {
           method: "POST",
