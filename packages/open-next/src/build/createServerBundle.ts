@@ -21,6 +21,7 @@ import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import type { BuildOptions } from "./helper.js";
 import {
   compareSemver,
+  copyEnvFile,
   copyOpenNextConfig,
   esbuildAsync,
   traverseFiles,
@@ -175,6 +176,9 @@ async function generateBundle(
     path.join(outputDir, ".build"),
     path.join(outputPath, packagePath),
   );
+
+  //Copy env files
+  copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
   copyTracedFiles(

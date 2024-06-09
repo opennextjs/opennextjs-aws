@@ -254,3 +254,20 @@ export function copyOpenNextConfig(
     path.join(outputPath, "open-next.config.mjs"),
   );
 }
+
+export function copyEnvFile(
+  appPath: string,
+  packagePath: string,
+  outputPath: string,
+) {
+  const baseAppPath = path.join(appPath, ".next/standalone", packagePath);
+  const baseOutputPath = path.join(outputPath, packagePath);
+  const envPath = path.join(baseAppPath, ".env");
+  if (fs.existsSync(envPath)) {
+    fs.copyFileSync(envPath, path.join(baseOutputPath, ".env"));
+  }
+  const envProdPath = path.join(baseAppPath, ".env.production");
+  if (fs.existsSync(envProdPath)) {
+    fs.copyFileSync(envProdPath, path.join(baseOutputPath, ".env.production"));
+  }
+}
