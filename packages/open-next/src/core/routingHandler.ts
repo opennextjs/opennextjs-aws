@@ -22,6 +22,14 @@ export interface MiddlewareOutputEvent {
   origin: Origin | false;
 }
 
+const staticRegexp = RoutesManifest.routes.static.map(
+  (route) => new RegExp(route.regex),
+);
+
+const dynamicRegexp = RoutesManifest.routes.dynamic.map(
+  (route) => new RegExp(route.regex),
+);
+
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
@@ -47,6 +55,8 @@ export default async function routingHandler(
     internalEvent = middleware;
   }
 
+  // At this point internalEvent is an InternalEvent or a MiddlewareOutputEvent
+
   let isExternalRewrite = middleware.externalRewrite ?? false;
   if (!isExternalRewrite) {
     // First rewrite to be applied
@@ -57,9 +67,11 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
-  const isStaticRoute = RoutesManifest.routes.static.some((route) =>
-    new RegExp(route.regex).test(event.rawPath),
-  );
+  const isStaticRoute =
+    !isExternalRewrite &&
+    staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    );
 
   if (!isStaticRoute && !isExternalRewrite) {
     // Second rewrite to be applied
@@ -74,9 +86,11 @@ export default async function routingHandler(
   // We want to run this just before the dynamic route check
   internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
 
-  const isDynamicRoute = RoutesManifest.routes.dynamic.some((route) =>
-    new RegExp(route.regex).test(event.rawPath),
-  );
+  const isDynamicRoute =
+    !isExternalRewrite &&
+    dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
@@ -85,6 +99,41 @@ export default async function routingHandler(
     );
     internalEvent = fallbackRewrites.internalEvent;
     isExternalRewrite = fallbackRewrites.isExternalRewrite;
+  }
+
+  // Api routes are not present in the routes manifest except if they're not behind /api
+  // /api even if it's a page route doesn't get generated in the manifest
+  // Ideally we would need to properly check api routes here
+  const isApiRoute =
+    internalEvent.rawPath === "/api" ||
+    internalEvent.rawPath.startsWith("/api/");
+
+  const isRouteFoundBeforeAllRewrites =
+    isStaticRoute || isDynamicRoute || isExternalRewrite;
+
+  // If we still haven't found a route, we show the 404 page
+  // We need to ensure that rewrites are applied before showing the 404 page
+  if (
+    !isRouteFoundBeforeAllRewrites &&
+    !isApiRoute &&
+    // We need to check again once all rewrites have been applied
+    !staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    ) &&
+    !dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    )
+  ) {
+    internalEvent = {
+      ...internalEvent,
+      rawPath: "/404",
+      url: "/404",
+      headers: {
+        ...internalEvent.headers,
+        "x-middleware-response-cache-control":
+          "private, no-cache, no-store, max-age=0, must-revalidate",
+      },
+    };
   }
 
   // We apply the headers from the middleware response last
