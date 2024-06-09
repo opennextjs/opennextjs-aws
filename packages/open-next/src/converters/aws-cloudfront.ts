@@ -50,6 +50,19 @@ const CloudFrontBlacklistedHeaders = [
   "x-real-ip",
 ];
 
+// Read-only headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-read-only-headers
+// We should only remove these headers when directly responding in lambda@edge, not for the external middleware
+const cloudfrontReadOnlyHeaders = [
+  "accept-encoding",
+  "content-length",
+  "if-modified-since",
+  "if-none-match",
+  "if-range",
+  "if-unmodified-since",
+  "transfer-encoding",
+  "via",
+];
+
 function normalizeCloudFrontRequestEventHeaders(
   rawHeaders: CloudFrontHeaders,
 ): Record<string, string> {
@@ -97,6 +110,7 @@ type MiddlewareEvent = {
 
 function convertToCloudfrontHeaders(
   headers: Record<string, OutgoingHttpHeader>,
+  directResponse?: boolean,
 ) {
   const cloudfrontHeaders: CloudFrontHeaders = {};
   Object.entries(headers)
@@ -104,7 +118,9 @@ function convertToCloudfrontHeaders(
       ([key]) =>
         !CloudFrontBlacklistedHeaders.some((header) =>
           typeof header === "string" ? header === key : header.test(key),
-        ),
+        ) &&
+        // Only remove read-only headers when directly responding in lambda@edge
+        (directResponse ? !cloudfrontReadOnlyHeaders.includes(key) : true),
     )
     .forEach(([key, value]) => {
       if (key === "set-cookie") {
@@ -146,7 +162,7 @@ async function convertToCloudFrontRequestResult(
       const cloudfrontResult = {
         status: externalResult.statusCode.toString(),
         statusDescription: "OK",
-        headers: convertToCloudfrontHeaders(externalResult.headers),
+        headers: convertToCloudfrontHeaders(externalResult.headers, true),
         bodyEncoding: externalResult.isBase64Encoded
           ? ("base64" as const)
           : ("text" as const),
@@ -195,7 +211,7 @@ async function convertToCloudFrontRequestResult(
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
     statusDescription: "OK",
-    headers: convertToCloudfrontHeaders(responseHeaders),
+    headers: convertToCloudfrontHeaders(responseHeaders, true),
     bodyEncoding: result.isBase64Encoded ? "base64" : "text",
     body: result.body,
   };
