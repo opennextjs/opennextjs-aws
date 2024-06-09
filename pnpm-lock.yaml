@@ -267,6 +267,9 @@ importers:
       '@tsconfig/node18':
         specifier: ^1.0.1
         version: 1.0.3
+      aws4fetch:
+        specifier: ^1.0.18
+        version: 1.0.18
       chalk:
         specifier: ^5.3.0
         version: 5.3.0
@@ -7342,6 +7345,10 @@ packages:
       uuid: 8.0.0
       xml2js: 0.5.0
     dev: true
+
+  /aws4fetch@1.0.18:
+    resolution: {integrity: sha512-3Cf+YaUl07p24MoQ46rFwulAmiyCwH2+1zw1ZyPAX5OtJ34Hh185DwB8y/qRLb6cYYYtSFJ9pthyLc0MD4e8sQ==}
+    dev: false
 
   /axe-core@4.7.2:
     resolution: {integrity: sha512-zIURGIS1E1Q4pcrMjp+nnEh+16G56eG/MUllJH8yEvw7asDo7Ac9uhC9KIH5jzpITueEZolfYglnCGIuSBz39g==}

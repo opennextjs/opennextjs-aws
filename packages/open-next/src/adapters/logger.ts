@@ -1,3 +1,5 @@
+import { BaseOpenNextError } from "utils/error";
+
 declare global {
   var openNextDebug: boolean;
 }
@@ -43,14 +45,29 @@ const isDownplayedErrorLog = (errorLog: AwsSdkClientCommandErrorLog) =>
   );
 
 export function error(...args: any[]) {
+  // we try to catch errors from the aws-sdk client and downplay some of them
   if (
     args.some((arg: AwsSdkClientCommandErrorLog) => isDownplayedErrorLog(arg))
   ) {
-    warn(...args);
-    return;
+    debug(...args);
+  } else if (args.some((arg) => arg.__openNextInternal)) {
+    // In case of an internal error, we log it with the appropriate log level
+    const error = args.find(
+      (arg) => arg.__openNextInternal,
+    ) as BaseOpenNextError;
+    if (error.logLevel === 0) {
+      debug(...args);
+      return;
+    } else if (error.logLevel === 1) {
+      warn(...args);
+      return;
+    } else {
+      console.error(...args);
+      return;
+    }
+  } else {
+    console.error(...args);
   }
-
-  console.error(...args);
 }
 
 export const awsLogger = {
