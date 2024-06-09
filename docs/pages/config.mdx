@@ -1,7 +1,9 @@
 ### Build Arguments
 
-There is a single build argument that you can pass to the `open-next build` command: 
+There is two build arguments that you can pass to the `open-next build` command:
+
 - `--config-path` - This is the path to the configuration file that you want to use. By default, it will look for `open-next.config.ts` in the current working directory. This needs to be relative to the current working directory.
+- `--node-externals` - You can configure externals for the esbuild compilation of the `open-next.config.ts` file (i.e `--node-externals @aws-sdk/*,open-next/dist/queue/*`)
 
 ### Configuration File
 
