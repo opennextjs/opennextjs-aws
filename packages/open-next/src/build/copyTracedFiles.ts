@@ -156,11 +156,10 @@ See the docs for more information on how to bundle edge runtime functions.
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
     if (
-      from.includes("node_modules") &&
       //TODO: we need to figure which packages we could safely remove
-      (from.includes("caniuse-lite") ||
+      from.includes(path.join("node_modules", "caniuse-lite")) ||
         // from.includes("jest-worker") || This ones seems necessary for next 12
-        from.includes("sharp"))
+        from.includes(path.join("node_modules", "sharp"))
     ) {
       return;
     }
