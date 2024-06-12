@@ -1,18 +1,18 @@
-import {SITE} from "../config"
-import { Callout } from 'nextra/components'
+import { SITE } from '../config';
+import { Callout } from 'nextra/components';
 
 <Callout>
 This docs is for the V3 of OpenNext. If you are looking for the V2 docs, you can find them [here](/v2).
 
 If you're migrating from V2 to V3, you can find the migration guide [here](/migration#from-opennext-v2).
+
 </Callout>
 
 ### Open source Next.js adapter
 
 ---
 
-
-OpenNext takes the Next.js build output and converts it into packages that can be deployed  across a variety of environments. 
+OpenNext takes the Next.js build output and converts it into packages that can be deployed across a variety of environments.
 Natively OpenNext has support for AWS Lambda and classic Node Server. It also offer partial support for the `edge` runtime in Cloudflare Workers.
 
 One notable feature of OpenNext is its ability to split the Next.js output, enabling selective deployment to different targets such as AWS Lambda, Cloudflare Workers, or Amazon ECS. This facilitates a tailored deployment strategy that aligns with the specific needs of your application.
@@ -38,6 +38,7 @@ Closed source SaaS products like [Amplify](https://aws.amazon.com/amplify/) have
 ---
 
 We need your help keeping it up to date and feature complete. Make sure to [**join us on Discord**](https://sst.dev/discord) and [**star us on GitHub**](https://github.com/sst/open-next).
+
 ## Features
 
 OpenNext aims to support all Next.js 14 features. Some features are work in progress. Please open a [new issue](https://github.com/sst/open-next/issues/new) to let us know!
@@ -47,12 +48,12 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Dynamic routes
 - [x] Static site generation (SSG)
 - [x] Server-side rendering (SSR)
-- [x] [Incremental static regeneration (ISR)](/inner_workings/isr)
+- [x] [Incremental static regeneration (ISR)](/inner_workings/caching)
 - [x] Middleware
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
-- [x] [Running at edge](/advanced/architecture#running-at-edge)
-- [x] [No cold start](/inner_workings/warming)
+- [x] [Running in lambda@edge](/config/simple_example#running-in-lambdaedge)
+- [x] [No cold start](/inner_workings/components/warmer)
 - [x] Experimental streaming support
 
 ## Who is using OpenNext?
