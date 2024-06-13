@@ -158,8 +158,8 @@ See the docs for more information on how to bundle edge runtime functions.
     if (
       //TODO: we need to figure which packages we could safely remove
       from.includes(path.join("node_modules", "caniuse-lite")) ||
-        // from.includes("jest-worker") || This ones seems necessary for next 12
-        from.includes(path.join("node_modules", "sharp"))
+      // from.includes("jest-worker") || This ones seems necessary for next 12
+      from.includes(path.join("node_modules", "sharp"))
     ) {
       return;
     }
