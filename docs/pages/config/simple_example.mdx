@@ -80,7 +80,7 @@ export default config;
 
 This will generate 2 server functions, the default one and the edge one. The edge one will still be deployed as a lambda function, but it will be deployed in the edge runtime.
 
-Edge runtime function have less cold start time, but you can only deploy one route per function. They also does not have the middleware bundled in the function, so you need to use external middleware if you need it in front of the edge function.
+Edge runtime function have less cold start time, but you can only deploy one route per function. They also do not have the middleware bundled in the function, so you need to use external middleware if you need it in front of the edge function.
 
 ```ts
 import type { OpenNextConfig } from 'open-next/types/open-next';
