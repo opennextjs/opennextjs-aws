@@ -56,6 +56,31 @@ const config = {
 export default config;
 ```
 
+## Use aws4fetch instead of AWS sdk
+
+<Callout type="info" emoji="ℹ️">
+  By default we use S3, DynamoDB and SQS for handling ISR/SSG and the fetch
+  cache. We interact with them using AWS sdk v3. This can contribute a lot to
+  the cold start. There is a built-in option to use
+  [aws4fetch](https://github.com/mhart/aws4fetch) instead of the AWS sdk that
+  can reduce cold start up to 300ms. Requires `OpenNext v3.0.3+`. Here is how you enable it:
+</Callout>
+
+```ts
+import type { OpenNextConfig } from 'open-next/types/open-next';
+const config = {
+  default: {
+    override: {
+      tagCache: 'dynamodb-lite',
+      incrementalCache: 's3-lite',
+      queue: 'sqs-lite',
+    },
+  },
+} satisfies OpenNextConfig;
+
+export default config;
+```
+
 ## Running in Lambda@Edge
 
 <Callout type="info" emoji="ℹ️">
