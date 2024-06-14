@@ -7,6 +7,7 @@ import type {
 import { Socket } from "net";
 import { Transform, TransformCallback, Writable } from "stream";
 
+import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
@@ -20,7 +21,7 @@ export interface StreamCreator {
   }): Writable;
   // Just to fix an issue with aws lambda streaming with empty body
   onWrite?: () => void;
-  onFinish: () => void;
+  onFinish: (length: number) => void;
 }
 
 // We only need to implement the methods that are used by next.js
@@ -91,7 +92,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
         this.flushHeaders();
       }
       onEnd(this.headers);
-      this.streamCreator?.onFinish();
+      const bodyLength = this.body.length;
+      this.streamCreator?.onFinish(bodyLength);
     });
   }
 
@@ -279,6 +281,27 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     }
 
     this._internalWrite(chunk, encoding);
+    callback();
+  }
+
+  //This is only here because of aws broken streaming implementation.
+  //Hopefully one day they will be able to give us a working streaming implementation in lambda for everyone
+  //If you're lucky you have a working streaming implementation in your aws account and don't need this
+  //If not you can set the OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE env variable to true
+  //BE CAREFUL: Aws keeps rolling out broken streaming implementations even on accounts that had working ones before
+  //This is not dependent on the node runtime used
+  //There is another known issue with aws lambda streaming where the request reach the lambda only way after the request has been sent by the client. For this there is absolutely nothing we can do, contact aws support if that's your case
+  _flush(callback: TransformCallback): void {
+    if (
+      this.body.length < 1 &&
+      // We use an env variable here because not all aws account have the same behavior
+      // On some aws accounts the response will hang if the body is empty
+      // We are modifying the response body here, this is not a good practice
+      process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true"
+    ) {
+      debug('Force writing "SOMETHING" to the response body');
+      this.push("SOMETHING");
+    }
     callback();
   }
 }
