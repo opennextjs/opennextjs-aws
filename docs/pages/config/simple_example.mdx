@@ -12,8 +12,12 @@ Here you can find the most common `open-next.config.ts` file examples that you c
   one day to another) [Thread
   1](https://discord.com/channels/983865673656705025/1230482660913184800)
   [Thread
-  2](https://discord.com/channels/983865673656705025/1249368592558985247)
-  <br /> <br /> If you have an issue with streaming send a message on [discord](https://sst.dev/discord)
+  2](https://discord.com/channels/983865673656705025/1249368592558985247) <br />{' '}
+  <br /> On some AWS accounts the response can hang if the body is empty. There
+  is a workaround for that on OpenNext 3.0.3+, setting environment variable
+  `OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE` to `"true"`. This will ensure that the
+  stream body is not empty. <br /> <br />
+  If you have an issue with streaming send a message on [discord](https://sst.dev/discord)
   and contact AWS support to let them know of the issue.
 </Callout>
 
@@ -63,7 +67,8 @@ export default config;
   cache. We interact with them using AWS sdk v3. This can contribute a lot to
   the cold start. There is a built-in option to use
   [aws4fetch](https://github.com/mhart/aws4fetch) instead of the AWS sdk that
-  can reduce cold start up to 300ms. Requires `OpenNext v3.0.3+`. Here is how you enable it:
+  can reduce cold start up to 300ms. Requires `OpenNext v3.0.3+`. Here is how
+  you enable it:
 </Callout>
 
 ```ts
