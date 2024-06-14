@@ -31,7 +31,6 @@ const handler: WrapperHandler = async (handler, converter) =>
       }
 
       const internalEvent = await converter.convertFrom(event);
-      let _hasWriten = false;
 
       //Handle compression
       const acceptEncoding =
@@ -89,13 +88,9 @@ const handler: WrapperHandler = async (handler, converter) =>
           return compressedStream ?? responseStream;
         },
         onWrite: () => {
-          _hasWriten = true;
+          // _hasWriten = true;
         },
-        onFinish: () => {
-          if (!_hasWriten) {
-            compressedStream?.end(new Uint8Array(8));
-          }
-        },
+        onFinish: () => {},
       };
 
       const response = await handler(internalEvent, streamCreator);

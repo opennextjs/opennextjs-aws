@@ -110,6 +110,7 @@ interface OpenNextOutput {
 
 interface OpenNextCdkReferenceImplementationProps {
   path: string;
+  environment?: Record<string, string>;
 }
 
 export class OpenNextCdkReferenceImplementation extends Construct {
@@ -122,6 +123,8 @@ export class OpenNextCdkReferenceImplementation extends Construct {
   private staticCachePolicy: ICachePolicy;
   private serverCachePolicy: CachePolicy;
 
+  private customEnvironment: Record<string, string>;
+
   public distribution: Distribution;
 
   constructor(
@@ -130,6 +133,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
     props: OpenNextCdkReferenceImplementationProps,
   ) {
     super(scope, id);
+    this.customEnvironment = props.environment ?? {};
     this.openNextBasePath = path.join(process.cwd(), props.path);
     execSync("npm run openbuild", {
       cwd: path.join(process.cwd(), props.path),
@@ -312,6 +316,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
       // Those 2 are used only for image optimizer
       BUCKET_NAME: this.bucket.bucketName,
       BUCKET_KEY_PREFIX: "_assets",
+      ...this.customEnvironment,
     };
   }
 

@@ -1,5 +1,16 @@
 # open-next
 
+## 3.0.3
+
+### Patch Changes
+
+- 71b3347: fix: look for required-server-files.json in outputPath
+- 1524dd3: Perf: Add some new cache and queue options
+- bc26e9a: Fix for readonly headers lambda@edge
+- 6032493: Fix for lambda streaming on empty body
+- 22e80d7: Fix env file not being copied in V3
+- a46d3fc: fix 404 when no route match at all
+
 ## 3.0.2
 
 ### Patch Changes

@@ -4,6 +4,9 @@ export function AppRouter({ stack }) {
   // We should probably switch to ion once it's ready
   const site = new OpenNextCdkReferenceImplementation(stack, "approuter", {
     path: "../app-router",
+    environment: {
+      OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE: "true",
+    },
   });
   // const site = new NextjsSite(stack, "approuter", {
   //   path: "../app-router",
