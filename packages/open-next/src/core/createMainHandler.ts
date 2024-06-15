@@ -1,6 +1,7 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 
 import type { OpenNextConfig } from "types/open-next";
+import { DetachedPromise } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
@@ -20,7 +21,10 @@ declare global {
   var incrementalCache: IncrementalCache;
   var fnName: string | undefined;
   var serverId: string;
-  var __als: AsyncLocalStorage<string>;
+  var __als: AsyncLocalStorage<{
+    requestId: string;
+    pendingPromises: DetachedPromise<void>[];
+  }>;
 }
 
 export async function createMainHandler() {

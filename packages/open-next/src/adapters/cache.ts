@@ -1,3 +1,5 @@
+import { DetachedPromise } from "utils/promise.js";
+
 import { IncrementalCache } from "../cache/incremental/types.js";
 import { TagCache } from "../cache/tag/types.js";
 import { isBinaryContentType } from "./binary.js";
@@ -167,7 +169,7 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
-      const requestId = globalThis.__als.getStore() ?? "";
+      const requestId = globalThis.__als.getStore()?.requestId ?? "";
       globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
         return {
@@ -224,7 +226,10 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return;
     }
+    const detachedPromise = new DetachedPromise<void>();
+    globalThis.__als.getStore()?.pendingPromises.push(detachedPromise);
     try {
+      debug("set cache", { key, data });
       if (data?.kind === "ROUTE") {
         const { body, status, headers } = data;
         await globalThis.incrementalCache.set(
@@ -304,7 +309,10 @@ export default class S3Cache {
           })),
         );
       }
+      debug("Finished setting cache");
+      detachedPromise.resolve();
     } catch (e) {
+      detachedPromise.reject(e);
       error("Failed to set cache", e);
     }
   }
