@@ -213,7 +213,6 @@ export default class S3Cache {
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
       debug("Failed to get body cache", e);
-      debug("typeof e", typeof e);
       return null;
     }
   }
@@ -229,7 +228,6 @@ export default class S3Cache {
     const detachedPromise = new DetachedPromise<void>();
     globalThis.__als.getStore()?.pendingPromises.push(detachedPromise);
     try {
-      debug("set cache", { key, data });
       if (data?.kind === "ROUTE") {
         const { body, status, headers } = data;
         await globalThis.incrementalCache.set(
