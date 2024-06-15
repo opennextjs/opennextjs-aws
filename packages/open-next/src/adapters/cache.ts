@@ -144,7 +144,8 @@ export default class S3Cache {
         value: value,
       } as CacheHandlerValue;
     } catch (e) {
-      error("Failed to get fetch cache", e);
+      // We can usually ignore errors here as they are usually due to cache not being found
+      debug("Failed to get fetch cache", e);
       return null;
     }
   }
@@ -208,7 +209,9 @@ export default class S3Cache {
         return null;
       }
     } catch (e) {
-      error("Failed to get body cache", e);
+      // We can usually ignore errors here as they are usually due to cache not being found
+      debug("Failed to get body cache", e);
+      debug("typeof e", typeof e);
       return null;
     }
   }
@@ -221,82 +224,88 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return;
     }
-    if (data?.kind === "ROUTE") {
-      const { body, status, headers } = data;
-      await globalThis.incrementalCache.set(
-        key,
-        {
-          type: "route",
-          body: body.toString(
-            isBinaryContentType(String(headers["content-type"]))
-              ? "base64"
-              : "utf8",
-          ),
-          meta: {
-            status,
-            headers,
-          },
-        },
-        false,
-      );
-    } else if (data?.kind === "PAGE") {
-      const { html, pageData } = data;
-      const isAppPath = typeof pageData === "string";
-      if (isAppPath) {
-        globalThis.incrementalCache.set(
+    try {
+      if (data?.kind === "ROUTE") {
+        const { body, status, headers } = data;
+        await globalThis.incrementalCache.set(
           key,
           {
-            type: "app",
-            html,
-            rsc: pageData,
+            type: "route",
+            body: body.toString(
+              isBinaryContentType(String(headers["content-type"]))
+                ? "base64"
+                : "utf8",
+            ),
+            meta: {
+              status,
+              headers,
+            },
           },
           false,
         );
-      } else {
-        globalThis.incrementalCache.set(
+      } else if (data?.kind === "PAGE") {
+        const { html, pageData } = data;
+        const isAppPath = typeof pageData === "string";
+        if (isAppPath) {
+          globalThis.incrementalCache.set(
+            key,
+            {
+              type: "app",
+              html,
+              rsc: pageData,
+            },
+            false,
+          );
+        } else {
+          globalThis.incrementalCache.set(
+            key,
+            {
+              type: "page",
+              html,
+              json: pageData,
+            },
+            false,
+          );
+        }
+      } else if (data?.kind === "FETCH") {
+        await globalThis.incrementalCache.set<true>(key, data, true);
+      } else if (data?.kind === "REDIRECT") {
+        await globalThis.incrementalCache.set(
           key,
           {
-            type: "page",
-            html,
-            json: pageData,
+            type: "redirect",
+            props: data.props,
           },
           false,
+        );
+      } else if (data === null || data === undefined) {
+        await globalThis.incrementalCache.delete(key);
+      }
+      // Write derivedTags to dynamodb
+      // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
+      const derivedTags: string[] =
+        data?.kind === "FETCH"
+          ? ctx?.tags ?? data?.data?.tags ?? [] // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
+          : data?.kind === "PAGE"
+          ? data.headers?.["x-next-cache-tags"]?.split(",") ?? []
+          : [];
+      debug("derivedTags", derivedTags);
+      // Get all tags stored in dynamodb for the given key
+      // If any of the derived tags are not stored in dynamodb for the given key, write them
+      const storedTags = await globalThis.tagCache.getByPath(key);
+      const tagsToWrite = derivedTags.filter(
+        (tag) => !storedTags.includes(tag),
+      );
+      if (tagsToWrite.length > 0) {
+        await globalThis.tagCache.writeTags(
+          tagsToWrite.map((tag) => ({
+            path: key,
+            tag: tag,
+          })),
         );
       }
-    } else if (data?.kind === "FETCH") {
-      await globalThis.incrementalCache.set<true>(key, data, true);
-    } else if (data?.kind === "REDIRECT") {
-      await globalThis.incrementalCache.set(
-        key,
-        {
-          type: "redirect",
-          props: data.props,
-        },
-        false,
-      );
-    } else if (data === null || data === undefined) {
-      await globalThis.incrementalCache.delete(key);
-    }
-    // Write derivedTags to dynamodb
-    // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
-    const derivedTags: string[] =
-      data?.kind === "FETCH"
-        ? ctx?.tags ?? data?.data?.tags ?? [] // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
-        : data?.kind === "PAGE"
-        ? data.headers?.["x-next-cache-tags"]?.split(",") ?? []
-        : [];
-    debug("derivedTags", derivedTags);
-    // Get all tags stored in dynamodb for the given key
-    // If any of the derived tags are not stored in dynamodb for the given key, write them
-    const storedTags = await globalThis.tagCache.getByPath(key);
-    const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
-    if (tagsToWrite.length > 0) {
-      await globalThis.tagCache.writeTags(
-        tagsToWrite.map((tag) => ({
-          path: key,
-          tag: tag,
-        })),
-      );
+    } catch (e) {
+      error("Failed to set cache", e);
     }
   }
 
@@ -304,16 +313,20 @@ export default class S3Cache {
     if (globalThis.disableDynamoDBCache || globalThis.disableIncrementalCache) {
       return;
     }
-    debug("revalidateTag", tag);
-    // Find all keys with the given tag
-    const paths = await globalThis.tagCache.getByTag(tag);
-    debug("Items", paths);
-    // Update all keys with the given tag with revalidatedAt set to now
-    await globalThis.tagCache.writeTags(
-      paths?.map((path) => ({
-        path: path,
-        tag: tag,
-      })) ?? [],
-    );
+    try {
+      debug("revalidateTag", tag);
+      // Find all keys with the given tag
+      const paths = await globalThis.tagCache.getByTag(tag);
+      debug("Items", paths);
+      // Update all keys with the given tag with revalidatedAt set to now
+      await globalThis.tagCache.writeTags(
+        paths?.map((path) => ({
+          path: path,
+          tag: tag,
+        })) ?? [],
+      );
+    } catch (e) {
+      error("Failed to revalidate tag", e);
+    }
   }
 }

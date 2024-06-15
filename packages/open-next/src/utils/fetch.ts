@@ -8,14 +8,10 @@ export function customFetchClient(client: AwsClient) {
     signed.headers.forEach((value, key) => {
       headers[key] = value;
     });
-    return fetch(signed.url, {
+    return globalThis.internalFetch(signed.url, {
       method: signed.method,
       headers,
       body: init.body,
-      // @ts-expect-error
-      next: {
-        internal: true,
-      },
     });
   };
 }
