@@ -8,10 +8,17 @@ export function customFetchClient(client: AwsClient) {
     signed.headers.forEach((value, key) => {
       headers[key] = value;
     });
-    return globalThis.internalFetch(signed.url, {
+    const response = await globalThis.internalFetch(signed.url, {
       method: signed.method,
       headers,
       body: init.body,
     });
+    /**
+     * Response body must be consumed to avoid socket error.
+     * This is necessary otherwise we get some error : SocketError: other side closed
+     * https://github.com/nodejs/undici/issues/583#issuecomment-855384858
+     */
+    const clonedResponse = response.clone();
+    return clonedResponse;
   };
 }
