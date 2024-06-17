@@ -10,7 +10,7 @@ import { InternalEvent } from "types/open-next.js";
 import { DetachedPromise } from "utils/promise.js";
 
 import { isBinaryContentType } from "../../adapters/binary.js";
-import { debug, error } from "../../adapters/logger.js";
+import { debug, error, warn } from "../../adapters/logger.js";
 
 /**
  *
@@ -385,11 +385,11 @@ export async function revalidateIfRequired(
         MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${etag}`),
         MessageGroupId: generateMessageGroupId(rawPath),
       });
-      detachedPromise.resolve();
     } catch (e) {
-      detachedPromise.reject(e);
-      debug(`Failed to revalidate stale page ${rawPath}`);
-      debug(e);
+      error(`Failed to revalidate stale page ${rawPath}`,e);
+    } finally {
+      // We don't care if it fails or not, we don't want to block the request
+      detachedPromise.resolve();
     }
   }
 }

@@ -308,10 +308,11 @@ export default class S3Cache {
         );
       }
       debug("Finished setting cache");
-      detachedPromise.resolve();
     } catch (e) {
-      detachedPromise.reject(e);
       error("Failed to set cache", e);
+    } finally {
+      // We need to resolve the promise even if there was an error
+      detachedPromise.resolve();
     }
   }
 

@@ -118,6 +118,8 @@ export async function openNextHandler(
         delete globalThis.lastModified[requestId];
 
         // Wait for all promises to resolve
+        // We are not catching errors here, because they are catched before
+        // This may need to change in the future
         await Promise.all(pendingPromises.map((p) => p.promise));
 
         return internalResult;
