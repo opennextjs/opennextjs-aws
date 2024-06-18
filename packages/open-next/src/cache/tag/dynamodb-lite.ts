@@ -179,7 +179,7 @@ const tagCache: TagCache = {
       for (const paramsChunk of toInsert) {
         await Promise.all(
           paramsChunk.map(async (params) => {
-            const response = await awsClient.fetch(
+            const response = await awsFetch(
               `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
               {
                 method: "POST",

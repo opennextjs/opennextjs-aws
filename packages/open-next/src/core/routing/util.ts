@@ -7,6 +7,7 @@ import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
 import { InternalEvent } from "types/open-next.js";
+import { DetachedPromise } from "utils/promise.js";
 
 import { isBinaryContentType } from "../../adapters/binary.js";
 import { debug, error } from "../../adapters/logger.js";
@@ -323,7 +324,7 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   headers["X-OpenNext"] = "1";
   if (globalThis.openNextDebug) {
     headers["X-OpenNext-Version"] = globalThis.openNextVersion;
-    headers["X-OpenNext-RequestId"] = globalThis.__als.getStore();
+    headers["X-OpenNext-RequestId"] = globalThis.__als.getStore()?.requestId;
   }
 }
 
@@ -355,6 +356,11 @@ export async function revalidateIfRequired(
         : internalMeta?._nextRewroteUrl
       : rawPath;
 
+    // We want to ensure that the revalidation is done in the background
+    // But we should still wait for the queue send to be successful
+    const detachedPromise = new DetachedPromise<void>();
+    globalThis.__als.getStore()?.pendingPromises.push(detachedPromise);
+
     // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
     // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
     // If you need to have a revalidation happen more frequently than 5 minutes,
@@ -363,7 +369,7 @@ export async function revalidateIfRequired(
     try {
       const hash = (str: string) =>
         crypto.createHash("md5").update(str).digest("hex");
-      const requestId = globalThis.__als.getStore() ?? "";
+      const requestId = globalThis.__als.getStore()?.requestId ?? "";
 
       const lastModified =
         globalThis.lastModified[requestId] > 0
@@ -380,8 +386,10 @@ export async function revalidateIfRequired(
         MessageGroupId: generateMessageGroupId(rawPath),
       });
     } catch (e) {
-      debug(`Failed to revalidate stale page ${rawPath}`);
-      debug(e);
+      error(`Failed to revalidate stale page ${rawPath}`, e);
+    } finally {
+      // We don't care if it fails or not, we don't want to block the request
+      detachedPromise.resolve();
     }
   }
 }
@@ -440,7 +448,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  const requestId = globalThis.__als.getStore() ?? "";
+  const requestId = globalThis.__als.getStore()?.requestId ?? "";
   const _lastModified = globalThis.lastModified[requestId] ?? 0;
   if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
     // calculate age

@@ -6,6 +6,7 @@ import {
   StreamCreator,
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
+import { DetachedPromise } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
@@ -13,7 +14,10 @@ import routingHandler, { MiddlewareOutputEvent } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
-globalThis.__als = new AsyncLocalStorage<string>();
+globalThis.__als = new AsyncLocalStorage<{
+  requestId: string;
+  pendingPromises: DetachedPromise<any>[];
+}>();
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -81,37 +85,46 @@ export async function openNextHandler(
       remoteAddress: preprocessedEvent.remoteAddress,
     };
     const requestId = Math.random().toString(36);
-    const internalResult = await globalThis.__als.run(requestId, async () => {
-      const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
-      const req = new IncomingMessage(reqProps);
-      const res = createServerResponse(
-        preprocessedEvent,
-        overwrittenResponseHeaders,
-        responseStreaming,
-      );
+    const pendingPromises: DetachedPromise<void>[] = [];
+    const internalResult = await globalThis.__als.run(
+      { requestId, pendingPromises },
+      async () => {
+        const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
+        const req = new IncomingMessage(reqProps);
+        const res = createServerResponse(
+          preprocessedEvent,
+          overwrittenResponseHeaders,
+          responseStreaming,
+        );
 
-      await processRequest(
-        req,
-        res,
-        preprocessedEvent,
-        preprocessedResult.isExternalRewrite,
-      );
+        await processRequest(
+          req,
+          res,
+          preprocessedEvent,
+          preprocessedResult.isExternalRewrite,
+        );
 
-      const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
+        const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
 
-      const internalResult = {
-        type: internalEvent.type,
-        statusCode,
-        headers,
-        body,
-        isBase64Encoded,
-      };
+        const internalResult = {
+          type: internalEvent.type,
+          statusCode,
+          headers,
+          body,
+          isBase64Encoded,
+        };
 
-      // reset lastModified. We need to do this to avoid memory leaks
-      delete globalThis.lastModified[requestId];
+        // reset lastModified. We need to do this to avoid memory leaks
+        delete globalThis.lastModified[requestId];
 
-      return internalResult;
-    });
+        // Wait for all promises to resolve
+        // We are not catching errors here, because they are catched before
+        // This may need to change in the future
+        await Promise.all(pendingPromises.map((p) => p.promise));
+
+        return internalResult;
+      },
+    );
     return internalResult;
   }
 }
