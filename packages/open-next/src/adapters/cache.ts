@@ -250,7 +250,7 @@ export default class S3Cache {
         const { html, pageData } = data;
         const isAppPath = typeof pageData === "string";
         if (isAppPath) {
-          globalThis.incrementalCache.set(
+          await globalThis.incrementalCache.set(
             key,
             {
               type: "app",
@@ -260,7 +260,7 @@ export default class S3Cache {
             false,
           );
         } else {
-          globalThis.incrementalCache.set(
+          await globalThis.incrementalCache.set(
             key,
             {
               type: "page",
