@@ -1,5 +1,11 @@
 # open-next
 
+## 3.0.4
+
+### Patch Changes
+
+- 5fc48d0: Fix some cache issue
+
 ## 3.0.3
 
 ### Patch Changes
