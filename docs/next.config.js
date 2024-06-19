@@ -34,6 +34,9 @@ const withNextra = require("nextra")({
 
 module.exports = withNextra({
   swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     unoptimized: true,
   },

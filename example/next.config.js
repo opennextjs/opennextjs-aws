@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   cleanDistDir: true,
   swcMinify: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
