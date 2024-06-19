@@ -1,0 +1,19 @@
+{
+  "compilerOptions": { 
+    "strict": true,
+  },
+  "include": [
+    "**/examples/**/*.ts",
+    "**/examples/**/*.tsx",
+    "**/examples/**/*.js",
+    "**/example/**/*.js",
+    "**/example/**/*.ts",
+    "**/docs/**/*.js",
+    ".eslintrc.cjs"
+    // etc
+  ],
+  "exclude": [
+    "node_modules",
+    "docs/out"
+  ]
+}

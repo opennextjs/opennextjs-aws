@@ -1,5 +1,3 @@
-import { DetachedPromise } from "utils/promise.js";
-
 import { IncrementalCache } from "../cache/incremental/types.js";
 import { TagCache } from "../cache/tag/types.js";
 import { isBinaryContentType } from "./binary.js";
@@ -225,8 +223,11 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return;
     }
-    const detachedPromise = new DetachedPromise<void>();
-    globalThis.__als.getStore()?.pendingPromises.push(detachedPromise);
+    // This one might not even be necessary anymore
+    // Better be safe than sorry
+    const detachedPromise = globalThis.__als
+      .getStore()
+      ?.pendingPromiseRunner.withResolvers<void>();
     try {
       if (data?.kind === "ROUTE") {
         const { body, status, headers } = data;
@@ -250,7 +251,7 @@ export default class S3Cache {
         const { html, pageData } = data;
         const isAppPath = typeof pageData === "string";
         if (isAppPath) {
-          globalThis.incrementalCache.set(
+          await globalThis.incrementalCache.set(
             key,
             {
               type: "app",
@@ -260,7 +261,7 @@ export default class S3Cache {
             false,
           );
         } else {
-          globalThis.incrementalCache.set(
+          await globalThis.incrementalCache.set(
             key,
             {
               type: "page",
@@ -312,7 +313,7 @@ export default class S3Cache {
       error("Failed to set cache", e);
     } finally {
       // We need to resolve the promise even if there was an error
-      detachedPromise.resolve();
+      detachedPromise?.resolve();
     }
   }
 

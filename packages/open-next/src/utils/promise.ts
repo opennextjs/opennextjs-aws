@@ -1,3 +1,5 @@
+import { debug, error } from "../adapters/logger";
+
 /**
  * A `Promise.withResolvers` implementation that exposes the `resolve` and
  * `reject` functions on a `Promise`.
@@ -21,7 +23,38 @@ export class DetachedPromise<T = any> {
 
     // We know that resolvers is defined because the Promise constructor runs
     // synchronously.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.resolve = resolve!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.reject = reject!;
+  }
+}
+
+export class DetachedPromiseRunner {
+  private promises: DetachedPromise<any>[] = [];
+
+  public withResolvers<T>(): DetachedPromise<T> {
+    const detachedPromise = new DetachedPromise<T>();
+    this.promises.push(detachedPromise);
+    return detachedPromise;
+  }
+
+  public add<T>(promise: Promise<T>): void {
+    const detachedPromise = new DetachedPromise<T>();
+    this.promises.push(detachedPromise);
+    promise.then(detachedPromise.resolve, detachedPromise.reject);
+  }
+
+  public async await(): Promise<void> {
+    debug(`Awaiting ${this.promises.length} detached promises`);
+    const results = await Promise.allSettled(
+      this.promises.map((p) => p.promise),
+    );
+    const rejectedPromises = results.filter(
+      (r) => r.status === "rejected",
+    ) as PromiseRejectedResult[];
+    rejectedPromises.forEach((r) => {
+      error(r.reason);
+    });
   }
 }

@@ -91,7 +91,9 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       if (!this.headersSent) {
         this.flushHeaders();
       }
-      onEnd(this.headers);
+      globalThis.__als
+        .getStore()
+        ?.pendingPromiseRunner.add(onEnd(this.headers));
       const bodyLength = this.body.length;
       this.streamCreator?.onFinish(bodyLength);
     });

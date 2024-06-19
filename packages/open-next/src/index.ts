@@ -8,7 +8,7 @@ if (command !== "build") printHelp();
 const args = parseArgs();
 if (Object.keys(args).includes("--help")) printHelp();
 
-build(args["--config-path"], args["--node-externals"]);
+await build(args["--config-path"], args["--node-externals"]);
 
 function parseArgs() {
   return process.argv.slice(2).reduce(

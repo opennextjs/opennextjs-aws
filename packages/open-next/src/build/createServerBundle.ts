@@ -157,7 +157,7 @@ async function generateBundle(
   // Bundle next server if necessary
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
   if (isBundled) {
-    bundleNextServer(path.join(outputPath, packagePath), appPath);
+    await bundleNextServer(path.join(outputPath, packagePath), appPath);
   }
 
   // // Copy middleware
@@ -181,7 +181,7 @@ async function generateBundle(
   copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
-  copyTracedFiles(
+  await copyTracedFiles(
     appBuildOutputPath,
     packagePath,
     outputPath,
