@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   });
 
   setTimeout(async () => {
-    writer.write(
+    await writer.write(
       `data: ${JSON.stringify({
         message: "open",
         time: new Date().toISOString(),
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     );
     for (let i = 1; i <= 4; i++) {
       await wait(2000);
-      writer.write(
+      await writer.write(
         `data: ${JSON.stringify({
           message: "hello:" + i,
           time: new Date().toISOString(),
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     await wait(2000); // Wait for 4 seconds
-    writer.write(
+    await writer.write(
       `data: ${JSON.stringify({
         message: "close",
         time: new Date().toISOString(),

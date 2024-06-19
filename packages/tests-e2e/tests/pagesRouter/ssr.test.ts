@@ -21,7 +21,7 @@ test("Server Side Render", async ({ page }) => {
     el = page.getByText("Time:");
     newTime = await el.textContent();
     await expect(el).toBeVisible();
-    await expect(time).not.toEqual(newTime);
+    expect(time).not.toEqual(newTime);
     time = newTime;
     await wait(250);
   }

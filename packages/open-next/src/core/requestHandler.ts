@@ -161,10 +161,10 @@ async function processRequest(
     if (e.constructor.name === "NoFallbackError") {
       // Do we need to handle _not-found
       // Ideally this should never get triggered and be intercepted by the routing handler
-      tryRenderError("404", res, internalEvent);
+      await tryRenderError("404", res, internalEvent);
     } else {
       error("NextJS request failed.", e);
-      tryRenderError("500", res, internalEvent);
+      await tryRenderError("500", res, internalEvent);
     }
   }
 }

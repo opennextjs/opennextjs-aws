@@ -12,10 +12,10 @@ test("Headers", async ({ page }) => {
   const response = await responsePromise;
   // Response header should be set
   const headers = response.headers();
-  await expect(headers["response-header"]).toEqual("response-header");
+  expect(headers["response-header"]).toEqual("response-header");
 
   // The next.config.js headers should be also set in response
-  await expect(headers["e2e-headers"]).toEqual("next.config.js");
+  expect(headers["e2e-headers"]).toEqual("next.config.js");
 
   // Request header should be available in RSC
   let el = page.getByText(`request-header`);

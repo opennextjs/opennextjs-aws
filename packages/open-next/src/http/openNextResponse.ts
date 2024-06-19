@@ -6,6 +6,7 @@ import type {
 } from "http";
 import { Socket } from "net";
 import { Transform, TransformCallback, Writable } from "stream";
+import { DetachedPromise } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";
@@ -91,7 +92,15 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       if (!this.headersSent) {
         this.flushHeaders();
       }
-      onEnd(this.headers);
+      const detachedPromise = new DetachedPromise<void>();
+      globalThis.__als.getStore()?.pendingPromises.push(detachedPromise);
+      onEnd(this.headers)
+        .then(() => {
+          detachedPromise.resolve();
+        })
+        .catch(() => {
+          detachedPromise.resolve();
+        });
       const bodyLength = this.body.length;
       this.streamCreator?.onFinish(bodyLength);
     });

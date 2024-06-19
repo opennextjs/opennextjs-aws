@@ -76,7 +76,7 @@ export async function build(
   // Build Next.js app
   printHeader("Building Next.js app");
   setStandaloneBuildMode(monorepoRoot);
-  await buildNextjsApp(packager);
+  buildNextjsApp(packager);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
@@ -280,7 +280,7 @@ async function createRevalidationBundle(config: OpenNextConfig) {
   copyOpenNextConfig(options.tempDir, outputPath);
 
   // Build Lambda code
-  esbuildAsync(
+  await esbuildAsync(
     {
       external: ["next", "styled-jsx", "react"],
       entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
