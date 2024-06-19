@@ -15,7 +15,7 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
   let lastTime = "";
 
   for (let i = 0; i < 5; i++) {
-    await page.reload();
+    void page.reload();
 
     loading = page.getByText("Loading...");
     await expect(loading).toBeVisible();

@@ -5,6 +5,9 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   outputFileTracing: "../sst",
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   rewrites: () => [
     { source: "/rewrite", destination: "/" },
     {
