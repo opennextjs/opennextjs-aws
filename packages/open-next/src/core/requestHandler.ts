@@ -6,7 +6,7 @@ import {
   StreamCreator,
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
-import { DetachedPromise } from "utils/promise";
+import { DetachedPromiseRunner } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
@@ -16,7 +16,7 @@ import { requestHandler, setNextjsPrebundledReact } from "./util";
 // This is used to identify requests in the cache
 globalThis.__als = new AsyncLocalStorage<{
   requestId: string;
-  pendingPromises: DetachedPromise<any>[];
+  pendingPromiseRunner: DetachedPromiseRunner;
 }>();
 
 export async function openNextHandler(
@@ -85,9 +85,10 @@ export async function openNextHandler(
       remoteAddress: preprocessedEvent.remoteAddress,
     };
     const requestId = Math.random().toString(36);
-    const pendingPromises: DetachedPromise<void>[] = [];
+    const pendingPromiseRunner: DetachedPromiseRunner =
+      new DetachedPromiseRunner();
     const internalResult = await globalThis.__als.run(
-      { requestId, pendingPromises },
+      { requestId, pendingPromiseRunner },
       async () => {
         const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
         const req = new IncomingMessage(reqProps);
@@ -117,10 +118,7 @@ export async function openNextHandler(
         // reset lastModified. We need to do this to avoid memory leaks
         delete globalThis.lastModified[requestId];
 
-        // Wait for all promises to resolve
-        // We are not catching errors here, because they are catched before
-        // This may need to change in the future
-        await Promise.all(pendingPromises.map((p) => p.promise));
+        await pendingPromiseRunner.await();
 
         return internalResult;
       },
