@@ -1,5 +1,11 @@
 # open-next
 
+## 3.0.5
+
+### Patch Changes
+
+- 8f1d2b4: Fix: dangling promises
+
 ## 3.0.4
 
 ### Patch Changes
