@@ -16,5 +16,24 @@ module.exports = {
     "sonarjs/elseif-without-else": "warn",
     "sonarjs/no-duplicate-string": "warn",
     "sonarjs/cognitive-complexity": "warn",
+
+    // We add some typescript rules - The recommended rules breaks too much stuff
+    // TODO: We should add more rules, especially around typescript types
+
+    // Promises related rules
+    "@typescript-eslint/await-thenable": "error",
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": [
+      "error",
+      { checksVoidReturn: false },
+    ],
+
+    "@typescript-eslint/unbound-method": "error",
+
+    "@typescript-eslint/no-non-null-assertion": "warn",
   },
+  parserOptions: {
+    project: ["./tsconfig.eslint.json", "./**/tsconfig.json"],
+  },
+  ignorePatterns: ["**/node_modules/**", "**/dist/**", "**/out/**"],
 };
