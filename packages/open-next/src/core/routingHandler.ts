@@ -20,6 +20,7 @@ export interface MiddlewareOutputEvent {
   internalEvent: InternalEvent;
   isExternalRewrite: boolean;
   origin: Origin | false;
+  isISR: boolean;
 }
 
 const staticRegexp = RoutesManifest.routes.static.map(
@@ -84,7 +85,11 @@ export default async function routingHandler(
   }
 
   // We want to run this just before the dynamic route check
-  internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
+  const { event: fallbackEvent, isISR } = handleFallbackFalse(
+    internalEvent,
+    PrerenderManifest,
+  );
+  internalEvent = fallbackEvent;
 
   const isDynamicRoute =
     !isExternalRewrite &&
@@ -157,5 +162,6 @@ export default async function routingHandler(
     internalEvent,
     isExternalRewrite,
     origin: false,
+    isISR,
   };
 }

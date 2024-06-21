@@ -68,7 +68,13 @@ const converter: Converter<
         },
       });
 
-      return fetch(req);
+      const cfCache = result.isISR ? { cacheEverything: true } : {};
+
+      return fetch(req, {
+        // This is a hack to make sure that the response is cached by Cloudflare
+        // @ts-expect-error - This is a Cloudflare specific option
+        cf: cfCache,
+      });
     } else {
       const headers = new Headers();
       for (const [key, value] of Object.entries(result.headers)) {

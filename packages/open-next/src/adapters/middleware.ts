@@ -69,6 +69,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
       internalEvent: result.internalEvent,
       isExternalRewrite: result.isExternalRewrite,
       origin,
+      isISR: result.isISR,
     };
   } else {
     debug("Middleware response", result);

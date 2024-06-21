@@ -9,6 +9,7 @@ const preprocessResult: MiddlewareOutputEvent = {
   internalEvent: internalEvent,
   isExternalRewrite: false,
   origin: false,
+  isISR: false,
 };
 //#endOverride
 
