@@ -108,6 +108,8 @@ export default async function routingHandler(
     internalEvent.rawPath === "/api" ||
     internalEvent.rawPath.startsWith("/api/");
 
+  const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
+
   const isRouteFoundBeforeAllRewrites =
     isStaticRoute || isDynamicRoute || isExternalRewrite;
 
@@ -116,6 +118,7 @@ export default async function routingHandler(
   if (
     !isRouteFoundBeforeAllRewrites &&
     !isApiRoute &&
+    !isNextImageRoute &&
     // We need to check again once all rewrites have been applied
     !staticRegexp.some((route) =>
       route.test((internalEvent as InternalEvent).rawPath),

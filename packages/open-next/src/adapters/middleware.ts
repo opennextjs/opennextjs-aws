@@ -37,8 +37,12 @@ const resolveOriginResolver = () => {
               return origin[key];
             }
           }
+          if (_path.startsWith("/_next/image") && origin["imageOptimizer"]) {
+            debug("Using origin", "imageOptimizer", _path);
+            return origin["imageOptimizer"];
+          }
           if (origin["default"]) {
-            debug("Using default origin", origin["default"]);
+            debug("Using default origin", origin["default"], _path);
             return origin["default"];
           }
           return false as const;
