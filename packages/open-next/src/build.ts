@@ -726,7 +726,11 @@ async function createMiddleware() {
     fs.mkdirSync(outputPath, { recursive: true });
 
     // Copy open-next.config.mjs
-    copyOpenNextConfig(options.tempDir, outputPath);
+    copyOpenNextConfig(
+      options.tempDir,
+      outputPath,
+      config.middleware.override?.wrapper === "cloudflare",
+    );
 
     // Bundle middleware
     await buildEdgeBundle({
