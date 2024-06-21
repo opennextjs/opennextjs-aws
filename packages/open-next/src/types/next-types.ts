@@ -112,6 +112,9 @@ export interface RoutesManifest {
     | RewriteDefinition[];
   redirects: RedirectDefinition[];
   headers?: Header[];
+  i18n?: {
+    locales: string[];
+  };
 }
 
 export interface MiddlewareInfo {

@@ -30,6 +30,8 @@ const dynamicRegexp = RoutesManifest.routes.dynamic.map(
   (route) => new RegExp(route.regex),
 );
 
+const localeRegexp = RoutesManifest.locales.length ? new RegExp(RoutesManifest.locales.map((locale) => `(^/${locale}?/)`).join("|")) : null;
+
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
@@ -67,10 +69,11 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
+  let normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
   const isStaticRoute =
     !isExternalRewrite &&
     staticRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
+      route.test(normalizedRawPath),
     );
 
   if (!isStaticRoute && !isExternalRewrite) {
@@ -85,11 +88,12 @@ export default async function routingHandler(
 
   // We want to run this just before the dynamic route check
   internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
+  normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
 
   const isDynamicRoute =
     !isExternalRewrite &&
     dynamicRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
+      route.test(normalizedRawPath),
     );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
@@ -110,6 +114,8 @@ export default async function routingHandler(
 
   const isRouteFoundBeforeAllRewrites =
     isStaticRoute || isDynamicRoute || isExternalRewrite;
+    
+  normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
 
   // If we still haven't found a route, we show the 404 page
   // We need to ensure that rewrites are applied before showing the 404 page
@@ -118,10 +124,10 @@ export default async function routingHandler(
     !isApiRoute &&
     // We need to check again once all rewrites have been applied
     !staticRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
+      route.test(normalizedRawPath),
     ) &&
     !dynamicRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
+      route.test(normalizedRawPath),
     )
   ) {
     internalEvent = {

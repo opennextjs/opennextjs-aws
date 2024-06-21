@@ -59,6 +59,7 @@ export function loadRoutesManifest(nextDir: string) {
       dynamic: routesManifest.dynamicRoutes ?? [],
       data: dataRoutes,
     },
+    locales: routesManifest.i18n?.locales ?? [],
   };
 }
 
