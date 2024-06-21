@@ -22,19 +22,18 @@ export interface MiddlewareOutputEvent {
   origin: Origin | false;
 }
 
+// Add the locale prefix to the regex so we correctly match the rawPath
+const optionalLocalePrefixRegex = !!RoutesManifest.locales.length
+  ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/`).join("|")})?`
+  : null;
+
 const staticRegexp = RoutesManifest.routes.static.map(
-  (route) => new RegExp(route.regex),
+  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
 );
 
 const dynamicRegexp = RoutesManifest.routes.dynamic.map(
-  (route) => new RegExp(route.regex),
+  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
 );
-
-const localeRegexp = RoutesManifest.locales.length
-  ? new RegExp(
-      RoutesManifest.locales.map((locale) => `(^/${locale}?/)`).join("|"),
-    )
-  : null;
 
 export default async function routingHandler(
   event: InternalEvent,
@@ -73,10 +72,12 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
-  let normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
+
   const isStaticRoute =
     !isExternalRewrite &&
-    staticRegexp.some((route) => route.test(normalizedRawPath));
+    staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    );
 
   if (!isStaticRoute && !isExternalRewrite) {
     // Second rewrite to be applied
@@ -90,11 +91,12 @@ export default async function routingHandler(
 
   // We want to run this just before the dynamic route check
   internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
-  normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
 
   const isDynamicRoute =
     !isExternalRewrite &&
-    dynamicRegexp.some((route) => route.test(normalizedRawPath));
+    dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    );
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
@@ -115,16 +117,18 @@ export default async function routingHandler(
   const isRouteFoundBeforeAllRewrites =
     isStaticRoute || isDynamicRoute || isExternalRewrite;
 
-  normalizedRawPath = internalEvent.rawPath.replace(localeRegexp, "/");
-
   // If we still haven't found a route, we show the 404 page
   // We need to ensure that rewrites are applied before showing the 404 page
   if (
     !isRouteFoundBeforeAllRewrites &&
     !isApiRoute &&
     // We need to check again once all rewrites have been applied
-    !staticRegexp.some((route) => route.test(normalizedRawPath)) &&
-    !dynamicRegexp.some((route) => route.test(normalizedRawPath))
+    !staticRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    ) &&
+    !dynamicRegexp.some((route) =>
+      route.test((internalEvent as InternalEvent).rawPath),
+    )
   ) {
     internalEvent = {
       ...internalEvent,
