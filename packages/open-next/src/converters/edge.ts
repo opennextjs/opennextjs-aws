@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import { parseCookies } from "http/util";
 import { Converter, InternalEvent, InternalResult } from "types/open-next";
 
@@ -28,13 +30,15 @@ const converter: Converter<
       headers[key] = value;
     });
     const rawPath = new URL(event.url).pathname;
+    const method = event.method;
+    const shouldHaveBody = method !== "GET" && method !== "HEAD";
 
     return {
       type: "core",
-      method: event.method,
+      method,
       rawPath,
       url: event.url,
-      body: event.method !== "GET" ? Buffer.from(body) : undefined,
+      body: shouldHaveBody ? Buffer.from(body) : undefined,
       headers: headers,
       remoteAddress: (event.headers.get("x-forwarded-for") as string) ?? "::1",
       query,
