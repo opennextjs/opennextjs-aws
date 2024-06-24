@@ -216,7 +216,7 @@ export function handleRewrites<T extends RewriteDefinition>(
       rewrittenQuery = unescapeRegex(toDestinationQuery(params));
     }
     rewrittenUrl = isExternalRewrite
-      ? `${protocol}${rewrittenHost}${rewrittenPath}`
+      ? `${protocol}//${rewrittenHost}${rewrittenPath}`
       : `/${rewrittenPath}`;
     // Should we merge the query params or use only the ones from the rewrite?
     finalQuery = {

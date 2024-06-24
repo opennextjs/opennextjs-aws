@@ -27,13 +27,10 @@ export function isExternal(url?: string, host?: string) {
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
   const queryParts = query.split("&");
-  return queryParts.reduce(
-    (acc, part) => {
-      const [key, value] = part.split("=");
-      return { ...acc, [key]: value };
-    },
-    {} as Record<string, string>,
-  );
+  return queryParts.reduce((acc, part) => {
+    const [key, value] = part.split("=");
+    return { ...acc, [key]: value };
+  }, {} as Record<string, string>);
 }
 
 /**
@@ -52,13 +49,13 @@ export function getUrlParts(url: string, isExternal: boolean) {
     };
   }
 
-  const regex = /^(https?:\/\/)?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
+  const regex = /^(https?:)\/\/?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
   const match = url.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
   }
   return {
-    protocol: match[1] ?? "https://",
+    protocol: match[1] ?? "https:",
     hostname: match[2],
     pathname: match[3],
     queryString: match[4]?.slice(1) ?? "",
