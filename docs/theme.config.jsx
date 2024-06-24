@@ -5,7 +5,7 @@ import Logo from "./components/Logo.svg";
 
 export default {
   logo: <Logo />,
-  docsRepositoryBase: "https://github.com/sst/open-next/docs",
+  docsRepositoryBase: "https://github.com/sst/open-next/tree/main/docs",
   project: {
     link: "https://github.com/sst/open-next",
   },
