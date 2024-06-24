@@ -27,10 +27,13 @@ export function isExternal(url?: string, host?: string) {
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
   const queryParts = query.split("&");
-  return queryParts.reduce((acc, part) => {
-    const [key, value] = part.split("=");
-    return { ...acc, [key]: value };
-  }, {} as Record<string, string>);
+  return queryParts.reduce(
+    (acc, part) => {
+      const [key, value] = part.split("=");
+      return { ...acc, [key]: value };
+    },
+    {} as Record<string, string>,
+  );
 }
 
 /**
