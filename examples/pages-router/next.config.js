@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@example/shared"],
+  i18n: {
+    locales: ['en', 'nl'],
+    defaultLocale: 'en',
+  },
   cleanDistDir: true,
   reactStrictMode: true,
   output: "standalone",
