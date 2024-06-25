@@ -51,6 +51,13 @@ const nextConfig = {
         permanent: true,
         has: [{ type: "cookie", key: "from", value: "wrongvalue" }],
       },
+      {
+        source: "/redirect",
+        destination: "https://open-next.js.org/",
+        permanent: false,
+        basePath: false,
+        locale: false,
+      },
     ];
   },
   headers() {
