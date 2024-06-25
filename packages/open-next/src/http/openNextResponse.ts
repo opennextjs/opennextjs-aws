@@ -306,4 +306,23 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     }
     callback();
   }
+
+  get sent() {
+    return this.finished || this.headersSent;
+  }
+
+  getHeaderValues(name: string): string[] | undefined {
+    const values = this.getHeader(name);
+
+    if (values === undefined) return undefined;
+
+    return (Array.isArray(values) ? values : [values]).map((value) =>
+      value.toString(),
+    );
+  }
+
+  send() {
+    const body = this.body;
+    this.end(body);
+  }
 }
