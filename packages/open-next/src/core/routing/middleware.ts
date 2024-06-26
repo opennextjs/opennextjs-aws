@@ -161,8 +161,16 @@ export async function handleMiddleware(
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
       newUrl = rewriteUrlObject.pathname;
-      //reset qs
-      middlewareQueryString = {};
+
+      // Reset the query params if the middleware is a rewrite
+      if (middlewareQueryString["__nextDataReq"]) {
+        middlewareQueryString = {
+          __nextDataReq: middlewareQueryString["__nextDataReq"],
+        };
+      } else {
+        middlewareQueryString = {};
+      }
+
       rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
         middlewareQueryString[k] = v;
       });
