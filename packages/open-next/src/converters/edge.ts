@@ -81,6 +81,7 @@ const converter: Converter<
 
       return fetch(req, {
         // This is a hack to make sure that the response is cached by Cloudflare
+        // See https://developers.cloudflare.com/workers/examples/cache-using-fetch/#caching-html-resources
         // @ts-expect-error - This is a Cloudflare specific option
         cf: cfCache,
       });
