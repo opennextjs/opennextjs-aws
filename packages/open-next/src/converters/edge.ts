@@ -72,7 +72,12 @@ const converter: Converter<
         },
       });
 
-      const cfCache = result.isISR ? { cacheEverything: true } : {};
+      const cfCache =
+        (result.isISR ||
+          result.internalEvent.rawPath.startsWith("/_next/image")) &&
+        process.env.DISABLE_CACHE !== "true"
+          ? { cacheEverything: true }
+          : {};
 
       return fetch(req, {
         // This is a hack to make sure that the response is cached by Cloudflare

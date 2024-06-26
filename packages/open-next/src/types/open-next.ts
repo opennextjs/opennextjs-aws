@@ -120,6 +120,8 @@ export type IncludedIncrementalCache = "s3" | "s3-lite";
 
 export type IncludedTagCache = "dynamodb" | "dynamodb-lite";
 
+export type IncludedImageLoader = "s3" | "host";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -287,7 +289,11 @@ export interface OpenNextConfig {
    * Supports only node runtime
    */
   imageOptimization?: DefaultFunctionOptions & {
-    loader?: "s3" | LazyLoadedOverride<ImageLoader>;
+    /**
+     * The image loader is used to load the image from the source.
+     * @default "s3"
+     */
+    loader?: IncludedImageLoader | LazyLoadedOverride<ImageLoader>;
     /**
      * @default "arm64"
      */

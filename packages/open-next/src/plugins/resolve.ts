@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { Plugin } from "esbuild";
 import type {
   DefaultOverrideOptions,
+  ImageLoader,
+  IncludedImageLoader,
   LazyLoadedOverride,
   OverrideOptions,
 } from "types/open-next";
@@ -16,6 +18,7 @@ export interface IPluginSettings {
     tagCache?: OverrideOptions["tagCache"];
     queue?: OverrideOptions["queue"];
     incrementalCache?: OverrideOptions["incrementalCache"];
+    imageLoader?: LazyLoadedOverride<ImageLoader> | IncludedImageLoader;
   };
   fnName?: string;
 }
@@ -43,6 +46,7 @@ export function openNextResolvePlugin({
       logger.debug(`OpenNext Resolve plugin for ${fnName}`);
       build.onLoad({ filter: /core\/resolve.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
+        //TODO: refactor this. Every override should be at the same place so we can generate this dynamically
         if (overrides?.wrapper) {
           contents = contents.replace(
             "../wrappers/aws-lambda.js",
@@ -82,6 +86,15 @@ export function openNextResolvePlugin({
             `../cache/incremental/${getOverrideOrDefault(
               overrides.incrementalCache,
               "s3-lite",
+            )}.js`,
+          );
+        }
+        if (overrides?.imageLoader) {
+          contents = contents.replace(
+            "../overrides/imageLoader/s3.js",
+            `../overrides/imageLoader/${getOverrideOrDefault(
+              overrides.imageLoader,
+              "s3",
             )}.js`,
           );
         }

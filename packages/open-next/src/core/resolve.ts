@@ -2,8 +2,10 @@ import {
   BaseEventOrResult,
   Converter,
   DefaultOverrideOptions,
+  ImageLoader,
   InternalEvent,
   InternalResult,
+  LazyLoadedOverride,
   OverrideOptions,
   Wrapper,
 } from "types/open-next.js";
@@ -85,6 +87,22 @@ export async function resolveIncrementalCache(
     return incrementalCache();
   } else {
     const m_1 = await import("../cache/incremental/s3.js");
+    return m_1.default;
+  }
+}
+
+/**
+ * @param imageLoader
+ * @returns
+ * @__PURE__
+ */
+export async function resolveImageLoader(
+  imageLoader: LazyLoadedOverride<ImageLoader> | string,
+) {
+  if (typeof imageLoader === "function") {
+    return imageLoader();
+  } else {
+    const m_1 = await import("../overrides/imageLoader/s3.js");
     return m_1.default;
   }
 }

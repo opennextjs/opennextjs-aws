@@ -324,6 +324,7 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
       overrides: {
         converter: config.imageOptimization?.override?.converter,
         wrapper: config.imageOptimization?.override?.wrapper,
+        imageLoader: config.imageOptimization?.loader,
       },
     }),
   ];
