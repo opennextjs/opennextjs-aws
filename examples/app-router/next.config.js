@@ -52,7 +52,7 @@ const nextConfig = {
         has: [{ type: "cookie", key: "from", value: "wrongvalue" }],
       },
       {
-        source: "/redirect",
+        source: "/next-config-redirect-without-locale-support",
         destination: "https://open-next.js.org/",
         permanent: false,
         basePath: false,
