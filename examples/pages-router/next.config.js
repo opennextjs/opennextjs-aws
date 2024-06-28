@@ -13,10 +13,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   rewrites: () => [
-    { source: "/rewrite", destination: "/" },
+    { source: "/rewrite", destination: "/", locale: false },
     {
       source: "/rewriteUsingQuery",
       destination: "/:destination/",
+      locale: false,
       has: [
         {
           type: "query",

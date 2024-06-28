@@ -25,7 +25,7 @@ export interface MiddlewareOutputEvent {
 // Add the locale prefix to the regex so we correctly match the rawPath
 const optionalLocalePrefixRegex = !!RoutesManifest.locales.length
   ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`
-  : null;
+  : "^/";
 
 const staticRegexp = RoutesManifest.routes.static.map(
   (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
