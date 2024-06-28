@@ -97,11 +97,11 @@ function convertToApiGatewayProxyResultV2(
         ),
     )
     .forEach(([key, value]) => {
-      if (value === null) {
+      if (value === null || value === undefined) {
         headers[key] = "";
         return;
       }
-      headers[key] = Array.isArray(value) ? value.join(", ") : value.toString();
+      headers[key] = Array.isArray(value) ? value.join(", ") : `${value}`;
     });
 
   const response: APIGatewayProxyResultV2 = {
