@@ -1,5 +1,13 @@
 # open-next
 
+## 3.0.6
+
+### Patch Changes
+
+- 208f7ba: Fix incorrect redirects to different domains
+- 7931bee: fix 404 handeling with i18n routes
+- 579f9eb: Better support for cloudflare external middleware
+
 ## 3.0.5
 
 ### Patch Changes
