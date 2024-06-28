@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 import { parseCookies } from "http/util";
 import { Converter, InternalEvent, InternalResult } from "types/open-next";
 
@@ -28,13 +30,15 @@ const converter: Converter<
       headers[key] = value;
     });
     const rawPath = new URL(event.url).pathname;
+    const method = event.method;
+    const shouldHaveBody = method !== "GET" && method !== "HEAD";
 
     return {
       type: "core",
-      method: event.method,
+      method,
       rawPath,
       url: event.url,
-      body: event.method !== "GET" ? Buffer.from(body) : undefined,
+      body: shouldHaveBody ? Buffer.from(body) : undefined,
       headers: headers,
       remoteAddress: (event.headers.get("x-forwarded-for") as string) ?? "::1",
       query,
@@ -68,7 +72,19 @@ const converter: Converter<
         },
       });
 
-      return fetch(req);
+      const cfCache =
+        (result.isISR ||
+          result.internalEvent.rawPath.startsWith("/_next/image")) &&
+        process.env.DISABLE_CACHE !== "true"
+          ? { cacheEverything: true }
+          : {};
+
+      return fetch(req, {
+        // This is a hack to make sure that the response is cached by Cloudflare
+        // See https://developers.cloudflare.com/workers/examples/cache-using-fetch/#caching-html-resources
+        // @ts-expect-error - This is a Cloudflare specific option
+        cf: cfCache,
+      });
     } else {
       const headers = new Headers();
       for (const [key, value] of Object.entries(result.headers)) {

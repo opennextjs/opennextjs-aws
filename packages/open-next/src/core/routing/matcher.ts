@@ -348,7 +348,7 @@ export function fixDataPage(
 export function handleFallbackFalse(
   internalEvent: InternalEvent,
   prerenderManifest: PrerenderManifest,
-): InternalEvent {
+): { event: InternalEvent; isISR: boolean } {
   const { rawPath } = internalEvent;
   const { dynamicRoutes, routes } = prerenderManifest;
   const routeFallback = Object.entries(dynamicRoutes)
@@ -365,17 +365,24 @@ export function handleFallbackFalse(
   const localizedPath = routesAlreadyHaveLocale
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
-  if (routeFallback && !Object.keys(routes).includes(localizedPath)) {
+  const isPregenerated = Object.keys(routes).includes(localizedPath);
+  if (routeFallback && !isPregenerated) {
     return {
-      ...internalEvent,
-      rawPath: "/404",
-      url: "/404",
-      headers: {
-        ...internalEvent.headers,
-        "x-invoke-status": "404",
+      event: {
+        ...internalEvent,
+        rawPath: "/404",
+        url: "/404",
+        headers: {
+          ...internalEvent.headers,
+          "x-invoke-status": "404",
+        },
       },
+      isISR: false,
     };
   }
 
-  return internalEvent;
+  return {
+    event: internalEvent,
+    isISR: routeFallback || isPregenerated,
+  };
 }

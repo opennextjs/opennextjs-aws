@@ -33,6 +33,7 @@ export async function openNextHandler(
     internalEvent: internalEvent,
     isExternalRewrite: false,
     origin: false,
+    isISR: false,
   };
   try {
     preprocessResult = await routingHandler(internalEvent);

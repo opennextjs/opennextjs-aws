@@ -18,7 +18,7 @@ const handler: WrapperHandler<
 
     const response = await handler(internalEvent);
 
-    const result: Response = converter.convertTo(response);
+    const result: Response = await converter.convertTo(response);
 
     return result;
   };

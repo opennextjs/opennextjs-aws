@@ -20,6 +20,7 @@ export interface MiddlewareOutputEvent {
   internalEvent: InternalEvent;
   isExternalRewrite: boolean;
   origin: Origin | false;
+  isISR: boolean;
 }
 
 // Add the locale prefix to the regex so we correctly match the rawPath
@@ -90,7 +91,11 @@ export default async function routingHandler(
   }
 
   // We want to run this just before the dynamic route check
-  internalEvent = handleFallbackFalse(internalEvent, PrerenderManifest);
+  const { event: fallbackEvent, isISR } = handleFallbackFalse(
+    internalEvent,
+    PrerenderManifest,
+  );
+  internalEvent = fallbackEvent;
 
   const isDynamicRoute =
     !isExternalRewrite &&
@@ -114,6 +119,8 @@ export default async function routingHandler(
     internalEvent.rawPath === "/api" ||
     internalEvent.rawPath.startsWith("/api/");
 
+  const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
+
   const isRouteFoundBeforeAllRewrites =
     isStaticRoute || isDynamicRoute || isExternalRewrite;
 
@@ -122,6 +129,7 @@ export default async function routingHandler(
   if (
     !isRouteFoundBeforeAllRewrites &&
     !isApiRoute &&
+    !isNextImageRoute &&
     // We need to check again once all rewrites have been applied
     !staticRegexp.some((route) =>
       route.test((internalEvent as InternalEvent).rawPath),
@@ -160,5 +168,6 @@ export default async function routingHandler(
     internalEvent,
     isExternalRewrite,
     origin: false,
+    isISR,
   };
 }

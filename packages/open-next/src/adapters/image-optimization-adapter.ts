@@ -8,7 +8,6 @@ import https from "node:https";
 import path from "node:path";
 import { Writable } from "node:stream";
 
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { loadBuildId, loadConfig } from "config/util.js";
 import { OpenNextNodeResponse, StreamCreator } from "http/openNextResponse.js";
 // @ts-ignore
@@ -19,15 +18,13 @@ import {
 } from "next/dist/server/image-optimizer";
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
-import { ImageLoader, InternalEvent, InternalResult } from "types/open-next.js";
+import { InternalEvent, InternalResult } from "types/open-next.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
-import { awsLogger, debug, error } from "./logger.js";
+import { resolveImageLoader } from "../core/resolve.js";
+import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
-
-// Expected environment variables
-const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
 
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
@@ -42,7 +39,6 @@ const nextConfig = {
 };
 debug("Init config", {
   nextDir,
-  BUCKET_NAME,
   nextConfig,
 });
 
@@ -64,7 +60,14 @@ export async function defaultHandler(
   const { headers, query: queryString } = event;
 
   try {
-    // const headers = normalizeHeaderKeysToLowercase(rawHeaders);
+    // Set the HOST environment variable to the host header if it is not set
+    // If it is set it is assumed to be set by the user and should be used instead
+    // It might be useful for cases where the user wants to use a different host than the one in the request
+    // It could even allow to have multiple hosts for the image optimization by setting the HOST environment variable in the wrapper for example
+    if (!process.env.HOST) {
+      const headersHost = headers["x-forwarded-host"] || headers["host"];
+      process.env.HOST = headersHost;
+    }
 
     const imageParams = validateImageParams(
       headers,
@@ -100,20 +103,6 @@ export async function defaultHandler(
 //////////////////////
 // Helper functions //
 //////////////////////
-
-// function normalizeHeaderKeysToLowercase(headers: APIGatewayProxyEventHeaders) {
-//   // Make header keys lowercase to ensure integrity
-//   return Object.entries(headers).reduce(
-//     (acc, [key, value]) => ({ ...acc, [key.toLowerCase()]: value }),
-//     {} as APIGatewayProxyEventHeaders,
-//   );
-// }
-
-function ensureBucketExists() {
-  if (!BUCKET_NAME) {
-    throw new Error("Bucket name must be defined!");
-  }
-}
 
 function validateImageParams(
   headers: OutgoingHttpHeaders,
@@ -218,36 +207,9 @@ function buildFailureResponse(
   };
 }
 
-const resolveLoader = () => {
-  const openNextParams = globalThis.openNextConfig.imageOptimization;
-  if (typeof openNextParams?.loader === "function") {
-    return openNextParams.loader();
-  } else {
-    const s3Client = new S3Client({ logger: awsLogger });
-    return Promise.resolve<ImageLoader>({
-      name: "s3",
-      // @ts-ignore
-      load: async (key: string) => {
-        ensureBucketExists();
-        const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
-        const response = await s3Client.send(
-          new GetObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: keyPrefix
-              ? keyPrefix + "/" + key.replace(/^\//, "")
-              : key.replace(/^\//, ""),
-          }),
-        );
-        return {
-          body: response.Body,
-          contentType: response.ContentType,
-          cacheControl: response.CacheControl,
-        };
-      },
-    });
-  }
-};
-const loader = await resolveLoader();
+const loader = await resolveImageLoader(
+  globalThis.openNextConfig.imageOptimization?.loader ?? "s3",
+);
 
 async function downloadHandler(
   _req: IncomingMessage,
