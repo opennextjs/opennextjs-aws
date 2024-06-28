@@ -22,6 +22,15 @@ const nextConfig = {
       ],
     },
   ],
+  redirects: () => [
+    {
+      source: "/next-config-redirect-without-locale-support/",
+      destination: "https://open-next.js.org/",
+      permanent: false,
+      basePath: false,
+      locale: false,
+    },
+  ],
   trailingSlash: true,
 };
 

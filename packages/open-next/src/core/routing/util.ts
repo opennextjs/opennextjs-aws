@@ -52,13 +52,13 @@ export function getUrlParts(url: string, isExternal: boolean) {
     };
   }
 
-  const regex = /^(https?:\/\/)?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
+  const regex = /^(https?:)\/\/?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
   const match = url.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
   }
   return {
-    protocol: match[1] ?? "https://",
+    protocol: match[1] ?? "https:",
     hostname: match[2],
     pathname: match[3],
     queryString: match[4]?.slice(1) ?? "",
