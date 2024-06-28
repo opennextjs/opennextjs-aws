@@ -22,12 +22,17 @@ export interface MiddlewareOutputEvent {
   origin: Origin | false;
 }
 
+// Add the locale prefix to the regex so we correctly match the rawPath
+const optionalLocalePrefixRegex = !!RoutesManifest.locales.length
+  ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`
+  : "^/";
+
 const staticRegexp = RoutesManifest.routes.static.map(
-  (route) => new RegExp(route.regex),
+  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
 );
 
 const dynamicRegexp = RoutesManifest.routes.dynamic.map(
-  (route) => new RegExp(route.regex),
+  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
 );
 
 export default async function routingHandler(
@@ -67,6 +72,7 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
+
   const isStaticRoute =
     !isExternalRewrite &&
     staticRegexp.some((route) =>

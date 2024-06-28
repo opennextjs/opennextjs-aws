@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@example/shared"],
+  i18n: {
+    locales: ["en", "nl"],
+    defaultLocale: "en",
+  },
   cleanDistDir: true,
   reactStrictMode: true,
   output: "standalone",
@@ -9,10 +13,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   rewrites: () => [
-    { source: "/rewrite", destination: "/" },
+    { source: "/rewrite", destination: "/", locale: false },
     {
       source: "/rewriteUsingQuery",
       destination: "/:destination/",
+      locale: false,
       has: [
         {
           type: "query",
