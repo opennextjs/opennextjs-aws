@@ -44,7 +44,7 @@ export function openNextResolvePlugin({
     name: "opennext-resolve",
     setup(build) {
       logger.debug(`OpenNext Resolve plugin for ${fnName}`);
-      build.onLoad({ filter: /core\/resolve.js/g }, async (args) => {
+      build.onLoad({ filter: /core(\/|\\)resolve\.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         //TODO: refactor this. Every override should be at the same place so we can generate this dynamically
         if (overrides?.wrapper) {
