@@ -207,7 +207,7 @@ async function generateBundle(
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,
-      target: /core\/requestHandler.js/g,
+      target: /core(\/|\\)requestHandler\.js/g,
       deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
       replacements: disableRouting
         ? [
@@ -219,7 +219,7 @@ async function generateBundle(
     }),
     openNextReplacementPlugin({
       name: `utilOverride ${name}`,
-      target: /core\/util.js/g,
+      target: /core(\/|\\)util\.js/g,
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(disableRouting ? ["trustHostHeader"] : []),

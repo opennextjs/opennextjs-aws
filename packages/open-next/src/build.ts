@@ -333,7 +333,8 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
     plugins.push(
       openNextReplacementPlugin({
         name: "opennext-14.1.1-image-optimization",
-        target: /plugins\/image-optimization\/image-optimization\.js/g,
+        target:
+          /plugins(\/|\\)image-optimization(\/|\\)image-optimization\.js/g,
         replacements: [
           require.resolve(
             "./adapters/plugins/image-optimization/image-optimization.replacement.js",
