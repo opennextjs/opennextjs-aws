@@ -96,7 +96,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       globalThis.__als
         ?.getStore()
         ?.pendingPromiseRunner.add(onEnd(this.headers));
-      const bodyLength = this.body.length;
+      const bodyLength = this.getBody().length;
       this.streamCreator?.onFinish(bodyLength);
     });
   }
@@ -148,14 +148,6 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   getHeaders(): OutgoingHttpHeaders {
-    return this.headers;
-  }
-
-  getFixedHeaders(): OutgoingHttpHeaders {
-    // Do we want to apply this on writeHead?
-    this.fixHeaders(this.headers);
-    // This way we ensure that the cookies are correct
-    this.headers[SET_COOKIE_HEADER] = this._cookies;
     return this.headers;
   }
 
@@ -265,7 +257,19 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     return this;
   }
 
-  get body() {
+  /**
+   * OpenNext specific method
+   */
+
+  getFixedHeaders(): OutgoingHttpHeaders {
+    // Do we want to apply this on writeHead?
+    this.fixHeaders(this.headers);
+    // This way we ensure that the cookies are correct
+    this.headers[SET_COOKIE_HEADER] = this._cookies;
+    return this.headers;
+  }
+
+  getBody() {
     return Buffer.concat(this._chunks);
   }
 
@@ -297,7 +301,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   //There is another known issue with aws lambda streaming where the request reach the lambda only way after the request has been sent by the client. For this there is absolutely nothing we can do, contact aws support if that's your case
   _flush(callback: TransformCallback): void {
     if (
-      this.body.length < 1 &&
+      this.getBody().length < 1 &&
       // We use an env variable here because not all aws account have the same behavior
       // On some aws accounts the response will hang if the body is empty
       // We are modifying the response body here, this is not a good practice
@@ -308,6 +312,11 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     }
     callback();
   }
+
+  /**
+   * Next specific methods
+   * On earlier versions of next.js, those methods are mandatory to make everything work
+   */
 
   get sent() {
     return this.finished || this.headersSent;
@@ -324,7 +333,30 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   send() {
-    const body = this.body;
+    const body = this.getBody();
     this.end(body);
+  }
+
+  body(value: string) {
+    this.write(value);
+    return this;
+  }
+
+  onClose(callback: () => void) {
+    this.on("close", callback);
+  }
+
+  redirect(destination: string, statusCode: number) {
+    this.setHeader("Location", destination);
+    this.statusCode = statusCode;
+
+    // Since IE11 doesn't support the 308 header add backwards
+    // compatibility using refresh header
+    if (statusCode === 308) {
+      this.setHeader("Refresh", `0;url=${destination}`);
+    }
+
+    //TODO: test to see if we need to call end here
+    return this;
   }
 }

@@ -81,7 +81,7 @@ export function convertRes(res: OpenNextNodeResponse) {
       : headers["content-type"],
   );
   const encoding = isBase64Encoded ? "base64" : "utf8";
-  const body = res.body.toString(encoding);
+  const body = res.getBody().toString(encoding);
   return {
     statusCode,
     headers,
