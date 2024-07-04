@@ -56,6 +56,12 @@ export async function build(
     nodeExternals,
   );
   config = (await import(configPath)).default as OpenNextConfig;
+  if (!config) {
+    logger.error(
+      `config.default cannot be empty, it should be at least {}, see more info here: https://open-next.js.org/config#configuration-file`,
+    );
+    process.exit(1);
+  }
   validateConfig(config);
 
   compileOpenNextConfigEdge(tempDir, config, openNextConfigPath);

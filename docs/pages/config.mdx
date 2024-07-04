@@ -11,6 +11,13 @@ For personalisation you need to create a file `open-next.config.ts` at the same 
 
 This file needs to be placed at the same level as your `next.config.js` file.
 
+If you have an `open-next.config.ts` file, make sure you have atleast this:
+```ts
+export default {
+  default: {}
+}
+```
+
 If you want to take a look at some simple configuration examples, you can check the [simple example](/config/simple_example).
 
 For more advanced use cases, you can check [how to implement custom overrides](/config/custom_overrides).
