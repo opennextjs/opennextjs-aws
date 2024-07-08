@@ -58,6 +58,12 @@ export async function build(
   // On Windows, we need to use file:// protocol to load the config file using import()
   if (process.platform === "win32") configPath = `file://${configPath}`;
   config = (await import(configPath)).default as OpenNextConfig;
+  if (!config || !config.default) {
+    logger.error(
+      `config.default cannot be empty, it should be at least {}, see more info here: https://open-next.js.org/config#configuration-file`,
+    );
+    process.exit(1);
+  }
   validateConfig(config);
 
   compileOpenNextConfigEdge(tempDir, config, openNextConfigPath);
