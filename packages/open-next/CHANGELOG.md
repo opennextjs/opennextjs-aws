@@ -1,5 +1,15 @@
 # open-next
 
+## 3.0.7
+
+### Patch Changes
+
+- 1a1441c: Add missing method from NextResponse for next 12
+- b8ffa3a: add check for config and config.default
+- ab0f8b2: [windows] Add Windows compatibility for the `resolve` ESBuild plugin
+- 7beaf82: [windows] Add Windows compatibility for the `replacement` ESBuild plugin
+- e2d0c7f: [windows] Specify the `file://` protocol when importing config on Windows
+
 ## 3.0.6
 
 ### Patch Changes
