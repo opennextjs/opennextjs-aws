@@ -7,3 +7,19 @@ test("Single redirect", async ({ page }) => {
   let el = page.getByRole("heading", { name: "Open source Next.js adapter" });
   await expect(el).toBeVisible();
 });
+
+test("Redirect with default locale support", async ({ page }) => {
+  await page.goto("/redirect-with-locale/");
+
+  await page.waitForURL("/ssr/");
+  let el = page.getByText("SSR");
+  await expect(el).toBeVisible();
+});
+
+test("Redirect with locale support", async ({ page }) => {
+  await page.goto("/nl/redirect-with-locale/");
+
+  await page.waitForURL("/nl/ssr/");
+  let el = page.getByText("SSR");
+  await expect(el).toBeVisible();
+});
