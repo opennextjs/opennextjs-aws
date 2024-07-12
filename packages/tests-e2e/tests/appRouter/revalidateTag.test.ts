@@ -64,3 +64,28 @@ test("Revalidate tag", async ({ page, request }) => {
   response = await responsePromise;
   expect(response.headers()["x-nextjs-cache"]).toEqual("HIT");
 });
+
+test("Revalidate path", async ({ page, request }) => {
+  await page.goto("/revalidate-path");
+
+  let elLayout = page.getByText("Paris:");
+  const initialParis = await elLayout.textContent();
+
+  elLayout = page.getByText("London:");
+  const initialLondon = await elLayout.textContent();
+
+  // Send revalidate path request
+  const result = await request.get("/api/revalidate-path");
+  expect(result.status()).toEqual(200);
+  const text = await result.text();
+  expect(text).toEqual("ok");
+
+  await page.goto("/revalidate-path");
+  elLayout = page.getByText("Paris:");
+  const newParis = await elLayout.textContent();
+  expect(newParis).not.toEqual(initialParis);
+
+  elLayout = page.getByText("London:");
+  const newLondon = await elLayout.textContent();
+  expect(newLondon).not.toEqual(initialLondon);
+});

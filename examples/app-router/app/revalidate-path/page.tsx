@@ -18,9 +18,9 @@ export default async function Page() {
   return (
     <div>
       <h1>Time in Paris</h1>
-      <p>{parisTime}</p>
+      <p>Paris: {parisTime}</p>
       <h1>Time in London</h1>
-      <p>{londonTime}</p>
+      <p>London: {londonTime}</p>
     </div>
   );
 }
