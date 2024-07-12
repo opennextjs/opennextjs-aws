@@ -104,7 +104,12 @@ export default class S3Cache {
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
     options?:
       | boolean
-      | { fetchCache?: boolean; kindHint?: "app" | "pages" | "fetch" },
+      | {
+          fetchCache?: boolean;
+          kindHint?: "app" | "pages" | "fetch";
+          tags?: string[];
+          softTags?: string[];
+        },
   ) {
     if (globalThis.disableIncrementalCache) {
       return null;
@@ -115,13 +120,18 @@ export default class S3Cache {
           ? options.kindHint === "fetch"
           : options.fetchCache
         : options;
+    const tags =
+      typeof options === "object"
+        ? [...(options.tags ?? []), ...(options.softTags ?? [])]
+        : [];
+    console.log({ options });
     return isFetchCache
-      ? this.getFetchCache(key)
+      ? this.getFetchCache(key, tags)
       : this.getIncrementalCache(key);
   }
 
-  async getFetchCache(key: string) {
-    debug("get fetch cache", { key });
+  async getFetchCache(key: string, tags?: string[]) {
+    debug("get fetch cache", { key, tags });
     try {
       const { value, lastModified } = await globalThis.incrementalCache.get(
         key,
@@ -223,6 +233,7 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return;
     }
+    console.log({ type: "set cache", key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__als
@@ -326,13 +337,35 @@ export default class S3Cache {
       // Find all keys with the given tag
       const paths = await globalThis.tagCache.getByTag(tag);
       debug("Items", paths);
+      const toInsert = paths.map((path) => ({
+        path,
+        tag,
+      }));
+
+      // If the tag is a soft tag, we should also revalidate the hard tags
+      if (tag.startsWith("_N_T_/")) {
+        for (const path of paths) {
+          // We need to find all hard tags for a given path
+          const _tags = await globalThis.tagCache.getByPath(path);
+          const hardTags = _tags
+            .map((t) => t.split("/").splice(1).join("/"))
+            .filter((t) => !t.startsWith("_N_T_/"));
+          // For every hard tag, we need to find all paths and revalidate them
+          for (const hardTag of hardTags) {
+            const _paths = await globalThis.tagCache.getByTag(hardTag);
+            debug({ hardTag, _paths });
+            toInsert.push(
+              ..._paths.map((path) => ({
+                path,
+                tag: hardTag,
+              })),
+            );
+          }
+        }
+      }
+
       // Update all keys with the given tag with revalidatedAt set to now
-      await globalThis.tagCache.writeTags(
-        paths?.map((path) => ({
-          path: path,
-          tag: tag,
-        })) ?? [],
-      );
+      await globalThis.tagCache.writeTags(toInsert);
     } catch (e) {
       error("Failed to revalidate tag", e);
     }
