@@ -120,18 +120,16 @@ export default class S3Cache {
           ? options.kindHint === "fetch"
           : options.fetchCache
         : options;
-    const tags =
-      typeof options === "object"
-        ? [...(options.tags ?? []), ...(options.softTags ?? [])]
-        : [];
-    console.log({ options });
+
+    const softTags = typeof options === "object" ? options.softTags : [];
+    const tags = typeof options === "object" ? options.tags : [];
     return isFetchCache
-      ? this.getFetchCache(key, tags)
+      ? this.getFetchCache(key, softTags, tags)
       : this.getIncrementalCache(key);
   }
 
-  async getFetchCache(key: string, tags?: string[]) {
-    debug("get fetch cache", { key, tags });
+  async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
+    debug("get fetch cache", { key, softTags, tags });
     try {
       const { value, lastModified } = await globalThis.incrementalCache.get(
         key,
@@ -148,6 +146,31 @@ export default class S3Cache {
       }
 
       if (value === undefined) return null;
+
+      // For cases where we don't have tags, we need to ensure that we insert at least an entry
+      // for this specific paths, otherwise we might not be able to invalidate it
+      if ((tags ?? []).length === 0) {
+        // First we check if we have any tags for the given key
+        const storedTags = await globalThis.tagCache.getByPath(key);
+        if (storedTags.length === 0) {
+          // Then we need to find the path for the given key
+          const path = softTags?.find(
+            (tag) =>
+              tag.startsWith("_N_T_/") &&
+              !tag.endsWith("layout") &&
+              !tag.endsWith("page"),
+          );
+          if (path) {
+            // And write the path with the tag
+            await globalThis.tagCache.writeTags([
+              {
+                path: key,
+                tag: path,
+              },
+            ]);
+          }
+        }
+      }
 
       return {
         lastModified: _lastModified,
@@ -233,7 +256,6 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return;
     }
-    console.log({ type: "set cache", key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__als
