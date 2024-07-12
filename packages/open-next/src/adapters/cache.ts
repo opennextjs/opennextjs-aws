@@ -350,44 +350,47 @@ export default class S3Cache {
     }
   }
 
-  public async revalidateTag(tag: string) {
+  public async revalidateTag(tags: string | string[]) {
     if (globalThis.disableDynamoDBCache || globalThis.disableIncrementalCache) {
       return;
     }
     try {
-      debug("revalidateTag", tag);
-      // Find all keys with the given tag
-      const paths = await globalThis.tagCache.getByTag(tag);
-      debug("Items", paths);
-      const toInsert = paths.map((path) => ({
-        path,
-        tag,
-      }));
+      const _tags = Array.isArray(tags) ? tags : [tags];
+      for (const tag of _tags) {
+        debug("revalidateTag", tag);
+        // Find all keys with the given tag
+        const paths = await globalThis.tagCache.getByTag(tag);
+        debug("Items", paths);
+        const toInsert = paths.map((path) => ({
+          path,
+          tag,
+        }));
 
-      // If the tag is a soft tag, we should also revalidate the hard tags
-      if (tag.startsWith("_N_T_/")) {
-        for (const path of paths) {
-          // We need to find all hard tags for a given path
-          const _tags = await globalThis.tagCache.getByPath(path);
-          const hardTags = _tags
-            .map((t) => t.split("/").splice(1).join("/"))
-            .filter((t) => !t.startsWith("_N_T_/"));
-          // For every hard tag, we need to find all paths and revalidate them
-          for (const hardTag of hardTags) {
-            const _paths = await globalThis.tagCache.getByTag(hardTag);
-            debug({ hardTag, _paths });
-            toInsert.push(
-              ..._paths.map((path) => ({
-                path,
-                tag: hardTag,
-              })),
-            );
+        // If the tag is a soft tag, we should also revalidate the hard tags
+        if (tag.startsWith("_N_T_/")) {
+          for (const path of paths) {
+            // We need to find all hard tags for a given path
+            const _tags = await globalThis.tagCache.getByPath(path);
+            const hardTags = _tags
+              .map((t) => t.split("/").splice(1).join("/"))
+              .filter((t) => !t.startsWith("_N_T_/"));
+            // For every hard tag, we need to find all paths and revalidate them
+            for (const hardTag of hardTags) {
+              const _paths = await globalThis.tagCache.getByTag(hardTag);
+              debug({ hardTag, _paths });
+              toInsert.push(
+                ..._paths.map((path) => ({
+                  path,
+                  tag: hardTag,
+                })),
+              );
+            }
           }
         }
-      }
 
-      // Update all keys with the given tag with revalidatedAt set to now
-      await globalThis.tagCache.writeTags(toInsert);
+        // Update all keys with the given tag with revalidatedAt set to now
+        await globalThis.tagCache.writeTags(toInsert);
+      }
     } catch (e) {
       error("Failed to revalidate tag", e);
     }
