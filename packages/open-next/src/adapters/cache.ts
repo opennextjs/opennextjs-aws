@@ -371,9 +371,7 @@ export default class S3Cache {
           for (const path of paths) {
             // We need to find all hard tags for a given path
             const _tags = await globalThis.tagCache.getByPath(path);
-            const hardTags = _tags
-              .map((t) => t.split("/").splice(1).join("/"))
-              .filter((t) => !t.startsWith("_N_T_/"));
+            const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
               const _paths = await globalThis.tagCache.getByTag(hardTag);
