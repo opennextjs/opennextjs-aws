@@ -88,7 +88,7 @@ export async function build(
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  initOutputDir();
+  initOutputDir(tempDir);
 
   // Compile cache.ts
   compileCache();
@@ -208,8 +208,8 @@ function printOpenNextVersion() {
   logger.info(`OpenNext v${openNextVersion}`);
 }
 
-function initOutputDir() {
-  const { outputDir, tempDir } = options;
+function initOutputDir(tempDir: string) {
+  const { outputDir, tempDir: lTempDir } = options;
   const openNextConfig = readFileSync(
     path.join(tempDir, "open-next.config.mjs"),
     "utf8",
@@ -222,8 +222,8 @@ function initOutputDir() {
     );
   }
   fs.rmSync(outputDir, { recursive: true, force: true });
-  fs.mkdirSync(tempDir, { recursive: true });
-  fs.writeFileSync(path.join(tempDir, "open-next.config.mjs"), openNextConfig);
+  fs.mkdirSync(lTempDir, { recursive: true });
+  fs.writeFileSync(path.join(lTempDir, "open-next.config.mjs"), openNextConfig);
   if (openNextConfigEdge) {
     fs.writeFileSync(
       path.join(tempDir, "open-next.config.edge.mjs"),
