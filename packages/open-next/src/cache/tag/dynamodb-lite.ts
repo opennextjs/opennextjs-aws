@@ -70,6 +70,7 @@ const tagCache: TagCache = {
 
       const tags = Items?.map((item: any) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
+      // We need to remove the buildId from the path
       return tags.map((tag: string) => tag.replace(`${NEXT_BUILD_ID}/`, ""));
     } catch (e) {
       error("Failed to get tags by path", e);
