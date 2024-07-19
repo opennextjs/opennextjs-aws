@@ -226,7 +226,7 @@ function initOutputDir(tempDir: string) {
   fs.writeFileSync(path.join(lTempDir, "open-next.config.mjs"), openNextConfig);
   if (openNextConfigEdge) {
     fs.writeFileSync(
-      path.join(tempDir, "open-next.config.edge.mjs"),
+      path.join(lTempDir, "open-next.config.edge.mjs"),
       openNextConfigEdge,
     );
   }
