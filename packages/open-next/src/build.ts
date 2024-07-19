@@ -209,6 +209,9 @@ function printOpenNextVersion() {
 }
 
 function initOutputDir(tempDir: string) {
+  // We need to get the build relative to the cwd to find the compiled config
+  // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
+  // where the build is in the app directory, but the compiled config is in the root of the monorepo.
   const { outputDir, tempDir: lTempDir } = options;
   const openNextConfig = readFileSync(
     path.join(tempDir, "open-next.config.mjs"),
