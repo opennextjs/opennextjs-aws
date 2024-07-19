@@ -57,7 +57,7 @@ it might even work.
 
 However, we don't want to rely on needing to manually running a build every time we want to deploy a change, so instead we can set up a target.
 We do this in your project's `project.json` (in this case, living at `apps/next-site/project`), we want to find the targets object and update it: 
-```json
+```diff
 {
   "name": "next-site",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
@@ -79,6 +79,42 @@ We do this in your project's `project.json` (in this case, living at `apps/next-
 }
 
 ```
+Next we need to add the open-next directory to our eslint's `ignorePatterns` array 
+```diff
+{
+  "extends": [
+    "plugin:@nx/react-typescript",
+    "next",
+    "next/core-web-vitals",
+    "../../.eslintrc.json"
+  ],
+  "ignorePatterns": [
+    "!**/*",
++    ".next/**/*",
++    ".open-next/**/*"
+  ],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.spec.ts", "*.spec.tsx", "*.spec.js", "*.spec.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
+}
+```
 
 now, when you run `nx open-next-build next-site`, nx will automatically build the next app, and anything that the next app requires, neat!
 
@@ -98,16 +134,14 @@ but we will not use the SST cli to init this project, because it wants to add a 
 export default $config({
   app(input) {
     return {
-      name: 'next-site',
+      name: 'next-site', // use whatever your project is called here
       removal: input?.stage === 'production' ? 'retain' : 'remove',
       home: 'aws',
     };
   },
   async run() {
     new sst.aws.Nextjs('Site', {
-      buildCommand: 'exit 0;', // again, we want to get Nx to handle building
-      path: '.',
-      invalidation: { paths: 'all', wait: false },
+      buildCommand: 'exit 0;' // again, we want to get Nx to handle building
     });
   },
 });
@@ -121,9 +155,51 @@ $ cd apps/next-site && sst install
 
 this will resolve the type issues and initialise SST.
 
+- next we need to add `sst.config.ts` to our `tsconfig.json`'s excludes array
+
+- then we want to add both `sst.config.ts` and the `.sst` folder to the eslint ignorePatterns
+
+```diff
+{
+  "extends": [
+    "plugin:@nx/react-typescript",
+    "next",
+    "next/core-web-vitals",
+    "../../.eslintrc.json"
+  ],
+  "ignorePatterns": [
+    "!**/*",
+    ".next/**/*",
++    ".open-next/**/*",
++    ".sst/**/*",
++    "sst.config.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.spec.ts", "*.spec.tsx", "*.spec.js", "*.spec.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
+}
+```
+
 - now, if you want to run `sst dev` you can do so with `sst dev "nx dev next-site"` similarly deploying can be done with `sst deploy`...but you probably want to set up that task chaining, again we can do that by adding a target to your app, and setting it's `dependsOn` to the `open-next-build`, here's what it might look like: 
 
-```json
+```diff
 {
   "name": "next-site",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
@@ -170,7 +246,7 @@ this will resolve the type issues and initialise SST.
 
 now we can run (or if you want a custom stage, you can simply do `nx deploy next-site --stage this-is-my-stage` and it will be passed directly to the sst command). 
 ```bash
-$ nx deploy next-site --configuration dev // using dev configuration (which sets the stage to development)
-# nx deploy next-site -c dev // OR
-# nx deploy next-site --stage my-stage // Custom Stage 
+$ nx deploy next-site --configuration dev # using dev configuration (which sets the stage to development)
+# nx deploy next-site -c dev # OR
+# nx deploy next-site --stage my-stage # Custom Stage 
 ```
