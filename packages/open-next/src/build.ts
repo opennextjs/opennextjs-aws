@@ -129,7 +129,7 @@ function initTempDir() {
 
 function checkRunningInsideNextjsApp() {
   const { appPath } = options;
-  const extension = ["js", "cjs", "mjs"].find((ext) =>
+  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
   if (!extension) {
