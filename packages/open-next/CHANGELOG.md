@@ -1,5 +1,15 @@
 # open-next
 
+## 3.0.8
+
+### Patch Changes
+
+- 75857cf: fix middleware for next 15
+- 1dd2b16: fix: Nx monorepo support
+- 220be99: fix rewrite/redirect with i18n
+- b93034d: Fix issues with revalidateTag/revalidatePath
+- 59ff2ee: support next.config.ts
+
 ## 3.0.7
 
 ### Patch Changes
