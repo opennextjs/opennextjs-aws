@@ -104,7 +104,12 @@ export default class S3Cache {
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
     options?:
       | boolean
-      | { fetchCache?: boolean; kindHint?: "app" | "pages" | "fetch" },
+      | {
+          fetchCache?: boolean;
+          kindHint?: "app" | "pages" | "fetch";
+          tags?: string[];
+          softTags?: string[];
+        },
   ) {
     if (globalThis.disableIncrementalCache) {
       return null;
@@ -115,13 +120,16 @@ export default class S3Cache {
           ? options.kindHint === "fetch"
           : options.fetchCache
         : options;
+
+    const softTags = typeof options === "object" ? options.softTags : [];
+    const tags = typeof options === "object" ? options.tags : [];
     return isFetchCache
-      ? this.getFetchCache(key)
+      ? this.getFetchCache(key, softTags, tags)
       : this.getIncrementalCache(key);
   }
 
-  async getFetchCache(key: string) {
-    debug("get fetch cache", { key });
+  async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
+    debug("get fetch cache", { key, softTags, tags });
     try {
       const { value, lastModified } = await globalThis.incrementalCache.get(
         key,
@@ -138,6 +146,31 @@ export default class S3Cache {
       }
 
       if (value === undefined) return null;
+
+      // For cases where we don't have tags, we need to ensure that we insert at least an entry
+      // for this specific paths, otherwise we might not be able to invalidate it
+      if ((tags ?? []).length === 0) {
+        // First we check if we have any tags for the given key
+        const storedTags = await globalThis.tagCache.getByPath(key);
+        if (storedTags.length === 0) {
+          // Then we need to find the path for the given key
+          const path = softTags?.find(
+            (tag) =>
+              tag.startsWith("_N_T_/") &&
+              !tag.endsWith("layout") &&
+              !tag.endsWith("page"),
+          );
+          if (path) {
+            // And write the path with the tag
+            await globalThis.tagCache.writeTags([
+              {
+                path: key,
+                tag: path,
+              },
+            ]);
+          }
+        }
+      }
 
       return {
         lastModified: _lastModified,
@@ -317,22 +350,45 @@ export default class S3Cache {
     }
   }
 
-  public async revalidateTag(tag: string) {
+  public async revalidateTag(tags: string | string[]) {
     if (globalThis.disableDynamoDBCache || globalThis.disableIncrementalCache) {
       return;
     }
     try {
-      debug("revalidateTag", tag);
-      // Find all keys with the given tag
-      const paths = await globalThis.tagCache.getByTag(tag);
-      debug("Items", paths);
-      // Update all keys with the given tag with revalidatedAt set to now
-      await globalThis.tagCache.writeTags(
-        paths?.map((path) => ({
-          path: path,
-          tag: tag,
-        })) ?? [],
-      );
+      const _tags = Array.isArray(tags) ? tags : [tags];
+      for (const tag of _tags) {
+        debug("revalidateTag", tag);
+        // Find all keys with the given tag
+        const paths = await globalThis.tagCache.getByTag(tag);
+        debug("Items", paths);
+        const toInsert = paths.map((path) => ({
+          path,
+          tag,
+        }));
+
+        // If the tag is a soft tag, we should also revalidate the hard tags
+        if (tag.startsWith("_N_T_/")) {
+          for (const path of paths) {
+            // We need to find all hard tags for a given path
+            const _tags = await globalThis.tagCache.getByPath(path);
+            const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
+            // For every hard tag, we need to find all paths and revalidate them
+            for (const hardTag of hardTags) {
+              const _paths = await globalThis.tagCache.getByTag(hardTag);
+              debug({ hardTag, _paths });
+              toInsert.push(
+                ..._paths.map((path) => ({
+                  path,
+                  tag: hardTag,
+                })),
+              );
+            }
+          }
+        }
+
+        // Update all keys with the given tag with revalidatedAt set to now
+        await globalThis.tagCache.writeTags(toInsert);
+      }
     } catch (e) {
       error("Failed to revalidate tag", e);
     }
