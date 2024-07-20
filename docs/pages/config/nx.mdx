@@ -1,0 +1,252 @@
+# Configuring OpenNext for use in an Nx Monorepo.
+Here's a detailed exampled of how to add open-next + SST to an existing Nx workspace, with an existing NextJS application sitting at `apps/next-site`
+
+1. install `open-next`: `pnpm add —save-dev open-next`
+
+2. Update your `apps/next-site/next.config.js` add `output: ‘standalone’`, and you want to add `experimental.outputFileTracingRoot`, it should look a little like this: 
+```javascript
+//@ts-check
+ 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { composePlugins, withNx } = require('@nx/next');
+const { join } = require('node:path');
+ 
+/**
+ * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
+ **/
+const nextConfig = {
+   nx: {
+     // Set this to true if you would like to use SVGR
+     // See: https://github.com/gregberge/svgr
+     svgr: false,
+   },
++   output: 'standalone',
++   experimental: {
++      // this should be the path to the root of your repo, in this case it's just two levels down. needed for open-next to detect that it's a monorepo
++     outputFileTracingRoot: join(__dirname, '../../'),
++   },
+};
+ 
+const plugins = [
+   // Add more Next.js plugins to this list if needed.
+   withNx,
+];
+ 
+module.exports = composePlugins(...plugins)(nextConfig);
+```
+
+3. Create `open-next.config.js` inside your apps root directory, it should look a little something like this: 
+```javascript
+import type { OpenNextConfig } from 'open-next/types/open-next';
+
+const config = {
+  default: {},
+  buildCommand: 'exit 0', // in my example we set up Nx task distribution to handle the order of building.
+  buildOutputPath: '.',
+  appPath: '.',
+  packageJsonPath: '../../', // again, path to the root of your repo (where the package.json is)
+} satisfies OpenNextConfig;
+
+export default config;
+```
+
+4. Set up nx's targets/tasks 
+
+Now we have open-next configuration set up, you can try to run `open-next build` and depending on whether you have already built your next app or not
+it might even work. 
+
+However, we don't want to rely on needing to manually running a build every time we want to deploy a change, so instead we can set up a target.
+We do this in your project's `project.json` (in this case, living at `apps/next-site/project`), we want to find the targets object and update it: 
+```diff
+{
+  "name": "next-site",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/next-site",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
++    "open-next-build": { // name of the target, this is what you will call
++      "executor": "nx:run-commands", 
++      "dependsOn": ["build"], // this ensures that Nx will build our next app before running this command.
++      "cache": true, // cache the output, good for if you want to use DTE/Nx cloud
++      "outputs": ["{projectRoot}/.open-next"], // tell nx where the output lives
++      "options": {
++        "cwd": "apps/next-site", // where we run the command
++        "command": "open-next build" // what command we want to run
++      }
++    }
+  }
+}
+
+```
+Next we need to add the open-next directory to our eslint's `ignorePatterns` array 
+```diff
+{
+  "extends": [
+    "plugin:@nx/react-typescript",
+    "next",
+    "next/core-web-vitals",
+    "../../.eslintrc.json"
+  ],
+  "ignorePatterns": [
+    "!**/*",
++    ".next/**/*",
++    ".open-next/**/*"
+  ],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.spec.ts", "*.spec.tsx", "*.spec.js", "*.spec.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
+}
+```
+
+now, when you run `nx open-next-build next-site`, nx will automatically build the next app, and anything that the next app requires, neat!
+
+5. Deploying with SST
+
+Now, we have a built app, ready to deploy, so how do we get it onto SST/AWS ? Good question! 
+
+We are using `sst ion` in this example. i will assume you have already have the cli installed, (if not, check here on how!)[https://ion.sst.dev/],
+but we will not use the SST cli to init this project, because it wants to add a package.json to your next app, and it will look like it's working, but you will end up with a big far server error (all because the package.json overrides whatever nx _thinks_ there should be, and it will miss a bunch of dependencies). we will instead manually set this up:
+
+- let's add the sst package with `pnpm add sst@ion`, and the required packages for SST to work with AWS `pnpm add --save-dev aws-cdk-lib constructs @types/aws-lambda`
+- then we want to manually create an `sst.config.ts` file in `apps/next-site` that looks like this: 
+
+```typescript
+/// <reference path="./.sst/platform/config.d.ts" />
+
+export default $config({
+  app(input) {
+    return {
+      name: 'next-site', // use whatever your project is called here
+      removal: input?.stage === 'production' ? 'retain' : 'remove',
+      home: 'aws',
+    };
+  },
+  async run() {
+    new sst.aws.Nextjs('Site', {
+      buildCommand: 'exit 0;' // again, we want to get Nx to handle building
+    });
+  },
+});
+
+```
+
+- now, you probably see some type errors, as SST is not initialized yet, but we can resolve this by running
+```bash
+$ cd apps/next-site && sst install 
+```
+
+this will resolve the type issues and initialise SST.
+
+- next we need to add `sst.config.ts` to our `tsconfig.json`'s excludes array
+
+- then we want to add both `sst.config.ts` and the `.sst` folder to the eslint ignorePatterns
+
+```diff
+{
+  "extends": [
+    "plugin:@nx/react-typescript",
+    "next",
+    "next/core-web-vitals",
+    "../../.eslintrc.json"
+  ],
+  "ignorePatterns": [
+    "!**/*",
+    ".next/**/*",
++    ".open-next/**/*",
++    ".sst/**/*",
++    "sst.config.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.js", "*.jsx"],
+      "rules": {}
+    },
+    {
+      "files": ["*.spec.ts", "*.spec.tsx", "*.spec.js", "*.spec.jsx"],
+      "env": {
+        "jest": true
+      }
+    }
+  ]
+}
+```
+
+- now, if you want to run `sst dev` you can do so with `sst dev "nx dev next-site"` similarly deploying can be done with `sst deploy`...but you probably want to set up that task chaining, again we can do that by adding a target to your app, and setting it's `dependsOn` to the `open-next-build`, here's what it might look like: 
+
+```diff
+{
+  "name": "next-site",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/next-site",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "open-next-build": {
+      "executor": "nx:run-commands", 
+      "dependsOn": ["build"],
+      "cache": true, 
+      "outputs": ["{projectRoot}/.open-next"],
+      "options": {
+        "cwd": "apps/next-site",
+        "command": "open-next build"
+      }
++    },
++    "deploy": {
++      "executor": "nx:run-commands",
++      "dependsOn": ["open-next-build"],
++      "options": {
++        "cwd": "apps/next-site",
++        "command": "sst deploy --stage {args.stage}", // here we use nx's interpolation to allow --stage to be passed, with some configuration examples below
++        "forwardAllArgs": true
++      },
++      "defaultConfiguration": "dev",
++      "configurations": {
++        "production": {
++          "args": ["--stage=production"]
++        },
++        "staging": {
++          "args": ["--stage=staging"]
++        },
++        "dev": {
++          "args": ["--stage=development"] 
++        }
++      }
++    }
++  }
+}
+
+
+```
+
+now we can run (or if you want a custom stage, you can simply do `nx deploy next-site --stage this-is-my-stage` and it will be passed directly to the sst command). 
+```bash
+$ nx deploy next-site --configuration dev # using dev configuration (which sets the stage to development)
+# nx deploy next-site -c dev # OR
+# nx deploy next-site --stage my-stage # Custom Stage 
+```

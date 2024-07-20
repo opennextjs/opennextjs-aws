@@ -88,7 +88,7 @@ export async function build(
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  initOutputDir();
+  initOutputDir(tempDir);
 
   // Compile cache.ts
   compileCache();
@@ -208,8 +208,11 @@ function printOpenNextVersion() {
   logger.info(`OpenNext v${openNextVersion}`);
 }
 
-function initOutputDir() {
-  const { outputDir, tempDir } = options;
+function initOutputDir(tempDir: string) {
+  // We need to get the build relative to the cwd to find the compiled config
+  // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
+  // where the build is in the app directory, but the compiled config is in the root of the monorepo.
+  const { outputDir, tempDir: lTempDir } = options;
   const openNextConfig = readFileSync(
     path.join(tempDir, "open-next.config.mjs"),
     "utf8",
@@ -222,11 +225,11 @@ function initOutputDir() {
     );
   }
   fs.rmSync(outputDir, { recursive: true, force: true });
-  fs.mkdirSync(tempDir, { recursive: true });
-  fs.writeFileSync(path.join(tempDir, "open-next.config.mjs"), openNextConfig);
+  fs.mkdirSync(lTempDir, { recursive: true });
+  fs.writeFileSync(path.join(lTempDir, "open-next.config.mjs"), openNextConfig);
   if (openNextConfigEdge) {
     fs.writeFileSync(
-      path.join(tempDir, "open-next.config.edge.mjs"),
+      path.join(lTempDir, "open-next.config.edge.mjs"),
       openNextConfigEdge,
     );
   }
