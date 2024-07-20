@@ -60,14 +60,16 @@ export type Header = {
   has?: RouteHas[];
   missing?: RouteHas[];
 };
+
+export interface i18nConfig {
+  locales: string[];
+  defaultLocale: string;
+}
 export interface NextConfig {
   basePath?: string;
   trailingSlash?: string;
   skipTrailingSlashRedirect?: boolean;
-  i18n?: {
-    locales: string[];
-    defaultLocale: string;
-  };
+  i18n?: i18nConfig;
   experimental: {
     serverActions?: boolean;
     appDir?: boolean;
@@ -92,6 +94,7 @@ export interface RewriteDefinition {
   has?: RouteHas[];
   missing?: RouteHas[];
   regex: string;
+  locale?: false;
 }
 
 export interface RedirectDefinition extends RewriteDefinition {

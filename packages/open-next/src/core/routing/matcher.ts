@@ -16,6 +16,7 @@ import type {
 import { InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../../adapters/logger";
+import { localizePath } from "./i18n";
 import {
   convertFromQueryString,
   convertToQueryString,
@@ -170,14 +171,17 @@ export function handleRewrites<T extends RewriteDefinition>(
   rewrites: T[],
 ) {
   const { rawPath, headers, query, cookies } = event;
+  const localizedRawPath = localizePath(event);
   const matcher = routeHasMatcher(headers, cookies, query);
   const computeHas = computeParamHas(headers, cookies, query);
-  const rewrite = rewrites.find(
-    (route) =>
-      new RegExp(route.regex).test(rawPath) &&
+  const rewrite = rewrites.find((route) => {
+    const path = route.locale === false ? rawPath : localizedRawPath;
+    return (
+      new RegExp(route.regex).test(path) &&
       checkHas(matcher, route.has) &&
-      checkHas(matcher, route.missing, true),
-  );
+      checkHas(matcher, route.missing, true)
+    );
+  });
   let finalQuery = query;
 
   let rewrittenUrl = rawPath;
@@ -188,6 +192,8 @@ export function handleRewrites<T extends RewriteDefinition>(
       rewrite.destination,
       isExternalRewrite,
     );
+    // We need to use a localized path if the rewrite is not locale specific
+    const pathToUse = rewrite.locale === false ? rawPath : localizedRawPath;
     debug("urlParts", { pathname, protocol, hostname, queryString });
     const toDestinationPath = compile(escapeRegex(pathname ?? "") ?? "");
     const toDestinationHost = compile(escapeRegex(hostname ?? "") ?? "");
@@ -195,7 +201,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     let params = {
       // params for the source
       ...getParamsFromSource(match(escapeRegex(rewrite?.source) ?? ""))(
-        rawPath,
+        pathToUse,
       ),
       // params for the has
       ...rewrite.has?.reduce((acc, cur) => {

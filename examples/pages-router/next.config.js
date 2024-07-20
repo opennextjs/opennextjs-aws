@@ -35,6 +35,11 @@ const nextConfig = {
       basePath: false,
       locale: false,
     },
+    {
+      source: "/redirect-with-locale/",
+      destination: "/ssr/",
+      permanent: false,
+    },
   ],
   trailingSlash: true,
 };
