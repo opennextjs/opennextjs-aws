@@ -21,7 +21,9 @@ test("Revalidate tag", async ({ page, request }) => {
   let newTime;
 
   let response = await responsePromise;
-  const nextCacheHeader = response.headers()["x-nextjs-cache"];
+  const headers = response.headers();
+  const nextCacheHeader =
+    headers["x-nextjs-cache"] ?? headers["x-opennext-cache"];
   expect(nextCacheHeader).toMatch(/^(HIT|STALE)$/);
 
   // Send revalidate tag request
@@ -62,7 +64,10 @@ test("Revalidate tag", async ({ page, request }) => {
   await page.goto("/revalidate-tag/nested");
 
   response = await responsePromise;
-  expect(response.headers()["x-nextjs-cache"]).toEqual("HIT");
+  const headersNested = response.headers();
+  const nextCacheHeaderNested =
+    headersNested["x-nextjs-cache"] ?? headersNested["x-opennext-cache"];
+  expect(nextCacheHeaderNested).toEqual("HIT");
 });
 
 test("Revalidate path", async ({ page, request }) => {

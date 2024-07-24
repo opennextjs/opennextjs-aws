@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 
-import { PrerenderManifest } from "config/index";
+import { NextConfig, PrerenderManifest } from "config/index";
 import { InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../../adapters/logger";
 import { CacheValue } from "../../cache/incremental/types";
+import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./util";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
@@ -53,8 +54,9 @@ async function computeCacheControl(
     });
     const isStale = sMaxAge === 1;
     if (isStale) {
+      const url = NextConfig.trailingSlash ? `${path}/` : path;
       await globalThis.queue.send({
-        MessageBody: { host, url: path },
+        MessageBody: { host, url },
         MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
         MessageGroupId: generateMessageGroupId(path),
       });
@@ -75,6 +77,7 @@ async function computeCacheControl(
 
 async function generateResult(
   event: InternalEvent,
+  localizedPath: string,
   cachedValue: CacheValue<false>,
   lastModified?: number,
 ): Promise<InternalResult> {
@@ -97,7 +100,7 @@ async function generateResult(
       break;
   }
   const cacheControl = await computeCacheControl(
-    event.rawPath,
+    localizedPath,
     body,
     event.headers["host"],
     cachedValue.revalidate,
@@ -124,26 +127,47 @@ export async function cacheInterceptor(
     Boolean(event.headers["x-prerender-revalidate"])
   )
     return event;
+  // We localize the path in case i18n is enabled
+  let localizedPath = localizePath(event);
+  // We also need to remove trailing slash
+  localizedPath = localizedPath.replace(/\/$/, "");
+  // If empty path, it means we want index
+  if (localizedPath === "") {
+    localizedPath = "index";
+  }
+
   const isISR =
-    Object.keys(PrerenderManifest.routes).includes(event.rawPath) ||
+    Object.keys(PrerenderManifest.routes).includes(localizedPath) ||
     Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
-      new RegExp(dr.routeRegex).test(event.rawPath),
+      new RegExp(dr.routeRegex).test(localizedPath),
     );
   if (isISR) {
     try {
-      const cachedData = await globalThis.incrementalCache.get(event.rawPath);
+      const cachedData = await globalThis.incrementalCache.get(localizedPath);
+      if (cachedData.value?.type === "app") {
+        // We need to check the tag cache now
+        const _lastModified = await globalThis.tagCache.getLastModified(
+          localizedPath,
+          cachedData.lastModified,
+        );
+        if (_lastModified === -1) {
+          // If some tags are stale we need to force revalidation
+          return event;
+        }
+      }
       const host = event.headers["host"];
       switch (cachedData.value?.type) {
         case "app":
         case "page":
           return generateResult(
             event,
+            localizedPath,
             cachedData.value,
             cachedData.lastModified,
           );
         case "redirect":
           const cacheControl = await computeCacheControl(
-            event.rawPath,
+            localizedPath,
             "",
             host,
             cachedData.value.revalidate,

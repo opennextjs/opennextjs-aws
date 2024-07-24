@@ -52,6 +52,19 @@ const dynamicRegexp = RoutesManifest.routes.dynamic.map(
     ),
 );
 
+function applyMiddlewareHeaders(
+  eventHeaders: Record<string, string | string[]>,
+  middlewareHeaders: Record<string, string | string[] | undefined>,
+) {
+  Object.entries(middlewareHeaders).forEach(([key, value]) => {
+    if (value) {
+      eventHeaders[`x-middleware-response-${key}`] = Array.isArray(value)
+        ? value.join(",")
+        : value;
+    }
+  });
+}
+
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
@@ -166,26 +179,22 @@ export default async function routingHandler(
     };
   }
 
-  // We apply the headers from the middleware response last
-  Object.entries({
-    ...middlewareResponseHeaders,
-    ...nextHeaders,
-  }).forEach(([key, value]) => {
-    if (value) {
-      internalEvent.headers[`x-middleware-response-${key}`] = Array.isArray(
-        value,
-      )
-        ? value.join(",")
-        : value;
-    }
-  });
-
   if (!("statusCode" in internalEvent)) {
     internalEvent = await cacheInterceptor(internalEvent);
     if ("statusCode" in internalEvent) {
+      applyMiddlewareHeaders(internalEvent.headers, {
+        ...middlewareResponseHeaders,
+        ...nextHeaders,
+      });
       return internalEvent;
     }
   }
+
+  // We apply the headers from the middleware response last
+  applyMiddlewareHeaders(internalEvent.headers, {
+    ...middlewareResponseHeaders,
+    ...nextHeaders,
+  });
 
   return {
     internalEvent,

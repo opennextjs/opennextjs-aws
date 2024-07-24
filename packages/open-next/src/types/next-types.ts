@@ -67,7 +67,7 @@ export interface i18nConfig {
 }
 export interface NextConfig {
   basePath?: string;
-  trailingSlash?: string;
+  trailingSlash?: boolean;
   skipTrailingSlashRedirect?: boolean;
   i18n?: i18nConfig;
   experimental: {
