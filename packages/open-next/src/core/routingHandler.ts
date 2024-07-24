@@ -179,7 +179,10 @@ export default async function routingHandler(
     };
   }
 
-  if (!("statusCode" in internalEvent)) {
+  if (
+    globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+    !("statusCode" in internalEvent)
+  ) {
     internalEvent = await cacheInterceptor(internalEvent);
     if ("statusCode" in internalEvent) {
       applyMiddlewareHeaders(internalEvent.headers, {
