@@ -393,7 +393,7 @@ export async function revalidateIfRequired(
 // We can't just use a random string because we need to ensure that the same rawPath
 // will always have the same messageGroupId.
 // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript#answer-47593316
-function generateMessageGroupId(rawPath: string) {
+export function generateMessageGroupId(rawPath: string) {
   let a = cyrb128(rawPath);
   // We use mulberry32 to generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
   var t = (a += 0x6d2b79f5);

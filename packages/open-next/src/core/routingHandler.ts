@@ -7,6 +7,7 @@ import {
 import { InternalEvent, InternalResult, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
+import { cacheInterceptor } from "./routing/cacheInterceptor";
 import {
   addNextConfigHeaders,
   fixDataPage,
@@ -178,6 +179,13 @@ export default async function routingHandler(
         : value;
     }
   });
+
+  if (!("statusCode" in internalEvent)) {
+    internalEvent = await cacheInterceptor(internalEvent);
+    if ("statusCode" in internalEvent) {
+      return internalEvent;
+    }
+  }
 
   return {
     internalEvent,

@@ -31,9 +31,9 @@ export type WithLastModified<T> = {
   value?: T;
 };
 
-export type CacheValue<IsFetch extends boolean> = IsFetch extends true
+export type CacheValue<IsFetch extends boolean> = (IsFetch extends true
   ? S3FetchCache
-  : S3CachedFile;
+  : S3CachedFile) & { revalidate?: number | false };
 
 export type IncrementalCache = {
   get<IsFetch extends boolean = false>(

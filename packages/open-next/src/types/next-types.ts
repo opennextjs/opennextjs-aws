@@ -150,7 +150,13 @@ export interface MiddlewareManifest {
 }
 
 export interface PrerenderManifest {
-  routes: Record<string, never>;
+  routes: Record<
+    string,
+    {
+      // TODO: add the rest when needed for PPR
+      initialRevalidateSeconds: number | false;
+    }
+  >;
   dynamicRoutes: {
     [route: string]: {
       routeRegex: string;
