@@ -262,6 +262,13 @@ export interface OpenNextConfig {
     external: true;
 
     /**
+     * The override options for the middleware.
+     * By default the lite override are used (.i.e. s3-lite, dynamodb-lite, sqs-lite)
+     * @default undefined
+     */
+    override?: OverrideOptions;
+
+    /**
      * Origin resolver is used to resolve the origin for internal rewrite.
      * By default, it uses the pattern-env origin resolver.
      * Pattern env uses pattern set in split function options and an env variable OPEN_NEXT_ORIGIN

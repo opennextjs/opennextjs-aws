@@ -55,12 +55,12 @@ const dynamicRegexp = RoutesManifest.routes.dynamic.map(
 function applyMiddlewareHeaders(
   eventHeaders: Record<string, string | string[]>,
   middlewareHeaders: Record<string, string | string[] | undefined>,
+  setPrefix = true,
 ) {
   Object.entries(middlewareHeaders).forEach(([key, value]) => {
     if (value) {
-      eventHeaders[`x-middleware-response-${key}`] = Array.isArray(value)
-        ? value.join(",")
-        : value;
+      eventHeaders[`${setPrefix ? "x-middleware-response-" : ""}${key}`] =
+        Array.isArray(value) ? value.join(",") : value;
     }
   });
 }
@@ -183,12 +183,17 @@ export default async function routingHandler(
     globalThis.openNextConfig.dangerous?.enableCacheInterception &&
     !("statusCode" in internalEvent)
   ) {
+    debug("Cache interception enabled");
     internalEvent = await cacheInterceptor(internalEvent);
     if ("statusCode" in internalEvent) {
-      applyMiddlewareHeaders(internalEvent.headers, {
-        ...middlewareResponseHeaders,
-        ...nextHeaders,
-      });
+      applyMiddlewareHeaders(
+        internalEvent.headers,
+        {
+          ...middlewareResponseHeaders,
+          ...nextHeaders,
+        },
+        false,
+      );
       return internalEvent;
     }
   }

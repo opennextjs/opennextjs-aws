@@ -5,14 +5,15 @@ import fs from "fs";
 import path from "path";
 import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import {
-  DefaultOverrideOptions,
   IncludedConverter,
+  OverrideOptions,
   RouteTemplate,
   SplittedFunctionOptions,
 } from "types/open-next";
 
 import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
+import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
@@ -24,9 +25,10 @@ interface BuildEdgeBundleOptions {
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
-  overrides?: DefaultOverrideOptions;
+  overrides?: OverrideOptions;
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
+  includeCache?: boolean;
 }
 
 export async function buildEdgeBundle({
@@ -38,6 +40,7 @@ export async function buildEdgeBundle({
   defaultConverter,
   overrides,
   additionalInject,
+  includeCache,
 }: BuildEdgeBundleOptions) {
   await esbuildAsync(
     {
@@ -59,7 +62,28 @@ export async function buildEdgeBundle({
               typeof overrides?.converter === "string"
                 ? overrides.converter
                 : defaultConverter,
+            ...(includeCache
+              ? {
+                  tagCache:
+                    typeof overrides?.tagCache === "string"
+                      ? overrides.tagCache
+                      : "dynamodb-lite",
+                  incrementalCache:
+                    typeof overrides?.incrementalCache === "string"
+                      ? overrides.incrementalCache
+                      : "s3-lite",
+                  queue:
+                    typeof overrides?.queue === "string"
+                      ? overrides.queue
+                      : "sqs-lite",
+                }
+              : {}),
           },
+        }),
+        openNextReplacementPlugin({
+          name: "externalMiddlewareOverrides",
+          target: /adapters(\/|\\)middleware\.js/g,
+          deletes: includeCache ? [] : ["includeCacheInMiddleware"],
         }),
         openNextEdgePlugins({
           middlewareInfo,

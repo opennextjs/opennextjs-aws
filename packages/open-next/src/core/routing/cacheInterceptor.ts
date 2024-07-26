@@ -136,14 +136,18 @@ export async function cacheInterceptor(
     localizedPath = "index";
   }
 
+  debug("Checking cache for", localizedPath, PrerenderManifest);
+
   const isISR =
     Object.keys(PrerenderManifest.routes).includes(localizedPath) ||
     Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
       new RegExp(dr.routeRegex).test(localizedPath),
     );
+  debug("isISR", isISR);
   if (isISR) {
     try {
       const cachedData = await globalThis.incrementalCache.get(localizedPath);
+      debug("cached data in interceptor", cachedData);
       if (cachedData.value?.type === "app") {
         // We need to check the tag cache now
         const _lastModified = await globalThis.tagCache.getLastModified(
@@ -188,6 +192,7 @@ export async function cacheInterceptor(
           return event;
       }
     } catch (e) {
+      debug("Error while fetching cache", e);
       // In case of error we fallback to the server
       return event;
     }
