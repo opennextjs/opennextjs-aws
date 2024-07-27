@@ -1,4 +1,5 @@
 import type { Readable } from "node:stream";
+import type { ReadableStream } from "node:stream/web";
 
 import type { StreamCreator } from "http/index.js";
 
@@ -25,7 +26,7 @@ export type InternalEvent = {
 export type InternalResult = {
   statusCode: number;
   headers: Record<string, string | string[]>;
-  body: string;
+  body: ReadableStream;
   isBase64Encoded: boolean;
 } & BaseEventOrResult<"core">;
 
@@ -58,7 +59,7 @@ export type Converter<
   R extends BaseEventOrResult = InternalResult,
 > = BaseOverride & {
   convertFrom: (event: any) => Promise<E>;
-  convertTo: (result: R, originalRequest?: any) => any;
+  convertTo: (result: R, originalRequest?: any) => Promise<any>;
 };
 
 export type WrapperHandler<

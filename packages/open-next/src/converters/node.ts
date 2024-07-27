@@ -44,7 +44,7 @@ const converter: Converter = {
     };
   },
   // Nothing to do here, it's streaming
-  convertTo: (internalResult: InternalResult) => ({
+  convertTo: async (internalResult: InternalResult) => ({
     body: internalResult.body,
     headers: internalResult.headers,
     statusCode: internalResult.statusCode,

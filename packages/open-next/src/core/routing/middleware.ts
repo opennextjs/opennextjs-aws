@@ -1,5 +1,8 @@
+import { ReadableStream } from "node:stream/web";
+
 import { MiddlewareManifest, NextConfig } from "config/index.js";
 import { InternalEvent, InternalResult } from "types/open-next.js";
+import { emptyReadableStream } from "utils/stream.js";
 
 //NOTE: we should try to avoid importing stuff from next as much as possible
 // every release of next could break this
@@ -137,7 +140,7 @@ export async function handleMiddleware(
         ) ?? resHeaders.location;
     // res.setHeader("Location", location);
     return {
-      body: "",
+      body: emptyReadableStream(),
       type: internalEvent.type,
       statusCode: statusCode,
       headers: resHeaders,
@@ -182,16 +185,14 @@ export async function handleMiddleware(
   // the body immediately to the client.
   if (result.body) {
     // transfer response body to res
-    const arrayBuffer = await result.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    // res.end(buffer);
+    const body = result.body as ReadableStream<Uint8Array>;
 
     // await pipeReadable(result.response.body, res);
     return {
       type: internalEvent.type,
       statusCode: statusCode,
       headers: resHeaders,
-      body: buffer.toString(),
+      body,
       isBase64Encoded: false,
     };
   }

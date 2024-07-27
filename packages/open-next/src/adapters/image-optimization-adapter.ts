@@ -19,6 +19,7 @@ import {
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 import { InternalEvent, InternalResult } from "types/open-next.js";
+import { emptyReadableStream } from "utils/stream.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
@@ -82,7 +83,7 @@ export async function defaultHandler(
       return {
         statusCode: 304,
         headers: {},
-        body: "",
+        body: emptyReadableStream(),
         isBase64Encoded: false,
         type: "core",
       };

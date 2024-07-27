@@ -8,6 +8,7 @@ import {
 import { OutgoingHttpHeader } from "http";
 import { parseCookies } from "http/util";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
+import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../adapters/logger";
 import {
@@ -159,6 +160,10 @@ async function convertToCloudFrontRequestResult(
       const serverResponse = createServerResponse(result.internalEvent, {});
       await proxyRequest(result.internalEvent, serverResponse);
       const externalResult = convertRes(serverResponse);
+      const body = await fromReadableStream(
+        externalResult.body,
+        externalResult.isBase64Encoded,
+      );
       const cloudfrontResult = {
         status: externalResult.statusCode.toString(),
         statusDescription: "OK",
@@ -166,7 +171,7 @@ async function convertToCloudFrontRequestResult(
         bodyEncoding: externalResult.isBase64Encoded
           ? ("base64" as const)
           : ("text" as const),
-        body: externalResult.body,
+        body,
       };
       debug("externalResult", cloudfrontResult);
       return cloudfrontResult;
@@ -208,12 +213,14 @@ async function convertToCloudFrontRequestResult(
     return response;
   }
 
+  const body = await fromReadableStream(result.body, result.isBase64Encoded);
+
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
     statusDescription: "OK",
     headers: convertToCloudfrontHeaders(responseHeaders, true),
     bodyEncoding: result.isBase64Encoded ? "base64" : "text",
-    body: result.body,
+    body,
   };
   debug(response);
   return response;
