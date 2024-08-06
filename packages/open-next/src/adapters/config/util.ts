@@ -46,6 +46,7 @@ export function loadRoutesManifest(nextDir: string) {
   };
 
   return {
+    basePath: routesManifest.basePath,
     rewrites: Array.isArray(routesManifest.rewrites)
       ? { beforeFiles: [], afterFiles: routesManifest.rewrites, fallback: [] }
       : {

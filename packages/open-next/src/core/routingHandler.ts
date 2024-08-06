@@ -28,12 +28,27 @@ const optionalLocalePrefixRegex = !!RoutesManifest.locales.length
   ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`
   : "^/";
 
+// Add the basepath prefix to the regex so we correctly match the rawPath
+const optionalBasepathPrefixRegex = !!RoutesManifest.basePath
+  ? `^${RoutesManifest.basePath}/?`
+  : "^/";
+
 const staticRegexp = RoutesManifest.routes.static.map(
-  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
+  (route) =>
+    new RegExp(
+      route.regex
+        .replace("^/", optionalLocalePrefixRegex)
+        .replace("^/", optionalBasepathPrefixRegex),
+    ),
 );
 
 const dynamicRegexp = RoutesManifest.routes.dynamic.map(
-  (route) => new RegExp(route.regex.replace("^/", optionalLocalePrefixRegex)),
+  (route) =>
+    new RegExp(
+      route.regex
+        .replace("^/", optionalLocalePrefixRegex)
+        .replace("^/", optionalBasepathPrefixRegex),
+    ),
 );
 
 export default async function routingHandler(

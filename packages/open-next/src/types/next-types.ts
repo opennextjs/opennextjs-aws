@@ -103,6 +103,7 @@ export interface RedirectDefinition extends RewriteDefinition {
 }
 
 export interface RoutesManifest {
+  basePath?: string;
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
   dataRoutes: DataRouteDefinition[];
