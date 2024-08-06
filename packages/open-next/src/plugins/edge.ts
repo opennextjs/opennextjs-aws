@@ -141,6 +141,10 @@ if(!globalThis.SubtleCrypto) {
 if(!globalThis.Crypto) {
   globalThis.Crypto = webcrypto.Crypto
 }
+// We also need to polyfill URLPattern
+if (!globalThis.URLPattern) { 
+  await import("urlpattern-polyfill");
+}
 `
 }
 ${wasmFiles
