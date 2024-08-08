@@ -1,17 +1,19 @@
 To run `OpenNext` locally:
 
 1. Clone [this repository](https://github.com/sst/open-next).
-1. Build `open-next`:
+2. Build `open-next`:
    ```bash
    cd open-next
    pnpm build
    ```
-1. Run `open-next` in watch mode:
+3. Run `open-next` in watch mode:
    ```bash
    pnpm dev
    ```
-1. Now, you can make changes in `open-next` and build your Next.js app to test the changes.
+4. Now, you can make changes in `open-next` and build your Next.js app to test the changes.
    ```bash
    cd path/to/my/nextjs/app
    path/to/open-next/packages/open-next/dist/index.js build
    ```
+
+It can be a bit cumbersome to need to deploy every time you want to test changes. If your change is not dependent on the wrapper or the converter, then you can create a custom `open-next.config.ts` file, you can take a look [here](/contribute/local_run) for more information.
