@@ -11,11 +11,14 @@ import {
   convertToQueryString,
 } from "../core/routing/util";
 
+declare global {
+  var isEdgeRuntime: true;
+}
+
 const defaultHandler = async (
   internalEvent: InternalEvent,
 ): Promise<InternalResult> => {
-  // TODO: We need to handle splitted function here
-  // We should probably create an host resolver to redirect correctly
+  globalThis.isEdgeRuntime = true;
 
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`

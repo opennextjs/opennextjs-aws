@@ -103,8 +103,8 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       const response = await handler(internalEvent, streamCreator);
 
-      // If at this point the headers have not been written, it means that we are using the edge runtime
-      if (!headersWritten) {
+      const isUsingEdge = globalThis.isEdgeRuntime ?? false;
+      if (isUsingEdge) {
         debug("Headers has not been set, we must be in the edge runtime");
         const stream = streamCreator.writeHeaders({
           statusCode: response.statusCode,
