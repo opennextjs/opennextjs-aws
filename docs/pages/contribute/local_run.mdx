@@ -1,0 +1,185 @@
+When making some changes to OpenNext, it can be a bit cumbersome to need to deploy every time you want to test changes. If your change is not dependent on the wrapper or the converter, then you can create a custom `open-next.config.ts` file (you can use another name so that it doesn't conflict with your existing `open-next.config.ts`). Here is an example with a bunch of custom overrides:
+
+To run `OpenNext` locally:
+```bash
+# This is to build (the config-path is needed if you use a different name than the default one)
+node /path/to/open-next/packages/open-next/dist/index.js build --config-path open-next.local.config.ts
+# Then to run the server
+node .open-next/server-functions/default/index.mjs
+```
+
+```typescript
+// open-next.local.config.ts - 
+// A good practice would be to use a different name so that it doesn't conflict 
+// with your existing open-next.config.ts i.e. open-next.local.config.ts
+import type {OpenNextConfig} from 'open-next/types/open-next'
+
+const config = {
+  default: {
+    override:{
+      // We use a custom wrapper so that we can use static assets and image optimization locally
+      wrapper: () => import('./dev/wrapper').then(m => m.default),
+      // ISR and SSG won't work properly locally without this - Remove if you only need SSR
+      incrementalCache: () => import('./dev/incrementalCache').then(m => m.default),
+      // ISR requires a queue to work properly - Remove if you only need SSR or SSG
+      queue: () => import('./dev/queue').then(m => m.default),
+      converter: 'node',
+    }
+  },
+  // You don't need this part if you don't use image optimization or don't need it in your test
+  imageOptimization: {
+    // Image optimization only work on linux, and you have to use the correct architecture for your system
+    arch: 'x64',
+    override: {
+      wrapper: 'node',
+      converter: 'node',
+    }
+    // If you need to test with local assets, you'll have to override the imageLoader as well
+  },
+
+  dangerous: {
+    // We disable the cache tags as it will usually not be needed locally for testing
+    // It's only used for next/cache revalidateTag and revalidatePath
+    // If you need it you'll have to override the tagCache as well
+    disableTagCache: true,
+
+
+    // You can uncomment this line if you only need to test SSR
+    //disableIncrementalCache: true,
+  },
+  // You can override the build command so that you don't have to rebuild the app every time
+  // You need to have run the default build command at least once
+  buildCommand: 'echo "no build command"',
+  edgeExternals: ['./dev/wrapper', './dev/incrementalCache', './dev/queue'],
+} satisfies OpenNextConfig
+
+export default config
+```
+
+```typescript
+// dev/wrapper.ts
+// You'll need to install express
+import express from 'express'
+// The proxy is used to proxy the image optimization server 
+// you don't have to use it, but image request will return 500 error
+import proxy from 'express-http-proxy'
+import { fork } from 'child_process'
+
+import type { StreamCreator } from "open-next/http/openNextResponse";
+import type { WrapperHandler } from "open-next/types/open-next";
+
+const wrapper: WrapperHandler = async (handler, converter) => {
+  const app = express();
+  // To serve static assets
+  app.use(express.static('../../assets'))
+
+  //Launch image server fork
+  fork('../../image-optimization-function/index.mjs', [], {
+    env: {
+      NODE_ENV: 'development',
+      PORT: '3001',
+    }
+  })
+  app.use('/_next/image', proxy('localhost:3001'))
+
+  app.all('*', async (req, res) => {
+    const internalEvent = await converter.convertFrom(req);
+    const _res : StreamCreator = {
+      writeHeaders: (prelude) => {
+        res.writeHead(prelude.statusCode, prelude.headers);
+        res.uncork();
+        return res;
+      },
+      onFinish: () => {
+        // Is it necessary to do something here?
+      },
+    };
+    await handler(internalEvent, _res);
+  });
+
+  const server = app.listen(parseInt(process.env.PORT ?? "3000", 10), ()=> {
+    console.log(`Server running on port ${process.env.PORT ?? 3000}`);
+  })
+
+
+  app.on('error', (err) => {
+    console.error('error', err);
+  });
+
+  return () => {
+    server.close();
+  };
+};
+
+export default {
+  wrapper,
+  name: "dev-node",
+  supportStreaming: true,
+};
+```
+
+```typescript
+// dev/incrementalCache.ts
+import type {IncrementalCache} from 'open-next/cache/incremental/types'
+
+import fs from 'node:fs/promises'
+import path from 'node:path'
+
+const buildId = process.env.NEXT_BUILD_ID
+const basePath= path.resolve(process.cwd(), `../../cache/${buildId}`)
+
+const getCacheKey = (key: string) => {
+  return path.join(basePath, `${key}.cache`)
+}
+
+const cache: IncrementalCache = {
+  name: 'dev-fs',
+  get: async (key: string) => {
+    const fileData = await fs.readFile(getCacheKey(key), 'utf-8')
+    const data = JSON.parse(fileData)
+    const {mtime} = await fs.stat(getCacheKey(key))
+    return {
+      value: data,
+      lastModified: mtime.getTime(),
+    }
+  },
+  set: async (key, value, isFetch) => {
+    const data = JSON.stringify(value)
+    await fs.writeFile(getCacheKey(key), data)
+  },
+  delete: async (key) => {
+    await fs.rm(getCacheKey(key))
+  }
+}
+
+export default cache
+```
+
+```typescript
+// dev/queue.ts
+import type {Queue} from 'open-next/queue/types'
+
+declare global {
+  // This is declared in the global scope so that we can use it in the queue
+  // We need to use this one as next overrides the global fetch
+  var internalFetch: typeof fetch
+}
+
+const queue: Queue = {
+  name: 'dev-queue',
+  send: async (message) => {
+    const prerenderManifest  = (await import('open-next/adapters/config')).PrerenderManifest as any
+    const revalidateId : string = prerenderManifest.preview.previewModeId
+    await globalThis.internalFetch(`http://localhost:3000${message.MessageBody.url}`, {
+      method: "HEAD",
+      headers: {
+        "x-prerender-revalidate": revalidateId,
+        "x-isr": "1",
+      },
+    },)
+    console.log('sending message', message)
+  },
+}
+
+export default queue
+```
