@@ -9,7 +9,7 @@ export interface ResponseStream extends Writable {
 type Handler = (
   event: APIGatewayProxyEventV2,
   responseStream: ResponseStream,
-  context?: Context,
+  context: Context,
 ) => Promise<any>;
 
 interface Metadata {

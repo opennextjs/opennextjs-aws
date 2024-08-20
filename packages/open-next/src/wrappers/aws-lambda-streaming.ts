@@ -23,7 +23,12 @@ function formatWarmerResponse(event: WarmerEvent) {
 
 const handler: WrapperHandler = async (handler, converter) =>
   awslambda.streamifyResponse(
-    async (event: AwsLambdaEvent, responseStream): Promise<AwsLambdaReturn> => {
+    async (
+      event: AwsLambdaEvent,
+      responseStream,
+      context,
+    ): Promise<AwsLambdaReturn> => {
+      context.callbackWaitsForEmptyEventLoop = false;
       if ("type" in event) {
         const result = await formatWarmerResponse(event);
         responseStream.end(Buffer.from(JSON.stringify(result)), "utf-8");
