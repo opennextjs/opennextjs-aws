@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { NextConfig, PrerenderManifest } from "config/index";
 import { InternalEvent, InternalResult } from "types/open-next";
+import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
 import { CacheValue } from "../../cache/incremental/types";
@@ -109,7 +110,7 @@ async function generateResult(
   return {
     type: "core",
     statusCode: 200,
-    body,
+    body: toReadableStream(body, false),
     isBase64Encoded: false,
     headers: {
       ...cacheControl,
@@ -180,7 +181,7 @@ export async function cacheInterceptor(
           return {
             type: "core",
             statusCode: cachedData.value.meta?.status ?? 307,
-            body: "",
+            body: emptyReadableStream(),
             headers: {
               ...((cachedData.value.meta?.headers as Record<string, string>) ??
                 {}),
