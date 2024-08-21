@@ -14,6 +14,7 @@ import type {
   RouteHas,
 } from "types/next-types";
 import { InternalEvent, InternalResult } from "types/open-next";
+import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
@@ -243,8 +244,11 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
-function handleTrailingSlashRedirect(event: InternalEvent) {
+function handleTrailingSlashRedirect(
+  event: InternalEvent,
+): false | InternalResult {
   const url = new URL(event.url, "http://localhost");
+  const emptyBody = emptyReadableStream();
 
   if (
     // Someone is trying to redirect to a different origin, let's not do that
@@ -270,7 +274,7 @@ function handleTrailingSlashRedirect(event: InternalEvent) {
           headersLocation[1] ? `?${headersLocation[1]}` : ""
         }`,
       },
-      body: "",
+      body: emptyBody,
       isBase64Encoded: false,
     };
     // eslint-disable-next-line sonarjs/elseif-without-else
@@ -288,7 +292,7 @@ function handleTrailingSlashRedirect(event: InternalEvent) {
           headersLocation[1] ? `?${headersLocation[1]}` : ""
         }`,
       },
-      body: "",
+      body: emptyBody,
       isBase64Encoded: false,
     };
   } else return false;
@@ -311,7 +315,7 @@ export function handleRedirects(
       headers: {
         Location: internalEvent.url,
       },
-      body: "",
+      body: emptyReadableStream(),
       isBase64Encoded: false,
     };
   }
@@ -328,7 +332,7 @@ export function fixDataPage(
     return {
       type: internalEvent.type,
       statusCode: 404,
-      body: "{}",
+      body: toReadableStream("{}"),
       headers: {
         "Content-Type": "application/json",
       },

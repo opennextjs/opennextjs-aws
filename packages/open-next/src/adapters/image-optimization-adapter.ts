@@ -19,6 +19,7 @@ import {
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 import { InternalEvent, InternalResult } from "types/open-next.js";
+import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
@@ -82,7 +83,7 @@ export async function defaultHandler(
       return {
         statusCode: 304,
         headers: {},
-        body: "",
+        body: emptyReadableStream(),
         isBase64Encoded: false,
         type: "core",
       };
@@ -169,7 +170,7 @@ function buildSuccessResponse(
   return {
     type: "core",
     statusCode: 200,
-    body: result.buffer.toString("base64"),
+    body: toReadableStream(result.buffer, true),
     isBase64Encoded: true,
     headers,
   };
@@ -191,7 +192,7 @@ function buildFailureResponse(
       "Cache-Control": `public,max-age=60,immutable`,
       "Content-Type": "application/json",
     });
-    response.end(e?.message || e?.toString() || e);
+    response.end(e?.message || e?.toString() || "An error occurred");
   }
   return {
     type: "core",
@@ -203,7 +204,7 @@ function buildFailureResponse(
       "Cache-Control": `public,max-age=60,immutable`,
       "Content-Type": "application/json",
     },
-    body: e?.message || e?.toString() || e,
+    body: toReadableStream(e?.message || e?.toString() || "An error occurred"),
   };
 }
 

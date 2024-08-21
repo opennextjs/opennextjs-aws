@@ -90,7 +90,7 @@ const converter: Converter<
       for (const [key, value] of Object.entries(result.headers)) {
         headers.set(key, Array.isArray(value) ? value.join(",") : value);
       }
-      return new Response(result.body, {
+      return new Response(result.body as ReadableStream, {
         status: result.statusCode,
         headers: headers,
       });

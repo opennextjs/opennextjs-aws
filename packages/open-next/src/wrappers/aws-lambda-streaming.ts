@@ -1,11 +1,11 @@
-import { Writable } from "node:stream";
+import { Readable, Writable } from "node:stream";
 import zlib from "node:zlib";
 
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { StreamCreator } from "http/index.js";
 import { WrapperHandler } from "types/open-next";
 
-import { error } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
@@ -34,6 +34,8 @@ const handler: WrapperHandler = async (handler, converter) =>
         responseStream.end(Buffer.from(JSON.stringify(result)), "utf-8");
         return;
       }
+
+      let headersWritten = false;
 
       const internalEvent = await converter.convertFrom(event);
 
@@ -89,6 +91,7 @@ const handler: WrapperHandler = async (handler, converter) =>
           responseStream.write(prelude);
 
           responseStream.write(new Uint8Array(8));
+          headersWritten = true;
 
           return compressedStream ?? responseStream;
         },
@@ -100,7 +103,18 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       const response = await handler(internalEvent, streamCreator);
 
-      return converter.convertTo(response);
+      const isUsingEdge = globalThis.isEdgeRuntime ?? false;
+      if (isUsingEdge) {
+        debug("Headers has not been set, we must be in the edge runtime");
+        const stream = streamCreator.writeHeaders({
+          statusCode: response.statusCode,
+          headers: response.headers as Record<string, string>,
+          cookies: [],
+        });
+        Readable.fromWeb(response.body).pipe(stream);
+      }
+
+      // return converter.convertTo(response);
     },
   );
 

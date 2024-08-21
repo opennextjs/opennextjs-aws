@@ -1,4 +1,7 @@
-import { InternalEvent, InternalResult } from "types/open-next";
+import type { ReadableStream } from "node:stream/web";
+
+import type { InternalEvent, InternalResult } from "types/open-next";
+import { emptyReadableStream } from "utils/stream";
 
 // We import it like that so that the edge plugin can replace it
 import { NextConfig } from "../adapters/config";
@@ -8,11 +11,14 @@ import {
   convertToQueryString,
 } from "../core/routing/util";
 
+declare global {
+  var isEdgeRuntime: true;
+}
+
 const defaultHandler = async (
   internalEvent: InternalEvent,
 ): Promise<InternalResult> => {
-  // TODO: We need to handle splitted function here
-  // We should probably create an host resolver to redirect correctly
+  globalThis.isEdgeRuntime = true;
 
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`
@@ -35,10 +41,6 @@ const defaultHandler = async (
     url,
     body: convertBodyToReadableStream(internalEvent.method, internalEvent.body),
   });
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
   const responseHeaders: Record<string, string | string[]> = {};
   response.headers.forEach((value, key) => {
     if (key.toLowerCase() === "set-cookie") {
@@ -49,9 +51,9 @@ const defaultHandler = async (
       responseHeaders[key] = value;
     }
   });
-  // console.log("responseHeaders", responseHeaders);
-  const body = buffer.toString();
-  // console.log("body", body);
+
+  const body =
+    (response.body as ReadableStream<Uint8Array>) ?? emptyReadableStream();
 
   return {
     type: "core",

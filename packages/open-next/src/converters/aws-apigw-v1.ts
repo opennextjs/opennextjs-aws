@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
+import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../adapters/logger";
 import { removeUndefinedFromQuery } from "./utils";
@@ -74,9 +75,9 @@ async function convertFromAPIGatewayProxyEvent(
   };
 }
 
-function convertToApiGatewayProxyResult(
+async function convertToApiGatewayProxyResult(
   result: InternalResult,
-): APIGatewayProxyResult {
+): Promise<APIGatewayProxyResult> {
   const headers: Record<string, string> = {};
   const multiValueHeaders: Record<string, string[]> = {};
   Object.entries(result.headers).forEach(([key, value]) => {
@@ -91,10 +92,12 @@ function convertToApiGatewayProxyResult(
     }
   });
 
+  const body = await fromReadableStream(result.body, result.isBase64Encoded);
+
   const response: APIGatewayProxyResult = {
     statusCode: result.statusCode,
     headers,
-    body: result.body,
+    body,
     isBase64Encoded: result.isBase64Encoded,
     multiValueHeaders,
   };

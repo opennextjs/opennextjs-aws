@@ -1,12 +1,13 @@
 import crypto from "node:crypto";
 import { OutgoingHttpHeaders } from "node:http";
+import { Readable } from "node:stream";
 
 import { BuildId, HtmlPages } from "config/index.js";
 import type { IncomingMessage, StreamCreator } from "http/index.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
-import { InternalEvent } from "types/open-next.js";
+import { InternalEvent, InternalResult } from "types/open-next.js";
 
 import { isBinaryContentType } from "../../adapters/binary.js";
 import { debug, error } from "../../adapters/logger.js";
@@ -69,7 +70,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
  *
  * @__PURE__
  */
-export function convertRes(res: OpenNextNodeResponse) {
+export function convertRes(res: OpenNextNodeResponse): InternalResult {
   // Format Next.js response to Lambda response
   const statusCode = res.statusCode || 200;
   // When using HEAD requests, it seems that flushHeaders is not called, not sure why
@@ -80,9 +81,9 @@ export function convertRes(res: OpenNextNodeResponse) {
       ? headers["content-type"][0]
       : headers["content-type"],
   );
-  const encoding = isBase64Encoded ? "base64" : "utf8";
-  const body = res.getBody().toString(encoding);
+  const body = Readable.toWeb(res);
   return {
+    type: "core",
     statusCode,
     headers,
     body,
