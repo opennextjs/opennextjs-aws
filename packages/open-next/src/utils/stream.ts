@@ -37,7 +37,7 @@ export function toReadableStream(
 
 export function emptyReadableStream(): ReadableStream {
   if (process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true") {
-    return Readable.toWeb(Readable.from(["SOMETHING"]));
+    return Readable.toWeb(Readable.from([Buffer.from("SOMETHING")]));
   }
   return Readable.toWeb(Readable.from([]));
 }
