@@ -7,6 +7,7 @@ import {
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
 import { DetachedPromiseRunner } from "utils/promise";
+import { fromReadableStream } from "utils/stream";
 
 import { debug, error, warn } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
@@ -63,12 +64,22 @@ export async function openNextHandler(
   }, {});
 
   if ("type" in preprocessResult) {
-    // res is used only in the streaming case
-    const res = createServerResponse(internalEvent, headers, responseStreaming);
-    res.statusCode = preprocessResult.statusCode;
-    res.flushHeaders();
-    res.write(preprocessResult.body);
-    res.end();
+    // // res is used only in the streaming case
+    if (responseStreaming) {
+      const res = createServerResponse(
+        internalEvent,
+        headers,
+        responseStreaming,
+      );
+      res.statusCode = preprocessResult.statusCode;
+      res.flushHeaders();
+      const body = await fromReadableStream(
+        preprocessResult.body,
+        preprocessResult.isBase64Encoded,
+      );
+      res.write(body);
+      res.end();
+    }
     return preprocessResult;
   } else {
     const preprocessedEvent = preprocessResult.internalEvent;
