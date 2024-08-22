@@ -38,6 +38,7 @@ export async function createMainHandler() {
     : config.default;
 
   globalThis.serverId = generateUniqueId();
+  globalThis.openNextConfig = config;
 
   // Default queue
   globalThis.queue = await resolveQueue(thisFunction.override?.queue);

@@ -194,6 +194,8 @@ ${contents}
   export const PrerenderManifest = ${JSON.stringify(PrerenderManifest)};
   export const AppPathsManifestKeys = ${JSON.stringify(AppPathsManifestKeys)};
   export const MiddlewareManifest = ${JSON.stringify(MiddlewareManifest)};
+
+  process.env.NEXT_BUILD_ID = BuildId;
   
           `;
         return {

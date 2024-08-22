@@ -6,6 +6,9 @@ const config = {
       patterns: ["/api/*"],
     },
   },
+  dangerous: {
+    enableCacheInterception: true,
+  },
   buildCommand: "npx turbo build",
 };
 

@@ -7,6 +7,7 @@ import {
 import { InternalEvent, InternalResult, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
+import { cacheInterceptor } from "./routing/cacheInterceptor";
 import {
   addNextConfigHeaders,
   fixDataPage,
@@ -50,6 +51,19 @@ const dynamicRegexp = RoutesManifest.routes.dynamic.map(
         .replace("^/", optionalBasepathPrefixRegex),
     ),
 );
+
+function applyMiddlewareHeaders(
+  eventHeaders: Record<string, string | string[]>,
+  middlewareHeaders: Record<string, string | string[] | undefined>,
+  setPrefix = true,
+) {
+  Object.entries(middlewareHeaders).forEach(([key, value]) => {
+    if (value) {
+      eventHeaders[`${setPrefix ? "x-middleware-response-" : ""}${key}`] =
+        Array.isArray(value) ? value.join(",") : value;
+    }
+  });
+}
 
 export default async function routingHandler(
   event: InternalEvent,
@@ -165,18 +179,29 @@ export default async function routingHandler(
     };
   }
 
+  if (
+    globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+    !("statusCode" in internalEvent)
+  ) {
+    debug("Cache interception enabled");
+    internalEvent = await cacheInterceptor(internalEvent);
+    if ("statusCode" in internalEvent) {
+      applyMiddlewareHeaders(
+        internalEvent.headers,
+        {
+          ...middlewareResponseHeaders,
+          ...nextHeaders,
+        },
+        false,
+      );
+      return internalEvent;
+    }
+  }
+
   // We apply the headers from the middleware response last
-  Object.entries({
+  applyMiddlewareHeaders(internalEvent.headers, {
     ...middlewareResponseHeaders,
     ...nextHeaders,
-  }).forEach(([key, value]) => {
-    if (value) {
-      internalEvent.headers[`x-middleware-response-${key}`] = Array.isArray(
-        value,
-      )
-        ? value.join(",")
-        : value;
-    }
   });
 
   return {

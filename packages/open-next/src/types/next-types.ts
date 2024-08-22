@@ -67,7 +67,7 @@ export interface i18nConfig {
 }
 export interface NextConfig {
   basePath?: string;
-  trailingSlash?: string;
+  trailingSlash?: boolean;
   skipTrailingSlashRedirect?: boolean;
   i18n?: i18nConfig;
   experimental: {
@@ -150,7 +150,13 @@ export interface MiddlewareManifest {
 }
 
 export interface PrerenderManifest {
-  routes: Record<string, never>;
+  routes: Record<
+    string,
+    {
+      // TODO: add the rest when needed for PPR
+      initialRevalidateSeconds: number | false;
+    }
+  >;
   dynamicRoutes: {
     [route: string]: {
       routeRegex: string;

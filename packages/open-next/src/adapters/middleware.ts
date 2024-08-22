@@ -2,6 +2,11 @@ import { InternalEvent, Origin, OriginResolver } from "types/open-next";
 
 import { debug, error } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
+import {
+  resolveIncrementalCache,
+  resolveQueue,
+  resolveTagCache,
+} from "../core/resolve";
 import routingHandler from "../core/routingHandler";
 
 const resolveOriginResolver = () => {
@@ -55,8 +60,25 @@ const resolveOriginResolver = () => {
   }
 };
 
+globalThis.internalFetch = fetch;
+
 const defaultHandler = async (internalEvent: InternalEvent) => {
   const originResolver = await resolveOriginResolver();
+
+  //#override includeCacheInMiddleware
+  globalThis.tagCache = await resolveTagCache(
+    globalThis.openNextConfig.middleware?.override?.tagCache,
+  );
+
+  globalThis.queue = await resolveQueue(
+    globalThis.openNextConfig.middleware?.override?.queue,
+  );
+
+  globalThis.incrementalCache = await resolveIncrementalCache(
+    globalThis.openNextConfig.middleware?.override?.incrementalCache,
+  );
+  //#endOverride
+
   const result = await routingHandler(internalEvent);
   if ("internalEvent" in result) {
     debug("Middleware intercepted event", internalEvent);

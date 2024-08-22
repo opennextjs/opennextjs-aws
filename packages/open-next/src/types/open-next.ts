@@ -42,6 +42,13 @@ export interface DangerousOptions {
    * @default false
    */
   disableIncrementalCache?: boolean;
+  /**
+   * Enable the cache interception.
+   * Every request will go through the cache interceptor, if it is found in the cache, it will be returned without going through NextServer.
+   * Not every feature is covered by the cache interceptor and it should fallback to the NextServer if the cache is not found.
+   * @default false
+   */
+  enableCacheInterception?: boolean;
 }
 
 export type BaseOverride = {
@@ -253,6 +260,13 @@ export interface OpenNextConfig {
   middleware?: DefaultFunctionOptions & {
     //We force the middleware to be a function
     external: true;
+
+    /**
+     * The override options for the middleware.
+     * By default the lite override are used (.i.e. s3-lite, dynamodb-lite, sqs-lite)
+     * @default undefined
+     */
+    override?: OverrideOptions;
 
     /**
      * Origin resolver is used to resolve the origin for internal rewrite.
