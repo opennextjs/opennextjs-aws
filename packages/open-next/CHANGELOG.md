@@ -1,5 +1,18 @@
 # open-next
 
+## 3.1.0
+
+### Minor Changes
+
+- b88ae13: Replace InternalResult body from string to ReadableStream
+- 0558bf6: Add an optional external cache
+
+### Patch Changes
+
+- c8d692b: fix missing polyfill URLPattern
+- 1b91708: fix 404 when basePath is set
+- 8ddb621: fix lambda streaming hanging after return
+
 ## 3.0.8
 
 ### Patch Changes
