@@ -1,0 +1,22 @@
+OpenNext doesn't use the default routing provided by Next.js. Instead, it uses its own routing system. 
+
+Historically, OpenNext used the same routing system as Next.js. But in Next 13.4.13, they moved the routing system outside of `NextServer` and separated every major part of the app (i.e. app router, page router and the routing) inside jest workers. This caused terrible cold start (around 8s for a default `create next-app` app) and made it impossible to serve ISR/SSG pages inside lambda. Since then, OpenNext has been using its own routing system for every app that uses Next 13.4.13 or higher. FYI Vercel use an undocumented `minimalMode` inside `NextServer` to bypass the routing and cache system so that it is done in their infra instead of the lambda.
+
+This move also allow OpenNext to have a more flexible routing system. With OpenNext you can put the routing layer in a function (lambda@edge or cloudflare workers) in front of your server. You can even serve ISR/SSG directly from the routing layer.
+
+Here is a list of features that OpenNext routing system handle:
+
+- From `next.config.js` (the rest is handled by `NextServer` itself): 
+  - Headers
+  - Redirects
+  - Rewrites
+  - basePath
+  - i18n
+- [Middleware](#next-middleware)
+- [Optional Cache Interception](/inner_workings/cache_interception) (i.e. serve ISR/SSG directly from the routing layer)
+- Handle 404 in some cases (i.e. when the page does not correspond to any of the regex routes)
+
+
+#### Next Middleware
+
+The Next middleware in OpenNext is not running in the same way as in Next.js. In Next.js, the middleware is running inside the `NextServer` inside a fake edge runtime. In OpenNext, we modify the middleware and run it fully inside the routing layer. So if you run the routing layer in Node, you can use Node api inside the middleware (it's a bit tricky because it won't work with `next dev` and involves some workaround because Next will remove Node api during bundling. Some example [here](/config/custom_overrides#define-a-global-to-use-node-in-the-middleware)).
