@@ -55,7 +55,11 @@ async function computeCacheControl(
     });
     const isStale = sMaxAge === 1;
     if (isStale) {
-      const url = NextConfig.trailingSlash ? `${path}/` : path;
+      let url = NextConfig.trailingSlash ? `${path}/` : path;
+      if (NextConfig.basePath) {
+        // We need to add the basePath to the url
+        url = `${NextConfig.basePath}${url}`;
+      }
       await globalThis.queue.send({
         MessageBody: { host, url },
         MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
@@ -130,6 +134,10 @@ export async function cacheInterceptor(
     return event;
   // We localize the path in case i18n is enabled
   let localizedPath = localizePath(event);
+  // If using basePath we need to remove it from the path
+  if (NextConfig.basePath) {
+    localizedPath = localizedPath.replace(NextConfig.basePath, "");
+  }
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
   // If empty path, it means we want index
