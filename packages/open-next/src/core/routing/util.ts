@@ -81,7 +81,9 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
       ? headers["content-type"][0]
       : headers["content-type"],
   );
-  const body = Readable.toWeb(res);
+  // We cannot convert the OpenNextNodeResponse to a ReadableStream directly
+  // You can look in the `aws-lambda.ts` file for some context
+  const body = Readable.toWeb(Readable.from(res.getBody()));
   return {
     type: "core",
     statusCode,
