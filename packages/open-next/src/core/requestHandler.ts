@@ -7,7 +7,6 @@ import {
 } from "http/index.js";
 import { InternalEvent, InternalResult } from "types/open-next";
 import { DetachedPromiseRunner } from "utils/promise";
-import { fromReadableStream } from "utils/stream";
 
 import { debug, error, warn } from "../adapters/logger";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
@@ -73,12 +72,12 @@ export async function openNextHandler(
       );
       res.statusCode = preprocessResult.statusCode;
       res.flushHeaders();
-      const body = await fromReadableStream(
-        preprocessResult.body,
-        preprocessResult.isBase64Encoded,
-      );
-      res.write(body);
+      const [bodyToConsume, bodyToReturn] = preprocessResult.body.tee();
+      for await (const chunk of bodyToConsume) {
+        res.write(chunk);
+      }
       res.end();
+      preprocessResult.body = bodyToReturn;
     }
     return preprocessResult;
   } else {
