@@ -1,5 +1,12 @@
 # open-next
 
+## 3.1.1
+
+### Patch Changes
+
+- 85af1ce: Fix node crashing when used without stream
+- 2094c9b: fix issue with fetch cache for new page
+
 ## 3.1.0
 
 ### Minor Changes
