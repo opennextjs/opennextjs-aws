@@ -148,7 +148,7 @@ export default class S3Cache {
       if (value === undefined) return null;
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
-      // We only need to check for the path as it should already contains all the tags
+      // We only need to check for the path as it should already contain all the tags
       if ((tags ?? []).length === 0) {
         // Then we need to find the path for the given key
         const path = softTags?.find(
@@ -336,7 +336,7 @@ export default class S3Cache {
             path: key,
             tag: tag,
             // In case the tags are not there we just need to create them
-            // but we don't want them to return frrom `getLastModified` as they are not stale
+            // but we don't want them to return from `getLastModified` as they are not stale
             revalidatedAt: 1,
           })),
         );
