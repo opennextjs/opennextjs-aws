@@ -116,7 +116,7 @@ export async function buildEdgeBundle({
 
   const defaultDefineProperty = Object.defineProperty;
   Object.defineProperty = function(o, p, a) {
-    if(p=== '__import_unsupported') {
+    if(p=== '__import_unsupported' && !Boolean(globalThis.__import_unsupported)) {
       return;
     }
     return defaultDefineProperty(o, p, a);
