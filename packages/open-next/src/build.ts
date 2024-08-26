@@ -600,7 +600,8 @@ async function createCacheAssets(monorepoRoot: string) {
                     path.relative(outputPath, filePath).replace(".meta", ""),
                   ),
                 },
-                revalidatedAt: { N: `${Date.now()}` },
+                // We don't care about the revalidation time here, we just need to make sure it's there
+                revalidatedAt: { N: "1" },
               });
             });
         }
@@ -632,7 +633,7 @@ async function createCacheAssets(monorepoRoot: string) {
                   path.relative(fetchCachePath, filepath),
                 ),
               },
-              revalidatedAt: { N: `${Date.now()}` },
+              revalidatedAt: { N: "1" },
             });
           });
         },
