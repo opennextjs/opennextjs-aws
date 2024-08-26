@@ -147,27 +147,24 @@ export default class S3Cache {
 
       if (value === undefined) return null;
 
-      // For cases where we don't have tags, we need to ensure that we insert at least an entry
-      // for this specific paths, otherwise we might not be able to invalidate it
+      // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
+      // We only need to check for the path as it should already contains all the tags
       if ((tags ?? []).length === 0) {
-        // First we check if we have any tags for the given key
-        const storedTags = await globalThis.tagCache.getByPath(key);
-        if (storedTags.length === 0) {
-          // Then we need to find the path for the given key
-          const path = softTags?.find(
-            (tag) =>
-              tag.startsWith("_N_T_/") &&
-              !tag.endsWith("layout") &&
-              !tag.endsWith("page"),
+        // Then we need to find the path for the given key
+        const path = softTags?.find(
+          (tag) =>
+            tag.startsWith("_N_T_/") &&
+            !tag.endsWith("layout") &&
+            !tag.endsWith("page"),
+        );
+        if (path) {
+          const pathLastModified = await globalThis.tagCache.getLastModified(
+            path.replace("_N_T_/", ""),
+            lastModified,
           );
-          if (path) {
-            // And write the path with the tag
-            await globalThis.tagCache.writeTags([
-              {
-                path: key,
-                tag: path,
-              },
-            ]);
+          if (pathLastModified === -1) {
+            // In case the path has been revalidated, we don't want to use the fetch cache
+            return null;
           }
         }
       }
@@ -338,6 +335,9 @@ export default class S3Cache {
           tagsToWrite.map((tag) => ({
             path: key,
             tag: tag,
+            // In case the tags are not there we just need to create them
+            // but we don't want them to return frrom `getLastModified` as they are not stale
+            revalidatedAt: 1,
           })),
         );
       }
