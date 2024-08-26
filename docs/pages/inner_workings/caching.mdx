@@ -80,9 +80,13 @@ await invalidateCloudFrontPaths(["/page/*"]);
 For on-demand revalidation via the [`next/cache` module](https://nextjs.org/docs/app/building-your-application/data-fetching/revalidating#using-on-demand-revalidation), if you want to retrieve the associated paths for a given tag, you can use this function:
 
 ```ts
-function getByTag(tag: string) {
+import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
+
+const client = new DynamoDBClient({ region: process.env.CACHE_BUCKET_REGION });
+
+async function getPaths(tag: string) {
   try {
-    const { Items } = await this.dynamoClient.send(
+    const { Items } = await client.send(
       new QueryCommand({
         TableName: process.env.CACHE_DYNAMO_TABLE,
         KeyConditionExpression: "#tag = :tag",
@@ -95,13 +99,13 @@ function getByTag(tag: string) {
       }),
     );
     return (
-      // We need to remove the buildId from the path
       Items?.map(
-        ({ path: { S: key } }) => key?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
+        (item) =>
+          item.path?.S?.replace(`${process.env.NEXT_BUILD_ID}/`, "") ?? "",
       ) ?? []
     );
   } catch (e) {
-    error("Failed to get by tag", e);
+    console.error("Failed to get by tag", e);
     return [];
   }
 }
