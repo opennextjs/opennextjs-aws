@@ -9,6 +9,7 @@ import { InternalEvent, InternalResult } from "types/open-next";
 import { DetachedPromiseRunner } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
+import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import routingHandler, { MiddlewareOutputEvent } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
@@ -17,7 +18,10 @@ import { requestHandler, setNextjsPrebundledReact } from "./util";
 globalThis.__als = new AsyncLocalStorage<{
   requestId: string;
   pendingPromiseRunner: DetachedPromiseRunner;
+  isISRRevalidation?: boolean;
 }>();
+
+patchAsyncStorage();
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -98,8 +102,9 @@ export async function openNextHandler(
     const requestId = Math.random().toString(36);
     const pendingPromiseRunner: DetachedPromiseRunner =
       new DetachedPromiseRunner();
+    const isISRRevalidation = headers["x-isr"] === "1";
     const internalResult = await globalThis.__als.run(
-      { requestId, pendingPromiseRunner },
+      { requestId, pendingPromiseRunner, isISRRevalidation },
       async () => {
         const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
         const req = new IncomingMessage(reqProps);

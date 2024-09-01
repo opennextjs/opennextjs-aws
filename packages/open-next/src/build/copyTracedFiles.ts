@@ -1,3 +1,5 @@
+import url from "node:url";
+
 import {
   copyFileSync,
   existsSync,
@@ -13,6 +15,14 @@ import path from "path";
 import { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";
+
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+
+function copyPatchFile(outputDir: string) {
+  const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
+  const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
+  copyFileSync(patchFile, outputPatchFile);
+}
 
 export async function copyTracedFiles(
   buildOutputPath: string,
@@ -204,6 +214,9 @@ See the docs for more information on how to bundle edge runtime functions.
       );
     }
   });
+
+  // Copy patch file
+  copyPatchFile(path.join(outputDir, packagePath));
 
   // TODO: Recompute all the files.
   // vercel doesn't seem to do it, but it seems wasteful to have all those files
