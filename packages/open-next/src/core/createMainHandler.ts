@@ -24,6 +24,7 @@ declare global {
   var __als: AsyncLocalStorage<{
     requestId: string;
     pendingPromiseRunner: DetachedPromiseRunner;
+    isISRRevalidation?: boolean;
   }>;
 }
 
