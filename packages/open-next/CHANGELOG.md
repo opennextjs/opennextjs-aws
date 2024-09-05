@@ -1,5 +1,13 @@
 # open-next
 
+## 3.1.2
+
+### Patch Changes
+
+- 1b87222: patch asyncStorage for ISR and fetch
+- a7540fd: fix wrong locale in middleware
+- b8bd2f0: fix \_\_import_unsupported being undefined
+
 ## 3.1.1
 
 ### Patch Changes
