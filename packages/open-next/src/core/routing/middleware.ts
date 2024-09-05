@@ -59,6 +59,7 @@ export async function handleMiddleware(
 ): Promise<MiddlewareOutputEvent | InternalResult> {
   const { rawPath, query } = internalEvent;
   const normalizedPath = normalizeLocalePath(rawPath);
+  // We only need the normalizedPath to check if the middleware should run
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
   // We bypass the middleware if the request is internal
@@ -67,7 +68,7 @@ export async function handleMiddleware(
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`
     : "http://localhost:3000";
-  const initialUrl = new URL(normalizedPath, host);
+  const initialUrl = new URL(rawPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
   // console.log("url", url, normalizedPath);
