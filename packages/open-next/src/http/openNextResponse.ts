@@ -176,10 +176,6 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       };
     }
     this.fixHeaders(this.headers);
-    if (this._cookies.length > 0) {
-      // For cookies we cannot do the same as for other headers
-      this.headers[SET_COOKIE_HEADER] = this._cookies;
-    }
 
     if (this.streamCreator) {
       this.responseStream = this.streamCreator?.writeHeaders({
