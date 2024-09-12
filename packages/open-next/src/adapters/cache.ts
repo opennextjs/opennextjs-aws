@@ -21,7 +21,7 @@ interface CachedRedirectValue {
 }
 
 interface CachedRouteValue {
-  kind: "ROUTE";
+  kind: "ROUTE" | "APP_ROUTE";
   // this needs to be a RenderResult so since renderResponse
   // expects that type instead of a string
   body: Buffer;
@@ -39,7 +39,7 @@ interface CachedImageValue {
 }
 
 interface IncrementalCachedPageValue {
-  kind: "PAGE";
+  kind: "PAGE" | "PAGES";
   // this needs to be a string since the cache expects to store
   // the string value
   html: string;
@@ -48,9 +48,21 @@ interface IncrementalCachedPageValue {
   headers?: Record<string, undefined | string>;
 }
 
+interface IncrementalCachedAppPageValue {
+  kind: "APP_PAGE";
+  // this needs to be a string since the cache expects to store
+  // the string value
+  html: string;
+  rscData: Buffer;
+  headers?: Record<string, undefined | string | string[]>;
+  postponed?: string;
+  status?: number;
+}
+
 type IncrementalCacheValue =
   | CachedRedirectValue
   | IncrementalCachedPageValue
+  | IncrementalCachedAppPageValue
   | CachedImageValue
   | CachedFetchValue
   | CachedRouteValue;
@@ -94,6 +106,7 @@ declare global {
   var disableDynamoDBCache: boolean;
   var disableIncrementalCache: boolean;
   var lastModified: Record<string, number>;
+  var isNextAfter15: boolean;
 }
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class S3Cache {
@@ -203,7 +216,7 @@ export default class S3Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: "ROUTE",
+            kind: globalThis.isNextAfter15 ? "APP_ROUTE" : "ROUTE",
             body: Buffer.from(
               cacheData.body ?? Buffer.alloc(0),
               isBinaryContentType(String(meta?.headers?.["content-type"]))
@@ -215,10 +228,22 @@ export default class S3Cache {
           },
         } as CacheHandlerValue;
       } else if (cacheData?.type === "page" || cacheData?.type === "app") {
+        if (globalThis.isNextAfter15 && cacheData?.type === "app") {
+          return {
+            lastModified: _lastModified,
+            value: {
+              kind: "APP_PAGE",
+              html: cacheData.html,
+              rscData: Buffer.from(cacheData.rsc),
+              status: meta?.status,
+              headers: meta?.headers,
+            },
+          } as CacheHandlerValue;
+        }
         return {
           lastModified: _lastModified,
           value: {
-            kind: "PAGE",
+            kind: globalThis.isNextAfter15 ? "PAGES" : "PAGE",
             html: cacheData.html,
             pageData:
               cacheData.type === "page" ? cacheData.json : cacheData.rsc,
@@ -259,7 +284,7 @@ export default class S3Cache {
       .getStore()
       ?.pendingPromiseRunner.withResolvers<void>();
     try {
-      if (data?.kind === "ROUTE") {
+      if (data?.kind === "ROUTE" || data?.kind === "APP_ROUTE") {
         const { body, status, headers } = data;
         await globalThis.incrementalCache.set(
           key,
@@ -277,8 +302,8 @@ export default class S3Cache {
           },
           false,
         );
-      } else if (data?.kind === "PAGE") {
-        const { html, pageData } = data;
+      } else if (data?.kind === "PAGE" || data?.kind === "PAGES") {
+        const { html, pageData, status, headers } = data;
         const isAppPath = typeof pageData === "string";
         if (isAppPath) {
           await globalThis.incrementalCache.set(
@@ -287,6 +312,10 @@ export default class S3Cache {
               type: "app",
               html,
               rsc: pageData,
+              meta: {
+                status,
+                headers,
+              },
             },
             false,
           );
@@ -301,6 +330,21 @@ export default class S3Cache {
             false,
           );
         }
+      } else if (data?.kind === "APP_PAGE") {
+        const { html, rscData, headers, status } = data;
+        await globalThis.incrementalCache.set(
+          key,
+          {
+            type: "app",
+            html,
+            rsc: rscData.toString("utf8"),
+            meta: {
+              status,
+              headers,
+            },
+          },
+          false,
+        );
       } else if (data?.kind === "FETCH") {
         await globalThis.incrementalCache.set<true>(key, data, true);
       } else if (data?.kind === "REDIRECT") {

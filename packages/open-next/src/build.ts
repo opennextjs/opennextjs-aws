@@ -378,7 +378,7 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
   esbuildSync(
     {
       entryPoints: [path.join(outputPath, "index.mjs")],
-      external: ["sharp"],
+      external: ["sharp", "@opentelemetry/api"],
       allowOverwrite: true,
       outfile: path.join(outputPath, "index.mjs"),
       banner: {
@@ -685,6 +685,9 @@ async function createCacheAssets(monorepoRoot: string) {
 export function compileCache(format: "cjs" | "esm" = "cjs") {
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
+
+  const isAfter15 = compareSemver(options.nextVersion, "14.9.9") >= 0;
+
   esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
@@ -700,6 +703,7 @@ export function compileCache(format: "cjs" | "esm" = "cjs") {
           `globalThis.disableDynamoDBCache = ${
             config.dangerous?.disableTagCache ?? false
           };`,
+          `globalThis.isNextAfter15 = ${isAfter15};`,
         ].join(""),
       },
     },
