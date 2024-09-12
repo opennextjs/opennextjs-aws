@@ -42,6 +42,10 @@ export async function buildEdgeBundle({
   additionalInject,
   includeCache,
 }: BuildEdgeBundleOptions) {
+  const isInCloudfare =
+    typeof overrides?.wrapper === "string"
+      ? overrides.wrapper === "cloudflare"
+      : (await overrides?.wrapper?.())?.edgeRuntime;
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
@@ -93,7 +97,7 @@ export async function buildEdgeBundle({
             "../../core",
             "edgeFunctionHandler.js",
           ),
-          isInCloudfare: overrides?.wrapper === "cloudflare",
+          isInCloudfare,
         }),
       ],
       treeShaking: true,
@@ -106,8 +110,13 @@ export async function buildEdgeBundle({
       mainFields: ["module", "main"],
       banner: {
         js: `
+import {Buffer} from "node:buffer";
+globalThis.Buffer = Buffer;
+
+import {AsyncLocalStorage} from "node:async_hooks";
+globalThis.AsyncLocalStorage = AsyncLocalStorage;
   ${
-    overrides?.wrapper === "cloudflare"
+    isInCloudfare
       ? ""
       : `
   const require = (await import("node:module")).createRequire(import.meta.url);

@@ -12,8 +12,16 @@ const handler: WrapperHandler<
 > =
   async (handler, converter) =>
   async (event: Request, env: Record<string, string>): Promise<Response> => {
-    //@ts-expect-error - process is not defined in cloudflare workers
-    globalThis.process = { env };
+    globalThis.process = process;
+
+    // Set the environment variables
+    // Cloudlare suggests to not override the process.env object but instead apply the values to it
+    for (const [key, value] of Object.entries(env)) {
+      if (typeof value === "string") {
+        process.env[key] = value;
+      }
+    }
+
     const internalEvent = await converter.convertFrom(event);
 
     const response = await handler(internalEvent);
@@ -27,4 +35,5 @@ export default {
   wrapper: handler,
   name: "cloudflare",
   supportStreaming: true,
+  edgeRuntime: true,
 };

@@ -83,6 +83,7 @@ export type Wrapper<
 > = BaseOverride & {
   wrapper: WrapperHandler<E, R>;
   supportStreaming: boolean;
+  edgeRuntime?: boolean;
 };
 
 export type Warmer = BaseOverride & {
