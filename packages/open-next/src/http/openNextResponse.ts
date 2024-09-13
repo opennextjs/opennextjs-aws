@@ -82,11 +82,6 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     private initialHeaders?: OutgoingHttpHeaders,
   ) {
     super();
-    if (initialHeaders && initialHeaders[SET_COOKIE_HEADER]) {
-      this._cookies = parseCookies(
-        initialHeaders[SET_COOKIE_HEADER] as string | string[],
-      ) as string[];
-    }
     this.once("finish", () => {
       if (!this.headersSent) {
         this.flushHeaders();
@@ -174,14 +169,29 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
         ...this.headers,
         ...this.initialHeaders,
       };
+      const initialCookies = parseCookies(
+        (this.initialHeaders[SET_COOKIE_HEADER] as string | string[]) ?? [],
+      ) as string[];
+      //Do we want to filter out the cookies that are already set?
+      // At the moment cookies from the middlewware will override the ones set in the route
+      this._cookies = [...this._cookies, ...initialCookies];
     }
     this.fixHeaders(this.headers);
+
+    // We need to fix the set-cookie header here
+    this.headers[SET_COOKIE_HEADER] = this._cookies;
+
+    const parsedHeaders = parseHeaders(this.headers);
+
+    // We need to remove the set-cookie header from the parsed headers because
+    // it does not handle multiple set-cookie headers properly
+    delete parsedHeaders[SET_COOKIE_HEADER];
 
     if (this.streamCreator) {
       this.responseStream = this.streamCreator?.writeHeaders({
         statusCode: this.statusCode ?? 200,
         cookies: this._cookies,
-        headers: parseHeaders(this.headers),
+        headers: parsedHeaders,
       });
       this.pipe(this.responseStream);
     }
