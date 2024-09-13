@@ -754,6 +754,7 @@ async function createMiddleware() {
       overrides: config.middleware?.override,
       defaultConverter: "aws-cloudfront",
       includeCache: config.dangerous?.enableCacheInterception,
+      additionalExternals: config.edgeExternals,
     });
   } else {
     await buildEdgeBundle({

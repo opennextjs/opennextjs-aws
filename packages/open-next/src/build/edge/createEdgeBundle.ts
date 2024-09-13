@@ -1,11 +1,13 @@
 import { mkdirSync } from "node:fs";
 import url from "node:url";
 
+import { build } from "esbuild";
 import fs from "fs";
 import path from "path";
 import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import {
   IncludedConverter,
+  OpenNextConfig,
   OverrideOptions,
   RouteTemplate,
   SplittedFunctionOptions,
@@ -29,6 +31,7 @@ interface BuildEdgeBundleOptions {
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
   includeCache?: boolean;
+  additionalExternals?: string[];
 }
 
 export async function buildEdgeBundle({
@@ -41,6 +44,7 @@ export async function buildEdgeBundle({
   overrides,
   additionalInject,
   includeCache,
+  additionalExternals,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare =
     typeof overrides?.wrapper === "string"
@@ -138,12 +142,28 @@ globalThis.AsyncLocalStorage = AsyncLocalStorage;
     },
     options,
   );
+
+  await build({
+    entryPoints: [outfile],
+    outfile,
+    allowOverwrite: true,
+    bundle: true,
+    minify: true,
+    platform: "node",
+    format: "esm",
+    conditions: ["workerd", "worker", "browser"],
+    external: ["node:*", ...(additionalExternals ?? [])],
+    banner: {
+      js: 'import * as process from "node:process";',
+    },
+  });
 }
 
 export function copyMiddlewareAssetsAndWasm({}) {}
 
 export async function generateEdgeBundle(
   name: string,
+  config: OpenNextConfig,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
@@ -202,5 +222,6 @@ export async function generateEdgeBundle(
     outfile: path.join(outputPath, "index.mjs"),
     options,
     overrides: fnOptions.override,
+    additionalExternals: config.edgeExternals,
   });
 }
