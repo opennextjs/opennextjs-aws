@@ -32,6 +32,7 @@ interface BuildEdgeBundleOptions {
   additionalInject?: string;
   includeCache?: boolean;
   additionalExternals?: string[];
+  onlyBuildOnce?: boolean;
 }
 
 export async function buildEdgeBundle({
@@ -45,6 +46,7 @@ export async function buildEdgeBundle({
   additionalInject,
   includeCache,
   additionalExternals,
+  onlyBuildOnce,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare =
     typeof overrides?.wrapper === "string"
@@ -143,20 +145,22 @@ globalThis.AsyncLocalStorage = AsyncLocalStorage;
     options,
   );
 
-  await build({
-    entryPoints: [outfile],
-    outfile,
-    allowOverwrite: true,
-    bundle: true,
-    minify: true,
-    platform: "node",
-    format: "esm",
-    conditions: ["workerd", "worker", "browser"],
-    external: ["node:*", ...(additionalExternals ?? [])],
-    banner: {
-      js: 'import * as process from "node:process";',
-    },
-  });
+  if (!onlyBuildOnce) {
+    await build({
+      entryPoints: [outfile],
+      outfile,
+      allowOverwrite: true,
+      bundle: true,
+      minify: true,
+      platform: "node",
+      format: "esm",
+      conditions: ["workerd", "worker", "browser"],
+      external: ["node:*", ...(additionalExternals ?? [])],
+      banner: {
+        js: 'import * as process from "node:process";',
+      },
+    });
+  }
 }
 
 export function copyMiddlewareAssetsAndWasm({}) {}

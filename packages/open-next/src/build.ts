@@ -761,6 +761,7 @@ async function createMiddleware() {
       entrypoint: path.join(__dirname, "core", "edgeFunctionHandler.js"),
       outfile: path.join(outputDir, ".build", "middleware.mjs"),
       ...commonMiddlewareOptions,
+      onlyBuildOnce: true,
     });
   }
 }
