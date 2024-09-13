@@ -36,7 +36,7 @@ When we check if a page is stale, we check the `revalidatedAt` value for each re
 #### Cost
 
 <Callout type="warning" emoji="⚠️">
-  Be aware that fetch cache is using S3. `fetch` by default in next is cached, and even for SSR requests, it will be written to S3. This can lead to a lot of S3 requests and can be expensive. You can disable fetch cache by setting `cache` to `no-store` in the `fetch` options. Also see [this workaround](/common_issues/isr#patch-fetch-behaviour-for-isr-only-for-next1351)
+  Be aware that fetch cache is using S3. `fetch` by default in next is cached, and even for SSR requests, it will be written to S3. This can lead to a lot of S3 requests and can be expensive. You can disable fetch cache by setting `cache` to `no-store` in the `fetch` options. Also see [this workaround](/v2/common_issues/isr#patch-fetch-behaviour-for-isr-only-for-next1351)
 </Callout>
 
 `get` will be called on every request to ISR and SSG that are not cached in Cloudfront, and `set` will be called on every revalidation.
