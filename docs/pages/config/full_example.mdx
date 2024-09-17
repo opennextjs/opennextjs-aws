@@ -87,6 +87,10 @@ const config = {
     // This will disable the incremental cache
     // This is generally not recommended, as this is necessary for ISR AND SSG routes as well as the fetch cache
     disableIncrementalCache: true, 
+    // By default, the middleware headers and cookies will override the handler headers and cookies.
+    // This is executed for every request and after next config headers and middleware has been executed
+    // It can either be middleware or handler
+    headersAndCookiesPriority: "middleware"
   }
 
   //The path to the target folder of build output from the `buildCommand` option (the path which will contain the `.next` and `.open-next` folders). This path is relative from the current process.cwd() - Optional default to "."
