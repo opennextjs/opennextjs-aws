@@ -32,33 +32,35 @@ type MiddlewareOutputEvent = InternalEvent & {
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
 
-// NOTE: We need to normalize the locale path before passing it to the middleware
-// See https://github.com/vercel/next.js/blob/39589ff35003ba73f92b7f7b349b3fdd3458819f/packages/next/src/shared/lib/i18n/normalize-locale-path.ts#L15
-function normalizeLocalePath(pathname: string) {
+// NOTE: We need to be sure that the locale path is there for the matcher
+function ensureLocalizedPath(pathname: string) {
+  // If there are no i18n, we don't need to do anything
+  if (!NextConfig.i18n) return pathname;
   // first item will be empty string from splitting at first char
   const pathnameParts = pathname.split("/");
   const locales = NextConfig.i18n?.locales;
 
-  (locales || []).some((locale) => {
-    if (
+  const hasLocaleAlready = (locales || []).some((locale) => {
+    return !!(
       pathnameParts[1] &&
       pathnameParts[1].toLowerCase() === locale.toLowerCase()
-    ) {
-      pathnameParts.splice(1, 1);
-      pathname = pathnameParts.join("/") || "/";
-      return true;
-    }
-    return false;
+    );
   });
 
-  return locales && !pathname.endsWith("/") ? `${pathname}/` : pathname;
+  if (hasLocaleAlready) {
+    return pathname;
+  }
+
+  const defaultLocale = NextConfig.i18n.defaultLocale;
+
+  return [`/${defaultLocale}`, ...pathnameParts.slice(1)].join("/");
 }
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
   internalEvent: InternalEvent,
 ): Promise<MiddlewareOutputEvent | InternalResult> {
   const { rawPath, query } = internalEvent;
-  const normalizedPath = normalizeLocalePath(rawPath);
+  const normalizedPath = ensureLocalizedPath(rawPath);
   // We only need the normalizedPath to check if the middleware should run
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
@@ -68,7 +70,7 @@ export async function handleMiddleware(
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`
     : "http://localhost:3000";
-  const initialUrl = new URL(rawPath, host);
+  const initialUrl = new URL(normalizedPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
   // console.log("url", url, normalizedPath);
