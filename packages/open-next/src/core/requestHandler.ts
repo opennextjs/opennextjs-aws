@@ -19,6 +19,7 @@ globalThis.__als = new AsyncLocalStorage<{
   requestId: string;
   pendingPromiseRunner: DetachedPromiseRunner;
   isISRRevalidation?: boolean;
+  mergeHeadersPriority?: "middleware" | "handler";
 }>();
 
 patchAsyncStorage();
@@ -103,8 +104,19 @@ export async function openNextHandler(
     const pendingPromiseRunner: DetachedPromiseRunner =
       new DetachedPromiseRunner();
     const isISRRevalidation = headers["x-isr"] === "1";
+    const mergeHeadersPriority = globalThis.openNextConfig.dangerous
+      ?.headersAndCookiesPriority
+      ? globalThis.openNextConfig.dangerous.headersAndCookiesPriority(
+          preprocessedEvent,
+        )
+      : "middleware";
     const internalResult = await globalThis.__als.run(
-      { requestId, pendingPromiseRunner, isISRRevalidation },
+      {
+        requestId,
+        pendingPromiseRunner,
+        isISRRevalidation,
+        mergeHeadersPriority,
+      },
       async () => {
         const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
         const req = new IncomingMessage(reqProps);

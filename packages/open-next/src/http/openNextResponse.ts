@@ -159,22 +159,26 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     this.headersSent = true;
     // Initial headers should be merged with the new headers
     // These initial headers are the one created either in the middleware or in next.config.js
-    // We choose to override response headers with middleware headers
-    // This is different than the default behavior in next.js, but it allows more customization
-    // TODO: We probably want to change this behavior in the future to follow next
-    // We could add a prefix header that would allow to force the middleware headers
-    // Something like open-next-force-cache-control would override the cache-control header
+    const mergeHeadersPriority =
+      globalThis.__als?.getStore()?.mergeHeadersPriority ?? "middleware";
     if (this.initialHeaders) {
-      this.headers = {
-        ...this.headers,
-        ...this.initialHeaders,
-      };
+      this.headers =
+        mergeHeadersPriority === "middleware"
+          ? {
+              ...this.headers,
+              ...this.initialHeaders,
+            }
+          : {
+              ...this.initialHeaders,
+              ...this.headers,
+            };
       const initialCookies = parseCookies(
         (this.initialHeaders[SET_COOKIE_HEADER] as string | string[]) ?? [],
       ) as string[];
-      //Do we want to filter out the cookies that are already set?
-      // At the moment cookies from the middlewware will override the ones set in the route
-      this._cookies = [...this._cookies, ...initialCookies];
+      this._cookies =
+        mergeHeadersPriority === "middleware"
+          ? [...this._cookies, ...initialCookies]
+          : [...initialCookies, ...this._cookies];
     }
     this.fixHeaders(this.headers);
 
