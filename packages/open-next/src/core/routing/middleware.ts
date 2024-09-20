@@ -4,6 +4,7 @@ import { MiddlewareManifest, NextConfig } from "config/index.js";
 import { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
+import { localizePath } from "./i18n/index.js";
 //NOTE: we should try to avoid importing stuff from next as much as possible
 // every release of next could break this
 // const { run } = require("next/dist/server/web/sandbox");
@@ -32,35 +33,12 @@ type MiddlewareOutputEvent = InternalEvent & {
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
 
-// NOTE: We need to be sure that the locale path is there for the matcher
-function ensureLocalizedPath(pathname: string) {
-  // If there are no i18n, we don't need to do anything
-  if (!NextConfig.i18n) return pathname;
-  // first item will be empty string from splitting at first char
-  const pathnameParts = pathname.split("/");
-  const locales = NextConfig.i18n?.locales;
-
-  const hasLocaleAlready = (locales || []).some((locale) => {
-    return !!(
-      pathnameParts[1] &&
-      pathnameParts[1].toLowerCase() === locale.toLowerCase()
-    );
-  });
-
-  if (hasLocaleAlready) {
-    return pathname;
-  }
-
-  const defaultLocale = NextConfig.i18n.defaultLocale;
-
-  return [`/${defaultLocale}`, ...pathnameParts.slice(1)].join("/");
-}
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
   internalEvent: InternalEvent,
 ): Promise<MiddlewareOutputEvent | InternalResult> {
-  const { rawPath, query } = internalEvent;
-  const normalizedPath = ensureLocalizedPath(rawPath);
+  const { query } = internalEvent;
+  const normalizedPath = localizePath(internalEvent);
   // We only need the normalizedPath to check if the middleware should run
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
