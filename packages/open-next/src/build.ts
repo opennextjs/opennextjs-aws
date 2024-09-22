@@ -374,11 +374,12 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
   // Build Lambda code (2nd pass)
   // note: bundle in user's Next.js app again b/c the adapter relies on the
   //       "next" package. And the "next" package from user's app should
-  //       be used.
+  //       be used. We also set @opentelemetry/api as external because it seems to be
+  //       required by Next 15 even though it's not used.
   esbuildSync(
     {
       entryPoints: [path.join(outputPath, "index.mjs")],
-      external: ["sharp"],
+      external: ["sharp", "@opentelemetry/api"],
       allowOverwrite: true,
       outfile: path.join(outputPath, "index.mjs"),
       banner: {
@@ -685,6 +686,9 @@ async function createCacheAssets(monorepoRoot: string) {
 export function compileCache(format: "cjs" | "esm" = "cjs") {
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
+
+  const isAfter15 = compareSemver(options.nextVersion, "15.0.0") >= 0;
+
   esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
@@ -700,6 +704,7 @@ export function compileCache(format: "cjs" | "esm" = "cjs") {
           `globalThis.disableDynamoDBCache = ${
             config.dangerous?.disableTagCache ?? false
           };`,
+          `globalThis.isNextAfter15 = ${isAfter15};`,
         ].join(""),
       },
     },
