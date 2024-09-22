@@ -1,5 +1,13 @@
 # open-next
 
+## 3.1.3
+
+### Patch Changes
+
+- 4ec9265: fix middleware and headers matcher not working properly with i18n
+- 4894974: Improve config validation
+- 55a6bcc: fix incremental cache for next 15
+
 ## 3.1.2
 
 ### Patch Changes
