@@ -4,6 +4,7 @@ import { MiddlewareManifest, NextConfig } from "config/index.js";
 import { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
+import { localizePath } from "./i18n/index.js";
 //NOTE: we should try to avoid importing stuff from next as much as possible
 // every release of next could break this
 // const { run } = require("next/dist/server/web/sandbox");
@@ -32,33 +33,12 @@ type MiddlewareOutputEvent = InternalEvent & {
 // and res.body prior to processing the next-server.
 // @returns undefined | res.end()
 
-// NOTE: We need to normalize the locale path before passing it to the middleware
-// See https://github.com/vercel/next.js/blob/39589ff35003ba73f92b7f7b349b3fdd3458819f/packages/next/src/shared/lib/i18n/normalize-locale-path.ts#L15
-function normalizeLocalePath(pathname: string) {
-  // first item will be empty string from splitting at first char
-  const pathnameParts = pathname.split("/");
-  const locales = NextConfig.i18n?.locales;
-
-  (locales || []).some((locale) => {
-    if (
-      pathnameParts[1] &&
-      pathnameParts[1].toLowerCase() === locale.toLowerCase()
-    ) {
-      pathnameParts.splice(1, 1);
-      pathname = pathnameParts.join("/") || "/";
-      return true;
-    }
-    return false;
-  });
-
-  return locales && !pathname.endsWith("/") ? `${pathname}/` : pathname;
-}
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
   internalEvent: InternalEvent,
 ): Promise<MiddlewareOutputEvent | InternalResult> {
-  const { rawPath, query } = internalEvent;
-  const normalizedPath = normalizeLocalePath(rawPath);
+  const { query } = internalEvent;
+  const normalizedPath = localizePath(internalEvent);
   // We only need the normalizedPath to check if the middleware should run
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
@@ -68,7 +48,7 @@ export async function handleMiddleware(
   const host = internalEvent.headers.host
     ? `https://${internalEvent.headers.host}`
     : "http://localhost:3000";
-  const initialUrl = new URL(rawPath, host);
+  const initialUrl = new URL(normalizedPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
   // console.log("url", url, normalizedPath);

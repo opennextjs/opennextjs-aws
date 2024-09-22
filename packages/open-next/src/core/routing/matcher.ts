@@ -144,14 +144,24 @@ export function addNextConfigHeaders(
 
   const requestHeaders: Record<string, string> = {};
 
-  for (const { headers, has, missing, regex, source } of configHeaders) {
+  const localizedRawPath = localizePath(event);
+
+  for (const {
+    headers,
+    has,
+    missing,
+    regex,
+    source,
+    locale,
+  } of configHeaders) {
+    const path = locale === false ? rawPath : localizedRawPath;
     if (
-      new RegExp(regex).test(rawPath) &&
+      new RegExp(regex).test(path) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
       const fromSource = match(source);
-      const _match = fromSource(rawPath);
+      const _match = fromSource(path);
       headers.forEach((h) => {
         try {
           const key = convertMatch(_match, compile(h.key), h.key);

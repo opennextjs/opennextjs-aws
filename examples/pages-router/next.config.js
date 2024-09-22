@@ -12,6 +12,17 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  headers: () => [
+    {
+      source: "/",
+      headers: [
+        {
+          key: "x-custom-header",
+          value: "my custom header value",
+        },
+      ],
+    },
+  ],
   rewrites: () => [
     { source: "/rewrite", destination: "/", locale: false },
     {
