@@ -89,16 +89,24 @@ export async function copyTracedFiles(
         ),
       );
     } catch (e) {
-      //TODO: add a link to the docs
-      throw new Error(
-        `
+      if (existsSync(path.join(standaloneNextDir, fullFilePath))) {
+        //TODO: add a link to the docs
+        throw new Error(
+          `
 --------------------------------------------------------------------------------
 ${pagePath} cannot use the edge runtime.
 OpenNext requires edge runtime function to be defined in a separate function. 
 See the docs for more information on how to bundle edge runtime functions.
 --------------------------------------------------------------------------------
         `,
-      );
+        );
+      } else {
+        throw new Error(`
+--------------------------------------------------------------------------------
+We cannot find the route for ${pagePath}.
+File ${fullFilePath} does not exist
+--------------------------------------------------------------------------------`);
+      }
     }
     const dir = path.dirname(fullFilePath);
     extractFiles(
