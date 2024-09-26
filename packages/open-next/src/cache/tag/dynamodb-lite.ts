@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { AwsClient } from "aws4fetch";
 import path from "path";
 import { RecoverableError } from "utils/error";
@@ -11,18 +12,46 @@ import {
 } from "./constants";
 import { TagCache } from "./types";
 
-const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+let awsClient: AwsClient | null = null;
 
-const awsClient = new AwsClient({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  sessionToken: process.env.AWS_SESSION_TOKEN,
-  region: CACHE_BUCKET_REGION,
-  retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
-});
-const awsFetch = customFetchClient(awsClient);
+const getAwsClient = () => {
+  const { CACHE_BUCKET_REGION } = process.env;
+  if (awsClient) {
+    return awsClient;
+  } else {
+    awsClient = new AwsClient({
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+      sessionToken: process.env.AWS_SESSION_TOKEN,
+      region: CACHE_BUCKET_REGION,
+      retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
+    });
+    return awsClient;
+  }
+};
+const awsFetch = (
+  body: RequestInit["body"],
+  type: "query" | "batchWrite" = "query",
+) => {
+  const { CACHE_BUCKET_REGION } = process.env;
+  const client = getAwsClient();
+  return customFetchClient(client)(
+    `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.0",
+        "X-Amz-Target": `DynamoDB_20120810.${
+          type === "query" ? "Query" : "BatchWriteItem"
+        }`,
+      },
+      body,
+    },
+  );
+};
 
 function buildDynamoKey(key: string) {
+  const { NEXT_BUILD_ID } = process.env;
   // FIXME: We should probably use something else than path.join here
   // this could transform some fetch cache key into a valid path
   return path.posix.join(NEXT_BUILD_ID ?? "", key);
@@ -40,26 +69,19 @@ const tagCache: TagCache = {
   async getByPath(path) {
     try {
       if (globalThis.disableDynamoDBCache) return [];
+      const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const result = await awsFetch(
-        `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-amz-json-1.0",
-            "X-Amz-Target": "DynamoDB_20120810.Query",
+        JSON.stringify({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression: "#key = :key",
+          ExpressionAttributeNames: {
+            "#key": "path",
           },
-          body: JSON.stringify({
-            TableName: CACHE_DYNAMO_TABLE,
-            IndexName: "revalidate",
-            KeyConditionExpression: "#key = :key",
-            ExpressionAttributeNames: {
-              "#key": "path",
-            },
-            ExpressionAttributeValues: {
-              ":key": { S: buildDynamoKey(path) },
-            },
-          }),
-        },
+          ExpressionAttributeValues: {
+            ":key": { S: buildDynamoKey(path) },
+          },
+        }),
       );
       if (result.status !== 200) {
         throw new RecoverableError(
@@ -80,25 +102,18 @@ const tagCache: TagCache = {
   async getByTag(tag) {
     try {
       if (globalThis.disableDynamoDBCache) return [];
+      const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const result = await awsFetch(
-        `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-amz-json-1.0",
-            "X-Amz-Target": "DynamoDB_20120810.Query",
+        JSON.stringify({
+          TableName: CACHE_DYNAMO_TABLE,
+          KeyConditionExpression: "#tag = :tag",
+          ExpressionAttributeNames: {
+            "#tag": "tag",
           },
-          body: JSON.stringify({
-            TableName: CACHE_DYNAMO_TABLE,
-            KeyConditionExpression: "#tag = :tag",
-            ExpressionAttributeNames: {
-              "#tag": "tag",
-            },
-            ExpressionAttributeValues: {
-              ":tag": { S: buildDynamoKey(tag) },
-            },
-          }),
-        },
+          ExpressionAttributeValues: {
+            ":tag": { S: buildDynamoKey(tag) },
+          },
+        }),
       );
       if (result.status !== 200) {
         throw new RecoverableError(`Failed to get by tag: ${result.status}`);
@@ -119,29 +134,22 @@ const tagCache: TagCache = {
   async getLastModified(key, lastModified) {
     try {
       if (globalThis.disableDynamoDBCache) return lastModified ?? Date.now();
+      const { CACHE_DYNAMO_TABLE } = process.env;
       const result = await awsFetch(
-        `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-amz-json-1.0",
-            "X-Amz-Target": "DynamoDB_20120810.Query",
+        JSON.stringify({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression:
+            "#key = :key AND #revalidatedAt > :lastModified",
+          ExpressionAttributeNames: {
+            "#key": "path",
+            "#revalidatedAt": "revalidatedAt",
           },
-          body: JSON.stringify({
-            TableName: CACHE_DYNAMO_TABLE,
-            IndexName: "revalidate",
-            KeyConditionExpression:
-              "#key = :key AND #revalidatedAt > :lastModified",
-            ExpressionAttributeNames: {
-              "#key": "path",
-              "#revalidatedAt": "revalidatedAt",
-            },
-            ExpressionAttributeValues: {
-              ":key": { S: buildDynamoKey(key) },
-              ":lastModified": { N: String(lastModified ?? 0) },
-            },
-          }),
-        },
+          ExpressionAttributeValues: {
+            ":key": { S: buildDynamoKey(key) },
+            ":lastModified": { N: String(lastModified ?? 0) },
+          },
+        }),
       );
       if (result.status !== 200) {
         throw new RecoverableError(
@@ -159,6 +167,7 @@ const tagCache: TagCache = {
   },
   async writeTags(tags) {
     try {
+      const { CACHE_DYNAMO_TABLE } = process.env;
       if (globalThis.disableDynamoDBCache) return;
       const dataChunks = chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map(
         (Items) => ({
@@ -181,15 +190,8 @@ const tagCache: TagCache = {
         await Promise.all(
           paramsChunk.map(async (params) => {
             const response = await awsFetch(
-              `https://dynamodb.${CACHE_BUCKET_REGION}.amazonaws.com`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-amz-json-1.0",
-                  "X-Amz-Target": "DynamoDB_20120810.BatchWriteItem",
-                },
-                body: JSON.stringify(params),
-              },
+              JSON.stringify(params),
+              "batchWrite",
             );
             if (response.status !== 200) {
               throw new RecoverableError(
