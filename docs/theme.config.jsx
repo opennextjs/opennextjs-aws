@@ -22,7 +22,11 @@ export default {
   feedback: {
     useLink: () => "https://github.com/sst/open-next/issues/new",
   },
-  head: null,
+  head: (
+    <>
+      <meta httpEquiv="refresh" content="0; URL='https://opennext.js.org'" />
+    </>
+  ),
   useNextSeoProps() {
     const { frontMatter } = useConfig();
     return {
