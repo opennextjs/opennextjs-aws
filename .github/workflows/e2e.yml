@@ -27,7 +27,7 @@ jobs:
   check_next_version:
     runs-on: ubuntu-latest
     # Only run this on the official sst repo
-    if: github.repository == 'sst/open-next'
+    if: github.repository == 'opennextjs/opennextjs-aws'
 
     steps:
       - name: Get Latest Next Version
