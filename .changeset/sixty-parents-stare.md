@@ -1,5 +1,5 @@
 ---
-"open-next": patch
+"@opennextjs/aws": patch
 ---
 
 Update vulnerable path-to-regexp dependency
