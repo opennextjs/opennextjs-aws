@@ -30,7 +30,7 @@ const awsFetch = async (key: string, options: RequestInit) => {
   const { CACHE_BUCKET_REGION, CACHE_BUCKET_NAME } = process.env;
   const client = getAwsClient();
   const url = `https://${CACHE_BUCKET_NAME}.s3.${CACHE_BUCKET_REGION}.amazonaws.com/${key}`;
-  return customFetchClient(client)(url, options).finally(console.log);
+  return customFetchClient(client)(url, options);
 };
 
 function buildS3Key(key: string, extension: Extension) {
@@ -75,7 +75,6 @@ const incrementalCache: IncrementalCache = {
       },
     );
     if (response.status !== 200) {
-      console.log(response);
       throw new RecoverableError(`Failed to set cache: ${response.status}`);
     }
   },
