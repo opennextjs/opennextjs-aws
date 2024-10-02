@@ -13,7 +13,7 @@ runs:
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v2
       with:
-        version: 9
+        version: 8
         # run_install: false
 
     # Get pnpm store path so we can cache it
