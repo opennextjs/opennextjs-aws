@@ -102,12 +102,12 @@ importers:
       '@open-next/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       next:
         specifier: ^14.0.3
         version: 14.0.3(react-dom@18.2.0)(react@18.2.0)
-      open-next:
-        specifier: workspace:*
-        version: link:../../packages/open-next
       react:
         specifier: latest
         version: 18.2.0
@@ -145,12 +145,12 @@ importers:
       '@open-next/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       next:
         specifier: ^14.1.4
         version: 14.1.4(react-dom@18.2.0)(react@18.2.0)
-      open-next:
-        specifier: workspace:*
-        version: link:../../packages/open-next
       react:
         specifier: latest
         version: 18.2.0
@@ -319,7 +319,7 @@ importers:
       '@open-next/utils':
         specifier: workspace:*
         version: link:../utils
-      open-next:
+      '@opennextjs/aws':
         specifier: workspace:*
         version: link:../open-next
     devDependencies:
