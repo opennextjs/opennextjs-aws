@@ -14,7 +14,7 @@
     "@example/shared": "workspace:*",
     "@open-next/utils": "workspace:*",
     "next": "^14.1.4",
-    "open-next": "workspace:*",
+    "@opennextjs/aws",
     "react": "latest",
     "react-dom": "latest"
   },
