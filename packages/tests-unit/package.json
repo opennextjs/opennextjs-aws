@@ -7,7 +7,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@opennextjs/aws",
+    "@opennextjs/aws": "workspace:*",
     "@open-next/utils": "workspace:*"
   },
   "devDependencies": {
