@@ -138,9 +138,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      # Build only the open-next package + its monorepo dependencies
+      # Build only the @opennextjs/aws package + its monorepo dependencies
       - name: Build
-        run: pnpm --filter open-next... run build
+        run: pnpm --filter @opennextjs/aws... run build
 
       # Deploy e2e stage
       - name: Deploy NextjsSite
