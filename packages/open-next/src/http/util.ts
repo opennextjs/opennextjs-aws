@@ -12,7 +12,7 @@ export const parseHeaders = (
     if (value === undefined) {
       continue;
     } else {
-      result[key] = convertHeader(value);
+      result[key.toLowerCase()] = convertHeader(value);
     }
   }
 
