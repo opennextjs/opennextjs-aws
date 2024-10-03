@@ -51,7 +51,7 @@ export async function createServerBundle(
     const routes = fnOptions.routes;
     routes.forEach((route) => foundRoutes.add(route));
     if (fnOptions.runtime === "edge") {
-      await generateEdgeBundle(name, options, fnOptions);
+      await generateEdgeBundle(name, config, options, fnOptions);
     } else {
       await generateBundle(name, config, options, fnOptions);
     }

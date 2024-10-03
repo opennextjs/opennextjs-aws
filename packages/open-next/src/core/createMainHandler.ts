@@ -25,6 +25,7 @@ declare global {
     requestId: string;
     pendingPromiseRunner: DetachedPromiseRunner;
     isISRRevalidation?: boolean;
+    mergeHeadersPriority?: "middleware" | "handler";
   }>;
 }
 

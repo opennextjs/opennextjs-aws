@@ -35,8 +35,6 @@ const handler: WrapperHandler = async (handler, converter) =>
         return;
       }
 
-      let headersWritten = false;
-
       const internalEvent = await converter.convertFrom(event);
 
       //Handle compression
@@ -84,14 +82,12 @@ const handler: WrapperHandler = async (handler, converter) =>
             "application/vnd.awslambda.http-integration-response",
           );
           _prelude.headers["content-encoding"] = contentEncoding;
-          // We need to remove the set-cookie header as otherwise it will be set twice, once with the cookies in the prelude, and a second time with the set-cookie headers
-          delete _prelude.headers["set-cookie"];
+
           const prelude = JSON.stringify(_prelude);
 
           responseStream.write(prelude);
 
           responseStream.write(new Uint8Array(8));
-          headersWritten = true;
 
           return compressedStream ?? responseStream;
         },

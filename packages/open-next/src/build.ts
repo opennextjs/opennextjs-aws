@@ -759,12 +759,14 @@ async function createMiddleware() {
       overrides: config.middleware?.override,
       defaultConverter: "aws-cloudfront",
       includeCache: config.dangerous?.enableCacheInterception,
+      additionalExternals: config.edgeExternals,
     });
   } else {
     await buildEdgeBundle({
       entrypoint: path.join(__dirname, "core", "edgeFunctionHandler.js"),
       outfile: path.join(outputDir, ".build", "middleware.mjs"),
       ...commonMiddlewareOptions,
+      onlyBuildOnce: true,
     });
   }
 }

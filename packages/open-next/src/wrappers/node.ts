@@ -10,7 +10,9 @@ const wrapper: WrapperHandler = async (handler, converter) => {
     const internalEvent = await converter.convertFrom(req);
     const _res: StreamCreator = {
       writeHeaders: (prelude) => {
+        res.setHeader("Set-Cookie", prelude.cookies);
         res.writeHead(prelude.statusCode, prelude.headers);
+        res.flushHeaders();
         res.uncork();
         return res;
       },

@@ -49,6 +49,14 @@ export interface DangerousOptions {
    * @default false
    */
   enableCacheInterception?: boolean;
+  /**
+   * Function to determine which headers or cookies takes precedence.
+   * By default, the middleware headers and cookies will override the handler headers and cookies.
+   * This is executed for every request and after next config headers and middleware has executed.
+   */
+  headersAndCookiesPriority?: (
+    event: InternalEvent,
+  ) => "middleware" | "handler";
 }
 
 export type BaseOverride = {
@@ -83,6 +91,7 @@ export type Wrapper<
 > = BaseOverride & {
   wrapper: WrapperHandler<E, R>;
   supportStreaming: boolean;
+  edgeRuntime?: boolean;
 };
 
 export type Warmer = BaseOverride & {

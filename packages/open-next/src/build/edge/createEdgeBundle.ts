@@ -1,11 +1,13 @@
 import { mkdirSync } from "node:fs";
 import url from "node:url";
 
+import { build } from "esbuild";
 import fs from "fs";
 import path from "path";
 import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import {
   IncludedConverter,
+  OpenNextConfig,
   OverrideOptions,
   RouteTemplate,
   SplittedFunctionOptions,
@@ -29,6 +31,8 @@ interface BuildEdgeBundleOptions {
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
   includeCache?: boolean;
+  additionalExternals?: string[];
+  onlyBuildOnce?: boolean;
 }
 
 export async function buildEdgeBundle({
@@ -41,7 +45,13 @@ export async function buildEdgeBundle({
   overrides,
   additionalInject,
   includeCache,
+  additionalExternals,
+  onlyBuildOnce,
 }: BuildEdgeBundleOptions) {
+  const isInCloudfare =
+    typeof overrides?.wrapper === "string"
+      ? overrides.wrapper === "cloudflare"
+      : (await overrides?.wrapper?.())?.edgeRuntime;
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
@@ -93,7 +103,7 @@ export async function buildEdgeBundle({
             "../../core",
             "edgeFunctionHandler.js",
           ),
-          isInCloudfare: overrides?.wrapper === "cloudflare",
+          isInCloudfare,
         }),
       ],
       treeShaking: true,
@@ -106,8 +116,13 @@ export async function buildEdgeBundle({
       mainFields: ["module", "main"],
       banner: {
         js: `
+import {Buffer} from "node:buffer";
+globalThis.Buffer = Buffer;
+
+import {AsyncLocalStorage} from "node:async_hooks";
+globalThis.AsyncLocalStorage = AsyncLocalStorage;
   ${
-    overrides?.wrapper === "cloudflare"
+    isInCloudfare
       ? ""
       : `
   const require = (await import("node:module")).createRequire(import.meta.url);
@@ -129,12 +144,30 @@ export async function buildEdgeBundle({
     },
     options,
   );
+
+  if (!onlyBuildOnce) {
+    await build({
+      entryPoints: [outfile],
+      outfile,
+      allowOverwrite: true,
+      bundle: true,
+      minify: true,
+      platform: "node",
+      format: "esm",
+      conditions: ["workerd", "worker", "browser"],
+      external: ["node:*", ...(additionalExternals ?? [])],
+      banner: {
+        js: 'import * as process from "node:process";',
+      },
+    });
+  }
 }
 
 export function copyMiddlewareAssetsAndWasm({}) {}
 
 export async function generateEdgeBundle(
   name: string,
+  config: OpenNextConfig,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
@@ -193,5 +226,6 @@ export async function generateEdgeBundle(
     outfile: path.join(outputPath, "index.mjs"),
     options,
     overrides: fnOptions.override,
+    additionalExternals: config.edgeExternals,
   });
 }
