@@ -1,5 +1,19 @@
 # open-next
 
+## 3.1.4
+
+### Patch Changes
+
+- b5bfb5d: Fix response binary content handling
+- 6b894df: lazily initialize lite client
+- 8b576d9: fix content-length incorrectly set in proxyRequest
+- 9fceedb: fix: fix basePath support for API routes
+- 5cdbc9f: Update vulnerable path-to-regexp dependency
+- 50703a3: Fix cloudflare env
+  Fix an issue with cookies and the node wrapper
+  Fix some issue with cookies being not properly set when set both in the routing layer and the route itself
+  Added option for headers priority
+
 ## 3.1.3
 
 ### Patch Changes

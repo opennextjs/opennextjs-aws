@@ -4,6 +4,18 @@
 
 ### Patch Changes
 
+- Updated dependencies [b5bfb5d]
+- Updated dependencies [6b894df]
+- Updated dependencies [8b576d9]
+- Updated dependencies [9fceedb]
+- Updated dependencies [5cdbc9f]
+- Updated dependencies [50703a3]
+  - @opennextjs/aws@3.1.4
+
+## null
+
+### Patch Changes
+
 - Updated dependencies [4ec9265]
 - Updated dependencies [4894974]
 - Updated dependencies [55a6bcc]
