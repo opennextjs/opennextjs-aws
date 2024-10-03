@@ -183,6 +183,7 @@ function filterHeadersForProxy(
     "x-cache",
     "transfer-encoding",
     "content-encoding",
+    "content-length",
   ];
   Object.entries(headers).forEach(([key, value]) => {
     const lowerKey = key.toLowerCase();
