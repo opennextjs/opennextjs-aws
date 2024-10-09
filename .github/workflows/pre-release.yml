@@ -1,6 +1,11 @@
 name: Pre-release
 
-on: workflow_dispatch
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - packages/open-next/**
 
 jobs:
   release:
@@ -21,10 +26,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Check codestyle
-        run: pnpm lint
+      - name: Build package
+        run: pnpm -F @opennextjs/aws build
 
-      - name: Publish Pre-release to npm
-        run: pnpm release-snapshot
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish prerelease
+        run: pnpm exec pkg-pr-new publish --pnpm --compact './packages/open-next'
