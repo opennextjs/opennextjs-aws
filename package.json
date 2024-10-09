@@ -23,6 +23,7 @@
     "@changesets/cli": "^2.22.0",
     "@sladg/eslint-config-base": "1.4.1",
     "eslint": "^8.47.0",
+    "pkg-pr-new": "^0.0.29",
     "turbo": "1.10.12"
   },
   "engines": {
