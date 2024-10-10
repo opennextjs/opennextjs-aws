@@ -3,7 +3,7 @@ import {Callout} from 'nextra/components'
 
 #### Reducing Bundle Size
 
-Serverless environments are sensitive to bundle size, since it has to download and unzip the contents. To help reduce cold start times as much as possible, you should remove any unnecessary files in the node_modules or report offending dev libraries in this [PR](https://github.com/sst/open-next/pull/242)
+Serverless environments are sensitive to bundle size, since it has to download and unzip the contents. To help reduce cold start times as much as possible, you should remove any unnecessary files in the node_modules or report offending dev libraries in this [PR](https://github.com/opennextjs/opennextjs-aws/pull/242)
 
 
 <Callout type="info" emoji="ℹ️">
@@ -21,7 +21,7 @@ du -hs .open-next/server-function/node_modules/* | sort -rh
 If your app requires the offending library, then consider moving your business logic of the `api` to its own lambda, eg: `/api/v2` => `Api Lambda`
 
 <Callout type="info" emoji="ℹ️">
-  There is a [PR](https://github.com/sst/open-next/pull/242) to remove some dev dependency from the output node_modules but that requires more testing before it can merge.
+  There is a [PR](https://github.com/opennextjs/opennextjs-aws/pull/242) to remove some dev dependency from the output node_modules but that requires more testing before it can merge.
 </Callout>
 
 #### Common issues
