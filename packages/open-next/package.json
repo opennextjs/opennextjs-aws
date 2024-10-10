@@ -61,6 +61,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sst/open-next.git"
+    "url": "git@github.com:opennextjs/opennextjs-aws.git",
+    "directory": "packages/open-next"
   }
 }
