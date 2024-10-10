@@ -34,7 +34,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ["examples/**/*"],
+      files: ["example/**/*", "examples/**/*"],
       rules: {
         "unused-imports/no-unused-vars": "off",
       },
