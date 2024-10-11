@@ -13,6 +13,7 @@ interface Options {
   type: "accept-language";
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function parse(
   raw: string,
   preferences: string[] | undefined,

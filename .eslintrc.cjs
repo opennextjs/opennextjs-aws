@@ -15,7 +15,7 @@ module.exports = {
     ],
     "sonarjs/elseif-without-else": "warn",
     "sonarjs/no-duplicate-string": "warn",
-    "sonarjs/cognitive-complexity": "warn",
+    "sonarjs/cognitive-complexity": ["warn", 35],
 
     // We add some typescript rules - The recommended rules breaks too much stuff
     // TODO: We should add more rules, especially around typescript types
@@ -29,8 +29,6 @@ module.exports = {
     ],
 
     "@typescript-eslint/unbound-method": "error",
-
-    "@typescript-eslint/no-non-null-assertion": "warn",
   },
   overrides: [
     {

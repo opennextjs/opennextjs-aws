@@ -57,7 +57,7 @@ export function openNextEdgePlugins({
         });
       }
 
-      build.onResolve({ filter: /\.(mjs|wasm)$/g }, (args) => {
+      build.onResolve({ filter: /\.(mjs|wasm)$/g }, () => {
         return {
           external: true,
         };
