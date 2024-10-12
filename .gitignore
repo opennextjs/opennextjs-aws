@@ -7,10 +7,6 @@ node_modules/
 # Build output
 dist
 
-# next.js
-docs/.next/
-docs/out/
-
 # misc
 .DS_Store
 
