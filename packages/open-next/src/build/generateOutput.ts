@@ -92,7 +92,7 @@ interface OpenNextOutput {
   };
 }
 
-const indexHandler = "index.hander";
+const indexHandler = "index.handler";
 
 async function canStream(opts: FunctionOptions) {
   if (!opts.override?.wrapper) {
