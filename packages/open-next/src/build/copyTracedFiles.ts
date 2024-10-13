@@ -24,6 +24,7 @@ function copyPatchFile(outputDir: string) {
   copyFileSync(patchFile, outputPatchFile);
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function copyTracedFiles(
   buildOutputPath: string,
   packagePath: string,

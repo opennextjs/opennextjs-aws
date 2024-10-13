@@ -284,80 +284,95 @@ export default class S3Cache {
       .getStore()
       ?.pendingPromiseRunner.withResolvers<void>();
     try {
-      if (data?.kind === "ROUTE" || data?.kind === "APP_ROUTE") {
-        const { body, status, headers } = data;
-        await globalThis.incrementalCache.set(
-          key,
-          {
-            type: "route",
-            body: body.toString(
-              isBinaryContentType(String(headers["content-type"]))
-                ? "base64"
-                : "utf8",
-            ),
-            meta: {
-              status,
-              headers,
-            },
-          },
-          false,
-        );
-      } else if (data?.kind === "PAGE" || data?.kind === "PAGES") {
-        const { html, pageData, status, headers } = data;
-        const isAppPath = typeof pageData === "string";
-        if (isAppPath) {
-          await globalThis.incrementalCache.set(
-            key,
-            {
-              type: "app",
-              html,
-              rsc: pageData,
-              meta: {
-                status,
-                headers,
-              },
-            },
-            false,
-          );
-        } else {
-          await globalThis.incrementalCache.set(
-            key,
-            {
-              type: "page",
-              html,
-              json: pageData,
-            },
-            false,
-          );
-        }
-      } else if (data?.kind === "APP_PAGE") {
-        const { html, rscData, headers, status } = data;
-        await globalThis.incrementalCache.set(
-          key,
-          {
-            type: "app",
-            html,
-            rsc: rscData.toString("utf8"),
-            meta: {
-              status,
-              headers,
-            },
-          },
-          false,
-        );
-      } else if (data?.kind === "FETCH") {
-        await globalThis.incrementalCache.set<true>(key, data, true);
-      } else if (data?.kind === "REDIRECT") {
-        await globalThis.incrementalCache.set(
-          key,
-          {
-            type: "redirect",
-            props: data.props,
-          },
-          false,
-        );
-      } else if (data === null || data === undefined) {
+      if (data === null || data === undefined) {
         await globalThis.incrementalCache.delete(key);
+      } else {
+        switch (data.kind) {
+          case "ROUTE":
+          case "APP_ROUTE":
+            const { body, status, headers } = data;
+            await globalThis.incrementalCache.set(
+              key,
+              {
+                type: "route",
+                body: body.toString(
+                  isBinaryContentType(String(headers["content-type"]))
+                    ? "base64"
+                    : "utf8",
+                ),
+                meta: {
+                  status,
+                  headers,
+                },
+              },
+              false,
+            );
+            break;
+          case "PAGE":
+          case "PAGES": {
+            const { html, pageData, status, headers } = data;
+            const isAppPath = typeof pageData === "string";
+            if (isAppPath) {
+              await globalThis.incrementalCache.set(
+                key,
+                {
+                  type: "app",
+                  html,
+                  rsc: pageData,
+                  meta: {
+                    status,
+                    headers,
+                  },
+                },
+                false,
+              );
+            } else {
+              await globalThis.incrementalCache.set(
+                key,
+                {
+                  type: "page",
+                  html,
+                  json: pageData,
+                },
+                false,
+              );
+            }
+            break;
+          }
+          case "APP_PAGE": {
+            const { html, rscData, headers, status } = data;
+            await globalThis.incrementalCache.set(
+              key,
+              {
+                type: "app",
+                html,
+                rsc: rscData.toString("utf8"),
+                meta: {
+                  status,
+                  headers,
+                },
+              },
+              false,
+            );
+            break;
+          }
+          case "FETCH":
+            await globalThis.incrementalCache.set<true>(key, data, true);
+            break;
+          case "REDIRECT":
+            await globalThis.incrementalCache.set(
+              key,
+              {
+                type: "redirect",
+                props: data.props,
+              },
+              false,
+            );
+            break;
+          case "IMAGE":
+            // Not implemented
+            break;
+        }
       }
       // Write derivedTags to dynamodb
       // If we use an in house version of getDerivedTags in build we should use it here instead of next's one

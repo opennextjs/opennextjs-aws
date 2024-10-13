@@ -92,6 +92,8 @@ interface OpenNextOutput {
   };
 }
 
+const indexHandler = "index.hander";
+
 async function canStream(opts: FunctionOptions) {
   if (!opts.override?.wrapper) {
     return false;
@@ -161,6 +163,7 @@ function prefixPattern(basePath: string) {
   };
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function generateOutput(
   outputPath: string,
   config: OpenNextConfig,
@@ -183,7 +186,7 @@ export async function generateOutput(
     if (value.placement === "global") {
       edgeFunctions[key] = {
         bundle: `.open-next/functions/${key}`,
-        handler: "index.handler",
+        handler: indexHandler,
         ...(await extractOverrideFn(value.override)),
       };
     }
@@ -228,7 +231,7 @@ export async function generateOutput(
     },
     imageOptimizer: {
       type: "function",
-      handler: "index.handler",
+      handler: indexHandler,
       bundle: ".open-next/image-optimization-function",
       streaming: false,
       imageLoader: await extractOverrideName(
@@ -247,7 +250,7 @@ export async function generateOutput(
         }
       : {
           type: "function",
-          handler: "index.handler",
+          handler: indexHandler,
           bundle: ".open-next/server-functions/default",
           streaming: defaultOriginCanstream,
           ...(await extractOverrideFn(config.default.override)),
@@ -274,7 +277,7 @@ export async function generateOutput(
           const streaming = await canStream(value);
           origins[key] = {
             type: "function",
-            handler: "index.handler",
+            handler: indexHandler,
             bundle: `.open-next/server-functions/${key}`,
             streaming,
             ...(await extractOverrideFn(value.override)),
@@ -348,19 +351,19 @@ export async function generateOutput(
       disableIncrementalCache: config.dangerous?.disableIncrementalCache,
       disableTagCache: config.dangerous?.disableTagCache,
       warmer: {
-        handler: "index.handler",
+        handler: indexHandler,
         bundle: ".open-next/warmer-function",
       },
       initializationFunction: isTagCacheDisabled
         ? undefined
         : {
-            handler: "index.handler",
+            handler: indexHandler,
             bundle: ".open-next/dynamodb-provider",
           },
       revalidationFunction: config.dangerous?.disableIncrementalCache
         ? undefined
         : {
-            handler: "index.handler",
+            handler: indexHandler,
             bundle: ".open-next/revalidation-function",
           },
     },

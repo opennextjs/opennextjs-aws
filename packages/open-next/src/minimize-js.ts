@@ -1,3 +1,4 @@
+/* eslint-disable */
 // Copied and modified from node-minify-all-js by Adones Pitogo
 // https://github.com/adonespitogo/node-minify-all-js/blob/master/index.js
 
