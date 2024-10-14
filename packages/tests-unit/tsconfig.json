@@ -20,7 +20,10 @@
     "removeComments": true,
     "module": "NodeNext",
     "target": "ES2022",
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": {
+      "@opennextjs/aws/*": ["../open-next/src/*"],
+    }
   },
   "include": [
     "."

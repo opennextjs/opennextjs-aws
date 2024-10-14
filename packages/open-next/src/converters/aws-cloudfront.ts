@@ -115,6 +115,7 @@ function convertToCloudfrontHeaders(
 ) {
   const cloudfrontHeaders: CloudFrontHeaders = {};
   Object.entries(headers)
+    .map(([key, value]) => [key.toLowerCase(), value] as const)
     .filter(
       ([key]) =>
         !CloudFrontBlacklistedHeaders.some((header) =>

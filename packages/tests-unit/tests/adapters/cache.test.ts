@@ -1,4 +1,4 @@
-import { hasCacheExtension } from "../../open-next/src/adapters/cache";
+import { hasCacheExtension } from "@opennextjs/aws/adapters/cache.js";
 
 describe("hasCacheExtension", () => {
   it("Should returns true if has an extension and it is a CacheExtension", () => {
