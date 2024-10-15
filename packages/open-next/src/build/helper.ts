@@ -17,13 +17,17 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
-export function normalizeOptions(config: OpenNextConfig, root: string) {
+export function normalizeOptions(config: OpenNextConfig) {
   const appPath = path.join(process.cwd(), config.appPath || ".");
   const buildOutputPath = path.join(
     process.cwd(),
     config.buildOutputPath || ".",
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
+
+  const { root: monorepoRoot, packager } = findMonorepoRoot(
+    path.join(process.cwd(), config.appPath || "."),
+  );
 
   let appPackageJsonPath: string;
   if (config.packageJsonPath) {
@@ -32,8 +36,9 @@ export function normalizeOptions(config: OpenNextConfig, root: string) {
       ? _pkgPath
       : path.join(_pkgPath, "./package.json");
   } else {
-    appPackageJsonPath = findNextPackageJsonPath(appPath, root);
+    appPackageJsonPath = findNextPackageJsonPath(appPath, monorepoRoot);
   }
+
   return {
     openNextVersion: getOpenNextVersion(),
     nextVersion: getNextVersion(appPath),
@@ -44,8 +49,34 @@ export function normalizeOptions(config: OpenNextConfig, root: string) {
     outputDir,
     tempDir: path.join(outputDir, ".build"),
     debug: Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
-    monorepoRoot: root,
+    monorepoRoot,
+    packager,
   };
+}
+
+function findMonorepoRoot(appPath: string) {
+  let currentPath = appPath;
+  while (currentPath !== "/") {
+    const found = [
+      { file: "package-lock.json", packager: "npm" as const },
+      { file: "yarn.lock", packager: "yarn" as const },
+      { file: "pnpm-lock.yaml", packager: "pnpm" as const },
+      { file: "bun.lockb", packager: "bun" as const },
+    ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
+
+    if (found) {
+      if (currentPath !== appPath) {
+        logger.info("Monorepo detected at", currentPath);
+      }
+      return { root: currentPath, packager: found.packager };
+    }
+    currentPath = path.dirname(currentPath);
+  }
+
+  // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
+  //       not found in the app's directory or any of its parent directories.
+  //       We are going to assume that the app is not part of a monorepo.
+  return { root: appPath, packager: "npm" as const };
 }
 
 function findNextPackageJsonPath(appPath: string, root: string) {

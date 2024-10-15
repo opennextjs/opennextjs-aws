@@ -66,12 +66,8 @@ export async function build(
 
   compileOpenNextConfigEdge(tempDir, config, openNextConfigPath);
 
-  const { root: monorepoRoot, packager } = findMonorepoRoot(
-    path.join(process.cwd(), config.appPath || "."),
-  );
-
   // Initialize options
-  const options = normalizeOptions(config, monorepoRoot);
+  const options = normalizeOptions(config);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
@@ -82,7 +78,7 @@ export async function build(
   // Build Next.js app
   printHeader("Building Next.js app");
   setStandaloneBuildMode(config, options);
-  buildNextjsApp(packager, config, options);
+  buildNextjsApp(config, options);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
@@ -138,31 +134,6 @@ function checkRunningInsideNextjsApp(options: BuildOptions) {
   }
 }
 
-function findMonorepoRoot(appPath: string) {
-  let currentPath = appPath;
-  while (currentPath !== "/") {
-    const found = [
-      { file: "package-lock.json", packager: "npm" as const },
-      { file: "yarn.lock", packager: "yarn" as const },
-      { file: "pnpm-lock.yaml", packager: "pnpm" as const },
-      { file: "bun.lockb", packager: "bun" as const },
-    ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
-
-    if (found) {
-      if (currentPath !== appPath) {
-        logger.info("Monorepo detected at", currentPath);
-      }
-      return { root: currentPath, packager: found.packager };
-    }
-    currentPath = path.dirname(currentPath);
-  }
-
-  // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
-  //       not found in the app's directory or any of its parent directories.
-  //       We are going to assume that the app is not part of a monorepo.
-  return { root: appPath, packager: "npm" as const };
-}
-
 function setStandaloneBuildMode(config: OpenNextConfig, options: BuildOptions) {
   // Equivalent to setting `output: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
@@ -170,11 +141,8 @@ function setStandaloneBuildMode(config: OpenNextConfig, options: BuildOptions) {
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = options.monorepoRoot;
 }
 
-function buildNextjsApp(
-  packager: "npm" | "yarn" | "pnpm" | "bun",
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+function buildNextjsApp(config: OpenNextConfig, options: BuildOptions) {
+  const { packager } = options;
   const command =
     config.buildCommand ??
     (["bun", "npm"].includes(packager)
