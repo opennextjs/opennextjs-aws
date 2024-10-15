@@ -1,5 +1,11 @@
 # open-next
 
+## 3.1.6
+
+### Patch Changes
+
+- [`ad513ef`](https://github.com/opennextjs/opennextjs-aws/commit/ad513efb8856ebdfbc11482537986abb0524ab75) Thanks [@thdxr](https://github.com/thdxr)! - remove extra binary in bin specification
+
 ## 3.1.5
 
 ### Patch Changes
