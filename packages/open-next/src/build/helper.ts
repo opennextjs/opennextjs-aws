@@ -81,6 +81,7 @@ function findMonorepoRoot(appPath: string) {
   // note: a lock file (package-lock.json, yarn.lock, or pnpm-lock.yaml) is
   //       not found in the app's directory or any of its parent directories.
   //       We are going to assume that the app is not part of a monorepo.
+  logger.warn("No lockfile found");
   return { root: appPath, packager: "npm" as const };
 }
 
