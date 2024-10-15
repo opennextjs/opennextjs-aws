@@ -76,8 +76,6 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       const streamCreator: StreamCreator = {
         writeHeaders: (_prelude) => {
-          _prelude.headers["content-encoding"] = contentEncoding;
-
           responseStream.setContentType(
             "application/vnd.awslambda.http-integration-response",
           );
