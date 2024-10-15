@@ -1,5 +1,13 @@
 # open-next
 
+## 3.1.5
+
+### Patch Changes
+
+- [#542](https://github.com/opennextjs/opennextjs-aws/pull/542) [`178ab2b`](https://github.com/opennextjs/opennextjs-aws/commit/178ab2b1c95701a5f20aec107acf1fe1c6e3d9be) Thanks [@conico974](https://github.com/conico974)! - Basic support for PPR
+
+- [#555](https://github.com/opennextjs/opennextjs-aws/pull/555) [`a5fd42f`](https://github.com/opennextjs/opennextjs-aws/commit/a5fd42fa76a329cf79bba8a6af20f87481074e47) Thanks [@JackParn33](https://github.com/JackParn33)! - Fixes proxy handling of encoded request/responses, previously responses could be cut off.
+
 ## 3.1.4
 
 ### Patch Changes
