@@ -191,15 +191,12 @@ function initOutputDir(srcTempDir: string, options: BuildOptions) {
     );
   }
   fs.rmSync(options.outputDir, { recursive: true, force: true });
-  const destTempDir = options.tempDir;
-  fs.mkdirSync(destTempDir, { recursive: true });
-  fs.writeFileSync(
-    path.join(destTempDir, "open-next.config.mjs"),
-    openNextConfig,
-  );
+  const { buildDir } = options;
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.writeFileSync(path.join(buildDir, "open-next.config.mjs"), openNextConfig);
   if (openNextConfigEdge) {
     fs.writeFileSync(
-      path.join(destTempDir, "open-next.config.edge.mjs"),
+      path.join(buildDir, "open-next.config.edge.mjs"),
       openNextConfigEdge,
     );
   }
@@ -215,7 +212,7 @@ async function createWarmerBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.tempDir, outputPath);
+  copyOpenNextConfig(options.buildDir, outputPath);
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
@@ -258,7 +255,7 @@ async function createRevalidationBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   //Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.tempDir, outputPath);
+  copyOpenNextConfig(options.buildDir, outputPath);
 
   // Build Lambda code
   await esbuildAsync(
@@ -297,7 +294,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.tempDir, outputPath);
+  copyOpenNextConfig(options.buildDir, outputPath);
 
   const plugins = [
     openNextResolvePlugin({
@@ -636,7 +633,7 @@ async function createCacheAssets(options: BuildOptions) {
       );
 
       //Copy open-next.config.mjs into the bundle
-      copyOpenNextConfig(options.tempDir, providerPath);
+      copyOpenNextConfig(options.buildDir, providerPath);
 
       // TODO: check if metafiles doesn't contain duplicates
       fs.writeFileSync(
@@ -660,7 +657,7 @@ export function compileCache(
 ) {
   const { config } = options;
   const ext = format === "cjs" ? "cjs" : "mjs";
-  const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
+  const outfile = path.join(options.buildDir, `cache.${ext}`);
 
   const isAfter15 = compareSemver(options.nextVersion, "15.0.0") >= 0;
 
@@ -721,7 +718,7 @@ async function createMiddleware(options: BuildOptions) {
 
     // Copy open-next.config.mjs
     copyOpenNextConfig(
-      options.tempDir,
+      options.buildDir,
       outputPath,
       config.middleware.override?.wrapper === "cloudflare",
     );
@@ -739,7 +736,7 @@ async function createMiddleware(options: BuildOptions) {
   } else {
     await buildEdgeBundle({
       entrypoint: path.join(__dirname, "core", "edgeFunctionHandler.js"),
-      outfile: path.join(outputDir, ".build", "middleware.mjs"),
+      outfile: path.join(options.buildDir, "middleware.mjs"),
       ...commonMiddlewareOptions,
       onlyBuildOnce: true,
     });

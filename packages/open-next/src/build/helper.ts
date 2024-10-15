@@ -51,7 +51,7 @@ export function normalizeOptions(config: OpenNextConfig) {
     openNextVersion: getOpenNextVersion(),
     outputDir,
     packager,
-    tempDir: path.join(outputDir, ".build"),
+    buildDir: path.join(outputDir, ".build"),
   };
 }
 
@@ -273,17 +273,17 @@ export function compareSemver(v1: string, v2: string): number {
 }
 
 export function copyOpenNextConfig(
-  tempDir: string,
-  outputPath: string,
+  inputDir: string,
+  outputDir: string,
   isEdge = false,
 ) {
   // Copy open-next.config.mjs
   fs.copyFileSync(
     path.join(
-      tempDir,
+      inputDir,
       isEdge ? "open-next.config.edge.mjs" : "open-next.config.mjs",
     ),
-    path.join(outputPath, "open-next.config.mjs"),
+    path.join(outputDir, "open-next.config.mjs"),
   );
 }
 

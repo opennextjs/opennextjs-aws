@@ -179,7 +179,7 @@ export async function generateEdgeBundle(
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy open-next.config.mjs
-  copyOpenNextConfig(path.join(outputDir, ".build"), outputPath, true);
+  copyOpenNextConfig(options.buildDir, outputPath, true);
 
   // Load middleware manifest
   const middlewareManifest = JSON.parse(
