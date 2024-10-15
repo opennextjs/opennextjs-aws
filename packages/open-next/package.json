@@ -5,8 +5,7 @@
   "name": "@opennextjs/aws",
   "version": "3.1.5",
   "bin": {
-    "open-next": "./dist/index.js",
-    "@opennextjs/aws": "./dist/index.js"
+    "open-next": "./dist/index.js"
   },
   "license": "MIT",
   "type": "module",
