@@ -494,8 +494,12 @@ async function createCacheAssets(options: BuildOptions) {
     () => true,
     (filepath) => {
       const ext = path.extname(filepath);
-      const newFilePath =
+      let newFilePath =
         ext !== "" ? filepath.replace(ext, ".cache") : `${filepath}.cache`;
+      // Handle prefetch cache files for partial prerendering
+      if (newFilePath.endsWith(".prefetch.cache")) {
+        newFilePath = newFilePath.replace(".prefetch.cache", ".cache");
+      }
       switch (ext) {
         case ".meta":
         case ".html":
