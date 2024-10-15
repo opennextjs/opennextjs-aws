@@ -91,6 +91,7 @@ async function convertToApiGatewayProxyResultV2(
 ): Promise<APIGatewayProxyResultV2> {
   const headers: Record<string, string> = {};
   Object.entries(result.headers)
+    .map(([key, value]) => [key.toLowerCase(), value] as const)
     .filter(
       ([key]) =>
         !CloudFrontBlacklistedHeaders.some((header) =>
