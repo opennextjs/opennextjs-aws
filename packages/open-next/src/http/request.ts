@@ -15,9 +15,9 @@ export class IncomingMessage extends http.IncomingMessage {
   }: {
     method: string;
     url: string;
-    headers: Record<string, string>;
+    headers: Record<string, string | string[]>;
     body?: Buffer;
-    remoteAddress: string;
+    remoteAddress?: string;
   }) {
     super({
       encrypted: true,
