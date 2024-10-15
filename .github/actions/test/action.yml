@@ -1,0 +1,9 @@
+name: Unit tests
+description: Run unit tests and ensure code quality
+
+runs:
+    using: 'composite'
+    steps:
+        - name: Run tests
+          run: pnpm test
+          shell: bash

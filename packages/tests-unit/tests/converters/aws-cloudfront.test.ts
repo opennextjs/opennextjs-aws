@@ -1,13 +1,15 @@
+import converter from "@opennextjs/aws/converters/aws-cloudfront.js";
 import { CloudFrontRequestResult } from "aws-lambda";
+import { Readable } from "stream";
+import { vi } from "vitest";
 
-//TODO: rewrite this test to use converter instead of event-mapper
-import { convertTo } from "../../open-next/src/adapters/event-mapper";
+vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({}));
 
 describe("convertTo", () => {
   describe("CloudFront Result", () => {
-    it("Should parse the headers", () => {
-      const response = convertTo({
-        body: "",
+    it("Should parse the headers", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
         headers: {
           "content-type": "application/json",
           test: "test",
@@ -15,7 +17,7 @@ describe("convertTo", () => {
         isBase64Encoded: false,
         statusCode: 200,
         type: "cf",
-      }) as CloudFrontRequestResult;
+      })) as CloudFrontRequestResult;
 
       expect(response?.headers).toStrictEqual({
         "content-type": [
@@ -33,16 +35,16 @@ describe("convertTo", () => {
       });
     });
 
-    it("Should parse the headers with arrays", () => {
-      const response = convertTo({
-        body: "",
+    it("Should parse the headers with arrays", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
         headers: {
           test: ["test1", "test2"],
         },
         isBase64Encoded: false,
         statusCode: 200,
         type: "cf",
-      }) as CloudFrontRequestResult;
+      })) as CloudFrontRequestResult;
 
       expect(response?.headers).toStrictEqual({
         test: [
@@ -58,9 +60,9 @@ describe("convertTo", () => {
       });
     });
 
-    it("Should parse the headers with cookies", () => {
-      const response = convertTo({
-        body: "",
+    it("Should parse the headers with cookies", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
         headers: {
           "set-cookie":
             "test=1; Path=/; HttpOnly; Secure; SameSite=None, test=2; Path=/; HttpOnly; Secure; SameSite=None",
@@ -68,7 +70,7 @@ describe("convertTo", () => {
         isBase64Encoded: false,
         statusCode: 200,
         type: "cf",
-      }) as CloudFrontRequestResult;
+      })) as CloudFrontRequestResult;
 
       expect(response?.headers).toStrictEqual({
         "set-cookie": [
@@ -84,9 +86,9 @@ describe("convertTo", () => {
       });
     });
 
-    it("Should parse the headers with cookies + expires", () => {
-      const response = convertTo({
-        body: "",
+    it("Should parse the headers with cookies + expires", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
         headers: {
           "set-cookie":
             "test=1; Path=/; Expires=Sun, 14 Apr 2024 22:19:07 GMT; HttpOnly; Secure; SameSite=None, test=2; Path=/; Expires=Sun, 14 Apr 2024 22:19:07 GMT; HttpOnly; Secure; SameSite=None",
@@ -94,7 +96,7 @@ describe("convertTo", () => {
         isBase64Encoded: false,
         statusCode: 200,
         type: "cf",
-      }) as CloudFrontRequestResult;
+      })) as CloudFrontRequestResult;
 
       expect(response?.headers).toStrictEqual({
         "set-cookie": [
@@ -113,9 +115,9 @@ describe("convertTo", () => {
     });
 
     describe("blacklisted headers", () => {
-      it("should remove all blacklisted or read-only headers from the response", () => {
-        const response = convertTo({
-          body: "",
+      it("should remove all blacklisted or read-only headers from the response", async () => {
+        const response = (await converter.convertTo({
+          body: Readable.toWeb(Readable.from(Buffer.from(""))),
           headers: {
             Connection: "keep-alive",
             expect: "100-continue",
@@ -157,7 +159,7 @@ describe("convertTo", () => {
           isBase64Encoded: false,
           statusCode: 200,
           type: "cf",
-        }) as CloudFrontRequestResult;
+        })) as CloudFrontRequestResult;
 
         expect(response?.headers).toStrictEqual({
           "x-powered-by": [
