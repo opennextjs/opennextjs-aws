@@ -1,5 +1,5 @@
 import cp from "node:child_process";
-import fs, { readFileSync } from "node:fs";
+import fs from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -47,9 +47,9 @@ export async function build(
   showWindowsWarning();
 
   // Load open-next.config.ts
-  const tempDir = initTempDir();
+  const tempConfigDir = fs.mkdtempSync("open-next");
   let configPath = compileOpenNextConfigNode(
-    tempDir,
+    tempConfigDir,
     openNextConfigPath,
     nodeExternals,
   );
@@ -64,10 +64,10 @@ export async function build(
   }
   validateConfig(config);
 
-  compileOpenNextConfigEdge(tempDir, config, openNextConfigPath);
+  compileOpenNextConfigEdge(tempConfigDir, config, openNextConfigPath);
 
   // Initialize options
-  const options = normalizeOptions(config);
+  const options = normalizeOptions(config, tempConfigDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
@@ -82,7 +82,7 @@ export async function build(
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  initOutputDir(tempDir, options);
+  initOutputDir(options);
 
   // Compile cache.ts
   compileCache(options);
@@ -111,14 +111,6 @@ function showWindowsWarning() {
   logger.warn(
     "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
   );
-}
-
-function initTempDir() {
-  const dir = path.join(process.cwd(), ".open-next");
-  const tempDir = path.join(dir, ".build");
-  fs.rmSync(dir, { recursive: true, force: true });
-  fs.mkdirSync(tempDir, { recursive: true });
-  return tempDir;
 }
 
 function checkRunningInsideNextjsApp(options: BuildOptions) {
@@ -175,30 +167,26 @@ function printOpenNextVersion(options: BuildOptions) {
   logger.info(`OpenNext v${options.openNextVersion}`);
 }
 
-function initOutputDir(srcTempDir: string, options: BuildOptions) {
+function initOutputDir(options: BuildOptions) {
   // We need to get the build relative to the cwd to find the compiled config
   // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
   // where the build is in the app directory, but the compiled config is in the root of the monorepo.
-  const openNextConfig = readFileSync(
-    path.join(srcTempDir, "open-next.config.mjs"),
-    "utf8",
-  );
-  let openNextConfigEdge: string | null = null;
-  if (fs.existsSync(path.join(srcTempDir, "open-next.config.edge.mjs"))) {
-    openNextConfigEdge = readFileSync(
-      path.join(srcTempDir, "open-next.config.edge.mjs"),
-      "utf8",
-    );
-  }
   fs.rmSync(options.outputDir, { recursive: true, force: true });
   const { buildDir } = options;
   fs.mkdirSync(buildDir, { recursive: true });
-  fs.writeFileSync(path.join(buildDir, "open-next.config.mjs"), openNextConfig);
-  if (openNextConfigEdge) {
-    fs.writeFileSync(
+
+  fs.copyFileSync(
+    path.join(options.tempConfigDir, "open-next.config.mjs"),
+    path.join(buildDir, "open-next.config.mjs"),
+  );
+
+  try {
+    fs.copyFileSync(
+      path.join(options.tempConfigDir, "open-next.config.edge.mjs"),
       path.join(buildDir, "open-next.config.edge.mjs"),
-      openNextConfigEdge,
     );
+  } catch {
+    // The edge config does not always exist.
   }
 }
 
@@ -692,7 +680,7 @@ async function createMiddleware(options: BuildOptions) {
 
   // Get middleware manifest
   const middlewareManifest = JSON.parse(
-    readFileSync(
+    fs.readFileSync(
       path.join(appBuildOutputPath, ".next/server/middleware-manifest.json"),
       "utf8",
     ),
