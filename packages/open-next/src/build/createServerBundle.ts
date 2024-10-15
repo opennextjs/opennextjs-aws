@@ -30,10 +30,8 @@ import {
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
-export async function createServerBundle(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+export async function createServerBundle(options: BuildOptions) {
+  const { config } = options;
   const foundRoutes = new Set<string>();
   // Get all functions to build
   const defaultFn = config.default;
@@ -44,7 +42,7 @@ export async function createServerBundle(
     defaultFn.runtime === "deno" ||
     functions.some(([, fn]) => fn.runtime === "deno")
   ) {
-    compileCache("esm");
+    compileCache(options, "esm");
   }
 
   const promises = functions.map(async ([name, fnOptions]) => {

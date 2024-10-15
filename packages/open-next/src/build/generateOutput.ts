@@ -7,11 +7,10 @@ import {
   DefaultOverrideOptions,
   FunctionOptions,
   LazyLoadedOverride,
-  OpenNextConfig,
   OverrideOptions,
 } from "types/open-next";
 
-import { getBuildId } from "./helper.js";
+import { type BuildOptions, getBuildId } from "./helper.js";
 
 type BaseFunction = {
   handler: string;
@@ -164,10 +163,8 @@ function prefixPattern(basePath: string) {
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function generateOutput(
-  outputPath: string,
-  config: OpenNextConfig,
-) {
+export async function generateOutput(options: BuildOptions) {
+  const { appBuildOutputPath, config } = options;
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
   const isExternalMiddleware = config.middleware?.external ?? false;
   if (isExternalMiddleware) {
@@ -197,7 +194,7 @@ export async function generateOutput(
   //Load required-server-files.json
   const requiredServerFiles = JSON.parse(
     fs.readFileSync(
-      path.join(outputPath, ".next", "required-server-files.json"),
+      path.join(appBuildOutputPath, ".next", "required-server-files.json"),
       "utf-8",
     ),
   ).config as NextConfig;
@@ -298,7 +295,9 @@ export async function generateOutput(
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
-        pattern: prefixer(pattern.replace(/BUILD_ID/, getBuildId(outputPath))),
+        pattern: prefixer(
+          pattern.replace(/BUILD_ID/, getBuildId(appBuildOutputPath)),
+        ),
         origin: value.placement === "global" ? undefined : key,
         edgeFunction:
           value.placement === "global"
@@ -323,7 +322,7 @@ export async function generateOutput(
   });
 
   //Compute behaviors for assets files
-  const assetPath = path.join(outputPath, ".open-next", "assets");
+  const assetPath = path.join(appBuildOutputPath, ".open-next", "assets");
   fs.readdirSync(assetPath).forEach((item) => {
     if (fs.statSync(path.join(assetPath, item)).isDirectory()) {
       behaviors.push({
@@ -341,7 +340,9 @@ export async function generateOutput(
   // Check if we produced a dynamodb provider output
   const isTagCacheDisabled =
     config.dangerous?.disableTagCache ||
-    !fs.existsSync(path.join(outputPath, ".open-next", "dynamodb-provider"));
+    !fs.existsSync(
+      path.join(appBuildOutputPath, ".open-next", "dynamodb-provider"),
+    );
 
   const output: OpenNextOutput = {
     edgeFunctions,
@@ -369,7 +370,7 @@ export async function generateOutput(
     },
   };
   fs.writeFileSync(
-    path.join(outputPath, ".open-next", "open-next.output.json"),
+    path.join(appBuildOutputPath, ".open-next", "open-next.output.json"),
     JSON.stringify(output),
   );
 }
