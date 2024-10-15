@@ -7,7 +7,6 @@ import {
   DefaultOverrideOptions,
   FunctionOptions,
   LazyLoadedOverride,
-  OpenNextConfig,
   OverrideOptions,
 } from "types/open-next";
 
@@ -164,11 +163,8 @@ function prefixPattern(basePath: string) {
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function generateOutput(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
-  const { appBuildOutputPath } = options;
+export async function generateOutput(options: BuildOptions) {
+  const { appBuildOutputPath, config } = options;
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
   const isExternalMiddleware = config.middleware?.external ?? false;
   if (isExternalMiddleware) {

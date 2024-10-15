@@ -77,27 +77,27 @@ export async function build(
 
   // Build Next.js app
   printHeader("Building Next.js app");
-  setStandaloneBuildMode(config, options);
-  buildNextjsApp(config, options);
+  setStandaloneBuildMode(options);
+  buildNextjsApp(options);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
   initOutputDir(tempDir, options);
 
   // Compile cache.ts
-  compileCache(config, options);
+  compileCache(options);
 
   // Compile middleware
-  await createMiddleware(config, options);
+  await createMiddleware(options);
 
   createStaticAssets(options);
-  await createCacheAssets(config, options);
+  await createCacheAssets(options);
 
-  await createServerBundle(config, options);
-  await createRevalidationBundle(config, options);
-  await createImageOptimizationBundle(config, options);
-  await createWarmerBundle(config, options);
-  await generateOutput(config, options);
+  await createServerBundle(options);
+  await createRevalidationBundle(options);
+  await createImageOptimizationBundle(options);
+  await createWarmerBundle(options);
+  await generateOutput(options);
   logger.info("OpenNext build complete.");
 }
 
@@ -134,15 +134,15 @@ function checkRunningInsideNextjsApp(options: BuildOptions) {
   }
 }
 
-function setStandaloneBuildMode(config: OpenNextConfig, options: BuildOptions) {
+function setStandaloneBuildMode(options: BuildOptions) {
   // Equivalent to setting `output: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
   // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = options.monorepoRoot;
 }
 
-function buildNextjsApp(config: OpenNextConfig, options: BuildOptions) {
-  const { packager } = options;
+function buildNextjsApp(options: BuildOptions) {
+  const { config, packager } = options;
   const command =
     config.buildCommand ??
     (["bun", "npm"].includes(packager)
@@ -205,13 +205,10 @@ function initOutputDir(srcTempDir: string, options: BuildOptions) {
   }
 }
 
-async function createWarmerBundle(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+async function createWarmerBundle(options: BuildOptions) {
   logger.info(`Bundling warmer function...`);
 
-  const { outputDir } = options;
+  const { config, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "warmer-function");
@@ -251,13 +248,10 @@ async function createWarmerBundle(
   );
 }
 
-async function createRevalidationBundle(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+async function createRevalidationBundle(options: BuildOptions) {
   logger.info(`Bundling revalidation function...`);
 
-  const { appBuildOutputPath, outputDir } = options;
+  const { appBuildOutputPath, config, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "revalidation-function");
@@ -293,13 +287,10 @@ async function createRevalidationBundle(
   );
 }
 
-async function createImageOptimizationBundle(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+async function createImageOptimizationBundle(options: BuildOptions) {
   logger.info(`Bundling image optimization function...`);
 
-  const { appPath, appBuildOutputPath, outputDir } = options;
+  const { appPath, appBuildOutputPath, config, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
@@ -454,10 +445,8 @@ function createStaticAssets(options: BuildOptions) {
   }
 }
 
-async function createCacheAssets(
-  config: OpenNextConfig,
-  options: BuildOptions,
-) {
+async function createCacheAssets(options: BuildOptions) {
+  const { config } = options;
   if (config.dangerous?.disableIncrementalCache) return;
 
   logger.info(`Bundling cache assets...`);
@@ -666,10 +655,10 @@ async function createCacheAssets(
 /***************************/
 
 export function compileCache(
-  config: OpenNextConfig,
   options: BuildOptions,
   format: "cjs" | "esm" = "cjs",
 ) {
+  const { config } = options;
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
 
@@ -699,10 +688,10 @@ export function compileCache(
   return outfile;
 }
 
-async function createMiddleware(config: OpenNextConfig, options: BuildOptions) {
+async function createMiddleware(options: BuildOptions) {
   console.info(`Bundling middleware function...`);
 
-  const { appBuildOutputPath, outputDir } = options;
+  const { appBuildOutputPath, config, outputDir } = options;
 
   // Get middleware manifest
   const middlewareManifest = JSON.parse(

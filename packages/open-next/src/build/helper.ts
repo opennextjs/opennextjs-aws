@@ -40,17 +40,18 @@ export function normalizeOptions(config: OpenNextConfig) {
   }
 
   return {
-    openNextVersion: getOpenNextVersion(),
-    nextVersion: getNextVersion(appPath),
+    appBuildOutputPath: buildOutputPath,
     appPackageJsonPath,
     appPath,
-    appBuildOutputPath: buildOutputPath,
     appPublicPath: path.join(appPath, "public"),
-    outputDir,
-    tempDir: path.join(outputDir, ".build"),
+    config,
     debug: Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
     monorepoRoot,
+    nextVersion: getNextVersion(appPath),
+    openNextVersion: getOpenNextVersion(),
+    outputDir,
     packager,
+    tempDir: path.join(outputDir, ".build"),
   };
 }
 
