@@ -35,8 +35,6 @@ import { OpenNextConfig } from "./types/open-next.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
-let options: BuildOptions;
-let config: OpenNextConfig;
 
 export type PublicFiles = {
   files: string[];
@@ -57,7 +55,7 @@ export async function build(
   );
   // On Windows, we need to use file:// protocol to load the config file using import()
   if (process.platform === "win32") configPath = `file://${configPath}`;
-  config = (await import(configPath)).default as OpenNextConfig;
+  const config = (await import(configPath)).default as OpenNextConfig;
   if (!config || !config.default) {
     logger.error(
       `config.default cannot be empty, it should be at least {}, see more info here: https://open-next.js.org/config#configuration-file`,
@@ -73,37 +71,37 @@ export async function build(
   );
 
   // Initialize options
-  options = normalizeOptions(config, monorepoRoot);
+  const options = normalizeOptions(config, monorepoRoot);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
-  checkRunningInsideNextjsApp();
-  printNextjsVersion();
-  printOpenNextVersion();
+  checkRunningInsideNextjsApp(options);
+  printNextjsVersion(options);
+  printOpenNextVersion(options);
 
   // Build Next.js app
   printHeader("Building Next.js app");
-  setStandaloneBuildMode(monorepoRoot);
-  buildNextjsApp(packager);
+  setStandaloneBuildMode(config, options);
+  buildNextjsApp(packager, config, options);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  initOutputDir(tempDir);
+  initOutputDir(tempDir, options);
 
   // Compile cache.ts
-  compileCache();
+  compileCache(config, options);
 
   // Compile middleware
-  await createMiddleware();
+  await createMiddleware(config, options);
 
-  createStaticAssets();
-  await createCacheAssets(monorepoRoot);
+  createStaticAssets(options);
+  await createCacheAssets(config, options);
 
   await createServerBundle(config, options);
-  await createRevalidationBundle(config);
-  await createImageOptimizationBundle(config);
-  await createWarmerBundle(config);
-  await generateOutput(options.appBuildOutputPath, config);
+  await createRevalidationBundle(config, options);
+  await createImageOptimizationBundle(config, options);
+  await createWarmerBundle(config, options);
+  await generateOutput(config, options);
   logger.info("OpenNext build complete.");
 }
 
@@ -127,7 +125,7 @@ function initTempDir() {
   return tempDir;
 }
 
-function checkRunningInsideNextjsApp() {
+function checkRunningInsideNextjsApp(options: BuildOptions) {
   const { appPath } = options;
   const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
@@ -165,15 +163,18 @@ function findMonorepoRoot(appPath: string) {
   return { root: appPath, packager: "npm" as const };
 }
 
-function setStandaloneBuildMode(monorepoRoot: string) {
-  // Equivalent to setting `target: "standalone"` in next.config.js
+function setStandaloneBuildMode(config: OpenNextConfig, options: BuildOptions) {
+  // Equivalent to setting `output: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
   // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
-  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = monorepoRoot;
+  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = options.monorepoRoot;
 }
 
-function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
-  const { appPackageJsonPath } = options;
+function buildNextjsApp(
+  packager: "npm" | "yarn" | "pnpm" | "bun",
+  config: OpenNextConfig,
+  options: BuildOptions,
+) {
   const command =
     config.buildCommand ??
     (["bun", "npm"].includes(packager)
@@ -181,7 +182,7 @@ function buildNextjsApp(packager: "npm" | "yarn" | "pnpm" | "bun") {
       : `${packager} build`);
   cp.execSync(command, {
     stdio: "inherit",
-    cwd: path.dirname(appPackageJsonPath),
+    cwd: path.dirname(options.appPackageJsonPath),
   });
 }
 
@@ -198,44 +199,48 @@ function printHeader(header: string) {
   );
 }
 
-function printNextjsVersion() {
-  const { nextVersion } = options;
-  logger.info(`Next.js version : ${nextVersion}`);
+function printNextjsVersion(options: BuildOptions) {
+  logger.info(`Next.js version : ${options.nextVersion}`);
 }
 
-function printOpenNextVersion() {
-  const { openNextVersion } = options;
-  logger.info(`OpenNext v${openNextVersion}`);
+function printOpenNextVersion(options: BuildOptions) {
+  logger.info(`OpenNext v${options.openNextVersion}`);
 }
 
-function initOutputDir(tempDir: string) {
+function initOutputDir(srcTempDir: string, options: BuildOptions) {
   // We need to get the build relative to the cwd to find the compiled config
   // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
   // where the build is in the app directory, but the compiled config is in the root of the monorepo.
-  const { outputDir, tempDir: lTempDir } = options;
   const openNextConfig = readFileSync(
-    path.join(tempDir, "open-next.config.mjs"),
+    path.join(srcTempDir, "open-next.config.mjs"),
     "utf8",
   );
   let openNextConfigEdge: string | null = null;
-  if (fs.existsSync(path.join(tempDir, "open-next.config.edge.mjs"))) {
+  if (fs.existsSync(path.join(srcTempDir, "open-next.config.edge.mjs"))) {
     openNextConfigEdge = readFileSync(
-      path.join(tempDir, "open-next.config.edge.mjs"),
+      path.join(srcTempDir, "open-next.config.edge.mjs"),
       "utf8",
     );
   }
-  fs.rmSync(outputDir, { recursive: true, force: true });
-  fs.mkdirSync(lTempDir, { recursive: true });
-  fs.writeFileSync(path.join(lTempDir, "open-next.config.mjs"), openNextConfig);
+  fs.rmSync(options.outputDir, { recursive: true, force: true });
+  const destTempDir = options.tempDir;
+  fs.mkdirSync(destTempDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(destTempDir, "open-next.config.mjs"),
+    openNextConfig,
+  );
   if (openNextConfigEdge) {
     fs.writeFileSync(
-      path.join(lTempDir, "open-next.config.edge.mjs"),
+      path.join(destTempDir, "open-next.config.edge.mjs"),
       openNextConfigEdge,
     );
   }
 }
 
-async function createWarmerBundle(config: OpenNextConfig) {
+async function createWarmerBundle(
+  config: OpenNextConfig,
+  options: BuildOptions,
+) {
   logger.info(`Bundling warmer function...`);
 
   const { outputDir } = options;
@@ -278,7 +283,10 @@ async function createWarmerBundle(config: OpenNextConfig) {
   );
 }
 
-async function createRevalidationBundle(config: OpenNextConfig) {
+async function createRevalidationBundle(
+  config: OpenNextConfig,
+  options: BuildOptions,
+) {
   logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, outputDir } = options;
@@ -317,7 +325,10 @@ async function createRevalidationBundle(config: OpenNextConfig) {
   );
 }
 
-async function createImageOptimizationBundle(config: OpenNextConfig) {
+async function createImageOptimizationBundle(
+  config: OpenNextConfig,
+  options: BuildOptions,
+) {
   logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, outputDir } = options;
@@ -436,7 +447,7 @@ async function createImageOptimizationBundle(config: OpenNextConfig) {
   }
 }
 
-function createStaticAssets() {
+function createStaticAssets(options: BuildOptions) {
   logger.info(`Bundling static assets...`);
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
@@ -475,13 +486,16 @@ function createStaticAssets() {
   }
 }
 
-async function createCacheAssets(monorepoRoot: string) {
+async function createCacheAssets(
+  config: OpenNextConfig,
+  options: BuildOptions,
+) {
   if (config.dangerous?.disableIncrementalCache) return;
 
   logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const packagePath = path.relative(options.monorepoRoot, appBuildOutputPath);
   const buildId = getBuildId(appBuildOutputPath);
 
   // Copy pages to cache folder
@@ -683,7 +697,11 @@ async function createCacheAssets(monorepoRoot: string) {
 /* Server Helper Functions */
 /***************************/
 
-export function compileCache(format: "cjs" | "esm" = "cjs") {
+export function compileCache(
+  config: OpenNextConfig,
+  options: BuildOptions,
+  format: "cjs" | "esm" = "cjs",
+) {
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outfile = path.join(options.outputDir, ".build", `cache.${ext}`);
 
@@ -713,7 +731,7 @@ export function compileCache(format: "cjs" | "esm" = "cjs") {
   return outfile;
 }
 
-async function createMiddleware() {
+async function createMiddleware(config: OpenNextConfig, options: BuildOptions) {
   console.info(`Bundling middleware function...`);
 
   const { appBuildOutputPath, outputDir } = options;

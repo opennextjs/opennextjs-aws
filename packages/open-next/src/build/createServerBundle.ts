@@ -44,7 +44,7 @@ export async function createServerBundle(
     defaultFn.runtime === "deno" ||
     functions.some(([, fn]) => fn.runtime === "deno")
   ) {
-    compileCache("esm");
+    compileCache(config, options, "esm");
   }
 
   const promises = functions.map(async ([name, fnOptions]) => {
