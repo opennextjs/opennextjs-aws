@@ -251,7 +251,7 @@ export async function proxyRequest(
           res.end();
           reject(e);
         });
-        _res.on("end", () => {
+        res.on("finish", () => {
           resolve();
         });
       },
