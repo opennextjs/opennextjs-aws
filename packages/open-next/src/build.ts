@@ -47,7 +47,9 @@ export async function build(
   showWindowsWarning();
 
   // Load open-next.config.ts
-  const tempConfigDir = fs.mkdtempSync("open-next");
+  const tempConfigDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), ".open-next-temp"),
+  );
   let configPath = compileOpenNextConfigNode(
     tempConfigDir,
     openNextConfigPath,
@@ -174,20 +176,8 @@ function initOutputDir(options: BuildOptions) {
   fs.rmSync(options.outputDir, { recursive: true, force: true });
   const { buildDir } = options;
   fs.mkdirSync(buildDir, { recursive: true });
-
-  fs.copyFileSync(
-    path.join(options.tempConfigDir, "open-next.config.mjs"),
-    path.join(buildDir, "open-next.config.mjs"),
-  );
-
-  try {
-    fs.copyFileSync(
-      path.join(options.tempConfigDir, "open-next.config.edge.mjs"),
-      path.join(buildDir, "open-next.config.edge.mjs"),
-    );
-  } catch {
-    // The edge config does not always exist.
-  }
+  fs.renameSync(options.tempConfigDir, buildDir);
+  process.exit(0);
 }
 
 async function createWarmerBundle(options: BuildOptions) {
