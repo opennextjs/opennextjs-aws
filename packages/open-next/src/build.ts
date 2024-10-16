@@ -7,11 +7,16 @@ import url from "node:url";
 import { MiddlewareManifest } from "types/next-types.js";
 
 import { isBinaryContentType } from "./adapters/binary.js";
+import {
+  buildNextjsApp,
+  setStandaloneBuildMode,
+} from "./build/buildNextApp.js";
 import { compileOpenNextConfig } from "./build/compileConfig.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
+import { printHeader } from "./build/utils.js";
 import logger from "./logger.js";
 import { openNextReplacementPlugin } from "./plugins/replacement.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
@@ -53,7 +58,7 @@ export async function build(
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  initOutputDir(options);
+  buildHelper.initOutputDir(options);
 
   // Compile cache.ts
   compileCache(options);
@@ -70,49 +75,6 @@ export async function build(
   await createWarmerBundle(options);
   await generateOutput(options);
   logger.info("OpenNext build complete.");
-}
-
-function setStandaloneBuildMode(options: buildHelper.BuildOptions) {
-  // Equivalent to setting `output: "standalone"` in next.config.js
-  process.env.NEXT_PRIVATE_STANDALONE = "true";
-  // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
-  process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = options.monorepoRoot;
-}
-
-function buildNextjsApp(options: buildHelper.BuildOptions) {
-  const { config, packager } = options;
-  const command =
-    config.buildCommand ??
-    (["bun", "npm"].includes(packager)
-      ? `${packager} run build`
-      : `${packager} build`);
-  cp.execSync(command, {
-    stdio: "inherit",
-    cwd: path.dirname(options.appPackageJsonPath),
-  });
-}
-
-function printHeader(header: string) {
-  header = `OpenNext — ${header}`;
-  logger.info(
-    [
-      "",
-      "┌" + "─".repeat(header.length + 2) + "┐",
-      `│ ${header} │`,
-      "└" + "─".repeat(header.length + 2) + "┘",
-      "",
-    ].join("\n"),
-  );
-}
-
-function initOutputDir(options: buildHelper.BuildOptions) {
-  // We need to get the build relative to the cwd to find the compiled config
-  // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
-  // where the build is in the app directory, but the compiled config is in the root of the monorepo.
-  fs.rmSync(options.outputDir, { recursive: true, force: true });
-  const { buildDir } = options;
-  fs.mkdirSync(buildDir, { recursive: true });
-  fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
 }
 
 async function createWarmerBundle(options: buildHelper.BuildOptions) {

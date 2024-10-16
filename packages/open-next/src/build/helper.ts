@@ -345,3 +345,18 @@ export function printNextjsVersion(options: BuildOptions) {
 export function printOpenNextVersion(options: BuildOptions) {
   logger.info(`OpenNext v${options.openNextVersion}`);
 }
+
+/**
+ * Populates the build directory with the compiled configuration files.
+ *
+ * We need to get the build relative to the cwd to find the compiled config.
+ * This is needed for the case where the app is a single-version monorepo
+ * and the package.json is in the root of the monorepo where the build is in
+ * the app directory, but the compiled config is in the root of the monorepo.
+ */
+export function initOutputDir(options: BuildOptions) {
+  fs.rmSync(options.outputDir, { recursive: true, force: true });
+  const { buildDir } = options;
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
+}
