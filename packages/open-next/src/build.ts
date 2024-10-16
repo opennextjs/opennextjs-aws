@@ -1,26 +1,20 @@
 import cp from "node:child_process";
 import fs from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
 import { MiddlewareManifest } from "types/next-types.js";
 
 import { isBinaryContentType } from "./adapters/binary.js";
-import {
-  compileOpenNextConfigEdge,
-  compileOpenNextConfigNode,
-} from "./build/compileConfig.js";
+import { compileOpenNextConfig } from "./build/compileConfig.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
-import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
 import { openNextReplacementPlugin } from "./plugins/replacement.js";
 import { openNextResolvePlugin } from "./plugins/resolve.js";
-import { OpenNextConfig } from "./types/open-next.js";
 
 const require = topLevelCreateRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
@@ -35,28 +29,16 @@ export async function build(
 ) {
   buildHelper.showWarningOnWindows();
 
-  // Load open-next.config.ts
-  const tempBuildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
-  let configPath = compileOpenNextConfigNode(
-    tempBuildDir,
+  const baseDir = process.cwd();
+
+  const { config, buildDir } = await compileOpenNextConfig(
+    baseDir,
     openNextConfigPath,
     nodeExternals,
   );
-  // On Windows, we need to use file:// protocol to load the config file using import()
-  if (process.platform === "win32") configPath = `file://${configPath}`;
-  const config = (await import(configPath)).default as OpenNextConfig;
-  if (!config || !config.default) {
-    logger.error(
-      `config.default cannot be empty, it should be at least {}, see more info here: https://open-next.js.org/config#configuration-file`,
-    );
-    process.exit(1);
-  }
-  validateConfig(config);
-
-  compileOpenNextConfigEdge(tempBuildDir, config, openNextConfigPath);
 
   // Initialize options
-  const options = buildHelper.normalizeOptions(config, tempBuildDir);
+  const options = buildHelper.normalizeOptions(config, buildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
