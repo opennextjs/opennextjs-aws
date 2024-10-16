@@ -11,6 +11,7 @@ import {
   buildNextjsApp,
   setStandaloneBuildMode,
 } from "./build/buildNextApp.js";
+import { compileCache } from "./build/compileCache.js";
 import { compileOpenNextConfig } from "./build/compileConfig.js";
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
@@ -43,7 +44,7 @@ export async function build(
   );
 
   // Initialize options
-  const options = buildHelper.normalizeOptions(config, buildDir);
+  const options = buildHelper.normalizeOptions(config, __dirname, buildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
@@ -531,41 +532,6 @@ async function createCacheAssets(options: buildHelper.BuildOptions) {
 /***************************/
 /* Server Helper Functions */
 /***************************/
-
-export function compileCache(
-  options: buildHelper.BuildOptions,
-  format: "cjs" | "esm" = "cjs",
-) {
-  const { config } = options;
-  const ext = format === "cjs" ? "cjs" : "mjs";
-  const outfile = path.join(options.buildDir, `cache.${ext}`);
-
-  const isAfter15 =
-    buildHelper.compareSemver(options.nextVersion, "15.0.0") >= 0;
-
-  buildHelper.esbuildSync(
-    {
-      external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
-      entryPoints: [path.join(__dirname, "adapters", "cache.js")],
-      outfile,
-      target: ["node18"],
-      format,
-      banner: {
-        js: [
-          `globalThis.disableIncrementalCache = ${
-            config.dangerous?.disableIncrementalCache ?? false
-          };`,
-          `globalThis.disableDynamoDBCache = ${
-            config.dangerous?.disableTagCache ?? false
-          };`,
-          `globalThis.isNextAfter15 = ${isAfter15};`,
-        ].join(""),
-      },
-    },
-    options,
-  );
-  return outfile;
-}
 
 async function createMiddleware(options: buildHelper.BuildOptions) {
   console.info(`Bundling middleware function...`);

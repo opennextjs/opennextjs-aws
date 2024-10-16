@@ -10,12 +10,12 @@ import {
 } from "types/open-next";
 import url from "url";
 
-import { compileCache } from "../build.js";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { bundleNextServer } from "./bundleNextServer.js";
+import { compileCache } from "./compileCache.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import type { BuildOptions } from "./helper.js";

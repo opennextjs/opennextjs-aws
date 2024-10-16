@@ -18,7 +18,11 @@ const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
-export function normalizeOptions(config: OpenNextConfig, tempBuildDir: string) {
+export function normalizeOptions(
+  config: OpenNextConfig,
+  openNextSourceDir: string,
+  tempBuildDir: string,
+) {
   const appPath = path.join(process.cwd(), config.appPath || ".");
   const buildOutputPath = path.join(
     process.cwd(),
@@ -51,6 +55,7 @@ export function normalizeOptions(config: OpenNextConfig, tempBuildDir: string) {
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
+    openNextSourceDir,
     outputDir,
     packager,
     tempBuildDir,
