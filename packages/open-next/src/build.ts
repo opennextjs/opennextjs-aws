@@ -47,9 +47,7 @@ export async function build(
   showWindowsWarning();
 
   // Load open-next.config.ts
-  const tempBuildDir = fs.mkdtempSync(
-    path.join(os.tmpdir(), ".open-next-temp"),
-  );
+  const tempBuildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
   let configPath = compileOpenNextConfigNode(
     tempBuildDir,
     openNextConfigPath,
@@ -176,7 +174,7 @@ function initOutputDir(options: BuildOptions) {
   fs.rmSync(options.outputDir, { recursive: true, force: true });
   const { buildDir } = options;
   fs.mkdirSync(buildDir, { recursive: true });
-  fs.renameSync(options.tempBuildDir, buildDir);
+  fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
 }
 
 async function createWarmerBundle(options: BuildOptions) {
