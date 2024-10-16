@@ -1,3 +1,5 @@
+import url from "node:url";
+
 import {
   buildNextjsApp,
   setStandaloneBuildMode,
@@ -12,7 +14,7 @@ import { createServerBundle } from "./build/createServerBundle.js";
 import { createWarmerBundle } from "./build/createWarmerBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
-import { printHeader } from "./build/utils.js";
+import { printHeader, showWarningOnWindows } from "./build/utils.js";
 import logger from "./logger.js";
 
 export type PublicFiles = {
@@ -23,9 +25,10 @@ export async function build(
   openNextConfigPath?: string,
   nodeExternals?: string,
 ) {
-  buildHelper.showWarningOnWindows();
+  showWarningOnWindows();
 
   const baseDir = process.cwd();
+  const distDir = url.fileURLToPath(new URL(".", import.meta.url));
 
   const { config, buildDir } = await compileOpenNextConfig(
     baseDir,
@@ -34,11 +37,7 @@ export async function build(
   );
 
   // Initialize options
-  const options = buildHelper.normalizeOptions(
-    config,
-    import.meta.url,
-    buildDir,
-  );
+  const options = buildHelper.normalizeOptions(config, distDir, buildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation

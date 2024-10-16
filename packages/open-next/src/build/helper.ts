@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
-import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
@@ -20,7 +19,7 @@ export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
 export function normalizeOptions(
   config: OpenNextConfig,
-  buildScriptPath: string,
+  distDir: string,
   tempBuildDir: string,
 ) {
   const appPath = path.join(process.cwd(), config.appPath || ".");
@@ -55,7 +54,7 @@ export function normalizeOptions(
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
-    openNextDistDir: url.fileURLToPath(new URL(".", buildScriptPath)),
+    openNextDistDir: distDir,
     outputDir,
     packager,
     tempBuildDir,
@@ -310,21 +309,6 @@ export function copyEnvFile(
   if (fs.existsSync(envProdPath)) {
     fs.copyFileSync(envProdPath, path.join(baseOutputPath, ".env.production"));
   }
-}
-
-/**
- * Displays a warning on windows platform.
- */
-export function showWarningOnWindows() {
-  if (os.platform() !== "win32") return;
-
-  logger.warn("OpenNext is not fully compatible with Windows.");
-  logger.warn(
-    "For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).",
-  );
-  logger.warn(
-    "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
-  );
 }
 
 /**
