@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { createRequire as topLevelCreateRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
@@ -304,4 +305,16 @@ export function copyEnvFile(
   if (fs.existsSync(envProdPath)) {
     fs.copyFileSync(envProdPath, path.join(baseOutputPath, ".env.production"));
   }
+}
+
+export function showWarningOnWindows() {
+  if (os.platform() !== "win32") return;
+
+  logger.warn("OpenNext is not fully compatible with Windows.");
+  logger.warn(
+    "For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).",
+  );
+  logger.warn(
+    "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
+  );
 }

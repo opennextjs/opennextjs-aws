@@ -15,18 +15,7 @@ import {
 import { createServerBundle } from "./build/createServerBundle.js";
 import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
-import {
-  BuildOptions,
-  compareSemver,
-  copyOpenNextConfig,
-  esbuildAsync,
-  esbuildSync,
-  getBuildId,
-  getHtmlPages,
-  normalizeOptions,
-  removeFiles,
-  traverseFiles,
-} from "./build/helper.js";
+import * as buildHelper from "./build/helper.js";
 import { validateConfig } from "./build/validateConfig.js";
 import logger from "./logger.js";
 import { openNextReplacementPlugin } from "./plugins/replacement.js";
@@ -44,7 +33,7 @@ export async function build(
   openNextConfigPath?: string,
   nodeExternals?: string,
 ) {
-  showWindowsWarning();
+  buildHelper.showWarningOnWindows();
 
   // Load open-next.config.ts
   const tempBuildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
@@ -67,7 +56,7 @@ export async function build(
   compileOpenNextConfigEdge(tempBuildDir, config, openNextConfigPath);
 
   // Initialize options
-  const options = normalizeOptions(config, tempBuildDir);
+  const options = buildHelper.normalizeOptions(config, tempBuildDir);
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
@@ -101,19 +90,7 @@ export async function build(
   logger.info("OpenNext build complete.");
 }
 
-function showWindowsWarning() {
-  if (os.platform() !== "win32") return;
-
-  logger.warn("OpenNext is not fully compatible with Windows.");
-  logger.warn(
-    "For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).",
-  );
-  logger.warn(
-    "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
-  );
-}
-
-function checkRunningInsideNextjsApp(options: BuildOptions) {
+function checkRunningInsideNextjsApp(options: buildHelper.BuildOptions) {
   const { appPath } = options;
   const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
@@ -126,14 +103,14 @@ function checkRunningInsideNextjsApp(options: BuildOptions) {
   }
 }
 
-function setStandaloneBuildMode(options: BuildOptions) {
+function setStandaloneBuildMode(options: buildHelper.BuildOptions) {
   // Equivalent to setting `output: "standalone"` in next.config.js
   process.env.NEXT_PRIVATE_STANDALONE = "true";
   // Equivalent to setting `experimental.outputFileTracingRoot` in next.config.js
   process.env.NEXT_PRIVATE_OUTPUT_TRACE_ROOT = options.monorepoRoot;
 }
 
-function buildNextjsApp(options: BuildOptions) {
+function buildNextjsApp(options: buildHelper.BuildOptions) {
   const { config, packager } = options;
   const command =
     config.buildCommand ??
@@ -159,15 +136,15 @@ function printHeader(header: string) {
   );
 }
 
-function printNextjsVersion(options: BuildOptions) {
+function printNextjsVersion(options: buildHelper.BuildOptions) {
   logger.info(`Next.js version : ${options.nextVersion}`);
 }
 
-function printOpenNextVersion(options: BuildOptions) {
+function printOpenNextVersion(options: buildHelper.BuildOptions) {
   logger.info(`OpenNext v${options.openNextVersion}`);
 }
 
-function initOutputDir(options: BuildOptions) {
+function initOutputDir(options: buildHelper.BuildOptions) {
   // We need to get the build relative to the cwd to find the compiled config
   // This is needed for the case where the app is a single-version monorepo and the package.json is in the root of the monorepo
   // where the build is in the app directory, but the compiled config is in the root of the monorepo.
@@ -177,7 +154,7 @@ function initOutputDir(options: BuildOptions) {
   fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
 }
 
-async function createWarmerBundle(options: BuildOptions) {
+async function createWarmerBundle(options: buildHelper.BuildOptions) {
   logger.info(`Bundling warmer function...`);
 
   const { config, outputDir } = options;
@@ -187,13 +164,13 @@ async function createWarmerBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.buildDir, outputPath);
+  buildHelper.copyOpenNextConfig(options.buildDir, outputPath);
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adatper relys on the
   //       "serverless-http" package which is not a dependency in user's
   //       Next.js app.
-  await esbuildAsync(
+  await buildHelper.esbuildAsync(
     {
       entryPoints: [path.join(__dirname, "adapters", "warmer-function.js")],
       external: ["next"],
@@ -220,7 +197,7 @@ async function createWarmerBundle(options: BuildOptions) {
   );
 }
 
-async function createRevalidationBundle(options: BuildOptions) {
+async function createRevalidationBundle(options: buildHelper.BuildOptions) {
   logger.info(`Bundling revalidation function...`);
 
   const { appBuildOutputPath, config, outputDir } = options;
@@ -230,10 +207,10 @@ async function createRevalidationBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   //Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.buildDir, outputPath);
+  buildHelper.copyOpenNextConfig(options.buildDir, outputPath);
 
   // Build Lambda code
-  await esbuildAsync(
+  await buildHelper.esbuildAsync(
     {
       external: ["next", "styled-jsx", "react"],
       entryPoints: [path.join(__dirname, "adapters", "revalidate.js")],
@@ -259,7 +236,9 @@ async function createRevalidationBundle(options: BuildOptions) {
   );
 }
 
-async function createImageOptimizationBundle(options: BuildOptions) {
+async function createImageOptimizationBundle(
+  options: buildHelper.BuildOptions,
+) {
   logger.info(`Bundling image optimization function...`);
 
   const { appPath, appBuildOutputPath, config, outputDir } = options;
@@ -269,7 +248,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
   fs.mkdirSync(outputPath, { recursive: true });
 
   // Copy open-next.config.mjs into the bundle
-  copyOpenNextConfig(options.buildDir, outputPath);
+  buildHelper.copyOpenNextConfig(options.buildDir, outputPath);
 
   const plugins = [
     openNextResolvePlugin({
@@ -282,7 +261,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
     }),
   ];
 
-  if (compareSemver(options.nextVersion, "14.1.1") >= 0) {
+  if (buildHelper.compareSemver(options.nextVersion, "14.1.1") >= 0) {
     plugins.push(
       openNextReplacementPlugin({
         name: "opennext-14.1.1-image-optimization",
@@ -301,7 +280,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
   // note: bundle in OpenNext package b/c the adapter relies on the
   //       "@aws-sdk/client-s3" package which is not a dependency in user's
   //       Next.js app.
-  await esbuildAsync(
+  await buildHelper.esbuildAsync(
     {
       entryPoints: [
         path.join(__dirname, "adapters", "image-optimization-adapter.js"),
@@ -318,7 +297,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
   //       "next" package. And the "next" package from user's app should
   //       be used. We also set @opentelemetry/api as external because it seems to be
   //       required by Next 15 even though it's not used.
-  esbuildSync(
+  buildHelper.esbuildSync(
     {
       entryPoints: [path.join(outputPath, "index.mjs")],
       external: ["sharp", "@opentelemetry/api"],
@@ -378,7 +357,7 @@ async function createImageOptimizationBundle(options: BuildOptions) {
   }
 }
 
-function createStaticAssets(options: BuildOptions) {
+function createStaticAssets(options: buildHelper.BuildOptions) {
   logger.info(`Bundling static assets...`);
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
@@ -417,7 +396,7 @@ function createStaticAssets(options: BuildOptions) {
   }
 }
 
-async function createCacheAssets(options: BuildOptions) {
+async function createCacheAssets(options: buildHelper.BuildOptions) {
   const { config } = options;
   if (config.dangerous?.disableIncrementalCache) return;
 
@@ -425,7 +404,7 @@ async function createCacheAssets(options: BuildOptions) {
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = path.relative(options.monorepoRoot, appBuildOutputPath);
-  const buildId = getBuildId(appBuildOutputPath);
+  const buildId = buildHelper.getBuildId(appBuildOutputPath);
 
   // Copy pages to cache folder
   const dotNextPath = path.join(
@@ -440,8 +419,8 @@ async function createCacheAssets(options: BuildOptions) {
     .forEach((dir) => fs.cpSync(dir, outputPath, { recursive: true }));
 
   // Remove non-cache files
-  const htmlPages = getHtmlPages(dotNextPath);
-  removeFiles(
+  const htmlPages = buildHelper.getHtmlPages(dotNextPath);
+  buildHelper.removeFiles(
     outputPath,
     (file) =>
       file.endsWith(".js") ||
@@ -461,7 +440,7 @@ async function createCacheAssets(options: BuildOptions) {
     }
   > = {};
 
-  traverseFiles(
+  buildHelper.traverseFiles(
     outputPath,
     () => true,
     (filepath) => {
@@ -529,7 +508,7 @@ async function createCacheAssets(options: BuildOptions) {
 
     // Compute dynamodb cache data
     // Traverse files inside cache to find all meta files and cache tags associated with them
-    traverseFiles(
+    buildHelper.traverseFiles(
       outputPath,
       (file) => file.endsWith(".meta"),
       (filePath) => {
@@ -566,7 +545,7 @@ async function createCacheAssets(options: BuildOptions) {
       fs.mkdirSync(fetchOutputPath, { recursive: true });
       fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
 
-      traverseFiles(
+      buildHelper.traverseFiles(
         fetchCachePath,
         () => true,
         (filepath) => {
@@ -591,7 +570,7 @@ async function createCacheAssets(options: BuildOptions) {
     if (metaFiles.length > 0) {
       const providerPath = path.join(outputDir, "dynamodb-provider");
 
-      await esbuildAsync(
+      await buildHelper.esbuildAsync(
         {
           external: ["@aws-sdk/client-dynamodb"],
           entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
@@ -612,7 +591,7 @@ async function createCacheAssets(options: BuildOptions) {
       );
 
       //Copy open-next.config.mjs into the bundle
-      copyOpenNextConfig(options.buildDir, providerPath);
+      buildHelper.copyOpenNextConfig(options.buildDir, providerPath);
 
       // TODO: check if metafiles doesn't contain duplicates
       fs.writeFileSync(
@@ -623,7 +602,7 @@ async function createCacheAssets(options: BuildOptions) {
   }
 
   // We need to remove files later because we need the metafiles for dynamodb tags cache
-  removeFiles(outputPath, (file) => !file.endsWith(".cache"));
+  buildHelper.removeFiles(outputPath, (file) => !file.endsWith(".cache"));
 }
 
 /***************************/
@@ -631,16 +610,17 @@ async function createCacheAssets(options: BuildOptions) {
 /***************************/
 
 export function compileCache(
-  options: BuildOptions,
+  options: buildHelper.BuildOptions,
   format: "cjs" | "esm" = "cjs",
 ) {
   const { config } = options;
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outfile = path.join(options.buildDir, `cache.${ext}`);
 
-  const isAfter15 = compareSemver(options.nextVersion, "15.0.0") >= 0;
+  const isAfter15 =
+    buildHelper.compareSemver(options.nextVersion, "15.0.0") >= 0;
 
-  esbuildSync(
+  buildHelper.esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
       entryPoints: [path.join(__dirname, "adapters", "cache.js")],
@@ -664,7 +644,7 @@ export function compileCache(
   return outfile;
 }
 
-async function createMiddleware(options: BuildOptions) {
+async function createMiddleware(options: buildHelper.BuildOptions) {
   console.info(`Bundling middleware function...`);
 
   const { appBuildOutputPath, config, outputDir } = options;
@@ -696,7 +676,7 @@ async function createMiddleware(options: BuildOptions) {
     fs.mkdirSync(outputPath, { recursive: true });
 
     // Copy open-next.config.mjs
-    copyOpenNextConfig(
+    buildHelper.copyOpenNextConfig(
       options.buildDir,
       outputPath,
       config.middleware.override?.wrapper === "cloudflare",
