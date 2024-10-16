@@ -7,9 +7,19 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    setupFiles: "./setup.ts",
+    setupFiles: "./packages/tests-unit/setup.ts",
     coverage: {
       all: true,
+      include: ["packages/**"],
+      exclude: [
+        "packages/tests-*/**",
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/coverage/**",
+      ],
     },
+    root: "../../",
+    include: ["packages/tests-unit/**/*.{test,spec}.?(c|m)ts"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/coverage/**"],
   },
 });
