@@ -7,7 +7,7 @@ import { OpenNextConfig } from "types/open-next.js";
 import logger from "../logger.js";
 
 export function compileOpenNextConfigNode(
-  tempDir: string,
+  outputDir: string,
   openNextConfigPath?: string,
   nodeExternals?: string,
 ) {
@@ -15,20 +15,13 @@ export function compileOpenNextConfigNode(
     process.cwd(),
     openNextConfigPath ?? "open-next.config.ts",
   );
-  const outputPath = path.join(tempDir, "open-next.config.mjs");
+  const outputPath = path.join(outputDir, "open-next.config.mjs");
 
   //Check if open-next.config.ts exists
   if (!fs.existsSync(sourcePath)) {
     //Create a simple open-next.config.mjs file
     logger.debug("Cannot find open-next.config.ts. Using default config.");
-    fs.writeFileSync(
-      outputPath,
-      [
-        "var config = { default: { } };",
-        "var open_next_config_default = config;",
-        "export { open_next_config_default as default };",
-      ].join("\n"),
-    );
+    fs.writeFileSync(outputPath, "export default { default: { } };");
   } else {
     buildSync({
       entryPoints: [sourcePath],

@@ -144,7 +144,7 @@ async function generateBundle(
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
   fs.copyFileSync(
-    path.join(outputDir, ".build", `cache.${ext}`),
+    path.join(options.buildDir, `cache.${ext}`),
     path.join(outputPath, packagePath, "cache.cjs"),
   );
 
@@ -158,24 +158,21 @@ async function generateBundle(
     await bundleNextServer(path.join(outputPath, packagePath), appPath);
   }
 
-  // // Copy middleware
+  // Copy middleware
   if (
     !config.middleware?.external &&
-    existsSync(path.join(outputDir, ".build", "middleware.mjs"))
+    existsSync(path.join(options.buildDir, "middleware.mjs"))
   ) {
     fs.copyFileSync(
-      path.join(outputDir, ".build", "middleware.mjs"),
+      path.join(options.buildDir, "middleware.mjs"),
       path.join(outputPath, packagePath, "middleware.mjs"),
     );
   }
 
   // Copy open-next.config.mjs
-  copyOpenNextConfig(
-    path.join(outputDir, ".build"),
-    path.join(outputPath, packagePath),
-  );
+  copyOpenNextConfig(options.buildDir, path.join(outputPath, packagePath));
 
-  //Copy env files
+  // Copy env files
   copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
