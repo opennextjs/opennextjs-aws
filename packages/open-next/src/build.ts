@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import {
   buildNextjsApp,
   setStandaloneBuildMode,
@@ -12,11 +9,11 @@ import { createImageOptimizationBundle } from "./build/createImageOptimizationBu
 import { createMiddleware } from "./build/createMiddleware.js";
 import { createRevalidationBundle } from "./build/createRevalidationBundle.js";
 import { createServerBundle } from "./build/createServerBundle.js";
+import { createWarmerBundle } from "./build/createWarmerBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
 import { printHeader } from "./build/utils.js";
 import logger from "./logger.js";
-import { openNextResolvePlugin } from "./plugins/resolve.js";
 
 export type PublicFiles = {
   files: string[];
@@ -73,49 +70,4 @@ export async function build(
   await createWarmerBundle(options);
   await generateOutput(options);
   logger.info("OpenNext build complete.");
-}
-
-async function createWarmerBundle(options: buildHelper.BuildOptions) {
-  logger.info(`Bundling warmer function...`);
-
-  const { config, outputDir } = options;
-
-  // Create output folder
-  const outputPath = path.join(outputDir, "warmer-function");
-  fs.mkdirSync(outputPath, { recursive: true });
-
-  // Copy open-next.config.mjs into the bundle
-  buildHelper.copyOpenNextConfig(options.buildDir, outputPath);
-
-  // Build Lambda code
-  // note: bundle in OpenNext package b/c the adatper relys on the
-  //       "serverless-http" package which is not a dependency in user's
-  //       Next.js app.
-  await buildHelper.esbuildAsync(
-    {
-      entryPoints: [
-        path.join(options.openNextDistDir, "adapters", "warmer-function.js"),
-      ],
-      external: ["next"],
-      outfile: path.join(outputPath, "index.mjs"),
-      plugins: [
-        openNextResolvePlugin({
-          overrides: {
-            converter: config.warmer?.override?.converter ?? "dummy",
-            wrapper: config.warmer?.override?.wrapper,
-          },
-          fnName: "warmer",
-        }),
-      ],
-      banner: {
-        js: [
-          "import { createRequire as topLevelCreateRequire } from 'module';",
-          "const require = topLevelCreateRequire(import.meta.url);",
-          "import bannerUrl from 'url';",
-          "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-        ].join(""),
-      },
-    },
-    options,
-  );
 }
