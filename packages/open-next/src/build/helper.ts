@@ -55,7 +55,6 @@ export function normalizeOptions(
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
-    resolve: createRequire(buildScriptPath).resolve,
     openNextDistDir: url.fileURLToPath(new URL(".", buildScriptPath)),
     outputDir,
     packager,

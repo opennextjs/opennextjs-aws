@@ -222,7 +222,13 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
       await buildHelper.esbuildAsync(
         {
           external: ["@aws-sdk/client-dynamodb"],
-          entryPoints: [path.join(__dirname, "adapters", "dynamo-provider.js")],
+          entryPoints: [
+            path.join(
+              options.openNextDistDir,
+              "adapters",
+              "dynamo-provider.js",
+            ),
+          ],
           outfile: path.join(providerPath, "index.mjs"),
           target: ["node18"],
           plugins: [

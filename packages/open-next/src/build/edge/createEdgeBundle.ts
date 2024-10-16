@@ -1,5 +1,4 @@
 import { mkdirSync } from "node:fs";
-import url from "node:url";
 
 import { build } from "esbuild";
 import fs from "fs";
@@ -18,8 +17,6 @@ import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
-
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 interface BuildEdgeBundleOptions {
   appBuildOutputPath: string;
@@ -99,8 +96,8 @@ export async function buildEdgeBundle({
           middlewareInfo,
           nextDir: path.join(appBuildOutputPath, ".next"),
           edgeFunctionHandlerPath: path.join(
-            __dirname,
-            "../../core",
+            options.openNextDistDir,
+            "core",
             "edgeFunctionHandler.js",
           ),
           isInCloudfare,
@@ -222,7 +219,11 @@ export async function generateEdgeBundle(
   await buildEdgeBundle({
     appBuildOutputPath,
     middlewareInfo: fn,
-    entrypoint: path.join(__dirname, "../../adapters", "edge-adapter.js"),
+    entrypoint: path.join(
+      options.openNextDistDir,
+      "adapters",
+      "edge-adapter.js",
+    ),
     outfile: path.join(outputPath, "index.mjs"),
     options,
     overrides: fnOptions.override,

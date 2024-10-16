@@ -1,11 +1,14 @@
 import cp from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import logger from "../logger.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
+
+const require = createRequire(import.meta.url);
 
 export async function createImageOptimizationBundle(
   options: buildHelper.BuildOptions,
@@ -39,14 +42,8 @@ export async function createImageOptimizationBundle(
         target:
           /plugins(\/|\\)image-optimization(\/|\\)image-optimization\.js/g,
         replacements: [
-          options.resolve(
-            path.join(
-              options.openNextDistDir,
-              "adapters",
-              "plugins",
-              "image-optimization",
-              "image-optimization.replacement.js",
-            ),
+          require.resolve(
+            "../adapters/plugins/image-optimization/image-optimization.replacement.js",
           ),
         ],
       }),

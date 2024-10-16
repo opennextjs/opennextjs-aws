@@ -1,4 +1,4 @@
-import { createRequire as topLevelCreateRequire } from "node:module";
+import { createRequire } from "node:module";
 
 import { build } from "esbuild";
 import path from "path";
@@ -43,7 +43,7 @@ const externals = [
 ];
 
 export async function bundleNextServer(outputDir: string, appPath: string) {
-  const require = topLevelCreateRequire(`${appPath}/package.json`);
+  const require = createRequire(`${appPath}/package.json`);
   const entrypoint = require.resolve("next/dist/esm/server/next-server.js");
 
   await build({

@@ -1,7 +1,6 @@
 import fs from "node:fs";
-import { createRequire as topLevelCreateRequire } from "node:module";
+import { createRequire } from "node:module";
 import path from "node:path";
-import url from "node:url";
 
 import {
   FunctionOptions,
@@ -19,8 +18,7 @@ import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 
-const require = topLevelCreateRequire(import.meta.url);
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+const require = createRequire(import.meta.url);
 
 export async function createServerBundle(options: buildHelper.BuildOptions) {
   const { config } = options;
@@ -238,7 +236,9 @@ async function generateBundle(
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
   await buildHelper.esbuildAsync(
     {
-      entryPoints: [path.join(__dirname, "../adapters", "server-adapter.js")],
+      entryPoints: [
+        path.join(options.openNextDistDir, "adapters", "server-adapter.js"),
+      ],
       external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
