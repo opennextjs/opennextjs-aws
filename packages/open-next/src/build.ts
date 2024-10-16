@@ -42,9 +42,9 @@ export async function build(
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
-  checkRunningInsideNextjsApp(options);
-  printNextjsVersion(options);
-  printOpenNextVersion(options);
+  buildHelper.checkRunningInsideNextjsApp(options);
+  buildHelper.printNextjsVersion(options);
+  buildHelper.printOpenNextVersion(options);
 
   // Build Next.js app
   printHeader("Building Next.js app");
@@ -70,19 +70,6 @@ export async function build(
   await createWarmerBundle(options);
   await generateOutput(options);
   logger.info("OpenNext build complete.");
-}
-
-function checkRunningInsideNextjsApp(options: buildHelper.BuildOptions) {
-  const { appPath } = options;
-  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
-    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
-  );
-  if (!extension) {
-    logger.error(
-      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
-    );
-    process.exit(1);
-  }
 }
 
 function setStandaloneBuildMode(options: buildHelper.BuildOptions) {
@@ -116,14 +103,6 @@ function printHeader(header: string) {
       "",
     ].join("\n"),
   );
-}
-
-function printNextjsVersion(options: buildHelper.BuildOptions) {
-  logger.info(`Next.js version : ${options.nextVersion}`);
-}
-
-function printOpenNextVersion(options: buildHelper.BuildOptions) {
-  logger.info(`OpenNext v${options.openNextVersion}`);
 }
 
 function initOutputDir(options: buildHelper.BuildOptions) {

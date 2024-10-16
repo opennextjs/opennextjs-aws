@@ -307,6 +307,9 @@ export function copyEnvFile(
   }
 }
 
+/**
+ * Displays a warning on windows platform.
+ */
 export function showWarningOnWindows() {
   if (os.platform() !== "win32") return;
 
@@ -317,4 +320,28 @@ export function showWarningOnWindows() {
   logger.warn(
     "While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.",
   );
+}
+
+/**
+ * Check we are in a Nextjs app by looking for the Nextjs config file.
+ */
+export function checkRunningInsideNextjsApp(options: BuildOptions) {
+  const { appPath } = options;
+  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
+    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
+  );
+  if (!extension) {
+    logger.error(
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
+    );
+    process.exit(1);
+  }
+}
+
+export function printNextjsVersion(options: BuildOptions) {
+  logger.info(`Next.js version : ${options.nextVersion}`);
+}
+
+export function printOpenNextVersion(options: BuildOptions) {
+  logger.info(`OpenNext v${options.openNextVersion}`);
 }
