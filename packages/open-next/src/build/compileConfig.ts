@@ -58,7 +58,7 @@ export async function compileOpenNextConfig(
     );
     //Nothing to do here
   } else {
-    compileOpenNextConfigEdge(baseDir, buildDir, config.edgeExternals ?? []);
+    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
   }
 
   return { config, buildDir };

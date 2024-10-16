@@ -216,6 +216,7 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
       );
     }
 
+    // TODO: Extract the code below to a compileTagCacheProvider function
     if (metaFiles.length > 0) {
       const providerPath = path.join(outputDir, "dynamodb-provider");
 

@@ -28,7 +28,7 @@ export async function build(
   showWarningOnWindows();
 
   const baseDir = process.cwd();
-  const distDir = url.fileURLToPath(new URL(".", import.meta.url));
+  const openNextDistDir = url.fileURLToPath(new URL(".", import.meta.url));
 
   const { config, buildDir } = await compileOpenNextConfig(
     baseDir,
@@ -37,7 +37,11 @@ export async function build(
   );
 
   // Initialize options
-  const options = buildHelper.normalizeOptions(config, distDir, buildDir);
+  const options = buildHelper.normalizeOptions(
+    config,
+    openNextDistDir,
+    buildDir,
+  );
   logger.setLevel(options.debug ? "debug" : "info");
 
   // Pre-build validation
