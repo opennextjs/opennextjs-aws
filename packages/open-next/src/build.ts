@@ -4,8 +4,6 @@ import { createRequire as topLevelCreateRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
-import { MiddlewareManifest } from "types/next-types.js";
-
 import { isBinaryContentType } from "./adapters/binary.js";
 import {
   buildNextjsApp,
@@ -13,8 +11,8 @@ import {
 } from "./build/buildNextApp.js";
 import { compileCache } from "./build/compileCache.js";
 import { compileOpenNextConfig } from "./build/compileConfig.js";
+import { createMiddleware } from "./build/createMiddleware.js";
 import { createServerBundle } from "./build/createServerBundle.js";
-import { buildEdgeBundle } from "./build/edge/createEdgeBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
 import { printHeader } from "./build/utils.js";
@@ -532,61 +530,3 @@ async function createCacheAssets(options: buildHelper.BuildOptions) {
 /***************************/
 /* Server Helper Functions */
 /***************************/
-
-async function createMiddleware(options: buildHelper.BuildOptions) {
-  console.info(`Bundling middleware function...`);
-
-  const { appBuildOutputPath, config, outputDir } = options;
-
-  // Get middleware manifest
-  const middlewareManifest = JSON.parse(
-    fs.readFileSync(
-      path.join(appBuildOutputPath, ".next/server/middleware-manifest.json"),
-      "utf8",
-    ),
-  ) as MiddlewareManifest;
-
-  const entry = middlewareManifest.middleware["/"];
-  if (!entry) {
-    return;
-  }
-
-  // Create output folder
-  let outputPath = path.join(outputDir, "server-function");
-
-  const commonMiddlewareOptions = {
-    middlewareInfo: entry,
-    options,
-    appBuildOutputPath,
-  };
-
-  if (config.middleware?.external) {
-    outputPath = path.join(outputDir, "middleware");
-    fs.mkdirSync(outputPath, { recursive: true });
-
-    // Copy open-next.config.mjs
-    buildHelper.copyOpenNextConfig(
-      options.buildDir,
-      outputPath,
-      config.middleware.override?.wrapper === "cloudflare",
-    );
-
-    // Bundle middleware
-    await buildEdgeBundle({
-      entrypoint: path.join(__dirname, "adapters", "middleware.js"),
-      outfile: path.join(outputPath, "handler.mjs"),
-      ...commonMiddlewareOptions,
-      overrides: config.middleware?.override,
-      defaultConverter: "aws-cloudfront",
-      includeCache: config.dangerous?.enableCacheInterception,
-      additionalExternals: config.edgeExternals,
-    });
-  } else {
-    await buildEdgeBundle({
-      entrypoint: path.join(__dirname, "core", "edgeFunctionHandler.js"),
-      outfile: path.join(options.buildDir, "middleware.mjs"),
-      ...commonMiddlewareOptions,
-      onlyBuildOnce: true,
-    });
-  }
-}
