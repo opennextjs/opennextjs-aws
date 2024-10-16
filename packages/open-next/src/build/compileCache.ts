@@ -23,9 +23,7 @@ export function compileCache(
   buildHelper.esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
-      entryPoints: [
-        path.join(options.openNextSourceDir, "adapters", "cache.js"),
-      ],
+      entryPoints: [path.join(options.openNextDistDir, "adapters", "cache.js")],
       outfile: outFile,
       target: ["node18"],
       format,

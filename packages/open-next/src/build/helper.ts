@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { createRequire as topLevelCreateRequire } from "node:module";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import url from "node:url";
@@ -13,14 +13,14 @@ import { OpenNextConfig } from "types/open-next.js";
 
 import logger from "../logger.js";
 
-const require = topLevelCreateRequire(import.meta.url);
+const require = createRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
 export function normalizeOptions(
   config: OpenNextConfig,
-  openNextSourceDir: string,
+  buildScriptPath: string,
   tempBuildDir: string,
 ) {
   const appPath = path.join(process.cwd(), config.appPath || ".");
@@ -55,7 +55,8 @@ export function normalizeOptions(
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
-    openNextSourceDir,
+    resolve: createRequire(buildScriptPath).resolve,
+    openNextDistDir: url.fileURLToPath(new URL(".", buildScriptPath)),
     outputDir,
     packager,
     tempBuildDir,

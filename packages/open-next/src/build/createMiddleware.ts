@@ -47,7 +47,7 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
     // Bundle middleware
     await buildEdgeBundle({
       entrypoint: path.join(
-        options.openNextSourceDir,
+        options.openNextDistDir,
         "adapters",
         "middleware.js",
       ),
@@ -61,7 +61,7 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
   } else {
     await buildEdgeBundle({
       entrypoint: path.join(
-        options.openNextSourceDir,
+        options.openNextDistDir,
         "core",
         "edgeFunctionHandler.js",
       ),
