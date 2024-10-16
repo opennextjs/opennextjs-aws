@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { createRequire as topLevelCreateRequire } from "node:module";
+import { createRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
@@ -12,12 +12,16 @@ import { OpenNextConfig } from "types/open-next.js";
 
 import logger from "../logger.js";
 
-const require = topLevelCreateRequire(import.meta.url);
+const require = createRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 export type BuildOptions = ReturnType<typeof normalizeOptions>;
 
-export function normalizeOptions(config: OpenNextConfig, tempBuildDir: string) {
+export function normalizeOptions(
+  config: OpenNextConfig,
+  distDir: string,
+  tempBuildDir: string,
+) {
   const appPath = path.join(process.cwd(), config.appPath || ".");
   const buildOutputPath = path.join(
     process.cwd(),
@@ -50,6 +54,7 @@ export function normalizeOptions(config: OpenNextConfig, tempBuildDir: string) {
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
+    openNextDistDir: distDir,
     outputDir,
     packager,
     tempBuildDir,
@@ -304,4 +309,43 @@ export function copyEnvFile(
   if (fs.existsSync(envProdPath)) {
     fs.copyFileSync(envProdPath, path.join(baseOutputPath, ".env.production"));
   }
+}
+
+/**
+ * Check we are in a Nextjs app by looking for the Nextjs config file.
+ */
+export function checkRunningInsideNextjsApp(options: BuildOptions) {
+  const { appPath } = options;
+  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
+    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
+  );
+  if (!extension) {
+    logger.error(
+      "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
+    );
+    process.exit(1);
+  }
+}
+
+export function printNextjsVersion(options: BuildOptions) {
+  logger.info(`Next.js version : ${options.nextVersion}`);
+}
+
+export function printOpenNextVersion(options: BuildOptions) {
+  logger.info(`OpenNext v${options.openNextVersion}`);
+}
+
+/**
+ * Populates the build directory with the compiled configuration files.
+ *
+ * We need to get the build relative to the cwd to find the compiled config.
+ * This is needed for the case where the app is a single-version monorepo
+ * and the package.json is in the root of the monorepo where the build is in
+ * the app directory, but the compiled config is in the root of the monorepo.
+ */
+export function initOutputDir(options: BuildOptions) {
+  fs.rmSync(options.outputDir, { recursive: true, force: true });
+  const { buildDir } = options;
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
 }

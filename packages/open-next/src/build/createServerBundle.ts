@@ -1,36 +1,26 @@
-import { existsSync } from "node:fs";
-import { createRequire as topLevelCreateRequire } from "node:module";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import path from "node:path";
 
-import fs from "fs";
-import path from "path";
 import {
   FunctionOptions,
   OpenNextConfig,
   SplittedFunctionOptions,
 } from "types/open-next";
-import url from "url";
 
-import { compileCache } from "../build.js";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { bundleNextServer } from "./bundleNextServer.js";
+import { compileCache } from "./compileCache.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
-import type { BuildOptions } from "./helper.js";
-import {
-  compareSemver,
-  copyEnvFile,
-  copyOpenNextConfig,
-  esbuildAsync,
-  traverseFiles,
-} from "./helper.js";
+import * as buildHelper from "./helper.js";
 
-const require = topLevelCreateRequire(import.meta.url);
-const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+const require = createRequire(import.meta.url);
 
-export async function createServerBundle(options: BuildOptions) {
+export async function createServerBundle(options: buildHelper.BuildOptions) {
   const { config } = options;
   const foundRoutes = new Set<string>();
   // Get all functions to build
@@ -77,9 +67,9 @@ export async function createServerBundle(options: BuildOptions) {
   );
 
   // Find app dir routes
-  if (existsSync(path.join(serverPath, "app"))) {
+  if (fs.existsSync(path.join(serverPath, "app"))) {
     const appPath = path.join(serverPath, "app");
-    traverseFiles(
+    buildHelper.traverseFiles(
       appPath,
       (file) => {
         if (file.endsWith("page.js") || file.endsWith("route.js")) {
@@ -95,9 +85,9 @@ export async function createServerBundle(options: BuildOptions) {
   }
 
   // Find pages dir routes
-  if (existsSync(path.join(serverPath, "pages"))) {
+  if (fs.existsSync(path.join(serverPath, "pages"))) {
     const pagePath = path.join(serverPath, "pages");
-    traverseFiles(
+    buildHelper.traverseFiles(
       pagePath,
       (file) => {
         if (file.endsWith(".js")) {
@@ -124,7 +114,7 @@ export async function createServerBundle(options: BuildOptions) {
 async function generateBundle(
   name: string,
   config: OpenNextConfig,
-  options: BuildOptions,
+  options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
   const { appPath, appBuildOutputPath, outputDir, monorepoRoot } = options;
@@ -161,7 +151,7 @@ async function generateBundle(
   // Copy middleware
   if (
     !config.middleware?.external &&
-    existsSync(path.join(options.buildDir, "middleware.mjs"))
+    fs.existsSync(path.join(options.buildDir, "middleware.mjs"))
   ) {
     fs.copyFileSync(
       path.join(options.buildDir, "middleware.mjs"),
@@ -170,10 +160,13 @@ async function generateBundle(
   }
 
   // Copy open-next.config.mjs
-  copyOpenNextConfig(options.buildDir, path.join(outputPath, packagePath));
+  buildHelper.copyOpenNextConfig(
+    options.buildDir,
+    path.join(outputPath, packagePath),
+  );
 
   // Copy env files
-  copyEnvFile(appBuildOutputPath, packagePath, outputPath);
+  buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
   await copyTracedFiles(
@@ -190,13 +183,15 @@ async function generateBundle(
   //       Next.js app.
 
   const disableNextPrebundledReact =
-    compareSemver(options.nextVersion, "13.5.1") >= 0 ||
-    compareSemver(options.nextVersion, "13.4.1") <= 0;
+    buildHelper.compareSemver(options.nextVersion, "13.5.1") >= 0 ||
+    buildHelper.compareSemver(options.nextVersion, "13.4.1") <= 0;
 
   const overrides = fnOptions.override ?? {};
 
-  const isBefore13413 = compareSemver(options.nextVersion, "13.4.13") <= 0;
-  const isAfter141 = compareSemver(options.nextVersion, "14.0.4") >= 0;
+  const isBefore13413 =
+    buildHelper.compareSemver(options.nextVersion, "13.4.13") <= 0;
+  const isAfter141 =
+    buildHelper.compareSemver(options.nextVersion, "14.0.4") >= 0;
 
   const disableRouting = isBefore13413 || config.middleware?.external;
   const plugins = [
@@ -239,9 +234,11 @@ async function generateBundle(
   }
 
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
-  await esbuildAsync(
+  await buildHelper.esbuildAsync(
     {
-      entryPoints: [path.join(__dirname, "../adapters", "server-adapter.js")],
+      entryPoints: [
+        path.join(options.openNextDistDir, "adapters", "server-adapter.js"),
+      ],
       external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
