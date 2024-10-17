@@ -75,6 +75,7 @@ export interface NextConfig {
     appDir?: boolean;
   };
   images: ImageConfig;
+  poweredByHeader?: boolean;
 }
 
 export interface RouteDefinition {

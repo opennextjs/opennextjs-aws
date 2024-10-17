@@ -53,6 +53,7 @@ const nextConfig = {
     },
   ],
   trailingSlash: true,
+  poweredByHeader: true,
 };
 
 module.exports = nextConfig;
