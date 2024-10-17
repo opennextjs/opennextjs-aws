@@ -223,6 +223,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
       const providerPath = path.join(outputDir, "dynamodb-provider");
 
       //Copy open-next.config.mjs into the bundle
+      fs.mkdirSync(providerPath, { recursive: true });
       buildHelper.copyOpenNextConfig(options.buildDir, providerPath);
 
       // TODO: check if metafiles doesn't contain duplicates
