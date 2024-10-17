@@ -6,6 +6,7 @@ import {
 } from "./build/buildNextApp.js";
 import { compileCache } from "./build/compileCache.js";
 import { compileOpenNextConfig } from "./build/compileConfig.js";
+import { compileTagCacheProvider } from "./build/compileTagCacheProvider.js";
 import { createCacheAssets, createStaticAssets } from "./build/createAssets.js";
 import { createImageOptimizationBundle } from "./build/createImageOptimizationBundle.js";
 import { createMiddleware } from "./build/createMiddleware.js";
@@ -65,7 +66,13 @@ export async function build(
   await createMiddleware(options);
 
   createStaticAssets(options);
-  await createCacheAssets(options);
+
+  if (config.dangerous?.disableIncrementalCache !== true) {
+    const { useTagCache } = createCacheAssets(options);
+    if (useTagCache) {
+      await compileTagCacheProvider(options);
+    }
+  }
 
   await createServerBundle(options);
   await createRevalidationBundle(options);
