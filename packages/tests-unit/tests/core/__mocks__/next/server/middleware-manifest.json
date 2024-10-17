@@ -1,0 +1,40 @@
+{
+  "sortedMiddleware": ["/"],
+  "middleware": {
+    "/": {
+      "files": ["server/edge-runtime-webpack.js", "server/middleware.js"],
+      "name": "middleware",
+      "page": "/",
+      "matchers": [
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-rewrite(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-rewrite"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-rewrite-with-isr(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-rewrite-with-isr"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-redirect(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-redirect"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-set-header(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-set-header"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-fetch(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-fetch"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/middleware-geolocation(.json)?[\\/#\\?]?$",
+          "originalSource": "/middleware-geolocation"
+        }
+      ],
+      "wasm": [],
+      "assets": []
+    }
+  },
+  "functions": {},
+  "version": 2
+}

@@ -1,0 +1,61 @@
+{
+  "version": 4,
+  "routes": {
+    "/middleware-rewrite-with-isr-destination": {
+      "initialRevalidateSeconds": 10,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/middleware-rewrite-with-isr-destination.json"
+    },
+    "/isr": {
+      "initialRevalidateSeconds": 10,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/isr.json"
+    },
+    "/ssg-preview/hello": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/ssg-preview/[id]",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-preview/hello.json"
+    },
+    "/ssg-preview/world": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/ssg-preview/[id]",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-preview/world.json"
+    },
+    "/ssg": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": null,
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg.json"
+    },
+    "/ssg-dynamic/1": {
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/ssg-dynamic/[id]",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-dynamic/1.json"
+    }
+  },
+  "dynamicRoutes": {
+    "/ssg-dynamic-fallback/[id]": {
+      "routeRegex": "^/ssg\\-dynamic\\-fallback/([^/]+?)(?:/)?$",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-dynamic-fallback/[id].json",
+      "fallback": "/ssg-dynamic-fallback/[id].html",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic\\-fallback/([^/]+?)\\.json$"
+    },
+    "/ssg-preview/[id]": {
+      "routeRegex": "^/ssg\\-preview/([^/]+?)(?:/)?$",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-preview/[id].json",
+      "fallback": false,
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-preview/([^/]+?)\\.json$"
+    },
+    "/ssg-dynamic/[id]": {
+      "routeRegex": "^/ssg\\-dynamic/([^/]+?)(?:/)?$",
+      "dataRoute": "/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg-dynamic/[id].json",
+      "fallback": false,
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic/([^/]+?)\\.json$"
+    }
+  },
+  "notFoundRoutes": [],
+  "preview": {
+    "previewModeId": "a4f0a4586498ab90ef6af5c106920f7e",
+    "previewModeSigningKey": "61c53747d3c40a6a1e809ecae2a7c625643701bb390321f6c57813e7a78363d9",
+    "previewModeEncryptionKey": "d9108ce7f77f85f1f07ea2fc9e7355805cf11ddd28c85f1a61cfce1810515a60"
+  }
+}

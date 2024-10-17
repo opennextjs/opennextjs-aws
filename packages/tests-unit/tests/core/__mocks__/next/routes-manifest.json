@@ -1,0 +1,238 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "dynamicRoutes": [
+    {
+      "page": "/api/auth/[...nextauth]",
+      "regex": "^/api/auth/(.+?)(?:/)?$",
+      "routeKeys": { "nxtPnextauth": "nxtPnextauth" },
+      "namedRegex": "^/api/auth/(?<nxtPnextauth>.+?)(?:/)?$"
+    },
+    {
+      "page": "/ssg-dynamic/[id]",
+      "regex": "^/ssg\\-dynamic/([^/]+?)(?:/)?$",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "namedRegex": "^/ssg\\-dynamic/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/ssg-dynamic-fallback/[id]",
+      "regex": "^/ssg\\-dynamic\\-fallback/([^/]+?)(?:/)?$",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "namedRegex": "^/ssg\\-dynamic\\-fallback/(?<nxtPid>[^/]+?)(?:/)?$"
+    },
+    {
+      "page": "/ssg-preview/[id]",
+      "regex": "^/ssg\\-preview/([^/]+?)(?:/)?$",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "namedRegex": "^/ssg\\-preview/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/404",
+      "regex": "^/404(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/404(?:/)?$"
+    },
+    {
+      "page": "/api-route",
+      "regex": "^/api\\-route(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/api\\-route(?:/)?$"
+    },
+    {
+      "page": "/font-css-font",
+      "regex": "^/font\\-css\\-font(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/font\\-css\\-font(?:/)?$"
+    },
+    {
+      "page": "/font-next-font",
+      "regex": "^/font\\-next\\-font(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/font\\-next\\-font(?:/)?$"
+    },
+    {
+      "page": "/image-html-tag",
+      "regex": "^/image\\-html\\-tag(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/image\\-html\\-tag(?:/)?$"
+    },
+    {
+      "page": "/image-optimization-imported",
+      "regex": "^/image\\-optimization\\-imported(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/image\\-optimization\\-imported(?:/)?$"
+    },
+    {
+      "page": "/image-optimization-remote",
+      "regex": "^/image\\-optimization\\-remote(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/image\\-optimization\\-remote(?:/)?$"
+    },
+    {
+      "page": "/isr",
+      "regex": "^/isr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/isr(?:/)?$"
+    },
+    {
+      "page": "/middleware-geolocation",
+      "regex": "^/middleware\\-geolocation(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-geolocation(?:/)?$"
+    },
+    {
+      "page": "/middleware-redirect",
+      "regex": "^/middleware\\-redirect(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-redirect(?:/)?$"
+    },
+    {
+      "page": "/middleware-redirect-destination",
+      "regex": "^/middleware\\-redirect\\-destination(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-redirect\\-destination(?:/)?$"
+    },
+    {
+      "page": "/middleware-rewrite",
+      "regex": "^/middleware\\-rewrite(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-rewrite(?:/)?$"
+    },
+    {
+      "page": "/middleware-rewrite-with-isr",
+      "regex": "^/middleware\\-rewrite\\-with\\-isr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-rewrite\\-with\\-isr(?:/)?$"
+    },
+    {
+      "page": "/middleware-rewrite-with-isr-destination",
+      "regex": "^/middleware\\-rewrite\\-with\\-isr\\-destination(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-rewrite\\-with\\-isr\\-destination(?:/)?$"
+    },
+    {
+      "page": "/middleware-set-header",
+      "regex": "^/middleware\\-set\\-header(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/middleware\\-set\\-header(?:/)?$"
+    },
+    {
+      "page": "/next-auth",
+      "regex": "^/next\\-auth(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/next\\-auth(?:/)?$"
+    },
+    {
+      "page": "/ssg",
+      "regex": "^/ssg(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ssg(?:/)?$"
+    },
+    {
+      "page": "/ssr",
+      "regex": "^/ssr(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ssr(?:/)?$"
+    },
+    {
+      "page": "/ssr-not-found",
+      "regex": "^/ssr\\-not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ssr\\-not\\-found(?:/)?$"
+    },
+    {
+      "page": "/ssr-redirect",
+      "regex": "^/ssr\\-redirect(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ssr\\-redirect(?:/)?$"
+    },
+    {
+      "page": "/ssr-redirect-destination",
+      "regex": "^/ssr\\-redirect\\-destination(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/ssr\\-redirect\\-destination(?:/)?$"
+    }
+  ],
+  "dataRoutes": [
+    {
+      "page": "/isr",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/isr.json$"
+    },
+    {
+      "page": "/middleware-geolocation",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/middleware-geolocation.json$"
+    },
+    {
+      "page": "/middleware-rewrite",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/middleware-rewrite.json$"
+    },
+    {
+      "page": "/middleware-rewrite-with-isr-destination",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/middleware-rewrite-with-isr-destination.json$"
+    },
+    {
+      "page": "/middleware-set-header",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/middleware-set-header.json$"
+    },
+    {
+      "page": "/ssg",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg.json$"
+    },
+    {
+      "page": "/ssg-dynamic/[id]",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic/([^/]+?)\\.json$",
+      "namedDataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic/(?<nxtPid>[^/]+?)\\.json$"
+    },
+    {
+      "page": "/ssg-dynamic-fallback/[id]",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic\\-fallback/([^/]+?)\\.json$",
+      "namedDataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-dynamic\\-fallback/(?<nxtPid>[^/]+?)\\.json$"
+    },
+    {
+      "page": "/ssg-preview/[id]",
+      "routeKeys": { "nxtPid": "nxtPid" },
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-preview/([^/]+?)\\.json$",
+      "namedDataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssg\\-preview/(?<nxtPid>[^/]+?)\\.json$"
+    },
+    {
+      "page": "/ssr",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssr.json$"
+    },
+    {
+      "page": "/ssr-not-found",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssr-not-found.json$"
+    },
+    {
+      "page": "/ssr-redirect",
+      "dataRouteRegex": "^/_next/data/lnRb3bjsx2nspyrLXPfpa/ssr-redirect.json$"
+    }
+  ],
+  "rsc": {
+    "header": "RSC",
+    "varyHeader": "RSC, Next-Router-State-Tree, Next-Router-Prefetch",
+    "contentTypeHeader": "text/x-component"
+  },
+  "rewrites": []
+}
