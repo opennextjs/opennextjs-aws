@@ -20,4 +20,8 @@ test("Headers", async ({ page }) => {
   // Request header should be available in RSC
   let el = page.getByText(`request-header`);
   await expect(el).toBeVisible();
+
+  // Both these headers should not be present cause poweredByHeader is false in appRouter
+  expect(headers["x-powered-by"]).toBeFalsy();
+  expect(headers["x-opennext"]).toBeFalsy();
 });
