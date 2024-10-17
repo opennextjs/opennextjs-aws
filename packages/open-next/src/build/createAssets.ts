@@ -48,7 +48,7 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
  * Create the cache assets.
  *
  * @param options Build options.
- * @returns Wether tag cache is used.
+ * @returns Whether tag cache is used.
  */
 export function createCacheAssets(options: buildHelper.BuildOptions) {
   logger.info(`Bundling cache assets...`);
