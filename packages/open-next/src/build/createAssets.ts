@@ -3,7 +3,6 @@ import path from "node:path";
 
 import { isBinaryContentType } from "../adapters/binary.js";
 import logger from "../logger.js";
-import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
 
 export function createStaticAssets(options: buildHelper.BuildOptions) {
@@ -45,15 +44,19 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
   }
 }
 
-export async function createCacheAssets(options: buildHelper.BuildOptions) {
-  const { config } = options;
-  if (config.dangerous?.disableIncrementalCache) return;
-
+/**
+ * Create the cache assets.
+ *
+ * @param options Build options.
+ * @returns Wether tag cache is used.
+ */
+export function createCacheAssets(options: buildHelper.BuildOptions) {
   logger.info(`Bundling cache assets...`);
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = path.relative(options.monorepoRoot, appBuildOutputPath);
   const buildId = buildHelper.getBuildId(appBuildOutputPath);
+  let useTagCache = false;
 
   // Copy pages to cache folder
   const dotNextPath = path.join(
@@ -77,7 +80,7 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
       (file.endsWith(".html") && htmlPages.has(file)),
   );
 
-  //merge cache files into a single file
+  // Merge cache files into a single file
   const cacheFilesPath: Record<
     string,
     {
@@ -94,18 +97,17 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
     () => true,
     (filepath) => {
       const ext = path.extname(filepath);
-      let newFilePath =
-        ext !== "" ? filepath.replace(ext, ".cache") : `${filepath}.cache`;
-      // Handle prefetch cache files for partial prerendering
-      if (newFilePath.endsWith(".prefetch.cache")) {
-        newFilePath = newFilePath.replace(".prefetch.cache", ".cache");
-      }
       switch (ext) {
         case ".meta":
         case ".html":
         case ".json":
         case ".body":
         case ".rsc":
+          const newFilePath =
+            filepath
+              .substring(0, filepath.length - ext.length)
+              .replace(/\.prefetch$/, "") + ".cache";
+
           cacheFilesPath[newFilePath] = {
             [ext.slice(1)]: filepath,
             ...cacheFilesPath[newFilePath],
@@ -146,7 +148,7 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });
 
-  if (!config.dangerous?.disableTagCache) {
+  if (!options.config.dangerous?.disableTagCache) {
     // Generate dynamodb data
     // We need to traverse the cache to find every .meta file
     const metaFiles: {
@@ -216,35 +218,9 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
       );
     }
 
-    // TODO: Extract the code below to a compileTagCacheProvider function
     if (metaFiles.length > 0) {
+      useTagCache = true;
       const providerPath = path.join(outputDir, "dynamodb-provider");
-
-      await buildHelper.esbuildAsync(
-        {
-          external: ["@aws-sdk/client-dynamodb"],
-          entryPoints: [
-            path.join(
-              options.openNextDistDir,
-              "adapters",
-              "dynamo-provider.js",
-            ),
-          ],
-          outfile: path.join(providerPath, "index.mjs"),
-          target: ["node18"],
-          plugins: [
-            openNextResolvePlugin({
-              fnName: "initializationFunction",
-              overrides: {
-                converter:
-                  config.initializationFunction?.override?.converter ?? "dummy",
-                wrapper: config.initializationFunction?.override?.wrapper,
-              },
-            }),
-          ],
-        },
-        options,
-      );
 
       //Copy open-next.config.mjs into the bundle
       buildHelper.copyOpenNextConfig(options.buildDir, providerPath);
@@ -259,4 +235,6 @@ export async function createCacheAssets(options: buildHelper.BuildOptions) {
 
   // We need to remove files later because we need the metafiles for dynamodb tags cache
   buildHelper.removeFiles(outputPath, (file) => !file.endsWith(".cache"));
+
+  return { useTagCache };
 }

@@ -232,10 +232,7 @@ export function getHtmlPages(dotNextPath: string) {
   return Object.entries(JSON.parse(manifest))
     .filter(([_, value]) => (value as string).endsWith(".html"))
     .map(([_, value]) => (value as string).replace(/^pages\//, ""))
-    .reduce((acc, page) => {
-      acc.add(page);
-      return acc;
-    }, new Set<string>());
+    .reduce((acc, page) => acc.add(page), new Set<string>());
 }
 
 export function getBuildId(dotNextPath: string) {
