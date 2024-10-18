@@ -5,7 +5,7 @@ import { IgnorableError, RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
 import { parseNumberFromEnv } from "../../adapters/util";
-import { Extension } from "../next-types";
+import { Extension } from "../../cache/next-types";
 import { IncrementalCache } from "./types";
 
 let awsClient: AwsClient | null = null;

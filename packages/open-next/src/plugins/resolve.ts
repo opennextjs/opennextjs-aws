@@ -85,8 +85,8 @@ export function openNextResolvePlugin({
         }
         if (overrides?.incrementalCache) {
           contents = contents.replace(
-            "../cache/incremental/s3.js",
-            `../cache/incremental/${getOverrideOrDefault(
+            "../overrides/incrementalCache/s3.js",
+            `../overrides/incrementalCache/${getOverrideOrDefault(
               overrides.incrementalCache,
               "s3-lite",
             )}.js`,
