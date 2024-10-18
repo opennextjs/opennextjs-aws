@@ -22,7 +22,11 @@ export function installDependencies(
     logger.info(`Installing dependencies for ${name}...`);
     // We then need to run install in the tempDir
     // We don't install in the output dir directly because it could contain a package.json, and npm would then try to reinstall not complete deps from tracing the files
-    const installCommand = `npm install --arch=${installOptions.arch ?? "arm64"} --platform=linux --target=${installOptions.nodeVersion ?? "18"} --libc=${installOptions.libc ?? "glibc"} ${installOptions.packages.join(" ")}`;
+    const installCommand = `npm install --arch=${
+      installOptions.arch ?? "arm64"
+    } --platform=linux --target=${installOptions.nodeVersion ?? "18"} --libc=${
+      installOptions.libc ?? "glibc"
+    } ${installOptions.packages.join(" ")}`;
     execSync(installCommand, {
       stdio: "pipe",
       cwd: tempInstallDir,

@@ -15,7 +15,7 @@ export async function createImageOptimizationBundle(
 ) {
   logger.info(`Bundling image optimization function...`);
 
-  const { appPath, appBuildOutputPath, config, outputDir } = options;
+  const { appBuildOutputPath, config, outputDir } = options;
 
   // Create output folder
   const outputPath = path.join(outputDir, "image-optimization-function");
