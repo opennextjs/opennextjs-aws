@@ -139,6 +139,8 @@ export type IncludedTagCache = "dynamodb" | "dynamodb-lite";
 
 export type IncludedImageLoader = "s3" | "host";
 
+export type IncludedOriginResolver = "pattern-env";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -284,7 +286,9 @@ export interface OpenNextConfig {
      * OPEN_NEXT_ORIGIN should be a json stringified object with the key of the splitted function as key and the origin as value
      * @default "pattern-env"
      */
-    originResolver?: "pattern-env" | LazyLoadedOverride<OriginResolver>;
+    originResolver?:
+      | IncludedOriginResolver
+      | LazyLoadedOverride<OriginResolver>;
   };
 
   /**

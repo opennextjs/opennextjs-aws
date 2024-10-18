@@ -5,7 +5,9 @@ import type {
   DefaultOverrideOptions,
   ImageLoader,
   IncludedImageLoader,
+  IncludedOriginResolver,
   LazyLoadedOverride,
+  OriginResolver,
   OverrideOptions,
 } from "types/open-next";
 
@@ -19,6 +21,9 @@ export interface IPluginSettings {
     queue?: OverrideOptions["queue"];
     incrementalCache?: OverrideOptions["incrementalCache"];
     imageLoader?: LazyLoadedOverride<ImageLoader> | IncludedImageLoader;
+    originResolver?:
+      | LazyLoadedOverride<OriginResolver>
+      | IncludedOriginResolver;
   };
   fnName?: string;
 }
@@ -98,6 +103,15 @@ export function openNextResolvePlugin({
             `../overrides/imageLoader/${getOverrideOrDefault(
               overrides.imageLoader,
               "s3",
+            )}.js`,
+          );
+        }
+        if (overrides?.originResolver) {
+          contents = contents.replace(
+            "../overrides/originResolver/pattern-env.js",
+            `../overrides/originResolver/${getOverrideOrDefault(
+              overrides.originResolver,
+              "pattern-env",
             )}.js`,
           );
         }
