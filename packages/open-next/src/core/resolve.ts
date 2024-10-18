@@ -8,6 +8,7 @@ import {
   LazyLoadedOverride,
   OriginResolver,
   OverrideOptions,
+  Warmer,
   Wrapper,
 } from "types/open-next.js";
 
@@ -118,7 +119,21 @@ export async function resolveOriginResolver(
   if (typeof originResolver === "function") {
     return originResolver();
   } else {
-    const m_1 = await import("../overrides/originResolver/env.js");
+    const m_1 = await import("../overrides/originResolver/pattern-env.js");
+    return m_1.default;
+  }
+}
+
+/**
+ * @__PURE__
+ */
+export async function resolveWarmerInvoke(
+  warmer?: LazyLoadedOverride<Warmer> | "aws-lambda",
+) {
+  if (typeof warmer === "function") {
+    return warmer();
+  } else {
+    const m_1 = await import("../overrides/warmer/aws-lambda.js");
     return m_1.default;
   }
 }
