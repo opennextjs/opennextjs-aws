@@ -10,7 +10,7 @@ import {
   getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
 } from "./constants";
-import { TagCache } from "./types";
+import type { TagCache } from "./types";
 
 let awsClient: AwsClient | null = null;
 

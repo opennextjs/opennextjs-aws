@@ -10,7 +10,7 @@ import {
   Wrapper,
 } from "types/open-next.js";
 
-import { TagCache } from "../cache/tag/types.js";
+import { TagCache } from "../overrides/tagCache/types.js";
 
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,
@@ -54,7 +54,7 @@ export async function resolveTagCache(
     return tagCache();
   } else {
     // This will be replaced by the bundler
-    const m_1 = await import("../cache/tag/dynamodb.js");
+    const m_1 = await import("../overrides/tagCache/dynamodb.js");
     return m_1.default;
   }
 }
