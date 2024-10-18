@@ -141,6 +141,8 @@ export type IncludedImageLoader = "s3" | "host";
 
 export type IncludedOriginResolver = "pattern-env";
 
+export type IncludedWarmer = "aws-lambda";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -298,7 +300,7 @@ export interface OpenNextConfig {
    * @default undefined
    */
   warmer?: DefaultFunctionOptions<WarmerEvent, WarmerResponse> & {
-    invokeFunction: "aws-lambda" | LazyLoadedOverride<Warmer>;
+    invokeFunction: IncludedWarmer | LazyLoadedOverride<Warmer>;
   };
 
   /**

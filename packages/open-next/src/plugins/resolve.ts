@@ -6,9 +6,11 @@ import type {
   ImageLoader,
   IncludedImageLoader,
   IncludedOriginResolver,
+  IncludedWarmer,
   LazyLoadedOverride,
   OriginResolver,
   OverrideOptions,
+  Warmer,
 } from "types/open-next";
 
 import logger from "../logger.js";
@@ -24,6 +26,7 @@ export interface IPluginSettings {
     originResolver?:
       | LazyLoadedOverride<OriginResolver>
       | IncludedOriginResolver;
+    warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
   };
   fnName?: string;
 }
@@ -112,6 +115,15 @@ export function openNextResolvePlugin({
             `../overrides/originResolver/${getOverrideOrDefault(
               overrides.originResolver,
               "pattern-env",
+            )}.js`,
+          );
+        }
+        if (overrides?.warmer) {
+          contents = contents.replace(
+            "../overrides/warmer/aws-lambda.js",
+            `../overrides/warmer/${getOverrideOrDefault(
+              overrides.warmer,
+              "aws-lambda",
             )}.js`,
           );
         }
