@@ -6,6 +6,7 @@ import {
   InternalEvent,
   InternalResult,
   LazyLoadedOverride,
+  OriginResolver,
   OverrideOptions,
   Wrapper,
 } from "types/open-next.js";
@@ -103,6 +104,21 @@ export async function resolveImageLoader(
     return imageLoader();
   } else {
     const m_1 = await import("../overrides/imageLoader/s3.js");
+    return m_1.default;
+  }
+}
+
+/**
+ * @returns
+ * @__PURE__
+ */
+export async function resolveOriginResolver(
+  originResolver?: LazyLoadedOverride<OriginResolver> | string,
+) {
+  if (typeof originResolver === "function") {
+    return originResolver();
+  } else {
+    const m_1 = await import("../overrides/originResolver/env.js");
     return m_1.default;
   }
 }
