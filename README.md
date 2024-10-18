@@ -36,7 +36,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] Running at edge
-- [x] Almost no coldstart
+- [*] [Almost no coldstart](#coldstart)
 
 ## Who is using OpenNext?
 
@@ -84,6 +84,13 @@ To run `OpenNext` locally:
    cd path/to/my/nextjs/app
    path/to/open-next/packages/open-next/dist/index.js build
    ```
+
+### Coldstart
+
+OpenNext provide you with a warmer function that can be used to reduce cold start. 
+
+On Lambda, there is multiple scenario where a lambda will trigger a cold start even if you have some warmed instance. For example if you have more request than warm instance you'll get a cold start.
+Also NextJs lazy load the routes, so even if you hit a warm instance, this specific route might not have been loaded yet.
 
 ## Acknowledgements
 
