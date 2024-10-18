@@ -49,8 +49,8 @@ export function openNextResolvePlugin({
         //TODO: refactor this. Every override should be at the same place so we can generate this dynamically
         if (overrides?.wrapper) {
           contents = contents.replace(
-            "../wrappers/aws-lambda.js",
-            `../wrappers/${getOverrideOrDefault(
+            "../overrides/wrappers/aws-lambda.js",
+            `../overrides/wrappers/${getOverrideOrDefault(
               overrides.wrapper,
               "aws-lambda",
             )}.js`,
