@@ -1,5 +1,5 @@
-import { IncrementalCache } from "../cache/incremental/types.js";
 import { TagCache } from "../cache/tag/types.js";
+import type { IncrementalCache } from "../overrides/incrementalCache/types.js";
 import { isBinaryContentType } from "./binary.js";
 import { debug, error, warn } from "./logger.js";
 

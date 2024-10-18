@@ -86,7 +86,7 @@ export async function resolveIncrementalCache(
   if (typeof incrementalCache === "function") {
     return incrementalCache();
   } else {
-    const m_1 = await import("../cache/incremental/s3.js");
+    const m_1 = await import("../overrides/incrementalCache/s3.js");
     return m_1.default;
   }
 }

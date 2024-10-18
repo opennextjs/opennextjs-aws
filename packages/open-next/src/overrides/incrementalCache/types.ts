@@ -1,4 +1,4 @@
-import { Meta } from "../next-types";
+import { Meta } from "../../cache/next-types";
 
 export type S3CachedFile =
   | {
