@@ -67,8 +67,8 @@ export function openNextResolvePlugin({
         }
         if (overrides?.tagCache) {
           contents = contents.replace(
-            "../cache/tag/dynamodb.js",
-            `../cache/tag/${getOverrideOrDefault(
+            "../overrides/tagCache/dynamodb.js",
+            `../overrides/tagCache/${getOverrideOrDefault(
               overrides.tagCache,
               "dynamodb-lite",
             )}.js`,
