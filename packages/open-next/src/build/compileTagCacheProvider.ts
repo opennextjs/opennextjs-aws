@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 export async function compileTagCacheProvider(
   options: buildHelper.BuildOptions,
@@ -29,5 +30,10 @@ export async function compileTagCacheProvider(
       ],
     },
     options,
+  );
+
+  installDependencies(
+    providerPath,
+    options.config.initializationFunction?.install,
   );
 }

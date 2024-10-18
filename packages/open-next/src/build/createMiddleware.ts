@@ -5,6 +5,7 @@ import logger from "../logger.js";
 import { type MiddlewareManifest } from "../types/next-types.js";
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 export async function createMiddleware(options: buildHelper.BuildOptions) {
   logger.info(`Bundling middleware function...`);
@@ -58,6 +59,8 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
       includeCache: config.dangerous?.enableCacheInterception,
       additionalExternals: config.edgeExternals,
     });
+
+    installDependencies(outputPath, config.middleware?.install);
   } else {
     await buildEdgeBundle({
       entrypoint: path.join(

@@ -1,4 +1,3 @@
-import cp from "node:child_process";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -7,6 +6,7 @@ import logger from "../logger.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 const require = createRequire(import.meta.url);
 
@@ -108,29 +108,12 @@ export async function createImageOptimizationBundle(
   // Target should be same as used by Lambda, see https://github.com/sst/sst/blob/ca6f763fdfddd099ce2260202d0ce48c72e211ea/packages/sst/src/constructs/NextjsSite.ts#L114
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
-  const nodeOutputPath = path.resolve(outputPath);
   const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
 
-  const arch = config.imageOptimization?.arch ?? "arm64";
-  const nodeVersion = config.imageOptimization?.nodeVersion ?? "18";
-
-  //check if we are running in Windows environment then set env variables accordingly.
-  try {
-    cp.execSync(
-      // We might want to change the arch args to cpu args, it seems to be the documented way
-      `npm install --arch=${arch} --platform=linux --target=${nodeVersion} --libc=glibc --prefix="${nodeOutputPath}" sharp@${sharpVersion}`,
-      {
-        stdio: "pipe",
-        cwd: appPath,
-        env: {
-          ...process.env,
-          SHARP_IGNORE_GLOBAL_LIBVIPS: "1",
-        },
-      },
-    );
-  } catch (e: any) {
-    logger.error(e.stdout.toString());
-    logger.error(e.stderr.toString());
-    logger.error("Failed to install sharp.");
-  }
+  installDependencies(
+    outputPath,
+    config.imageOptimization?.install ?? {
+      packages: [`sharp@${sharpVersion}`],
+    },
+  );
 }
