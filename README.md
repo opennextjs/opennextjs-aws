@@ -8,7 +8,7 @@
 </p>
 <p align="center">
   <a href="https://sst.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/983865673656705025?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/open-next"><img alt="npm" src="https://img.shields.io/npm/v/open-next.svg?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/@opennextjs/aws"><img alt="npm" src="https://img.shields.io/npm/v/@opennextjs/aws.svg?style=flat-square" /></a>
 </p>
 
 ---
@@ -31,6 +31,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Server-side rendering (SSR)
 - [x] Incremental static regeneration (ISR)
 - [x] Middleware
+- [x] Server actions
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] Running at edge
@@ -38,7 +39,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 
 ## Who is using OpenNext?
 
-[Gymshark UK](https://uk.gymshark.com), [Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c), [TUDN](https://www.tudn.com), [NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext)
+[Gymshark UK](https://uk.gymshark.com), [Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c), [TUDN](https://www.tudn.com), [NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext) & [Nike](https://about.nike.com)
 
 
 
@@ -54,9 +55,16 @@ Vercel link: https://open-next.vercel.app
 
 ### Environment variables
 
-- AWS_SDK_DYNAMODB_MAX_ATTEMPTS: The maximum number of times requests that encounter retryable failures should be attempted for DynamoDB. Defaults to 3.
-- AWS_SDK_S3_MAX_ATTEMPTS: The maximum number of times requests that encounter retryable failures should be attempted for S3. Defaults to 3.
-- DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY: The number of concurrent batch write commands to DynamoDB. Defaults to 4 in an effort to leave plenty of DynamoDB write request capacity for the production load.
+- `AWS_SDK_DYNAMODB_MAX_ATTEMPTS`: The maximum number of times requests that encounter retryable failures should be attempted for DynamoDB. Defaults to 3.
+- `AWS_SDK_S3_MAX_ATTEMPTS`: The maximum number of times requests that encounter retryable failures should be attempted for S3. Defaults to 3.
+- `DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY`: The number of concurrent batch write commands to DynamoDB. Defaults to 4 in an effort to leave plenty of DynamoDB write request capacity for the production load.
+
+### Debug mode
+
+OpenNext can be executed in debug mode by setting the environment variable `OPEN_NEXT_DEBUG=true` before your build.
+
+This will output A LOT of additional logs to the console. This also disable minifying in esbuild, and add source maps to the output. This can result in code that might be up to 2-3X larger than the production build. Do **not** enable this in production.
+
 
 ## Contribute
 
@@ -65,7 +73,7 @@ To run `OpenNext` locally:
 1. Clone this repository.
 1. Build `open-next`:
    ```bash
-   cd open-next
+   cd packages/open-next
    pnpm build
    ```
 1. Run `open-next` in watch mode:
