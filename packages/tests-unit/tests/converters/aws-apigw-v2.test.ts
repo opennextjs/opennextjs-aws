@@ -1,4 +1,4 @@
-import converter from "@opennextjs/aws/converters/aws-apigw-v2.js";
+import converter from "@opennextjs/aws/overrides/converters/aws-apigw-v2.js";
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { Readable } from "stream";
 import { vi } from "vitest";

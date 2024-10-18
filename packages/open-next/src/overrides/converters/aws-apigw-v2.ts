@@ -1,10 +1,13 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
+} from "aws-lambda";
 import { parseCookies } from "http/util";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 import { fromReadableStream } from "utils/stream";
 
-import { debug } from "../adapters/logger";
-import { convertToQuery } from "../core/routing/util";
+import { debug } from "../../adapters/logger";
+import { convertToQuery } from "../../core/routing/util";
 import { removeUndefinedFromQuery } from "./utils";
 
 // Not sure which one is reallly needed as this is not documented anywhere but server actions redirect are not working without this, it causes a 500 error from cloudfront itself with a 'x-amzErrortype: InternalFailure' header

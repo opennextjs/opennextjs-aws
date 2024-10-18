@@ -1,7 +1,7 @@
-import { SQSEvent } from "aws-lambda";
-import { Converter } from "types/open-next";
+import type { SQSEvent } from "aws-lambda";
+import type { Converter } from "types/open-next";
 
-import { RevalidateEvent } from "../adapters/revalidate";
+import type { RevalidateEvent } from "../../adapters/revalidate";
 
 const converter: Converter<RevalidateEvent, RevalidateEvent> = {
   convertFrom(event: SQSEvent) {
