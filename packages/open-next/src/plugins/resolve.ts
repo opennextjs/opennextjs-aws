@@ -58,8 +58,8 @@ export function openNextResolvePlugin({
         }
         if (overrides?.converter) {
           contents = contents.replace(
-            "../converters/aws-apigw-v2.js",
-            `../converters/${getOverrideOrDefault(
+            "../overrides/converters/aws-apigw-v2.js",
+            `../overrides/converters/${getOverrideOrDefault(
               overrides.converter,
               "dummy",
             )}.js`,
