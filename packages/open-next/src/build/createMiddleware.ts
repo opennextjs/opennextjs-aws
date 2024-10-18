@@ -6,6 +6,12 @@ import { type MiddlewareManifest } from "../types/next-types.js";
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 
+/**
+ * Compiles the middleware bundle.
+ *
+ * @param options Build Options.
+ * @returns Whether the app uses a Middleware.
+ */
 export async function createMiddleware(options: buildHelper.BuildOptions) {
   logger.info(`Bundling middleware function...`);
 
@@ -21,7 +27,7 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
 
   const entry = middlewareManifest.middleware["/"];
   if (!entry) {
-    return;
+    return { useMiddleware: false };
   }
 
   // Create output folder
@@ -70,4 +76,6 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
       onlyBuildOnce: true,
     });
   }
+
+  return { useMiddleware: true };
 }
