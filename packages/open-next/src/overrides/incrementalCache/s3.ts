@@ -6,10 +6,10 @@ import {
   S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import path from "path";
+import { Extension } from "types/cache";
 
 import { awsLogger } from "../../adapters/logger";
 import { parseNumberFromEnv } from "../../adapters/util";
-import { Extension } from "../../cache/next-types";
 import { IncrementalCache } from "./types";
 
 const {
