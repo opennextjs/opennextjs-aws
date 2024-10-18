@@ -6,7 +6,7 @@ import type { StreamCreator } from "http/index.js";
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type { IncrementalCache } from "../cache/incremental/types";
 import type { TagCache } from "../cache/tag/types";
-import type { Queue } from "../queue/types";
+import type { Queue } from "../overrides/queue/types";
 
 export type BaseEventOrResult<T extends string = string> = {
   type: T;

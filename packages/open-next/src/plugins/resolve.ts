@@ -76,8 +76,11 @@ export function openNextResolvePlugin({
         }
         if (overrides?.queue) {
           contents = contents.replace(
-            "../queue/sqs.js",
-            `../queue/${getOverrideOrDefault(overrides.queue, "sqs-lite")}.js`,
+            "../overrides/queue/sqs.js",
+            `../overrides/queue/${getOverrideOrDefault(
+              overrides.queue,
+              "sqs-lite",
+            )}.js`,
           );
         }
         if (overrides?.incrementalCache) {

@@ -69,7 +69,7 @@ export async function resolveQueue(queue: OverrideOptions["queue"]) {
   if (typeof queue === "function") {
     return queue();
   } else {
-    const m_1 = await import("../queue/sqs.js");
+    const m_1 = await import("../overrides/queue/sqs.js");
     return m_1.default;
   }
 }
