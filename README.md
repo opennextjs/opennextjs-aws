@@ -87,10 +87,9 @@ To run `OpenNext` locally:
 
 ### Coldstart
 
-OpenNext provide you with a warmer function that can be used to reduce cold start. 
+OpenNext provide you with a warmer function that can be used to reduce cold start.
 
-On Lambda, there is multiple scenario where a lambda will trigger a cold start even if you have some warmed instance. For example if you have more request than warm instance you'll get a cold start.
-Also NextJs lazy load the routes, so even if you hit a warm instance, this specific route might not have been loaded yet.
+On Lambda, there is multiple scenarios where a lambda will trigger a cold start even if you have some warmed instance. For example if you have more request than warm instance you'll get a cold start. Also NextJs lazy load the routes, so even if you hit a warm instance, this specific route might not have been loaded yet.
 
 ## Acknowledgements
 
