@@ -35,7 +35,7 @@ export async function resolveWrapper<
     return wrapper();
   } else {
     // This will be replaced by the bundler
-    const m_1 = await import("../wrappers/aws-lambda.js");
+    const m_1 = await import("../overrides/wrappers/aws-lambda.js");
     // @ts-expect-error
     return m_1.default;
   }

@@ -4,7 +4,7 @@ import type {
   WrapperHandler,
 } from "types/open-next";
 
-import { MiddlewareOutputEvent } from "../core/routingHandler";
+import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
 const handler: WrapperHandler<
   InternalEvent,
