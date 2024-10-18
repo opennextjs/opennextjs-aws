@@ -17,6 +17,7 @@ import { compileCache } from "./compileCache.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 const require = createRequire(import.meta.url);
 
@@ -266,6 +267,8 @@ async function generateBundle(
   if (isMonorepo) {
     addMonorepoEntrypoint(outputPath, packagePath);
   }
+
+  installDependencies(outputPath, fnOptions.install);
 
   if (fnOptions.minify) {
     await minifyServerBundle(outputPath);
