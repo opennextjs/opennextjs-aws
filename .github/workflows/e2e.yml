@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -86,12 +86,12 @@ jobs:
           aws-region: us-east-1
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 
       - name: Set up NodeJS v18
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           cache: pnpm # cache pnpm store
           node-version: 18.18.2
@@ -117,7 +117,7 @@ jobs:
         run: echo "version=$(npm ls @playwright/test | grep @playwright | sed 's/.*@//' | sed 's/ .*//' )"
 
       - name: Cache Playwright
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: playwright-cache
         with:
           path: "~/.cache/ms-playwright"
@@ -131,7 +131,7 @@ jobs:
 
       # Cache turbo runs
       - name: Cache Turbo
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
