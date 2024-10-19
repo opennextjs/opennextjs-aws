@@ -7,7 +7,7 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://sst.dev/discord"><img alt="Discord" src="https://img.shields.io/discord/983865673656705025?style=flat-square" /></a>
+  <a href="https://discord.gg/opennextjs"><img alt="Discord" src="https://img.shields.io/discord/1283128968140161065?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/@opennextjs/aws"><img alt="npm" src="https://img.shields.io/npm/v/@opennextjs/aws.svg?style=flat-square" /></a>
 </p>
 
