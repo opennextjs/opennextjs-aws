@@ -54,6 +54,8 @@ const commonBinaryMimeTypes = new Set([
   "application/x-tar",
   "application/x-zip",
   "application/zip",
+  // Serialized data
+  "application/x-protobuf",
 ]);
 
 export function isBinaryContentType(contentType?: string | null) {
