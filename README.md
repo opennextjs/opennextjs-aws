@@ -36,7 +36,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] Running at edge
-- [*] [Almost no coldstart](#coldstart)
+- [x] [Almost no coldstart (*)](#coldstart)
 
 ## Who is using OpenNext?
 
