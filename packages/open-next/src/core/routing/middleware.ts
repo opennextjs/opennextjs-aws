@@ -28,6 +28,14 @@ type MiddlewareOutputEvent = InternalEvent & {
   externalRewrite?: boolean;
 };
 
+type Middleware = (request: Request) => Response | Promise<Response>;
+type MiddlewareLoader = () => Promise<{ default: Middleware }>;
+
+function defaultMiddlewareLoader() {
+  // @ts-expect-error - This is bundled
+  return import("./middleware.mjs");
+}
+
 // NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
 // OpenNext will run the middleware in a sandbox and set the appropriate req headers
 // and res.body prior to processing the next-server.
@@ -36,6 +44,7 @@ type MiddlewareOutputEvent = InternalEvent & {
 //    if res.end() is return, the parent needs to return and not process next server
 export async function handleMiddleware(
   internalEvent: InternalEvent,
+  middlewareLoader: MiddlewareLoader = defaultMiddlewareLoader,
 ): Promise<MiddlewareOutputEvent | InternalResult> {
   const { query } = internalEvent;
   const normalizedPath = localizePath(internalEvent);
@@ -53,8 +62,7 @@ export async function handleMiddleware(
   const url = initialUrl.toString();
   // console.log("url", url, normalizedPath);
 
-  // @ts-expect-error - This is bundled
-  const middleware = await import("./middleware.mjs");
+  const middleware = await middlewareLoader();
 
   const result: Response = await middleware.default({
     geo: {
@@ -73,7 +81,7 @@ export async function handleMiddleware(
     },
     url,
     body: convertBodyToReadableStream(internalEvent.method, internalEvent.body),
-  });
+  } as unknown as Request);
   const statusCode = result.status;
 
   /* Apply override headers from middleware
