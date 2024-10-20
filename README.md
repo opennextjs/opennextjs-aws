@@ -13,9 +13,9 @@
 
 ---
 
-<p align="center">
-  <a style="font-size: 2.5rem;font-weight:bold;" href="https://open-next.js.org/aws">Docs</a>
-</p>
+<h1 align="center">
+  <a href="https://open-next.js.org/aws">Docs</a>
+</h1>
 
 ## Description
 
