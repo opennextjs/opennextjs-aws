@@ -7,3 +7,9 @@ runs:
         - name: Run tests
           run: pnpm test
           shell: bash
+
+        - name: Report test coverage
+          if: always() 
+          uses:  davelosert/vitest-coverage-report-action@v2
+          with:
+              vite-config-path: ./packages/tests-unit/vitest.config.ts
