@@ -14,7 +14,7 @@
 ---
 
 <h1 align="center">
-  <a href="https://open-next.js.org/aws">Docs</a>
+  <a href="https://opennext.js.org/aws">Docs</a>
 </h1>
 
 ## Description
