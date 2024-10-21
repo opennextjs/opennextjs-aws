@@ -13,9 +13,9 @@
 
 ---
 
-<p align="center">
-  <a style="font-size: 2.5rem;font-weight:bold;" href="https://open-next.js.org/aws">Docs</a>
-</p>
+<h1 align="center">
+  <a href="https://opennext.js.org/aws">Docs</a>
+</h1>
 
 ## Description
 
@@ -23,7 +23,7 @@ OpenNext takes the Next.js build output and converts it into packages that can b
 
 ## Features
 
-OpenNext aims to support all Next.js 14 features. Some features are work in progress. If you are running into any problems make sure to check the [docs](https://opennext.js.org/aws) first before you open a [new issue](/issues/new) or visit our [Discord](https://discord.gg/AWyhAu8q) to let us know!
+OpenNext aims to support all Next.js 14 features. Some features are work in progress. If you are running into any problems make sure to check the [docs](https://opennext.js.org/aws) first before you open a [new issue](/issues/new) or visit our [Discord](https://discord.gg/opennextjs) to let us know!
 
 - [x] App & Pages Router
 - [x] API routes
@@ -36,7 +36,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] Running at edge
-- [*] [Almost no coldstart](#coldstart)
+- [x] [Almost no coldstart (*)](#coldstart)
 
 ## Who is using OpenNext?
 
@@ -104,4 +104,4 @@ Special shoutout to [@khuezy](https://github.com/khuezy) and [@conico974](https:
 
 ---
 
-Maintained by [SST](https://sst.dev). Join our community: [Discord](https://discord.gg/AWyhAu8q) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
+Maintained by [SST](https://sst.dev). Join our community: [Discord](https://discord.gg/opennextjs) | [YouTube](https://www.youtube.com/c/sst-dev) | [Twitter](https://twitter.com/SST_dev)
