@@ -12,7 +12,7 @@ import {
   getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
 } from "./constants";
-import { TagCache } from "./types";
+import type { TagCache } from "./types";
 
 const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
 

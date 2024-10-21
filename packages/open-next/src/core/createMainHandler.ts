@@ -5,8 +5,8 @@ import { DetachedPromiseRunner } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
-import type { IncrementalCache } from "../cache/incremental/types";
-import type { Queue } from "../queue/types";
+import type { IncrementalCache } from "../overrides/incrementalCache/types";
+import type { Queue } from "../overrides/queue/types";
 import { openNextHandler } from "./requestHandler.js";
 import {
   resolveConverter,

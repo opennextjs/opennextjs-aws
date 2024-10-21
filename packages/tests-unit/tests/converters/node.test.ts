@@ -1,5 +1,5 @@
-import converter from "@opennextjs/aws/converters/node.js";
 import { IncomingMessage } from "@opennextjs/aws/http/request.js";
+import converter from "@opennextjs/aws/overrides/converters/node.js";
 
 describe("convertFrom", () => {
   it("should convert GET request", async () => {

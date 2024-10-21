@@ -5,7 +5,7 @@ import { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { CacheValue } from "../../cache/incremental/types";
+import { CacheValue } from "../../overrides/incrementalCache/types";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./util";
 

@@ -6,11 +6,13 @@ import {
   InternalEvent,
   InternalResult,
   LazyLoadedOverride,
+  OriginResolver,
   OverrideOptions,
+  Warmer,
   Wrapper,
 } from "types/open-next.js";
 
-import { TagCache } from "../cache/tag/types.js";
+import { TagCache } from "../overrides/tagCache/types.js";
 
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,
@@ -21,7 +23,7 @@ export async function resolveConverter<
   if (typeof converter === "function") {
     return converter();
   } else {
-    const m_1 = await import(`../converters/aws-apigw-v2.js`);
+    const m_1 = await import(`../overrides/converters/aws-apigw-v2.js`);
     // @ts-expect-error
     return m_1.default;
   }
@@ -35,7 +37,7 @@ export async function resolveWrapper<
     return wrapper();
   } else {
     // This will be replaced by the bundler
-    const m_1 = await import("../wrappers/aws-lambda.js");
+    const m_1 = await import("../overrides/wrappers/aws-lambda.js");
     // @ts-expect-error
     return m_1.default;
   }
@@ -54,7 +56,7 @@ export async function resolveTagCache(
     return tagCache();
   } else {
     // This will be replaced by the bundler
-    const m_1 = await import("../cache/tag/dynamodb.js");
+    const m_1 = await import("../overrides/tagCache/dynamodb.js");
     return m_1.default;
   }
 }
@@ -69,7 +71,7 @@ export async function resolveQueue(queue: OverrideOptions["queue"]) {
   if (typeof queue === "function") {
     return queue();
   } else {
-    const m_1 = await import("../queue/sqs.js");
+    const m_1 = await import("../overrides/queue/sqs.js");
     return m_1.default;
   }
 }
@@ -86,7 +88,7 @@ export async function resolveIncrementalCache(
   if (typeof incrementalCache === "function") {
     return incrementalCache();
   } else {
-    const m_1 = await import("../cache/incremental/s3.js");
+    const m_1 = await import("../overrides/incrementalCache/s3.js");
     return m_1.default;
   }
 }
@@ -103,6 +105,35 @@ export async function resolveImageLoader(
     return imageLoader();
   } else {
     const m_1 = await import("../overrides/imageLoader/s3.js");
+    return m_1.default;
+  }
+}
+
+/**
+ * @returns
+ * @__PURE__
+ */
+export async function resolveOriginResolver(
+  originResolver?: LazyLoadedOverride<OriginResolver> | string,
+) {
+  if (typeof originResolver === "function") {
+    return originResolver();
+  } else {
+    const m_1 = await import("../overrides/originResolver/pattern-env.js");
+    return m_1.default;
+  }
+}
+
+/**
+ * @__PURE__
+ */
+export async function resolveWarmerInvoke(
+  warmer?: LazyLoadedOverride<Warmer> | "aws-lambda",
+) {
+  if (typeof warmer === "function") {
+    return warmer();
+  } else {
+    const m_1 = await import("../overrides/warmer/aws-lambda.js");
     return m_1.default;
   }
 }

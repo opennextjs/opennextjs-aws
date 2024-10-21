@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { AwsClient } from "aws4fetch";
 import path from "path";
+import { Extension } from "types/cache";
 import { IgnorableError, RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
 import { parseNumberFromEnv } from "../../adapters/util";
-import { Extension } from "../next-types";
 import { IncrementalCache } from "./types";
 
 let awsClient: AwsClient | null = null;

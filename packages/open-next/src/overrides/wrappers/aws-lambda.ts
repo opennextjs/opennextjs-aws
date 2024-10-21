@@ -8,10 +8,13 @@ import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
-import { StreamCreator } from "http/openNextResponse";
+import type { StreamCreator } from "http/openNextResponse";
 import type { WrapperHandler } from "types/open-next";
 
-import { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
+import type {
+  WarmerEvent,
+  WarmerResponse,
+} from "../../adapters/warmer-function";
 
 type AwsLambdaEvent =
   | APIGatewayProxyEventV2
