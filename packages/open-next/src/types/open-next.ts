@@ -184,6 +184,31 @@ export interface OverrideOptions extends DefaultOverrideOptions {
   queue?: IncludedQueue | LazyLoadedOverride<Queue>;
 }
 
+export interface InstallOptions {
+  /**
+   * List of packages to install
+   * @example
+   * ```ts
+   * install: {
+   *  packages: ["sharp@0.32"]
+   * }
+   * ```
+   */
+  packages: string[];
+  /**
+   * @default "arm64"
+   */
+  arch?: "x64" | "arm64";
+  /**
+   * @default "18"
+   */
+  nodeVersion?: "18" | "20" | "22";
+  /**
+   * @default "glibc"
+   */
+  libc?: "glibc" | "musl";
+}
+
 export interface DefaultFunctionOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -202,6 +227,14 @@ export interface DefaultFunctionOptions<
    * Enable overriding the default lambda.
    */
   override?: DefaultOverrideOptions<E, R>;
+
+  /**
+   * Install options for the function.
+   * This is used to install additional packages to this function.
+   * For image optimization, it will install sharp by default.
+   * @default undefined
+   */
+  install?: InstallOptions;
 }
 
 export interface FunctionOptions extends DefaultFunctionOptions {
@@ -318,15 +351,6 @@ export interface OpenNextConfig {
      * @default "s3"
      */
     loader?: IncludedImageLoader | LazyLoadedOverride<ImageLoader>;
-    /**
-     * @default "arm64"
-     */
-    arch?: "x64" | "arm64";
-    /**
-     * @default "18"
-     */
-
-    nodeVersion?: "18" | "20";
   };
 
   /**

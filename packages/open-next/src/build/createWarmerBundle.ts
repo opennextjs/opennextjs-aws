@@ -4,6 +4,7 @@ import path from "node:path";
 import logger from "../logger.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 export async function createWarmerBundle(options: buildHelper.BuildOptions) {
   logger.info(`Bundling warmer function...`);
@@ -48,4 +49,6 @@ export async function createWarmerBundle(options: buildHelper.BuildOptions) {
     },
     options,
   );
+
+  installDependencies(outputPath, config.warmer?.install);
 }
