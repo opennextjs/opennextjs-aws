@@ -1,24 +1,25 @@
-import {
+import type { OutgoingHttpHeader } from "node:http";
+
+import type {
   CloudFrontCustomOrigin,
   CloudFrontHeaders,
   CloudFrontRequest,
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
-import { OutgoingHttpHeader } from "http";
 import { parseCookies } from "http/util";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 import { fromReadableStream } from "utils/stream";
 
-import { debug } from "../adapters/logger";
+import { debug } from "../../adapters/logger";
 import {
   convertRes,
   convertToQuery,
   convertToQueryString,
   createServerResponse,
   proxyRequest,
-} from "../core/routing/util";
-import { MiddlewareOutputEvent } from "../core/routingHandler";
+} from "../../core/routing/util";
+import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
 const CloudFrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers

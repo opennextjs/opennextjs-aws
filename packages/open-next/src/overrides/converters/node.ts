@@ -1,4 +1,4 @@
-import { IncomingMessage } from "http";
+import type { IncomingMessage } from "http";
 import { parseCookies } from "http/util";
 import type { Converter, InternalResult } from "types/open-next";
 

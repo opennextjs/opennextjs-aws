@@ -15,7 +15,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "open-next.js.org",
+        hostname: "opennext.js.org",
       },
     ],
   },

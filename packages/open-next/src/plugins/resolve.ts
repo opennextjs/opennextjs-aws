@@ -5,8 +5,12 @@ import type {
   DefaultOverrideOptions,
   ImageLoader,
   IncludedImageLoader,
+  IncludedOriginResolver,
+  IncludedWarmer,
   LazyLoadedOverride,
+  OriginResolver,
   OverrideOptions,
+  Warmer,
 } from "types/open-next";
 
 import logger from "../logger.js";
@@ -19,18 +23,46 @@ export interface IPluginSettings {
     queue?: OverrideOptions["queue"];
     incrementalCache?: OverrideOptions["incrementalCache"];
     imageLoader?: LazyLoadedOverride<ImageLoader> | IncludedImageLoader;
+    originResolver?:
+      | LazyLoadedOverride<OriginResolver>
+      | IncludedOriginResolver;
+    warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
   };
   fnName?: string;
 }
 
-function getOverrideOrDefault<
-  Override extends string | LazyLoadedOverride<any>,
->(override: Override, defaultOverride: string) {
+function getOverrideOrDummy<Override extends string | LazyLoadedOverride<any>>(
+  override: Override,
+) {
   if (typeof override === "string") {
     return override;
   }
-  return defaultOverride;
+  // We can return dummy here because if it's not a string, it's a LazyLoadedOverride
+  return "dummy";
 }
+
+// This could be useful in the future to map overrides to nested folders
+const nameToFolder = {
+  wrapper: "wrappers",
+  converter: "converters",
+  tagCache: "tagCache",
+  queue: "queue",
+  incrementalCache: "incrementalCache",
+  imageLoader: "imageLoader",
+  originResolver: "originResolver",
+  warmer: "warmer",
+};
+
+const defaultOverrides = {
+  wrapper: "aws-lambda",
+  converter: "aws-apigw-v2",
+  tagCache: "dynamodb",
+  queue: "sqs",
+  incrementalCache: "s3",
+  imageLoader: "s3",
+  originResolver: "pattern-env",
+  warmer: "aws-lambda",
+};
 
 /**
  * @param opts.overrides - The name of the overrides to use
@@ -46,56 +78,18 @@ export function openNextResolvePlugin({
       logger.debug(`OpenNext Resolve plugin for ${fnName}`);
       build.onLoad({ filter: /core(\/|\\)resolve\.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
-        //TODO: refactor this. Every override should be at the same place so we can generate this dynamically
-        if (overrides?.wrapper) {
+        const overridesEntries = Object.entries(overrides ?? {});
+        for (const [overrideName, overrideValue] of overridesEntries) {
+          if (!overrideValue) {
+            continue;
+          }
+          const folder =
+            nameToFolder[overrideName as keyof typeof nameToFolder];
+          const defaultOverride =
+            defaultOverrides[overrideName as keyof typeof defaultOverrides];
           contents = contents.replace(
-            "../wrappers/aws-lambda.js",
-            `../wrappers/${getOverrideOrDefault(
-              overrides.wrapper,
-              "aws-lambda",
-            )}.js`,
-          );
-        }
-        if (overrides?.converter) {
-          contents = contents.replace(
-            "../converters/aws-apigw-v2.js",
-            `../converters/${getOverrideOrDefault(
-              overrides.converter,
-              "dummy",
-            )}.js`,
-          );
-        }
-        if (overrides?.tagCache) {
-          contents = contents.replace(
-            "../cache/tag/dynamodb.js",
-            `../cache/tag/${getOverrideOrDefault(
-              overrides.tagCache,
-              "dynamodb-lite",
-            )}.js`,
-          );
-        }
-        if (overrides?.queue) {
-          contents = contents.replace(
-            "../queue/sqs.js",
-            `../queue/${getOverrideOrDefault(overrides.queue, "sqs-lite")}.js`,
-          );
-        }
-        if (overrides?.incrementalCache) {
-          contents = contents.replace(
-            "../cache/incremental/s3.js",
-            `../cache/incremental/${getOverrideOrDefault(
-              overrides.incrementalCache,
-              "s3-lite",
-            )}.js`,
-          );
-        }
-        if (overrides?.imageLoader) {
-          contents = contents.replace(
-            "../overrides/imageLoader/s3.js",
-            `../overrides/imageLoader/${getOverrideOrDefault(
-              overrides.imageLoader,
-              "s3",
-            )}.js`,
+            `../overrides/${folder}/${defaultOverride}.js`,
+            `../overrides/${folder}/${getOverrideOrDummy(overrideValue)}.js`,
           );
         }
         return {

@@ -4,9 +4,9 @@ import type { ReadableStream } from "node:stream/web";
 import type { StreamCreator } from "http/index.js";
 
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
-import type { IncrementalCache } from "../cache/incremental/types";
-import type { TagCache } from "../cache/tag/types";
-import type { Queue } from "../queue/types";
+import type { IncrementalCache } from "../overrides/incrementalCache/types";
+import type { Queue } from "../overrides/queue/types";
+import type { TagCache } from "../overrides/tagCache/types";
 
 export type BaseEventOrResult<T extends string = string> = {
   type: T;
@@ -138,6 +138,10 @@ export type IncludedIncrementalCache = "s3" | "s3-lite";
 export type IncludedTagCache = "dynamodb" | "dynamodb-lite";
 
 export type IncludedImageLoader = "s3" | "host";
+
+export type IncludedOriginResolver = "pattern-env";
+
+export type IncludedWarmer = "aws-lambda";
 
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
@@ -284,7 +288,9 @@ export interface OpenNextConfig {
      * OPEN_NEXT_ORIGIN should be a json stringified object with the key of the splitted function as key and the origin as value
      * @default "pattern-env"
      */
-    originResolver?: "pattern-env" | LazyLoadedOverride<OriginResolver>;
+    originResolver?:
+      | IncludedOriginResolver
+      | LazyLoadedOverride<OriginResolver>;
   };
 
   /**
@@ -294,7 +300,7 @@ export interface OpenNextConfig {
    * @default undefined
    */
   warmer?: DefaultFunctionOptions<WarmerEvent, WarmerResponse> & {
-    invokeFunction: "aws-lambda" | LazyLoadedOverride<Warmer>;
+    invokeFunction: IncludedWarmer | LazyLoadedOverride<Warmer>;
   };
 
   /**
