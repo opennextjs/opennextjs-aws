@@ -1,10 +1,6 @@
 import { WrapperHandler } from "types/open-next";
 
-const dummyWrapper: WrapperHandler = async () => {
-  return async () => {
-    return;
-  };
-};
+const dummyWrapper: WrapperHandler = async () => async () => undefined;
 
 export default {
   name: "dummy",
