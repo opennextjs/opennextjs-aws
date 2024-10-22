@@ -21,6 +21,10 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
 }
 
 function detectLocale(internalEvent: InternalEvent, i18n: i18nConfig): string {
+  if (i18n.localeDetection === false) {
+    return i18n.defaultLocale;
+  }
+
   const cookiesLocale = getLocaleFromCookie(internalEvent.cookies);
   const preferredLocale = acceptLanguage(
     internalEvent.headers["accept-language"],
