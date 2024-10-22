@@ -182,6 +182,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
           : [...initialCookies, ...this._cookies];
     }
     this.fixHeaders(this.headers);
+    this.fixHeadersForError();
 
     // We need to fix the set-cookie header here
     this.headers[SET_COOKIE_HEADER] = this._cookies;
@@ -275,6 +276,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   getFixedHeaders(): OutgoingHttpHeaders {
     // Do we want to apply this on writeHead?
     this.fixHeaders(this.headers);
+    this.fixHeadersForError();
     // This way we ensure that the cookies are correct
     this.headers[SET_COOKIE_HEADER] = this._cookies;
     return this.headers;
@@ -383,5 +385,17 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
 
     //TODO: test to see if we need to call end here
     return this;
+  }
+
+  // For some reason, next returns the 500 error page with some cache-control headers
+  // We need to fix that
+  private fixHeadersForError() {
+    // We only check for 404 and 500 errors
+    // The rest should be errors that are handled by the user and they should set the cache headers themselves
+    if (this.statusCode === 404 || this.statusCode === 500) {
+      this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      this.setHeader("Pragma", "no-cache");
+      this.setHeader("Expires", "0");
+    }
   }
 }
