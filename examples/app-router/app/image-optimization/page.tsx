@@ -4,7 +4,7 @@ export default function ImageOptimization() {
   return (
     <div>
       <Image
-        src="https://open-next.js.org/architecture.png"
+        src="https://opennext.js.org/architecture.png"
         alt="Open Next architecture"
         width={300}
         height={300}
