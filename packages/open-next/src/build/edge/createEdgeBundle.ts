@@ -3,8 +3,8 @@ import { mkdirSync } from "node:fs";
 import { build } from "esbuild";
 import fs from "fs";
 import path from "path";
-import { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
-import {
+import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
+import type {
   IncludedConverter,
   OpenNextConfig,
   OverrideOptions,
@@ -16,7 +16,8 @@ import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import { BuildOptions, copyOpenNextConfig, esbuildAsync } from "../helper.js";
+import type { BuildOptions } from "../helper.js";
+import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 interface BuildEdgeBundleOptions {
   appBuildOutputPath: string;

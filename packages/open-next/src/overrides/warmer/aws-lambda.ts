@@ -1,4 +1,4 @@
-import { Warmer } from "types/open-next";
+import type { Warmer } from "types/open-next";
 
 import { debug, error } from "../../adapters/logger";
 import type {

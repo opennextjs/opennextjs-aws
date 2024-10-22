@@ -6,7 +6,7 @@ import {
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
-import { InternalEvent } from "@opennextjs/aws/types/open-next.js";
+import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({

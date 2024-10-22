@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { Plugin } from "esbuild";
-import { MiddlewareInfo } from "types/next-types.js";
+import type { Plugin } from "esbuild";
+import type { MiddlewareInfo } from "types/next-types.js";
 
 import {
   loadAppPathsManifestKeys,

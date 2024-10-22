@@ -1,17 +1,15 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import {
-  IncomingMessage,
-  OpenNextNodeResponse,
-  StreamCreator,
-} from "http/index.js";
-import { InternalEvent, InternalResult } from "types/open-next";
+import type { OpenNextNodeResponse, StreamCreator } from "http/index.js";
+import { IncomingMessage } from "http/index.js";
+import type { InternalEvent, InternalResult } from "types/open-next";
 import { DetachedPromiseRunner } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
-import routingHandler, { MiddlewareOutputEvent } from "./routingHandler";
+import type { MiddlewareOutputEvent } from "./routingHandler";
+import routingHandler from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache

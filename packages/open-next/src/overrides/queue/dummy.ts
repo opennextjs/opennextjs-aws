@@ -1,4 +1,4 @@
-import { Queue } from "./types";
+import type { Queue } from "./types";
 
 const dummyQueue: Queue = {
   name: "dummy",

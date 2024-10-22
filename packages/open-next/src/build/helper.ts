@@ -3,12 +3,9 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import url from "node:url";
 
-import {
-  build as buildAsync,
-  BuildOptions as ESBuildOptions,
-  buildSync,
-} from "esbuild";
-import { OpenNextConfig } from "types/open-next.js";
+import type { BuildOptions as ESBuildOptions } from "esbuild";
+import { build as buildAsync, buildSync } from "esbuild";
+import type { OpenNextConfig } from "types/open-next.js";
 
 import logger from "../logger.js";
 

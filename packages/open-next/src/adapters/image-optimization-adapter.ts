@@ -1,15 +1,16 @@
 import { createHash } from "node:crypto";
-import {
+import type {
   IncomingMessage,
   OutgoingHttpHeaders,
   ServerResponse,
 } from "node:http";
 import https from "node:https";
 import path from "node:path";
-import { Writable } from "node:stream";
+import type { Writable } from "node:stream";
 
 import { loadBuildId, loadConfig } from "config/util.js";
-import { OpenNextNodeResponse, StreamCreator } from "http/openNextResponse.js";
+import type { StreamCreator } from "http/openNextResponse.js";
+import { OpenNextNodeResponse } from "http/openNextResponse.js";
 // @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
@@ -18,7 +19,7 @@ import {
 } from "next/dist/server/image-optimizer";
 // @ts-ignore
 import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
-import { InternalEvent, InternalResult } from "types/open-next.js";
+import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";

@@ -1,4 +1,4 @@
-import { InferGetStaticPropsType } from "next";
+import type { InferGetStaticPropsType } from "next";
 
 export async function getStaticProps() {
   return {

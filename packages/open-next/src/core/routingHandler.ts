@@ -4,7 +4,7 @@ import {
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
-import { InternalEvent, InternalResult, Origin } from "types/open-next";
+import type { InternalEvent, InternalResult, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";

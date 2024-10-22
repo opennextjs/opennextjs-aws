@@ -4,8 +4,9 @@ import type {
   OutgoingHttpHeaders,
   ServerResponse,
 } from "http";
-import { Socket } from "net";
-import { Transform, TransformCallback, Writable } from "stream";
+import type { Socket } from "net";
+import type { TransformCallback, Writable } from "stream";
+import { Transform } from "stream";
 
 import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";

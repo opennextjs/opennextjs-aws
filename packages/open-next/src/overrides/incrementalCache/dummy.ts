@@ -1,4 +1,4 @@
-import { IncrementalCache } from "./types";
+import type { IncrementalCache } from "./types";
 
 const dummyIncrementalCache: IncrementalCache = {
   name: "dummy",

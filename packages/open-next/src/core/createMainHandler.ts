@@ -1,7 +1,7 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 
 import type { OpenNextConfig } from "types/open-next";
-import { DetachedPromiseRunner } from "utils/promise";
+import type { DetachedPromiseRunner } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";

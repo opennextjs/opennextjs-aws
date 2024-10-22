@@ -29,6 +29,7 @@ module.exports = {
     ],
 
     "@typescript-eslint/unbound-method": "error",
+    "@typescript-eslint/consistent-type-imports": "error",
   },
   overrides: [
     {

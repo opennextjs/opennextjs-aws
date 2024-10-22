@@ -1,6 +1,6 @@
 import { NextConfig } from "config/index.js";
 import type { i18nConfig } from "types/next-types";
-import { InternalEvent } from "types/open-next";
+import type { InternalEvent } from "types/open-next";
 
 import { debug } from "../../../adapters/logger.js";
 import { acceptLanguage } from "./accept-header";

@@ -1,5 +1,6 @@
 import fs from "fs/promises";
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import path from "path";
 
 export const dynamic = "force-dynamic";

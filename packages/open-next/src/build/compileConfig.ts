@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { buildSync } from "esbuild";
-import { OpenNextConfig } from "types/open-next.js";
+import type { OpenNextConfig } from "types/open-next.js";
 
 import logger from "../logger.js";
 import { validateConfig } from "./validateConfig.js";

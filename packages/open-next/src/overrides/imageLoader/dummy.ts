@@ -1,4 +1,4 @@
-import { ImageLoader } from "types/open-next";
+import type { ImageLoader } from "types/open-next";
 import { FatalError } from "utils/error";
 
 const dummyLoader: ImageLoader = {

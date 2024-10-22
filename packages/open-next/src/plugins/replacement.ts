@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 
 import chalk from "chalk";
-import { Plugin } from "esbuild";
+import type { Plugin } from "esbuild";
 
 import logger from "../logger.js";
 

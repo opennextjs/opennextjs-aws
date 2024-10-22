@@ -1,4 +1,4 @@
-import {
+import type {
   BaseEventOrResult,
   Converter,
   DefaultOverrideOptions,
@@ -12,7 +12,7 @@ import {
   Wrapper,
 } from "types/open-next.js";
 
-import { TagCache } from "../overrides/tagCache/types.js";
+import type { TagCache } from "../overrides/tagCache/types.js";
 
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,

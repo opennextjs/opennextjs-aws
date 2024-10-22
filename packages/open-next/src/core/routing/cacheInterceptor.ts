@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 
 import { NextConfig, PrerenderManifest } from "config/index";
-import { InternalEvent, InternalResult } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { CacheValue } from "../../overrides/incrementalCache/types";
+import type { CacheValue } from "../../overrides/incrementalCache/types";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./util";
 

@@ -2,7 +2,7 @@
 
 import type { IncomingMessage, OpenNextNodeResponse } from "http/index.js";
 
-import { InternalEvent } from "./open-next";
+import type { InternalEvent } from "./open-next";
 
 type RemotePattern = {
   protocol?: "http" | "https";

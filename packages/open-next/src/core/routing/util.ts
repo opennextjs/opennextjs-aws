@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { OutgoingHttpHeaders } from "node:http";
+import type { OutgoingHttpHeaders } from "node:http";
 import { Readable } from "node:stream";
 
 import { BuildId, HtmlPages, NextConfig } from "config/index.js";
@@ -7,7 +7,7 @@ import type { IncomingMessage, StreamCreator } from "http/index.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
-import { InternalEvent, InternalResult } from "types/open-next.js";
+import type { InternalEvent, InternalResult } from "types/open-next.js";
 
 import { isBinaryContentType } from "../../adapters/binary.js";
 import { debug, error } from "../../adapters/logger.js";

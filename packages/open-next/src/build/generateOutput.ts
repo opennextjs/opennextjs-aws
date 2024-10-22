@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import path from "node:path";
 
-import { NextConfig } from "types/next-types.js";
-import {
+import type { NextConfig } from "types/next-types.js";
+import type {
   BaseOverride,
   DefaultOverrideOptions,
   FunctionOptions,

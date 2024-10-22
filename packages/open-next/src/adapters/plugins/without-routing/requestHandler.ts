@@ -1,7 +1,7 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import { InternalEvent } from "types/open-next";
+import type { InternalEvent } from "types/open-next";
 
-import { MiddlewareOutputEvent } from "../../../core/routingHandler";
+import type { MiddlewareOutputEvent } from "../../../core/routingHandler";
 // This is available in requestHandler.ts
 declare const internalEvent: InternalEvent;
 

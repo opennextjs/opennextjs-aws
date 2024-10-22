@@ -1,7 +1,7 @@
-import { ReadableStream } from "node:stream/web";
+import type { ReadableStream } from "node:stream/web";
 
 import { MiddlewareManifest, NextConfig } from "config/index.js";
-import { InternalEvent, InternalResult } from "types/open-next.js";
+import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { localizePath } from "./i18n/index.js";
