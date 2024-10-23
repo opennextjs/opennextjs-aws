@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   cleanDistDir: true,
   transpilePackages: ["@example/shared"],
   output: "standalone",
-  outputFileTracingRoot: "../sst",
+  // outputFileTracingRoot: "../sst",
   eslint: {
     ignoreDuringBuilds: true,
   },

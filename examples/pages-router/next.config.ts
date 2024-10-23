@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   cleanDistDir: true,
   reactStrictMode: true,
   output: "standalone",
-  outputFileTracingRoot: "../sst",
+  // outputFileTracingRoot: "../sst",
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -42,7 +42,7 @@ const nextConfig: NextConfig = {
   redirects: async () => [
     {
       source: "/next-config-redirect-without-locale-support/",
-      destination: "https://open-next.js.org/",
+      destination: "https://opennext.js.org/",
       permanent: false,
       basePath: false,
       locale: false,

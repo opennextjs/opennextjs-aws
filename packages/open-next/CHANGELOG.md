@@ -142,7 +142,7 @@
 
   This is the V3 of OpenNext. It includes some breaking changes and cannot be used as a drop-in replacement for V2. If your IAC is using OpenNext V2, you will need to update it to use V3.
 
-  If you are using OpenNext V2, please refer to the [migration guide](https://open-next.js.org/migration#from-opennext-v2) to upgrade to V3.
+  If you are using OpenNext V2, please refer to the [migration guide](https://opennext.js.org/migration#from-opennext-v2) to upgrade to V3.
 
   ### New Features
 
@@ -163,7 +163,7 @@
 
   ### Breaking Changes
 
-  - Edge runtime don't work out of the box anymore. You need to deploy them on a separate function see [the config for more info](https://open-next.js.org/config)
+  - Edge runtime don't work out of the box anymore. You need to deploy them on a separate function see [the config for more info](https://opennext.js.org/config)
   - Output directory structure has changed to support function splitting
   - Removed build arguments in favor of `open-next.config.ts`
 

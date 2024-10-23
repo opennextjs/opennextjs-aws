@@ -4,7 +4,7 @@ test("Image Optimization", async ({ page }) => {
   await page.goto("/");
 
   const imageResponsePromise = page.waitForResponse(
-    /https%3A%2F%2Fopen-next.js.org%2Farchitecture.png/,
+    /https%3A%2F%2Fopennext.js.org%2Farchitecture.png/,
   );
   await page.locator('[href="/image-optimization"]').click();
   const imageResponse = await imageResponsePromise;
