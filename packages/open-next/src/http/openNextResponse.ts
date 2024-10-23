@@ -25,6 +25,7 @@ export interface StreamCreator {
 }
 
 // We only need to implement the methods that are used by next.js
+// @ts-ignore
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
   statusCode!: number;
   statusMessage: string = "";

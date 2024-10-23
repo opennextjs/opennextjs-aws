@@ -42,6 +42,7 @@ export async function optimizeImage(
   const result = await imageOptimizer(
     imageUpstream,
     imageParams,
+    // @ts-ignore
     nextConfig,
     false, // not in dev mode
   );

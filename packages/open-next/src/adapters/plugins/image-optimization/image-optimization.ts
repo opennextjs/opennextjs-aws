@@ -27,6 +27,7 @@ export async function optimizeImage(
     imageParams,
     nextConfig,
     false, // not in dev mode
+    // @ts-ignore
     handleRequest,
   );
   debug("optimized result", result);
