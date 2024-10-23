@@ -1,8 +1,9 @@
-export default function RewriteDestination({
-  searchParams,
-}: {
-  searchParams: { a: string };
-}) {
+export default async function RewriteDestination(
+  props: {
+    searchParams: Promise<{ a: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   return (
     <div>
       <div>Rewritten Destination</div>

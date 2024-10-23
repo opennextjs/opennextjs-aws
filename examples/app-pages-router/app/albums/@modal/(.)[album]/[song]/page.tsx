@@ -2,12 +2,13 @@ import { getSong } from "@example/shared/api";
 import Modal from "@example/shared/components/Modal";
 
 type Props = {
-  params: {
+  params: Promise<{
     album: string;
     song: string;
-  };
+  }>;
 };
-export default async function SongPage({ params }: Props) {
+export default async function SongPage(props: Props) {
+  const params = await props.params;
   const song = await getSong(params.album, params.song);
   return (
     <Modal>

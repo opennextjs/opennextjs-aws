@@ -1,11 +1,12 @@
 import { headers } from "next/headers";
 
-export default function SearchQuery({
-  searchParams: propsSearchParams,
-}: {
-  searchParams: Record<string, string | string[]>;
-}) {
-  const mwSearchParams = headers().get("search-params");
+export default async function SearchQuery(
+  props: {
+    searchParams: Promise<Record<string, string | string[]>>;
+  }
+) {
+  const propsSearchParams = await props.searchParams;
+  const mwSearchParams = (await headers()).get("search-params");
   const multiValueParams = propsSearchParams["multi"];
   const multiValueArray = Array.isArray(multiValueParams)
     ? multiValueParams
