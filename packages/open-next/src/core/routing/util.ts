@@ -459,9 +459,8 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     // 31536000 is the default s-maxage value for SSG pages
     if (sMaxAge && sMaxAge !== 31536000) {
       const remainingTtl = Math.max(sMaxAge - age, 1);
-      headers[
-        CommonHeaders.CACHE_CONTROL
-      ] = `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
+      headers[CommonHeaders.CACHE_CONTROL] =
+        `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
     }
   }
   if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;

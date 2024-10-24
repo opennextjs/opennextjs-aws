@@ -114,7 +114,7 @@ const tagCache: TagCache = {
       const revalidatedTags = result.Items ?? [];
       debug("revalidatedTags", revalidatedTags);
       // If we have revalidated tags we return -1 to force revalidation
-      return revalidatedTags.length > 0 ? -1 : lastModified ?? Date.now();
+      return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
     } catch (e) {
       error("Failed to get revalidated tags", e);
       return lastModified ?? Date.now();

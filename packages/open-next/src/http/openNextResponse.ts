@@ -328,10 +328,12 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
    * There are probably not used right now in Next.js, but better be safe than sorry
    */
 
-  setHeaders(headers: Headers | Map<string, number | string | readonly string[]>): this {
+  setHeaders(
+    headers: Headers | Map<string, number | string | readonly string[]>,
+  ): this {
     headers.forEach((value, key) => {
       this.setHeader(key, Array.isArray(value) ? value : value.toString());
-    })
+    });
     return this;
   }
 

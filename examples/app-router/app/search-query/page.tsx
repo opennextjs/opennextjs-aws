@@ -1,10 +1,8 @@
 import { headers } from "next/headers";
 
-export default async function SearchQuery(
-  props: {
-    searchParams: Promise<Record<string, string | string[]>>;
-  }
-) {
+export default async function SearchQuery(props: {
+  searchParams: Promise<Record<string, string | string[]>>;
+}) {
   const propsSearchParams = await props.searchParams;
   const mwSearchParams = (await headers()).get("search-params");
   const multiValueParams = propsSearchParams["multi"];
