@@ -4,6 +4,7 @@ import path from "node:path";
 import logger from "../logger.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import * as buildHelper from "./helper.js";
+import { installDependencies } from "./installDeps.js";
 
 export async function createRevalidationBundle(
   options: buildHelper.BuildOptions,
@@ -40,6 +41,8 @@ export async function createRevalidationBundle(
     },
     options,
   );
+
+  installDependencies(outputPath, config.revalidate?.install);
 
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
