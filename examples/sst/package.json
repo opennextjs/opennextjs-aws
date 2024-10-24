@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {},
   "devDependencies": {
-    "aws-cdk-lib": "2.101.1",
-    "constructs": "10.2.69",
+    "aws-cdk-lib": "2.161.1",
+    "constructs": "10.3.0",
     "sst": "^2.43.6"
   }
 }
