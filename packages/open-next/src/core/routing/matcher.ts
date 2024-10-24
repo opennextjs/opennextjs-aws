@@ -1,11 +1,6 @@
 import { NextConfig } from "config/index";
-import {
-  compile,
-  Match,
-  match,
-  MatchFunction,
-  PathFunction,
-} from "path-to-regexp";
+import type { Match, MatchFunction, PathFunction } from "path-to-regexp";
+import { compile, match } from "path-to-regexp";
 import type {
   Header,
   PrerenderManifest,
@@ -13,7 +8,7 @@ import type {
   RewriteDefinition,
   RouteHas,
 } from "types/next-types";
-import { InternalEvent, InternalResult } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";

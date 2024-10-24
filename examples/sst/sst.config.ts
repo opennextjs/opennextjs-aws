@@ -1,4 +1,4 @@
-import { SSTConfig } from "sst";
+import type { SSTConfig } from "sst";
 
 import { AppPagesRouter } from "./stacks/AppPagesRouter";
 import { AppRouter } from "./stacks/AppRouter";

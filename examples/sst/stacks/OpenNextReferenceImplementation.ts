@@ -1,8 +1,8 @@
 import { execSync } from "node:child_process";
 
+import type { BehaviorOptions, ICachePolicy } from "aws-cdk-lib/aws-cloudfront";
 import {
   AllowedMethods,
-  BehaviorOptions,
   CacheCookieBehavior,
   CachedMethods,
   CacheHeaderBehavior,
@@ -12,7 +12,6 @@ import {
   Function as CloudfrontFunction,
   FunctionCode,
   FunctionEventType,
-  ICachePolicy,
   OriginRequestPolicy,
   ViewerProtocolPolicy,
 } from "aws-cdk-lib/aws-cloudfront";
@@ -22,7 +21,8 @@ import {
   Billing,
   TableV2 as Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import type { IGrantable } from "aws-cdk-lib/aws-iam";
+import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
   Code,

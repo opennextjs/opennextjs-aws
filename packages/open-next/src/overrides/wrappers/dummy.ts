@@ -1,4 +1,4 @@
-import { WrapperHandler } from "types/open-next";
+import type { WrapperHandler } from "types/open-next";
 
 const dummyWrapper: WrapperHandler = async () => async () => undefined;
 

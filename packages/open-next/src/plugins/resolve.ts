@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { Plugin } from "esbuild";
+import type { Plugin } from "esbuild";
 import type {
   DefaultOverrideOptions,
   ImageLoader,

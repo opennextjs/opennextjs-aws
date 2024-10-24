@@ -1,5 +1,8 @@
 import converter from "@opennextjs/aws/overrides/converters/aws-cloudfront.js";
-import { CloudFrontRequestEvent, CloudFrontRequestResult } from "aws-lambda";
+import type {
+  CloudFrontRequestEvent,
+  CloudFrontRequestResult,
+} from "aws-lambda";
 import { Readable } from "stream";
 import { vi } from "vitest";
 

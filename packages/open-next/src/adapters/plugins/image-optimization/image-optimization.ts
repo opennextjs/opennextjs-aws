@@ -1,11 +1,11 @@
-import { IncomingMessage, ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { APIGatewayProxyEventHeaders } from "aws-lambda";
-import { NextConfig } from "next/dist/server/config-shared";
+import type { APIGatewayProxyEventHeaders } from "aws-lambda";
+import type { NextConfig } from "next/dist/server/config-shared";
 //#override imports
 import { imageOptimizer } from "next/dist/server/image-optimizer";
 //#endOverride
-import { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
+import type { NextUrlWithParsedQuery } from "next/dist/server/request-meta";
 
 import { debug } from "../../logger.js";
 

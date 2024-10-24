@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import converter from "@opennextjs/aws/overrides/converters/aws-apigw-v1.js";
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { Readable } from "stream";
 
 describe("convertTo", () => {

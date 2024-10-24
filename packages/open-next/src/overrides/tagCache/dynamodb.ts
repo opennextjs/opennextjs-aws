@@ -1,7 +1,7 @@
+import type { DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteItemCommand,
   DynamoDBClient,
-  DynamoDBClientConfig,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import path from "path";

@@ -1,4 +1,4 @@
-import { InferGetServerSidePropsType } from "next";
+import type { InferGetServerSidePropsType } from "next";
 
 export async function getServerSideProps() {
   return {

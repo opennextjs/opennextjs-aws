@@ -1,4 +1,4 @@
-import { InternalEvent, Origin } from "types/open-next";
+import type { InternalEvent, Origin } from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";

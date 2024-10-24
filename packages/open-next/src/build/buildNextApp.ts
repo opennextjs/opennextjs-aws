@@ -1,7 +1,7 @@
 import cp from "node:child_process";
 import path from "node:path";
 
-import * as buildHelper from "./helper.js";
+import type * as buildHelper from "./helper.js";
 
 export function setStandaloneBuildMode(options: buildHelper.BuildOptions) {
   // Equivalent to setting `output: "standalone"` in next.config.js

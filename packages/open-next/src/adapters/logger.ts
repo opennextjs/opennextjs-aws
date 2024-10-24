@@ -1,4 +1,4 @@
-import { BaseOpenNextError } from "utils/error";
+import type { BaseOpenNextError } from "utils/error";
 
 declare global {
   var openNextDebug: boolean;

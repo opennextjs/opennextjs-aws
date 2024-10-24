@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "fs";
 import path from "path";
-import { NextConfig, PrerenderManifest } from "types/next-types";
+import type { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";
 

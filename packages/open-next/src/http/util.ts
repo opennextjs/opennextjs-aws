@@ -1,4 +1,4 @@
-import http from "node:http";
+import type http from "node:http";
 
 export const parseHeaders = (
   headers?: http.OutgoingHttpHeader[] | http.OutgoingHttpHeaders,

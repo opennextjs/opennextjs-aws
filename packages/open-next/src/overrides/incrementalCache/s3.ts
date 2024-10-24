@@ -1,16 +1,16 @@
+import type { S3ClientConfig } from "@aws-sdk/client-s3";
 import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
-  S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import path from "path";
-import { Extension } from "types/cache";
+import type { Extension } from "types/cache";
 
 import { awsLogger } from "../../adapters/logger";
 import { parseNumberFromEnv } from "../../adapters/util";
-import { IncrementalCache } from "./types";
+import type { IncrementalCache } from "./types";
 
 const {
   CACHE_BUCKET_REGION,

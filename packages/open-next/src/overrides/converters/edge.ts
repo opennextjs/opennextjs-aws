@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { parseCookies } from "http/util";
 import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
-import { MiddlewareOutputEvent } from "../../core/routingHandler";
+import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
 const converter: Converter<
   InternalEvent,

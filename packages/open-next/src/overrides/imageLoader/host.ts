@@ -1,7 +1,7 @@
 import { Readable } from "node:stream";
-import { ReadableStream } from "node:stream/web";
+import type { ReadableStream } from "node:stream/web";
 
-import { ImageLoader } from "types/open-next";
+import type { ImageLoader } from "types/open-next";
 import { FatalError } from "utils/error";
 
 const hostLoader: ImageLoader = {

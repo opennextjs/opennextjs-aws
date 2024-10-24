@@ -1,13 +1,13 @@
 import fs from "fs";
 import path from "path";
-import {
+import type {
   MiddlewareManifest,
   NextConfig,
   PrerenderManifest,
   RoutesManifest,
 } from "types/next-types";
 
-import { PublicFiles } from "../../build";
+import type { PublicFiles } from "../../build";
 
 export function loadConfig(nextDir: string) {
   const filePath = path.join(nextDir, "required-server-files.json");
