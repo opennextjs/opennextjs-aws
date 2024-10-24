@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { execSync } from "child_process";
-import { InstallOptions } from "types/open-next";
+import type { InstallOptions } from "types/open-next";
 
 import logger from "../logger.js";
 
