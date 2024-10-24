@@ -4,9 +4,7 @@ import type { APIGatewayProxyEventHeaders } from "aws-lambda";
 import type { NextConfig } from "next/dist/server/config-shared";
 //#override imports
 import {
-  // @ts-ignore
   fetchExternalImage,
-  // @ts-ignore
   fetchInternalImage,
   imageOptimizer,
 } from "next/dist/server/image-optimizer";
@@ -32,13 +30,12 @@ export async function optimizeImage(
     ? await fetchExternalImage(href)
     : await fetchInternalImage(
         href,
-        // @ts-ignore
+        // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.
         { headers },
         {}, // res object is not necessary as it's not actually used.
         handleRequest,
       );
 
-  // @ts-ignore
   const result = await imageOptimizer(
     imageUpstream,
     imageParams,

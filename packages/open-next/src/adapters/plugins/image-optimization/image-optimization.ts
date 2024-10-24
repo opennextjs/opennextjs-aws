@@ -21,13 +21,12 @@ export async function optimizeImage(
   ) => Promise<void>,
 ) {
   const result = await imageOptimizer(
-    // @ts-ignore
     { headers },
     {}, // res object is not necessary as it's not actually used.
     imageParams,
     nextConfig,
     false, // not in dev mode
-    // @ts-ignore
+    // @ts-expect-error - This file is used only for Next 14.1 and below. Typing is correct for these versions.
     handleRequest,
   );
   debug("optimized result", result);

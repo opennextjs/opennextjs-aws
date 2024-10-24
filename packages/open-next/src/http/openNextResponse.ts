@@ -25,7 +25,6 @@ export interface StreamCreator {
 }
 
 // We only need to implement the methods that are used by next.js
-// @ts-ignore
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
   statusCode!: number;
   statusMessage: string = "";
@@ -322,6 +321,18 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       this.push("SOMETHING");
     }
     callback();
+  }
+
+  /**
+   * New method in Node 18.15+
+   * There are probably not used right now in Next.js, but better be safe than sorry
+   */
+
+  setHeaders(headers: Headers | Map<string, number | string | readonly string[]>): this {
+    headers.forEach((value, key) => {
+      this.setHeader(key, Array.isArray(value) ? value : value.toString());
+    })
+    return this;
   }
 
   /**
