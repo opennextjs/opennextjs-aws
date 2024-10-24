@@ -324,6 +324,20 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   /**
+   * New method in Node 18.15+
+   * There are probably not used right now in Next.js, but better be safe than sorry
+   */
+
+  setHeaders(
+    headers: Headers | Map<string, number | string | readonly string[]>,
+  ): this {
+    headers.forEach((value, key) => {
+      this.setHeader(key, Array.isArray(value) ? value : value.toString());
+    });
+    return this;
+  }
+
+  /**
    * Next specific methods
    * On earlier versions of next.js, those methods are mandatory to make everything work
    */

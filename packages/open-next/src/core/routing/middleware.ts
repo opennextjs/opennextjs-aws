@@ -190,7 +190,7 @@ export async function handleMiddleware(
     responseHeaders: resHeaders,
     url: newUrl,
     rawPath: rewritten
-      ? newUrl ?? internalEvent.rawPath
+      ? (newUrl ?? internalEvent.rawPath)
       : internalEvent.rawPath,
     type: internalEvent.type,
     headers: { ...internalEvent.headers, ...reqHeaders },

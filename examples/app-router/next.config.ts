@@ -1,13 +1,11 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   poweredByHeader: false,
   cleanDistDir: true,
   transpilePackages: ["@example/shared"],
   output: "standalone",
-  outputFileTracing: "../sst",
-  experimental: {
-    serverActions: true,
-  },
+  // outputFileTracingRoot: "../sst",
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -19,7 +17,7 @@ const nextConfig = {
       },
     ],
   },
-  redirects: () => {
+  redirects: async () => {
     return [
       {
         source: "/next-config-redirect-missing",
@@ -53,14 +51,14 @@ const nextConfig = {
       },
       {
         source: "/next-config-redirect-without-locale-support",
-        destination: "https://open-next.js.org/",
+        destination: "https://opennext.js.org/",
         permanent: false,
         basePath: false,
         locale: false,
       },
     ];
   },
-  headers() {
+  async headers() {
     return [
       {
         source: "/(.*)",
@@ -75,4 +73,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

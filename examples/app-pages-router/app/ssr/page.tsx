@@ -13,7 +13,7 @@ async function getTime() {
 
 export default async function SSR() {
   const time = await getTime();
-  const headerList = headers();
+  const headerList = await headers();
   return (
     <div>
       <h1>Time: {time}</h1>

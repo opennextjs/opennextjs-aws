@@ -1,12 +1,13 @@
 import { getSong } from "@example/shared/api";
 
 type Props = {
-  params: {
+  params: Promise<{
     album: string;
     song: string;
-  };
+  }>;
 };
-export default async function Song({ params }: Props) {
+export default async function Song(props: Props) {
+  const params = await props.params;
   const song = await getSong(params.album, params.song);
 
   return (

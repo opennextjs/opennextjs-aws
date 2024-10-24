@@ -1,6 +1,6 @@
 export default async function Page() {
   const timeInParis = await fetch(
-    "http://worldtimeapi.org/api/timezone/Europe/Paris",
+    "https://www.timeapi.io/api/time/current/zone?timeZone=Europe%2FParis",
     {
       next: {
         tags: ["path"],
@@ -9,12 +9,12 @@ export default async function Page() {
   );
   // This one doesn't have a tag
   const timeInLondon = await fetch(
-    "http://worldtimeapi.org/api/timezone/Europe/London",
+    "https://www.timeapi.io/api/time/current/zone?timeZone=Europe%2FLondon",
   );
   const timeInParisJson = await timeInParis.json();
-  const parisTime = timeInParisJson.datetime;
+  const parisTime = timeInParisJson.dateTime;
   const timeInLondonJson = await timeInLondon.json();
-  const londonTime = timeInLondonJson.datetime;
+  const londonTime = timeInLondonJson.dateTime;
   return (
     <div>
       <h1>Time in Paris</h1>

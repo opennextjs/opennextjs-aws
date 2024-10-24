@@ -303,8 +303,8 @@ export async function generateOutput(options: BuildOptions) {
           value.placement === "global"
             ? key
             : isExternalMiddleware
-            ? "middleware"
-            : undefined,
+              ? "middleware"
+              : undefined,
       });
     });
   });

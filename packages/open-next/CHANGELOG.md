@@ -163,7 +163,7 @@
 
   ### Breaking Changes
 
-  - Edge runtime don't work out of the box anymore. You need to deploy them on a separate function see [the config for more info](https://open-next.js.org/config)
+  - Edge runtime don't work out of the box anymore. You need to deploy them on a separate function see [the config for more info](https://opennext.js.org/config)
   - Output directory structure has changed to support function splitting
   - Removed build arguments in favor of `open-next.config.ts`
 

@@ -1,6 +1,7 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  transpilePackages: ["@example/shared"],
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  transpilePackages: ["@example/shared", "react", "react-dom"],
   i18n: {
     locales: ["en", "nl"],
     defaultLocale: "en",
@@ -8,11 +9,11 @@ const nextConfig = {
   cleanDistDir: true,
   reactStrictMode: true,
   output: "standalone",
-  outputFileTracing: "../sst",
+  // outputFileTracingRoot: "../sst",
   eslint: {
     ignoreDuringBuilds: true,
   },
-  headers: () => [
+  headers: async () => [
     {
       source: "/",
       headers: [
@@ -23,7 +24,7 @@ const nextConfig = {
       ],
     },
   ],
-  rewrites: () => [
+  rewrites: async () => [
     { source: "/rewrite", destination: "/", locale: false },
     {
       source: "/rewriteUsingQuery",
@@ -38,10 +39,10 @@ const nextConfig = {
       ],
     },
   ],
-  redirects: () => [
+  redirects: async () => [
     {
       source: "/next-config-redirect-without-locale-support/",
-      destination: "https://open-next.js.org/",
+      destination: "https://opennext.js.org/",
       permanent: false,
       basePath: false,
       locale: false,
@@ -56,4 +57,4 @@ const nextConfig = {
   poweredByHeader: true,
 };
 
-module.exports = nextConfig;
+export default nextConfig;
