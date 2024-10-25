@@ -4,9 +4,6 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -29,6 +26,6 @@
   },
   "engines": {
     "node": ">=18",
-    "pnpm": ">=8 <9"
+    "pnpm": ">=9"
   }
 }
