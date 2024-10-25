@@ -1,5 +1,21 @@
 # open-next
 
+## 3.2.0
+
+### Minor Changes
+
+- [#574](https://github.com/opennextjs/opennextjs-aws/pull/574) [`216e05c545d0bba680306ad1bad6057345232b88`](https://github.com/opennextjs/opennextjs-aws/commit/216e05c545d0bba680306ad1bad6057345232b88) Thanks [@conico974](https://github.com/conico974)! - Add a new option to install native dependencies on every lambda
+
+- [#579](https://github.com/opennextjs/opennextjs-aws/pull/579) [`5f661b53675f3dc9bef8c05072be949c476328f3`](https://github.com/opennextjs/opennextjs-aws/commit/5f661b53675f3dc9bef8c05072be949c476328f3) Thanks [@conico974](https://github.com/conico974)! - Refactor overrides
+
+### Patch Changes
+
+- [#585](https://github.com/opennextjs/opennextjs-aws/pull/585) [`8f4b67a9f4c18ddfe31e1d90caf35bdb2d780163`](https://github.com/opennextjs/opennextjs-aws/commit/8f4b67a9f4c18ddfe31e1d90caf35bdb2d780163) Thanks [@alacroix](https://github.com/alacroix)! - Support i18n localeDetection with value false
+
+- [#567](https://github.com/opennextjs/opennextjs-aws/pull/567) [`d6d4b8f83da47b7ec3b0e7b565c38567a3ff0742`](https://github.com/opennextjs/opennextjs-aws/commit/d6d4b8f83da47b7ec3b0e7b565c38567a3ff0742) Thanks [@sommeeeer](https://github.com/sommeeeer)! - Hides the x-opennext header from server requests when poweredByHeader is false in next config
+
+- [#575](https://github.com/opennextjs/opennextjs-aws/pull/575) [`c8cf0fc50a6ef9ee406f2bd400666feef0a9179f`](https://github.com/opennextjs/opennextjs-aws/commit/c8cf0fc50a6ef9ee406f2bd400666feef0a9179f) Thanks [@zdenham](https://github.com/zdenham)! - Add protobuf to common binary formats
+
 ## 3.1.6
 
 ### Patch Changes
