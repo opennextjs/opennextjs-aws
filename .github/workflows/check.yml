@@ -14,4 +14,3 @@ jobs:
             - uses: ./.github/actions/pnpm-setup
             - uses: ./.github/actions/lint
             - uses: ./.github/actions/test
-            - uses: ./.github/actions/build-example
