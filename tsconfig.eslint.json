@@ -6,8 +6,6 @@
     "**/examples/**/*.ts",
     "**/examples/**/*.tsx",
     "**/examples/**/*.js",
-    "**/example/**/*.js",
-    "**/example/**/*.ts",
     ".eslintrc.cjs"
     // etc
   ],
