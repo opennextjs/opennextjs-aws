@@ -288,6 +288,9 @@ export function fixCacheHeaderForHtmlPages(
 ) {
   // We don't want to cache error pages
   if (rawPath === "/404" || rawPath === "/500") {
+    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
+      return;
+    }
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;

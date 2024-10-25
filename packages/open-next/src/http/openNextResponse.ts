@@ -390,12 +390,15 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   // For some reason, next returns the 500 error page with some cache-control headers
   // We need to fix that
   private fixHeadersForError() {
+    if(process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === 'true') {
+      return;
+    }
     // We only check for 404 and 500 errors
     // The rest should be errors that are handled by the user and they should set the cache headers themselves
     if (this.statusCode === 404 || this.statusCode === 500) {
-      this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      this.setHeader("Pragma", "no-cache");
-      this.setHeader("Expires", "0");
+      // For some reason calling this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate") does not work here
+      // The function is not even called, i'm probably missing something obvious
+      this.headers["cache-control"] = "private, no-cache, no-store, max-age=0, must-revalidate";
     }
   }
 }
