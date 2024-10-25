@@ -64,6 +64,7 @@ export type Header = {
 export interface i18nConfig {
   locales: string[];
   defaultLocale: string;
+  localeDetection?: false;
 }
 export interface NextConfig {
   basePath?: string;
