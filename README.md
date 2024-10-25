@@ -42,14 +42,6 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 
 [Gymshark UK](https://uk.gymshark.com), [Udacity](https://engineering.udacity.com/deploying-next-js-on-the-edge-with-sst-is-sst-the-game-changer-its-claimed-to-be-1f05a0abc27c), [TUDN](https://www.tudn.com), [NHS England](https://github.com/nhs-england-tools/terraform-aws-opennext)
 
-## Example
-
-In the `example` folder, you can find a Next.js benchmark app. It contains a variety of pages that each test a single Next.js feature. The app is deployed to both Vercel and AWS using [SST](https://docs.sst.dev/start/nextjs).
-
-AWS link: https://d1gwt3w78t4dm3.cloudfront.net
-
-Vercel link: https://open-next.vercel.app
-
 ## Configuration
 
 ### Configuration file
