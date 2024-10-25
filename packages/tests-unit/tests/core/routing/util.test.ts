@@ -318,10 +318,10 @@ describe("convertToQuery", () => {
   });
 
   it("converts mixed multi-value and single value parameters", () => {
-    const querystring = "key=value1&key=value2&another=value3";
+    const querystring = "key=value1&another=value2&key=value3";
     expect(convertToQuery(querystring)).toEqual({
-      key: ["value1", "value2"],
-      another: "value3",
+      key: ["value1", "value3"],
+      another: "value2",
     });
   });
 });
@@ -358,44 +358,43 @@ describe("getMiddlewareMatch", () => {
 
 describe("regex", () => {
   describe("escapeRegex", () => {
-    it("should escape (.) with _µ1_", () => {
-      const result = escapeRegex("/a(.)b");
-      expect(result).toBe("/a_µ1_b");
-    });
-
-    it("should escape (..) with _µ2_", () => {
-      const result = escapeRegex("/a(..)b");
-      expect(result).toBe("/a_µ2_b");
-    });
-
-    it("should escape (...) with _µ3_", () => {
-      const result = escapeRegex("/a(...)b");
-      expect(result).toBe("/a_µ3_b");
-    });
+    it.each([
+      ["/a/(.)b", "/a/_µ1_b"],
+      ["/a/(..)b", "/a/_µ2_b"],
+      ["/a/b/(..)(..)c", "/a/b/_µ2__µ2_c"],
+      ["/a/(...)b", "/a/_µ3_b"],
+      ["/feed/(..)photo/[id]", "/feed/_µ2_photo/[id]"],
+    ])(
+      "should escape (.), (..), (...) with _µ1_, _µ2_, _µ3_ - %s",
+      (input, expected) => {
+        const result = escapeRegex(input);
+        expect(result).toBe(expected);
+      },
+    );
   });
 
   describe("unescapeRegex", () => {
-    it("should unescape _µ1_ with (.)", () => {
-      const result = unescapeRegex("/a_µ1_b");
-      expect(result).toBe("/a(.)b");
-    });
-
-    it("should unescape _µ2_ with (..)", () => {
-      const result = unescapeRegex("/a_µ2_b");
-      expect(result).toBe("/a(..)b");
-    });
-
-    it("should unescape _µ3_ with (...)", () => {
-      const result = unescapeRegex("/a_µ3_b");
-      expect(result).toBe("/a(...)b");
-    });
+    it.each([
+      ["/a/_µ1_b", "/a/(.)b"],
+      ["/a/_µ2_b", "/a/(..)b"],
+      ["/a/b/_µ2__µ2_c", "/a/b/(..)(..)c"],
+      ["/a/_µ3_b", "/a/(...)b"],
+      ["/feed/_µ2_photo/[id]", "/feed/(..)photo/[id]"],
+    ])(
+      "should unescape _µ1_, _µ2_, _µ3_ with (.), (..), (...) - %s",
+      (input, expected) => {
+        const result = unescapeRegex(input);
+        expect(result).toBe(expected);
+      },
+    );
   });
 
   it.each([
-    "/a(.)b",
-    "/a(..)b",
-    "/a(...)b",
-    "/a(....)b",
+    "/a/(.)b",
+    "/a/(..)b",
+    "/a/b/(..)(..)b",
+    "/a/(...)b",
+    "/a/(....)b",
     "/some/path",
     "/some/file.json",
   ])("should escape and unescape %s", (input) => {
@@ -427,7 +426,7 @@ describe("convertBodyToReadableStream", () => {
   });
 });
 
-describe.skip("TODO: proxyRequest", () => {});
+describe.skip("proxyRequest won't be tested as it is better suited for e2e tests", () => {});
 
 describe("fixCacheHeaderForHtmlPages", () => {
   beforeEach(() => {
@@ -518,6 +517,12 @@ describe("addOpenNextHeader", () => {
   beforeEach(() => {
     delete config.NextConfig["poweredByHeader"];
     globalThis.openNextDebug = false;
+    globalThis.openNextVersion = "1.0.0";
+    globalThis.__als = {
+      getStore: () => ({
+        requestId: "123",
+      }),
+    };
   });
 
   it("should add OpenNext header when poweredByHeader is enabled", () => {
@@ -539,24 +544,18 @@ describe("addOpenNextHeader", () => {
     const headers: Record<string, string> = {};
 
     globalThis.openNextDebug = true;
-    globalThis.__als = {
-      getStore: vi.fn(),
-    };
 
     addOpenNextHeader(headers);
-    expect(headers).toHaveProperty("X-OpenNext-Version");
-    expect(headers).toHaveProperty("X-OpenNext-RequestId");
+
+    expect(headers["X-OpenNext-Version"]).toBe("1.0.0");
+    expect(headers["X-OpenNext-RequestId"]).toBe("123");
   });
 
   it("should not add OpenNext debug headers when openNextDebug is disabled", () => {
     const headers: Record<string, string> = {};
 
-    globalThis.openNextDebug = false;
-    globalThis.__als = {
-      getStore: vi.fn(),
-    };
-
     addOpenNextHeader(headers);
+
     expect(headers).not.toHaveProperty("X-OpenNext-Version");
     expect(headers).not.toHaveProperty("X-OpenNext-RequestId");
   });
