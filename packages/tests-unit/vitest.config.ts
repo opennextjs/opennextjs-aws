@@ -17,6 +17,8 @@ export default defineConfig({
         "**/dist/**",
         "**/coverage/**",
       ],
+      reporter: ["text", "html", "json", "json-summary"],
+      reportOnFailure: true,
     },
     root: "../../",
     include: ["packages/tests-unit/**/*.{test,spec}.?(c|m)ts"],
