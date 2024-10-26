@@ -1,6 +1,7 @@
 {
   "name": "@example/shared",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
