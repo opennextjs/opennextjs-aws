@@ -200,17 +200,22 @@ export interface InstallOptions {
    */
   packages: string[];
   /**
-   * @default "arm64"
+   * @default undefined
    */
   arch?: "x64" | "arm64";
   /**
-   * @default "18"
+   * @default undefined
    */
-  nodeVersion?: "18" | "20" | "22";
+  nodeVersion?: string;
   /**
-   * @default "glibc"
+   * @default undefined
    */
   libc?: "glibc" | "musl";
+  /**
+   * @default undefined
+   * Additional arguments to pass to the install command (i.e. npm install)
+   */
+  additionalArgs?: string;
 }
 
 export interface DefaultFunctionOptions<
