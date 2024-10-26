@@ -119,7 +119,7 @@ describe("getUrlParts", () => {
     it("returns url parts for /", () => {
       expect(getUrlParts("/", false)).toEqual({
         hostname: "",
-        pathname: "", // TODO: This behaviour is inconsistent with external pathname
+        pathname: "/",
         protocol: "",
         queryString: "",
       });
@@ -128,8 +128,8 @@ describe("getUrlParts", () => {
     it("returns url parts", () => {
       expect(getUrlParts("/relative", false)).toEqual({
         hostname: "",
-        pathname: "relative",
-        protocol: "", // TODO: This behaviour is inconsistent with external pathname
+        pathname: "/relative",
+        protocol: "",
         queryString: "",
       });
     });
@@ -137,7 +137,7 @@ describe("getUrlParts", () => {
     it("returns url parts with query string", () => {
       expect(getUrlParts("/relative/path?query=1", false)).toEqual({
         hostname: "",
-        pathname: "relative/path", // TODO: This behaviour is inconsistent with external pathname
+        pathname: "/relative/path",
         protocol: "",
         queryString: "query=1",
       });
@@ -157,6 +157,16 @@ describe("getUrlParts", () => {
       expect(getUrlParts("http://localhost/", true)).toEqual({
         hostname: "localhost",
         pathname: "/",
+        protocol: "http:",
+        queryString: "",
+      });
+    });
+
+    // For reference https://github.com/opennextjs/opennextjs-aws/issues/591
+    it("returns url parts for / without trailing slash", () => {
+      expect(getUrlParts("http://localhost", true)).toEqual({
+        hostname: "localhost",
+        pathname: "",
         protocol: "http:",
         queryString: "",
       });
