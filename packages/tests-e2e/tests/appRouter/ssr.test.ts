@@ -53,3 +53,12 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
   // await expect(el).toBeVisible();
   // await expect(time).not.toEqual(newTime);
 });
+
+test("Fetch cache properly cached", async ({ page }) => {
+  await page.goto("/ssr");
+  const originalDate = await page.getByText("Cached fetch:").textContent();
+  await wait(2000);
+  await page.reload();
+  const newDate = await page.getByText("Cached fetch:").textContent();
+  expect(originalDate).toEqual(newDate);
+});

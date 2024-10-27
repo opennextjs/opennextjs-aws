@@ -108,6 +108,28 @@ declare global {
   var lastModified: Record<string, number>;
   var isNextAfter15: boolean;
 }
+
+function isFetchCache(
+  options?:
+    | boolean
+    | {
+        fetchCache?: boolean;
+        kindHint?: "app" | "pages" | "fetch";
+        kind?: "FETCH";
+      },
+): boolean {
+  if (typeof options === "boolean") {
+    return options;
+  }
+  if (typeof options === "object") {
+    return (
+      options.kindHint === "fetch" ||
+      options.fetchCache ||
+      options.kind === "FETCH"
+    );
+  }
+  return false;
+}
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class S3Cache {
   constructor(_ctx: CacheHandlerContext) {}
@@ -122,21 +144,17 @@ export default class S3Cache {
           kindHint?: "app" | "pages" | "fetch";
           tags?: string[];
           softTags?: string[];
+          kind?: "FETCH";
         },
   ) {
     if (globalThis.disableIncrementalCache) {
       return null;
     }
-    const isFetchCache =
-      typeof options === "object"
-        ? options.kindHint
-          ? options.kindHint === "fetch"
-          : options.fetchCache
-        : options;
+    const _isFetchCache = isFetchCache(options);
 
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
-    return isFetchCache
+    return _isFetchCache
       ? this.getFetchCache(key, softTags, tags)
       : this.getIncrementalCache(key);
   }
