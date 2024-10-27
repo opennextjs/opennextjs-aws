@@ -73,11 +73,11 @@ test("Revalidate tag", async ({ page, request }) => {
 test("Revalidate path", async ({ page, request }) => {
   await page.goto("/revalidate-path");
 
-  let elLayout = page.getByText("Paris:");
-  const initialParis = await elLayout.textContent();
+  let elLayout = page.getByText("RequestID:");
+  const initialReqId = await elLayout.textContent();
 
-  elLayout = page.getByText("London:");
-  const initialLondon = await elLayout.textContent();
+  elLayout = page.getByText("Date:");
+  const initialDate = await elLayout.textContent();
 
   // Send revalidate path request
   const result = await request.get("/api/revalidate-path");
@@ -86,11 +86,11 @@ test("Revalidate path", async ({ page, request }) => {
   expect(text).toEqual("ok");
 
   await page.goto("/revalidate-path");
-  elLayout = page.getByText("Paris:");
-  const newParis = await elLayout.textContent();
-  expect(newParis).not.toEqual(initialParis);
+  elLayout = page.getByText("RequestID:");
+  const newReqId = await elLayout.textContent();
+  expect(newReqId).not.toEqual(initialReqId);
 
-  elLayout = page.getByText("London:");
-  const newLondon = await elLayout.textContent();
-  expect(newLondon).not.toEqual(initialLondon);
+  elLayout = page.getByText("Date:");
+  const newDate = await elLayout.textContent();
+  expect(newDate).not.toEqual(initialDate);
 });

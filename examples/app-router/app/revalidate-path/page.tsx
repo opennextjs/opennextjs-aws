@@ -1,26 +1,19 @@
 export default async function Page() {
-  const timeInParis = await fetch(
-    "https://www.timeapi.io/api/time/current/zone?timeZone=Europe%2FParis",
-    {
-      next: {
-        tags: ["path"],
-      },
+  const responseSST = await fetch("https://sst.dev", {
+    next: {
+      tags: ["path"],
     },
-  );
+  });
   // This one doesn't have a tag
-  const timeInLondon = await fetch(
-    "https://www.timeapi.io/api/time/current/zone?timeZone=Europe%2FLondon",
-  );
-  const timeInParisJson = await timeInParis.json();
-  const parisTime = timeInParisJson.dateTime;
-  const timeInLondonJson = await timeInLondon.json();
-  const londonTime = timeInLondonJson.dateTime;
+  const responseOpenNext = await fetch("https://opennext.js.org");
+  const reqIdSst = responseSST.headers.get("x-amz-cf-id");
+  const dateInOpenNext = responseOpenNext.headers.get("date");
   return (
     <div>
-      <h1>Time in Paris</h1>
-      <p>Paris: {parisTime}</p>
-      <h1>Time in London</h1>
-      <p>London: {londonTime}</p>
+      <h1>Request id from SST</h1>
+      <p>RequestID: {reqIdSst}</p>
+      <h1>Date from from OpenNext</h1>
+      <p>Date: {dateInOpenNext}</p>
     </div>
   );
 }
