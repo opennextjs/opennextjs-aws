@@ -4,7 +4,7 @@ Do not include `types` in #override and #imports, as esbuild will remove precedi
 
 Instead, put the `import type` outside like:
 
-```js
+```ts
 import type { PluginHandler } from "../next-types.js";
 import type { IncomingMessage } from "../request.js";
 import type { ServerResponse } from "../response.js";
