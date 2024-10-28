@@ -73,7 +73,7 @@ function applyMiddlewareHeaders(
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
-  const nextHeaders = addNextConfigHeaders(event, ConfigHeaders) ?? {};
+  const nextHeaders = addNextConfigHeaders(event, ConfigHeaders);
 
   let internalEvent = fixDataPage(event, BuildId);
   if ("statusCode" in internalEvent) {
