@@ -146,10 +146,7 @@ async function generateBundle(
   }
 
   // Copy middleware
-  if (
-    !config.middleware?.external &&
-    fs.existsSync(path.join(options.buildDir, "middleware.mjs"))
-  ) {
+  if (!config.middleware?.external) {
     fs.copyFileSync(
       path.join(options.buildDir, "middleware.mjs"),
       path.join(outputPath, packagePath, "middleware.mjs"),
@@ -191,18 +188,15 @@ async function generateBundle(
     buildHelper.compareSemver(options.nextVersion, "14.0.4") >= 0;
 
   const disableRouting = isBefore13413 || config.middleware?.external;
+
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,
       target: /core(\/|\\)requestHandler\.js/g,
-      deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
-      replacements: disableRouting
-        ? [
-            require.resolve(
-              "../adapters/plugins/without-routing/requestHandler.js",
-            ),
-          ]
-        : [],
+      deletes: [
+        ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
+        ...(disableRouting ? ["withRouting"] : []),
+      ],
     }),
     openNextReplacementPlugin({
       name: `utilOverride ${name}`,

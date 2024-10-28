@@ -31,13 +31,14 @@ export async function openNextHandler(
   }
   debug("internalEvent", internalEvent);
 
-  //#override withRouting
   let preprocessResult: InternalResult | MiddlewareOutputEvent = {
     internalEvent: internalEvent,
     isExternalRewrite: false,
     origin: false,
     isISR: false,
   };
+
+  //#override withRouting
   try {
     preprocessResult = await routingHandler(internalEvent);
   } catch (e) {

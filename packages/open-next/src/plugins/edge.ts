@@ -18,14 +18,14 @@ import {
 export interface IPluginSettings {
   nextDir: string;
   edgeFunctionHandlerPath?: string;
-  middlewareInfo: MiddlewareInfo;
+  middlewareInfo?: MiddlewareInfo;
   isInCloudfare?: boolean;
 }
 
 /**
  * @param opts.nextDir - The path to the .next directory
  * @param opts.edgeFunctionHandlerPath - The path to the edgeFunctionHandler.js file that we'll use to bundle the routing
- * @param opts.entryFiles - The entry files that we'll inject into the edgeFunctionHandler.js file
+ * @param opts.middlewareInfo - The entry files that we'll inject into the edgeFunctionHandler.js file
  * @returns
  */
 export function openNextEdgePlugins({
@@ -34,17 +34,19 @@ export function openNextEdgePlugins({
   middlewareInfo,
   isInCloudfare,
 }: IPluginSettings): Plugin {
-  const entryFiles = middlewareInfo.files.map((file: string) =>
-    path.join(nextDir, file),
-  );
-  const routes = [
-    {
-      name: middlewareInfo.name || "/",
-      page: middlewareInfo.page,
-      regex: middlewareInfo.matchers.map((m) => m.regexp),
-    },
-  ];
-  const wasmFiles = middlewareInfo.wasm ?? [];
+  const entryFiles =
+    middlewareInfo?.files.map((file: string) => path.join(nextDir, file)) ?? [];
+  const routes = middlewareInfo
+    ? [
+        {
+          name: middlewareInfo.name || "/",
+          page: middlewareInfo.page,
+          regex: middlewareInfo.matchers.map((m) => m.regexp),
+        },
+      ]
+    : [];
+  const wasmFiles = middlewareInfo?.wasm ?? [];
+
   return {
     name: "opennext-edge",
     setup(build) {
@@ -134,7 +136,7 @@ if(!globalThis.Crypto) {
   globalThis.Crypto = webcrypto.Crypto
 }
 // We also need to polyfill URLPattern
-if (!globalThis.URLPattern) { 
+if (!globalThis.URLPattern) {
   await import("urlpattern-polyfill");
 }
 `
@@ -146,8 +148,8 @@ ${wasmFiles
       : `const ${file.name} = readFileSync(path.join(__dirname,'/wasm/${file.name}.wasm'));`,
   )
   .join("\n")}
-${entryFiles?.map((file) => `require("${file}");`).join("\n")}
-${contents}        
+${entryFiles.map((file) => `require("${file}");`).join("\n")}
+${contents}
         `;
         return {
           contents,
@@ -166,18 +168,18 @@ ${contents}
 
         const contents = `
   import path from "path";
-  
+
   import { debug } from "../logger";
-  
+
   if(!globalThis.__dirname) {
     globalThis.__dirname = ""
   }
-  
+
   export const NEXT_DIR = path.join(__dirname, ".next");
   export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
-  
+
   debug({ NEXT_DIR, OPEN_NEXT_DIR });
-  
+
   export const NextConfig = ${JSON.stringify(NextConfig)};
   export const BuildId = ${JSON.stringify(BuildId)};
   export const HtmlPages = ${JSON.stringify(HtmlPages)};
@@ -188,7 +190,7 @@ ${contents}
   export const MiddlewareManifest = ${JSON.stringify(MiddlewareManifest)};
 
   process.env.NEXT_BUILD_ID = BuildId;
-  
+
           `;
         return {
           contents,
