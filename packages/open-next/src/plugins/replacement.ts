@@ -23,7 +23,7 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  *   deletes: ["id1"],
  * })
  *
- * To inject arbritary code by using (import at top of file):
+ * To inject arbitrary code by using (import at top of file):
  *
  * //#import
  *

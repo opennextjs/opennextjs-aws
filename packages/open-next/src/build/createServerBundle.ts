@@ -2,11 +2,7 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
-import type {
-  FunctionOptions,
-  OpenNextConfig,
-  SplittedFunctionOptions,
-} from "types/open-next";
+import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
@@ -40,9 +36,9 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     const routes = fnOptions.routes;
     routes.forEach((route) => foundRoutes.add(route));
     if (fnOptions.runtime === "edge") {
-      await generateEdgeBundle(name, config, options, fnOptions);
+      await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, config, options, fnOptions);
+      await generateBundle(name, options, fnOptions);
     }
   });
 
@@ -53,7 +49,7 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
 
   const remainingRoutes = new Set<string>();
 
-  const { monorepoRoot, appBuildOutputPath } = options;
+  const { appBuildOutputPath, monorepoRoot } = options;
 
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
 
@@ -104,7 +100,7 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
   }
 
   // Generate default function
-  await generateBundle("default", config, options, {
+  await generateBundle("default", options, {
     ...defaultFn,
     // @ts-expect-error - Those string are RouteTemplate
     routes: Array.from(remainingRoutes),
@@ -114,11 +110,11 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
 
 async function generateBundle(
   name: string,
-  config: OpenNextConfig,
   options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
-  const { appPath, appBuildOutputPath, outputDir, monorepoRoot } = options;
+  const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } =
+    options;
   logger.info(`Building server function: ${name}...`);
 
   // Create output folder

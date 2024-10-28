@@ -6,7 +6,6 @@ import path from "path";
 import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import type {
   IncludedConverter,
-  OpenNextConfig,
   OverrideOptions,
   RouteTemplate,
   SplittedFunctionOptions,
@@ -20,7 +19,6 @@ import type { BuildOptions } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 interface BuildEdgeBundleOptions {
-  appBuildOutputPath: string;
   middlewareInfo: MiddlewareInfo;
   entrypoint: string;
   outfile: string;
@@ -34,7 +32,6 @@ interface BuildEdgeBundleOptions {
 }
 
 export async function buildEdgeBundle({
-  appBuildOutputPath,
   middlewareInfo,
   entrypoint,
   outfile,
@@ -95,7 +92,7 @@ export async function buildEdgeBundle({
         }),
         openNextEdgePlugins({
           middlewareInfo,
-          nextDir: path.join(appBuildOutputPath, ".next"),
+          nextDir: path.join(options.appBuildOutputPath, ".next"),
           edgeFunctionHandlerPath: path.join(
             options.openNextDistDir,
             "core",
@@ -165,7 +162,6 @@ export function copyMiddlewareAssetsAndWasm({}) {}
 
 export async function generateEdgeBundle(
   name: string,
-  config: OpenNextConfig,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
 ) {
@@ -218,7 +214,6 @@ export async function generateEdgeBundle(
   }
 
   await buildEdgeBundle({
-    appBuildOutputPath,
     middlewareInfo: fn,
     entrypoint: path.join(
       options.openNextDistDir,
@@ -228,6 +223,6 @@ export async function generateEdgeBundle(
     outfile: path.join(outputPath, "index.mjs"),
     options,
     overrides: fnOptions.override,
-    additionalExternals: config.edgeExternals,
+    additionalExternals: options.config.edgeExternals,
   });
 }

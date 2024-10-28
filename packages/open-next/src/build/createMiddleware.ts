@@ -31,17 +31,13 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
     return { useMiddleware: false };
   }
 
-  // Create output folder
-  let outputPath = path.join(outputDir, "server-function");
-
   const commonMiddlewareOptions = {
     middlewareInfo: entry,
     options,
-    appBuildOutputPath,
   };
 
   if (config.middleware?.external) {
-    outputPath = path.join(outputDir, "middleware");
+    const outputPath = path.join(outputDir, "middleware");
     fs.mkdirSync(outputPath, { recursive: true });
 
     // Copy open-next.config.mjs

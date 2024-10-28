@@ -346,8 +346,9 @@ export function fixDataPage(
   }
 
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    let newPath = rawPath.replace(dataPattern, "").replace(/\.json$/, "");
-    newPath = newPath === "/index" ? "/" : newPath;
+    const newPath = rawPath
+      .slice(dataPattern.length, -".json".length)
+      .replace(/^\/index$/, "/");
     query.__nextDataReq = "1";
 
     return {
