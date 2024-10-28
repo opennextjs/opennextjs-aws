@@ -32,7 +32,6 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
     | MiddlewareInfo
     | undefined;
 
-
   if (config.middleware?.external) {
     const outputPath = path.join(outputDir, "middleware");
     fs.mkdirSync(outputPath, { recursive: true });
