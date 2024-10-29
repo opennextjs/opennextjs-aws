@@ -232,9 +232,6 @@ importers:
 
   packages/tests-e2e:
     devDependencies:
-      '@open-next/utils':
-        specifier: workspace:*
-        version: link:../utils
       '@playwright/test':
         specifier: 1.37.0
         version: 1.37.0
@@ -247,9 +244,6 @@ importers:
 
   packages/tests-unit:
     dependencies:
-      '@open-next/utils':
-        specifier: workspace:*
-        version: link:../utils
       '@opennextjs/aws':
         specifier: workspace:*
         version: link:../open-next
