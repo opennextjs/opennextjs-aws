@@ -19,7 +19,7 @@ import type { BuildOptions } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 interface BuildEdgeBundleOptions {
-  middlewareInfo: MiddlewareInfo;
+  middlewareInfo?: MiddlewareInfo;
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
@@ -158,8 +158,6 @@ globalThis.AsyncLocalStorage = AsyncLocalStorage;
   }
 }
 
-export function copyMiddlewareAssetsAndWasm({}) {}
-
 export async function generateEdgeBundle(
   name: string,
   options: BuildOptions,
@@ -191,10 +189,10 @@ export async function generateEdgeBundle(
   if (functions.length > 1) {
     throw new Error("Only one function is supported for now");
   }
-  const fn = functions[0];
+  const middlewareInfo = functions[0];
 
   //Copy wasm files
-  const wasmFiles = fn.wasm;
+  const wasmFiles = middlewareInfo.wasm;
   mkdirSync(path.join(outputPath, "wasm"), { recursive: true });
   for (const wasmFile of wasmFiles) {
     fs.copyFileSync(
@@ -204,7 +202,7 @@ export async function generateEdgeBundle(
   }
 
   // Copy assets
-  const assets = fn.assets;
+  const assets = middlewareInfo.assets;
   mkdirSync(path.join(outputPath, "assets"), { recursive: true });
   for (const asset of assets) {
     fs.copyFileSync(
@@ -214,7 +212,7 @@ export async function generateEdgeBundle(
   }
 
   await buildEdgeBundle({
-    middlewareInfo: fn,
+    middlewareInfo,
     entrypoint: path.join(
       options.openNextDistDir,
       "adapters",

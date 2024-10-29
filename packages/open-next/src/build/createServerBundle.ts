@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 
 import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
@@ -14,8 +13,6 @@ import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
-
-const require = createRequire(import.meta.url);
 
 export async function createServerBundle(options: buildHelper.BuildOptions) {
   const { config } = options;
@@ -146,10 +143,7 @@ async function generateBundle(
   }
 
   // Copy middleware
-  if (
-    !config.middleware?.external &&
-    fs.existsSync(path.join(options.buildDir, "middleware.mjs"))
-  ) {
+  if (!config.middleware?.external) {
     fs.copyFileSync(
       path.join(options.buildDir, "middleware.mjs"),
       path.join(outputPath, packagePath, "middleware.mjs"),
@@ -191,18 +185,15 @@ async function generateBundle(
     buildHelper.compareSemver(options.nextVersion, "14.0.4") >= 0;
 
   const disableRouting = isBefore13413 || config.middleware?.external;
+
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,
       target: /core(\/|\\)requestHandler\.js/g,
-      deletes: disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : [],
-      replacements: disableRouting
-        ? [
-            require.resolve(
-              "../adapters/plugins/without-routing/requestHandler.js",
-            ),
-          ]
-        : [],
+      deletes: [
+        ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
+        ...(disableRouting ? ["withRouting"] : []),
+      ],
     }),
     openNextReplacementPlugin({
       name: `utilOverride ${name}`,

@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 import logger from "../logger.js";
-import { type MiddlewareManifest } from "../types/next-types.js";
+import {
+  type MiddlewareInfo,
+  type MiddlewareManifest,
+} from "../types/next-types.js";
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
@@ -11,7 +14,6 @@ import { installDependencies } from "./installDeps.js";
  * Compiles the middleware bundle.
  *
  * @param options Build Options.
- * @returns Whether the app uses a Middleware.
  */
 export async function createMiddleware(options: buildHelper.BuildOptions) {
   logger.info(`Bundling middleware function...`);
@@ -26,15 +28,9 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
     ),
   ) as MiddlewareManifest;
 
-  const entry = middlewareManifest.middleware["/"];
-  if (!entry) {
-    return { useMiddleware: false };
-  }
-
-  const commonMiddlewareOptions = {
-    middlewareInfo: entry,
-    options,
-  };
+  const middlewareInfo = middlewareManifest.middleware["/"] as
+    | MiddlewareInfo
+    | undefined;
 
   if (config.middleware?.external) {
     const outputPath = path.join(outputDir, "middleware");
@@ -55,7 +51,8 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
         "middleware.js",
       ),
       outfile: path.join(outputPath, "handler.mjs"),
-      ...commonMiddlewareOptions,
+      middlewareInfo,
+      options,
       overrides: config.middleware?.override,
       defaultConverter: "aws-cloudfront",
       includeCache: config.dangerous?.enableCacheInterception,
@@ -71,10 +68,9 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
         "edgeFunctionHandler.js",
       ),
       outfile: path.join(options.buildDir, "middleware.mjs"),
-      ...commonMiddlewareOptions,
+      middlewareInfo,
+      options,
       onlyBuildOnce: true,
     });
   }
-
-  return { useMiddleware: true };
 }
