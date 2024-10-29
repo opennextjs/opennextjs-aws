@@ -25,7 +25,8 @@ export interface IPluginSettings {
 /**
  * @param opts.nextDir - The path to the .next directory
  * @param opts.edgeFunctionHandlerPath - The path to the edgeFunctionHandler.js file that we'll use to bundle the routing
- * @param opts.middlewareInfo - The entry files that we'll inject into the edgeFunctionHandler.js file
+ * @param opts.middlewareInfo - Information about the middleware
+ * @param opts.isInCloudfare - Whether the code runs on the cloudflare runtime
  * @returns
  */
 export function openNextEdgePlugins({
@@ -80,12 +81,10 @@ export function openNextEdgePlugins({
       // they import from `export * from "node:*";`
       build.onLoad(
         { filter: /.*/, namespace: "node-built-in-modules" },
-        ({ path }) => {
-          return {
-            contents: `export * from '${path}'`,
-            loader: "js",
-          };
-        },
+        ({ path }) => ({
+          contents: `export * from '${path}'`,
+          loader: "js",
+        }),
       );
 
       // We inject the entry files into the edgeFunctionHandler
@@ -190,11 +189,8 @@ ${contents}
   export const MiddlewareManifest = ${JSON.stringify(MiddlewareManifest)};
 
   process.env.NEXT_BUILD_ID = BuildId;
-
-          `;
-        return {
-          contents,
-        };
+`;
+        return { contents };
       });
     },
   };

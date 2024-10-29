@@ -15,7 +15,7 @@ const handler: WrapperHandler<
     globalThis.process = process;
 
     // Set the environment variables
-    // Cloudlare suggests to not override the process.env object but instead apply the values to it
+    // Cloudflare suggests to not override the process.env object but instead apply the values to it
     for (const [key, value] of Object.entries(env)) {
       if (typeof value === "string") {
         process.env[key] = value;

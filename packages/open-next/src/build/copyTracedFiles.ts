@@ -96,7 +96,7 @@ export async function copyTracedFiles(
           `
 --------------------------------------------------------------------------------
 ${pagePath} cannot use the edge runtime.
-OpenNext requires edge runtime function to be defined in a separate function. 
+OpenNext requires edge runtime function to be defined in a separate function.
 See the docs for more information on how to bundle edge runtime functions.
 --------------------------------------------------------------------------------
         `,
@@ -117,7 +117,7 @@ File ${fullFilePath} does not exist
       filesToCopy.set(f, f.replace(standaloneDir, outputDir));
     });
 
-    if (!existsSync(path.join(standaloneNextDir, `${fullFilePath}`))) {
+    if (!existsSync(path.join(standaloneNextDir, fullFilePath))) {
       throw new Error(
         `This error should only happen for static 404 and 500 page from page router. Report this if that's not the case.,
         File ${fullFilePath} does not exist`,
