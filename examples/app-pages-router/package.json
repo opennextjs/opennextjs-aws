@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@example/shared": "workspace:*",
-    "@open-next/utils": "workspace:*",
     "next": "15.0.1",
     "@opennextjs/aws": "workspace:*",
     "react": "19.0.0-rc-69d4b800-20241021",
