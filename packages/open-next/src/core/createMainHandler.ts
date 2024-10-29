@@ -53,13 +53,15 @@ export async function createMainHandler() {
 
   globalThis.lastModified = {};
 
-  // From the config, we create the adapter
-  const adapter = await resolveConverter(thisFunction.override?.converter);
+  // From the config, we create the converter
+  const converter = await resolveConverter(thisFunction.override?.converter);
 
   // Then we create the handler
-  const wrapper = await resolveWrapper(thisFunction.override?.wrapper);
+  const { wrapper, name } = await resolveWrapper(
+    thisFunction.override?.wrapper,
+  );
 
-  debug("Using wrapper", wrapper.name);
+  debug("Using wrapper", name);
 
-  return wrapper.wrapper(openNextHandler, adapter);
+  return wrapper(openNextHandler, converter);
 }

@@ -72,9 +72,8 @@ export function openNextReplacementPlugin({
             );
             contents = contents.replace(pattern, "");
           }),
-          ...(replacements ?? []).map(async (fp) => {
-            const p = fp;
-            const replacementFile = await readFile(p, "utf-8");
+          ...(replacements ?? []).map(async (filename) => {
+            const replacementFile = await readFile(filename, "utf-8");
             const matches = replacementFile.matchAll(overridePattern);
 
             const importMatch = replacementFile.match(importPattern);
@@ -91,7 +90,7 @@ export function openNextReplacementPlugin({
               );
               logger.debug(
                 chalk.blue(`Open-next replacement plugin ${name}`),
-                `-- Applying override for ${id} from ${fp}`,
+                `-- Applying override for ${id} from ${filename}`,
               );
               contents = contents.replace(pattern, replacement);
             }

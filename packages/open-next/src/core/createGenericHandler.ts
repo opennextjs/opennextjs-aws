@@ -45,12 +45,12 @@ export async function createGenericHandler<
   const override = config[handler.type]
     ?.override as any as DefaultOverrideOptions<E, R>;
 
-  // From the config, we create the adapter
-  const adapter = await resolveConverter<E, R>(override?.converter);
+  // From the config, we create the converter
+  const converter = await resolveConverter<E, R>(override?.converter);
 
   // Then we create the handler
-  const wrapper = await resolveWrapper<E, R>(override?.wrapper);
-  debug("Using wrapper", wrapper.name);
+  const { name, wrapper } = await resolveWrapper<E, R>(override?.wrapper);
+  debug("Using wrapper", name);
 
-  return wrapper.wrapper(handler.handler, adapter);
+  return wrapper(handler.handler, converter);
 }
