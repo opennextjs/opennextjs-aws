@@ -9,7 +9,6 @@
   "dependencies": {},
   "devDependencies": {
     "@playwright/test": "1.37.0",
-    "@open-next/utils": "workspace:*",
     "start-server-and-test": "2.0.0",
     "ts-node": "10.9.1"
   },

@@ -1,5 +1,6 @@
-import { wait } from "@open-next/utils";
 import { expect, test } from "@playwright/test";
+
+import { wait } from "../utils";
 
 test("Server Side Render", async ({ page }) => {
   await page.goto("/");
