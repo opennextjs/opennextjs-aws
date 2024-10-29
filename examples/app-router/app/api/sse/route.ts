@@ -1,5 +1,10 @@
-import { wait } from "@open-next/utils";
 import type { NextRequest } from "next/server";
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 export const dynamic = "force-dynamic";
 
