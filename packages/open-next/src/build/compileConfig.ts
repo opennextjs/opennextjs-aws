@@ -70,7 +70,7 @@ export function compileOpenNextConfigNode(
   externals: string[],
 ) {
   const outputPath = path.join(outputDir, "open-next.config.mjs");
-  logger.info("Compiling open-next.config.ts for Node.", outputPath);
+  logger.debug("Compiling open-next.config.ts for Node.", outputPath);
 
   //Check if open-next.config.ts exists
   if (!fs.existsSync(sourcePath)) {
@@ -106,7 +106,7 @@ export function compileOpenNextConfigEdge(
   externals: string[],
 ) {
   const outputPath = path.join(outputDir, "open-next.config.edge.mjs");
-  logger.info("Compiling open-next.config.ts for edge runtime.", outputPath);
+  logger.debug("Compiling open-next.config.ts for edge runtime.", outputPath);
 
   buildSync({
     entryPoints: [sourcePath],
