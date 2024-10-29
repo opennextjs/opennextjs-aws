@@ -277,12 +277,14 @@ describe("handleRedirects", () => {
         source: "/foo",
         destination: "/search?bar=hello+world&baz=new%2C+earth",
         internal: true,
-        statusCode: 308
+        statusCode: 308,
       },
     ]);
 
     expect(result.statusCode).toEqual(308);
-    expect(result.headers.Location).toEqual("/search?bar=hello+world&baz=new%2C+earth");
+    expect(result.headers.Location).toEqual(
+      "/search?bar=hello+world&baz=new%2C+earth",
+    );
   });
 });
 

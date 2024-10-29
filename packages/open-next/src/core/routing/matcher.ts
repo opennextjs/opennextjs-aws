@@ -205,11 +205,13 @@ export function handleRewrites<T extends RewriteDefinition>(
     // https://github.com/pillarjs/path-to-regexp?tab=readme-ov-file#unexpected--or-
     // 2. The convertToQueryString function will replace the "+" character with %2B instead of %20.
     // %2B does not get interpreted as a space in the URL thus breaking the query string.
-    const encodePlusQueryString = queryString.replaceAll("+", "%20")
+    const encodePlusQueryString = queryString.replaceAll("+", "%20");
     debug("urlParts", { pathname, protocol, hostname, queryString });
     const toDestinationPath = compile(escapeRegex(pathname ?? "") ?? "");
     const toDestinationHost = compile(escapeRegex(hostname ?? "") ?? "");
-    const toDestinationQuery = compile(escapeRegex(encodePlusQueryString ?? "") ?? "");
+    const toDestinationQuery = compile(
+      escapeRegex(encodePlusQueryString ?? "") ?? "",
+    );
     let params = {
       // params for the source
       ...getParamsFromSource(match(escapeRegex(rewrite?.source) ?? ""))(
