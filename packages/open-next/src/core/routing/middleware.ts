@@ -54,13 +54,18 @@ export async function handleMiddleware(
   // We bypass the middleware if the request is internal
   if (internalEvent.headers["x-isr"]) return internalEvent;
 
+  // Retrieve the protocol:
+  // - In lambda, the url only contains the rawPath and the query - default to https
+  // - In cloudflare, the protocol is usually http in dev and https in production
+  const protocol = internalEvent.url.startsWith("http://") ? "http:" : "https:";
+
   const host = internalEvent.headers.host
-    ? `https://${internalEvent.headers.host}`
+    ? `${protocol}//${internalEvent.headers.host}`
     : "http://localhost:3000";
+
   const initialUrl = new URL(normalizedPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
-  // console.log("url", url, normalizedPath);
 
   const middleware = await middlewareLoader();
 
@@ -125,7 +130,7 @@ export async function handleMiddleware(
         .get("location")
         ?.replace(
           "http://localhost:3000",
-          `https://${internalEvent.headers.host}`,
+          `${protocol}//${internalEvent.headers.host}`,
         ) ?? resHeaders.location;
     // res.setHeader("Location", location);
     return {
