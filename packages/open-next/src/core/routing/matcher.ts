@@ -229,7 +229,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     }
     rewrittenUrl = isExternalRewrite
       ? `${protocol}//${rewrittenHost}${rewrittenPath}`
-      : `/${rewrittenPath}`;
+      : `${rewrittenPath}`;
     // Should we merge the query params or use only the ones from the rewrite?
     finalQuery = {
       ...query,

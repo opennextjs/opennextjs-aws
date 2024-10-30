@@ -47,7 +47,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
     const match = url.match(regex);
     return {
       hostname: "",
-      pathname: match?.[1] ?? url,
+      pathname: match?.[1] ? `/${match[1]}` : url,
       protocol: "",
       queryString: match?.[2] ?? "",
     };
@@ -61,7 +61,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
   return {
     protocol: match[1] ?? "https:",
     hostname: match[2],
-    pathname: match[3],
+    pathname: match[3] ?? "",
     queryString: match[4]?.slice(1) ?? "",
   };
 }

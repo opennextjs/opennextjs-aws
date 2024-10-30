@@ -240,13 +240,31 @@ describe("handleRedirects", () => {
       {
         source: "/:path+",
         destination: "/new/:path+",
-        internal: true,
+        locale: false,
         statusCode: 308,
-        regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+        regex: "^(?!/_next)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))(?:/)?$",
       },
     ]);
 
-    expect(result).toBeUndefined();
+    expect(result.headers.Location).toBe("/new/api-route");
+  });
+
+  it("should redirect matching nested path", () => {
+    const event = createEvent({
+      url: "/api-route/secret",
+    });
+
+    const result = handleRedirects(event, [
+      {
+        source: "/:path+",
+        destination: "/new/:path+",
+        locale: false,
+        statusCode: 308,
+        regex: "^(?!/_next)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))(?:/)?$",
+      },
+    ]);
+
+    expect(result.headers.Location).toBe("/new/api-route/secret");
   });
 
   it("should not redirect unmatched path", () => {
@@ -258,9 +276,9 @@ describe("handleRedirects", () => {
       {
         source: "/foo/",
         destination: "/bar",
-        internal: true,
-        statusCode: 308,
-        regex: "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$",
+        locale: false,
+        statusCode: 307,
+        regex: "^(?!/_next)/foo/(?:/)?$",
       },
     ]);
 
