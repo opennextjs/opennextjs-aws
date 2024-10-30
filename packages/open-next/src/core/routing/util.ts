@@ -98,7 +98,7 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
-  // URLSearchParams is a a representation of the PARSED query.
+  // URLSearchParams is a representation of the PARSED query.
   // So we must decode the value before appending it to the URLSearchParams.
   // https://stackoverflow.com/a/45516812
   const urlQuery = new URLSearchParams();
