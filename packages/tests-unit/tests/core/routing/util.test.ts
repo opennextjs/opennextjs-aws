@@ -146,11 +146,11 @@ describe("getUrlParts", () => {
 
   describe("external", () => {
     it("throws for empty url", () => {
-      expect(() => getUrlParts("", true)).toThrowError();
+      expect(() => getUrlParts("", true)).toThrow();
     });
 
     it("throws for invalid url", () => {
-      expect(() => getUrlParts("/relative", true)).toThrowError();
+      expect(() => getUrlParts("/relative", true)).toThrow();
     });
 
     it("returns url parts for /", () => {
@@ -581,7 +581,7 @@ describe("revalidateIfRequired", () => {
     const headers: Record<string, string> = {};
     await revalidateIfRequired("localhost", "/path", headers);
 
-    expect(sendMock).not.toBeCalled();
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
   it("should send to queue when x-nextjs-cache is STALE", async () => {
@@ -590,7 +590,7 @@ describe("revalidateIfRequired", () => {
     };
     await revalidateIfRequired("localhost", "/path", headers);
 
-    expect(sendMock).toBeCalledWith({
+    expect(sendMock).toHaveBeenCalledWith({
       MessageBody: { host: "localhost", url: "/path" },
       MessageDeduplicationId: expect.any(String),
       MessageGroupId: expect.any(String),
@@ -604,7 +604,7 @@ describe("revalidateIfRequired", () => {
     sendMock.mockRejectedValueOnce(new Error("Failed to send"));
     await revalidateIfRequired("localhost", "/path", headers);
 
-    expect(sendMock).toBeCalledWith({
+    expect(sendMock).toHaveBeenCalledWith({
       MessageBody: { host: "localhost", url: "/path" },
       MessageDeduplicationId: expect.any(String),
       MessageGroupId: expect.any(String),
