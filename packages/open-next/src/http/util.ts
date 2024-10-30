@@ -30,13 +30,13 @@ export const convertHeader = (header: http.OutgoingHttpHeader) => {
 };
 
 export function parseCookies(
-  cookies?: string | string[],
-): string[] | undefined {
-  if (!cookies) return;
-
-  if (typeof cookies === "string") {
-    return cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim());
+  cookies: string | string[] | null | undefined,
+): string[] {
+  if (cookies == null) {
+    return [];
   }
 
-  return cookies;
+  return typeof cookies === "string"
+    ? cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim())
+    : cookies;
 }

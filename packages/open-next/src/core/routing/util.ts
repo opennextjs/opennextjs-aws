@@ -146,13 +146,10 @@ export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
  * @__PURE__
  */
 export function escapeRegex(str: string) {
-  let path = str.replace(/\(\.\)/g, "_µ1_");
-
-  path = path.replace(/\(\.{2}\)/g, "_µ2_");
-
-  path = path.replace(/\(\.{3}\)/g, "_µ3_");
-
-  return path;
+  return str
+    .replaceAll("(.)", "_µ1_")
+    .replaceAll("(..)", "_µ2_")
+    .replaceAll("(...)", "_µ3_");
 }
 
 /**
@@ -160,13 +157,10 @@ export function escapeRegex(str: string) {
  * @__PURE__
  */
 export function unescapeRegex(str: string) {
-  let path = str.replace(/_µ1_/g, "(.)");
-
-  path = path.replace(/_µ2_/g, "(..)");
-
-  path = path.replace(/_µ3_/g, "(...)");
-
-  return path;
+  return str
+    .replaceAll("_µ1_", "(.)")
+    .replaceAll("_µ2_", "(..)")
+    .replaceAll("_µ3_", "(...)");
 }
 
 /**
@@ -298,7 +292,8 @@ export function fixCacheHeaderForHtmlPages(
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
+  // WORKAROUND: `NextServer` does not set cache headers for HTML pages
+  // https://opennext.js.org/aws/v2/advanced/workaround#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (HtmlPages.includes(rawPath)) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";

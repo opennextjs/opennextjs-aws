@@ -68,7 +68,7 @@ export function openNextReplacementPlugin({
             );
             logger.debug(
               chalk.blue(`OpenNext Replacement plugin ${name}`),
-              ` -- Deleting override for ${id}`,
+              `Delete override ${id}`,
             );
             contents = contents.replace(pattern, "");
           }),
@@ -90,7 +90,7 @@ export function openNextReplacementPlugin({
               );
               logger.debug(
                 chalk.blue(`Open-next replacement plugin ${name}`),
-                `-- Applying override for ${id} from ${filename}`,
+                `Apply override ${id} from ${filename}`,
               );
               contents = contents.replace(pattern, replacement);
             }

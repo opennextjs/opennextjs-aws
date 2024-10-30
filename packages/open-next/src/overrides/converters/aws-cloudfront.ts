@@ -129,15 +129,13 @@ function convertToCloudfrontHeaders(
     )
     .forEach(([key, value]) => {
       if (key === "set-cookie") {
-        const cookies = parseCookies(`${value}`);
-        if (cookies) {
-          cloudfrontHeaders[key] = cookies.map((cookie) => ({
-            key,
-            value: cookie,
-          }));
-        }
+        cloudfrontHeaders[key] = parseCookies(`${value}`).map((cookie) => ({
+          key,
+          value: cookie,
+        }));
         return;
       }
+
       cloudfrontHeaders[key] = [
         ...(cloudfrontHeaders[key] || []),
         ...(Array.isArray(value)

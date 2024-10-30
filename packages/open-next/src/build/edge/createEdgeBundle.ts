@@ -52,7 +52,6 @@ export async function buildEdgeBundle({
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
-      // inject: ,
       bundle: true,
       outfile,
       external: ["node:*", "next", "@aws-sdk/*"],
