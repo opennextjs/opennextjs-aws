@@ -54,9 +54,11 @@ export async function handleMiddleware(
   // We bypass the middleware if the request is internal
   if (internalEvent.headers["x-isr"]) return internalEvent;
 
+  const protocol = new URL(internalEvent.url).protocol;
   const host = internalEvent.headers.host
-    ? `https://${internalEvent.headers.host}`
+    ? `${protocol}//${internalEvent.headers.host}`
     : "http://localhost:3000";
+
   const initialUrl = new URL(normalizedPath, host);
   initialUrl.search = convertToQueryString(query);
   const url = initialUrl.toString();
