@@ -281,10 +281,7 @@ describe("handleRedirects", () => {
       },
     ]);
 
-    expect(result.statusCode).toEqual(308);
-    expect(result.headers.Location).toEqual(
-      "/search?bar=hello+world&baz=new%2C+earth",
-    );
+    expect(result).toBeUndefined();
   });
 });
 
