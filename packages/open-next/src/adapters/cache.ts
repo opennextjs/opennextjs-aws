@@ -150,11 +150,10 @@ export default class S3Cache {
     if (globalThis.disableIncrementalCache) {
       return null;
     }
-    const _isFetchCache = isFetchCache(options);
 
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
-    return _isFetchCache
+    return isFetchCache(options)
       ? this.getFetchCache(key, softTags, tags)
       : this.getIncrementalCache(key);
   }
