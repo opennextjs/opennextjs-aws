@@ -5,6 +5,11 @@ import type { Converter, InternalEvent, InternalResult } from "types/open-next";
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
+declare global {
+  // Makes convertTo returns the request instead of fetching it.
+  var __dangerous_ON_edge_converter_returns_request: boolean | undefined;
+}
+
 const converter: Converter<
   InternalEvent,
   InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
@@ -63,7 +68,7 @@ const converter: Converter<
         }
       }
 
-      const req = new Request(url, {
+      const request = new Request(url, {
         body: result.internalEvent.body,
         method: result.internalEvent.method,
         headers: {
@@ -72,6 +77,10 @@ const converter: Converter<
         },
       });
 
+      if (globalThis.__dangerous_ON_edge_converter_returns_request === true) {
+        return request;
+      }
+
       const cfCache =
         (result.isISR ||
           result.internalEvent.rawPath.startsWith("/_next/image")) &&
@@ -79,7 +88,7 @@ const converter: Converter<
           ? { cacheEverything: true }
           : {};
 
-      return fetch(req, {
+      return fetch(request, {
         // This is a hack to make sure that the response is cached by Cloudflare
         // See https://developers.cloudflare.com/workers/examples/cache-using-fetch/#caching-html-resources
         // @ts-expect-error - This is a Cloudflare specific option
