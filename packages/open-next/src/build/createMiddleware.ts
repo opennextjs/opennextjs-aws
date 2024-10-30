@@ -14,8 +14,12 @@ import { installDependencies } from "./installDeps.js";
  * Compiles the middleware bundle.
  *
  * @param options Build Options.
+ * @param forceOnlyBuildOnce force to build only once.
  */
-export async function createMiddleware(options: buildHelper.BuildOptions) {
+export async function createMiddleware(
+  options: buildHelper.BuildOptions,
+  { forceOnlyBuildOnce = false } = {},
+) {
   logger.info(`Bundling middleware function...`);
 
   const { appBuildOutputPath, config, outputDir } = options;
@@ -57,6 +61,7 @@ export async function createMiddleware(options: buildHelper.BuildOptions) {
       defaultConverter: "aws-cloudfront",
       includeCache: config.dangerous?.enableCacheInterception,
       additionalExternals: config.edgeExternals,
+      onlyBuildOnce: forceOnlyBuildOnce === true,
     });
 
     installDependencies(outputPath, config.middleware?.install);
