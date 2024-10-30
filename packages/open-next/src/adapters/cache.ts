@@ -1,5 +1,3 @@
-import type { IncrementalCache, TagCache } from "types/overrides";
-
 import { isBinaryContentType } from "./binary";
 import { debug, error, warn } from "./logger";
 
@@ -98,15 +96,6 @@ const CACHE_EXTENSION_REGEX = /\.(cache|fetch)$/;
 
 export function hasCacheExtension(key: string) {
   return CACHE_EXTENSION_REGEX.test(key);
-}
-
-declare global {
-  var incrementalCache: IncrementalCache;
-  var tagCache: TagCache;
-  var disableDynamoDBCache: boolean;
-  var disableIncrementalCache: boolean;
-  var lastModified: Record<string, number>;
-  var isNextAfter15: boolean;
 }
 
 function isFetchCache(

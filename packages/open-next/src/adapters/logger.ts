@@ -1,9 +1,5 @@
 import type { BaseOpenNextError } from "utils/error";
 
-declare global {
-  var openNextDebug: boolean;
-}
-
 export function debug(...args: any[]) {
   if (globalThis.openNextDebug) {
     console.log(...args);

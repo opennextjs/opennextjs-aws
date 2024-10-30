@@ -11,10 +11,6 @@ import {
   convertToQueryString,
 } from "../core/routing/util";
 
-declare global {
-  var isEdgeRuntime: true;
-}
-
 const defaultHandler = async (
   internalEvent: InternalEvent,
 ): Promise<InternalResult> => {

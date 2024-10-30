@@ -264,12 +264,6 @@ export async function proxyRequest(
   // res.end(await result.text());
 }
 
-declare global {
-  var openNextDebug: boolean;
-  var openNextVersion: string;
-  var lastModified: Record<string, number>;
-}
-
 enum CommonHeaders {
   CACHE_CONTROL = "cache-control",
   NEXT_CACHE = "x-nextjs-cache",

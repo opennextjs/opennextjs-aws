@@ -27,6 +27,9 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 
 declare global {
   var __als: any;
+  var lastModified: any;
+  var openNextDebug: boolean;
+  var openNextVersion: string;
 }
 
 type Res = {

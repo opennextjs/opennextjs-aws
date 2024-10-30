@@ -73,6 +73,8 @@ globalThis.tagCache = tagCache;
 
 declare global {
   var queue: Queue;
+  var incrementalCache: any;
+  var tagCache: any;
 }
 globalThis.queue = queue;
 
