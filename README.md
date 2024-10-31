@@ -56,6 +56,15 @@ This will output A LOT of additional logs to the console. This also disable mini
 
 You can read more about the configuration in the [docs](https://opennext.js.org/aws/config)
 
+## Preleases
+
+Every commit on main triggers a prerelease of the `@opennextjs/aws` package, so if you want to try the very latest version of the package before it is deployed to npm you can simply install the main prerelease via:
+
+```sh
+npm i -D https://pkg.pr.new/@opennextjs/aws@main
+```
+
+(or your package manager's alternative)
 
 ## Contribute
 

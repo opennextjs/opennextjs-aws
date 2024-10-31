@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - packages/open-next/**
+  push:
+    branches:
+      - main
+    paths:
+      - packages/open-next/**
 
 jobs:
   release:
