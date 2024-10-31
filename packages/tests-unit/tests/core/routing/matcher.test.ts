@@ -276,8 +276,9 @@ describe("handleRedirects", () => {
       {
         source: "/foo",
         destination: "/search?bar=hello+world&baz=new%2C+earth",
-        internal: true,
+        locale: false,
         statusCode: 308,
+        regex: "^(?!/_next)/foo(?:/)?$",
       },
     ]);
 
