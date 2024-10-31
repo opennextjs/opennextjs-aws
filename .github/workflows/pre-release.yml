@@ -2,13 +2,11 @@ name: Pre-release
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main, experimental]
     paths:
       - packages/open-next/**
   push:
-    branches:
-      - main
+    branches: [main, experimental]
     paths:
       - packages/open-next/**
 
