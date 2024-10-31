@@ -284,6 +284,27 @@ describe("handleRedirects", () => {
 
     expect(result).toBeUndefined();
   });
+
+  it("should redirect with + character and query string", () => {
+    const event = createEvent({
+      url: "/foo",
+    });
+
+    const result = handleRedirects(event, [
+      {
+        source: "/foo",
+        destination: "/search?bar=hello+world&baz=new%2C+earth",
+        locale: false,
+        statusCode: 308,
+        regex: "^(?!/_next)/foo(?:/)?$",
+      },
+    ]);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual(
+      "/search?bar=hello+world&baz=new%2C+earth",
+    );
+  });
 });
 
 describe("handleRewrites", () => {

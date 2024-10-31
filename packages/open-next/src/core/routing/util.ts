@@ -98,12 +98,15 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
+  // URLSearchParams is a representation of the PARSED query.
+  // So we must decode the value before appending it to the URLSearchParams.
+  // https://stackoverflow.com/a/45516812
   const urlQuery = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((entry) => urlQuery.append(key, entry));
+      value.forEach((entry) => urlQuery.append(key, decodeURIComponent(entry)));
     } else {
-      urlQuery.append(key, value);
+      urlQuery.append(key, decodeURIComponent(value));
     }
   });
   const queryString = urlQuery.toString();
