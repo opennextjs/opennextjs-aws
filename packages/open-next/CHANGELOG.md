@@ -1,5 +1,23 @@
 # open-next
 
+## 3.2.1
+
+### Patch Changes
+
+- [#604](https://github.com/opennextjs/opennextjs-aws/pull/604) [`cf33973f3fbab73e77898fdd072a00a1f037257a`](https://github.com/opennextjs/opennextjs-aws/commit/cf33973f3fbab73e77898fdd072a00a1f037257a) Thanks [@vicb](https://github.com/vicb)! - fix(middleware): always compiles the middleware.
+
+  Prior to this PR the middleware would only be compiled when a middleware.ts exists.
+
+- [#603](https://github.com/opennextjs/opennextjs-aws/pull/603) [`77d87e7a870fad6afad022bf75aca18c8656c268`](https://github.com/opennextjs/opennextjs-aws/commit/77d87e7a870fad6afad022bf75aca18c8656c268) Thanks [@john-trieu-nguyen](https://github.com/john-trieu-nguyen)! - Fix redirect when containing "+" and decode values for URLSearchParams
+
+- [#612](https://github.com/opennextjs/opennextjs-aws/pull/612) [`a43b82b4cb68889371ac8260aefef9e04eefb037`](https://github.com/opennextjs/opennextjs-aws/commit/a43b82b4cb68889371ac8260aefef9e04eefb037) Thanks [@vicb](https://github.com/vicb)! - feature(edge): add a way for convertTo to return a Request
+
+- [#598](https://github.com/opennextjs/opennextjs-aws/pull/598) [`bfa1a8c4056bd691fb57617dd6287693e51071b4`](https://github.com/opennextjs/opennextjs-aws/commit/bfa1a8c4056bd691fb57617dd6287693e51071b4) Thanks [@conico974](https://github.com/conico974)! - Fix external redirect trailing
+
+- [#601](https://github.com/opennextjs/opennextjs-aws/pull/601) [`5839217411012d1df2874d299daa977ba3701c2c`](https://github.com/opennextjs/opennextjs-aws/commit/5839217411012d1df2874d299daa977ba3701c2c) Thanks [@conico974](https://github.com/conico974)! - fix fetch cache for next 15
+
+- [#613](https://github.com/opennextjs/opennextjs-aws/pull/613) [`dfc174d88b7bcc54eede09c98d9443dd84b93fd8`](https://github.com/opennextjs/opennextjs-aws/commit/dfc174d88b7bcc54eede09c98d9443dd84b93fd8) Thanks [@vicb](https://github.com/vicb)! - feat(middleware): add ability to force single build pass
+
 ## 3.2.0
 
 ### Minor Changes
