@@ -362,9 +362,15 @@ describe("S3Cache", () => {
           lastModified: Date.now(),
         });
 
-        await cache.get("key", { kindHint: "app" });
+        const result = await cache.get("key", { kindHint: "app" });
 
         expect(getIncrementalCache).toHaveBeenCalled();
+        expect(result).toEqual({
+          value: {
+            kind: "REDIRECT",
+          },
+          lastModified: Date.now(),
+        });
       });
 
       it("Should return null when incremental cache fails", async () => {
