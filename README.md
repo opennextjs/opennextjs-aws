@@ -63,7 +63,7 @@ Besides the standard npm releases we also automatically publish prerelease packa
 - `https://pkg.pr.new/@opennextjs/aws@main`:
   Updated with every push to the `main` branch, this prerelease contains the most up to date yet (reasonably) stable version of the package.
 - `https://pkg.pr.new/@opennextjs/aws@experimental`
-  Updated with every push to the `experimental` branch (when present), this prerelease contains the latest experimental version of the package (containing features that we want to test/experiment on before committing to).
+  Updated with every push to the `experimental` branch, this prerelease contains the latest experimental version of the package (containing features that we want to test/experiment on before committing to).
   Which you can simply install directly with your package manager of choice, for example: `npm i https://pkg.pr.new/@opennextjs/aws@main`
 
 ## Contribute
