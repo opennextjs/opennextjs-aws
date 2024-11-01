@@ -36,7 +36,7 @@ OpenNext aims to support all Next.js 14 features. Some features are work in prog
 - [x] Image optimization
 - [x] [NextAuth.js](https://next-auth.js.org)
 - [x] Running at edge
-- [x] [Almost no coldstart (*)](#coldstart)
+- [x] [Almost no coldstart (\*)](#coldstart)
 
 ## Who is using OpenNext?
 
@@ -56,6 +56,20 @@ This will output A LOT of additional logs to the console. This also disable mini
 
 You can read more about the configuration in the [docs](https://opennext.js.org/aws/config)
 
+## Preleases
+
+Besides the standard npm releases we also automatically publish prerelease packages on branch pushes (using [`pkg.pr.new`](https://github.com/stackblitz-labs/pkg.pr.new)):
+
+- `https://pkg.pr.new/@opennextjs/aws@main`:
+  Updated with every push to the `main` branch, this prerelease contains the most up to date yet (reasonably) stable version of the package.
+- `https://pkg.pr.new/@opennextjs/aws@experimental`
+  Updated with every push to the `experimental` branch, this prerelease contains the latest experimental version of the package (containing features that we want to test/experiment on before committing to).
+
+Which you can simply install directly with your package manager of choice, for example:
+
+```bash
+npm i https://pkg.pr.new/@opennextjs/aws@main
+```
 
 ## Contribute
 
