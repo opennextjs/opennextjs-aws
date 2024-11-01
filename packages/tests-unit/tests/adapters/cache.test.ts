@@ -114,36 +114,48 @@ describe("S3Cache", () => {
     });
 
     describe("fetch cache", () => {
-      it("Should retrieve cache from fetch cache when fetch cache is true", async () => {
+      it("Should retrieve cache from fetch cache when fetch cache is true (next 13.5+)", async () => {
         await cache.get("key", { fetchCache: true });
 
         expect(getFetchCacheSpy).toHaveBeenCalled();
       });
 
-      it("Should retrieve cache from fetch cache when hint is fetch", async () => {
+      it("Should retrieve cache from fetch cache when hint is fetch (next14)", async () => {
         await cache.get("key", { kindHint: "fetch" });
 
         expect(getFetchCacheSpy).toHaveBeenCalled();
       });
 
-      it("Should return null when tag cache last modified is -1", async () => {
-        tagCache.getLastModified.mockResolvedValueOnce(-1);
+      describe("next15", () => {
+        beforeEach(() => {
+          globalThis.isNextAfter15 = true;
+        });
 
-        const result = await cache.get("key", { kindHint: "fetch" });
+        it("Should retrieve cache from fetch cache when hint is fetch", async () => {
+          await cache.get("key", { kind: "FETCH" });
 
-        expect(getFetchCacheSpy).toHaveBeenCalled();
-        expect(result).toBeNull();
-      });
+          expect(getFetchCacheSpy).toHaveBeenCalled();
+        });
 
-      it("Should return null when incremental cache throws", async () => {
-        incrementalCache.get.mockRejectedValueOnce(
-          new Error("Error retrieving cache"),
-        );
+        it("Should return null when tag cache last modified is -1", async () => {
+          tagCache.getLastModified.mockResolvedValueOnce(-1);
 
-        const result = await cache.get("key", { kindHint: "fetch" });
+          const result = await cache.get("key", { kind: "FETCH" });
 
-        expect(getFetchCacheSpy).toHaveBeenCalled();
-        expect(result).toBeNull();
+          expect(getFetchCacheSpy).toHaveBeenCalled();
+          expect(result).toBeNull();
+        });
+
+        it("Should return null when incremental cache throws", async () => {
+          incrementalCache.get.mockRejectedValueOnce(
+            new Error("Error retrieving cache"),
+          );
+
+          const result = await cache.get("key", { kind: "FETCH" });
+
+          expect(getFetchCacheSpy).toHaveBeenCalled();
+          expect(result).toBeNull();
+        });
       });
     });
 
@@ -187,28 +199,6 @@ describe("S3Cache", () => {
         expect(result).toEqual({
           value: {
             kind: "ROUTE",
-            body: Buffer.from("{}"),
-          },
-          lastModified: Date.now(),
-        });
-      });
-
-      it("Should return value when cache data type is route for next 15 and later", async () => {
-        incrementalCache.get.mockResolvedValueOnce({
-          value: {
-            type: "route",
-            body: "{}",
-          },
-          lastModified: Date.now(),
-        });
-        globalThis.isNextAfter15 = true;
-
-        const result = await cache.get("key", { kindHint: "app" });
-
-        expect(getIncrementalCache).toHaveBeenCalled();
-        expect(result).toEqual({
-          value: {
-            kind: "APP_ROUTE",
             body: Buffer.from("{}"),
           },
           lastModified: Date.now(),
@@ -271,34 +261,6 @@ describe("S3Cache", () => {
         });
       });
 
-      it("Should return value when cache data type is app for next 15 and later", async () => {
-        incrementalCache.get.mockResolvedValueOnce({
-          value: {
-            type: "app",
-            html: "<html></html>",
-            rsc: "rsc",
-            meta: {
-              status: 200,
-            },
-          },
-          lastModified: Date.now(),
-        });
-        globalThis.isNextAfter15 = true;
-
-        const result = await cache.get("key", { kindHint: "app" });
-
-        expect(getIncrementalCache).toHaveBeenCalled();
-        expect(result).toEqual({
-          value: {
-            kind: "APP_PAGE",
-            html: "<html></html>",
-            rscData: Buffer.from("rsc"),
-            status: 200,
-          },
-          lastModified: Date.now(),
-        });
-      });
-
       it("Should return value when cache data type is page", async () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -318,34 +280,6 @@ describe("S3Cache", () => {
         expect(result).toEqual({
           value: {
             kind: "PAGE",
-            html: "<html></html>",
-            pageData: {},
-            status: 200,
-          },
-          lastModified: Date.now(),
-        });
-      });
-
-      it("Should return value when cache data type is page for next15 and later", async () => {
-        incrementalCache.get.mockResolvedValueOnce({
-          value: {
-            type: "page",
-            html: "<html></html>",
-            json: {},
-            meta: {
-              status: 200,
-            },
-          },
-          lastModified: Date.now(),
-        });
-        globalThis.isNextAfter15 = true;
-
-        const result = await cache.get("key", { kindHint: "pages" });
-
-        expect(getIncrementalCache).toHaveBeenCalled();
-        expect(result).toEqual({
-          value: {
-            kind: "PAGES",
             html: "<html></html>",
             pageData: {},
             status: 200,
