@@ -393,7 +393,11 @@ describe("S3Cache", () => {
         headers: {},
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        { type: "route", body: "{}", meta: { status: 200, headers: {} } },
+        false,
+      );
     });
 
     it("Should set cache when for APP_ROUTE", async () => {
@@ -406,7 +410,15 @@ describe("S3Cache", () => {
         },
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "route",
+          body: Buffer.from("{}").toString("base64"),
+          meta: { status: 200, headers: { "content-type": "image/png" } },
+        },
+        false,
+      );
     });
 
     it("Should set cache when for PAGE", async () => {
@@ -418,7 +430,15 @@ describe("S3Cache", () => {
         headers: {},
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "page",
+          html: "<html></html>",
+          json: {},
+        },
+        false,
+      );
     });
 
     it("Should set cache when for PAGES", async () => {
@@ -430,7 +450,16 @@ describe("S3Cache", () => {
         headers: {},
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "app",
+          html: "<html></html>",
+          rsc: "rsc",
+          meta: { status: 200, headers: {} },
+        },
+        false,
+      );
     });
 
     it("Should set cache when for APP_PAGE", async () => {
@@ -442,7 +471,16 @@ describe("S3Cache", () => {
         headers: {},
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "app",
+          html: "<html></html>",
+          rsc: "rsc",
+          meta: { status: 200, headers: {} },
+        },
+        false,
+      );
     });
 
     it("Should set cache when for FETCH", async () => {
@@ -458,13 +496,34 @@ describe("S3Cache", () => {
         revalidate: 60,
       });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          kind: "FETCH",
+          data: {
+            headers: {},
+            body: "{}",
+            url: "https://example.com",
+            status: 200,
+            tags: [],
+          },
+          revalidate: 60,
+        },
+        true,
+      );
     });
 
     it("Should set cache when for REDIRECT", async () => {
       await cache.set("key", { kind: "REDIRECT", props: {} });
 
-      expect(incrementalCache.set).toHaveBeenCalled();
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "redirect",
+          props: {},
+        },
+        false,
+      );
     });
 
     it("Should not set cache when for IMAGE (not implemented)", async () => {
