@@ -77,20 +77,40 @@ describe("S3Cache", () => {
   });
 
   describe("get", () => {
-    it("Should return null when incremental cache is disabled", async () => {
-      globalThis.disableIncrementalCache = true;
-
-      const result = await cache.get("key");
-
-      expect(result).toBeNull();
-    });
-
     it("Should return null for cache miss", async () => {
       incrementalCache.get.mockResolvedValueOnce({});
 
       const result = await cache.get("key");
 
       expect(result).toBeNull();
+    });
+
+    describe("disableIncrementalCache", () => {
+      beforeEach(() => {
+        globalThis.disableIncrementalCache = true;
+      });
+
+      it("Should return null when incremental cache is disabled", async () => {
+        const result = await cache.get("key");
+
+        expect(result).toBeNull();
+      });
+
+      it("Should not set cache when incremental cache is disabled", async () => {
+        globalThis.disableIncrementalCache = true;
+
+        await cache.set("key", { kind: "REDIRECT", props: {} });
+
+        expect(incrementalCache.set).not.toHaveBeenCalled();
+      });
+
+      it("Should not delete cache when incremental cache is disabled", async () => {
+        globalThis.disableIncrementalCache = true;
+
+        await cache.set("key", undefined);
+
+        expect(incrementalCache.delete).not.toHaveBeenCalled();
+      });
     });
 
     describe("fetch cache", () => {
@@ -359,26 +379,10 @@ describe("S3Cache", () => {
   });
 
   describe("set", () => {
-    it("Should not set cache when incremental cache is disabled", async () => {
-      globalThis.disableIncrementalCache = true;
-
-      await cache.set("key", { kind: "REDIRECT", props: {} });
-
-      expect(incrementalCache.set).not.toHaveBeenCalled();
-    });
-
     it("Should delete cache when data is undefined", async () => {
       await cache.set("key", undefined);
 
       expect(incrementalCache.delete).toHaveBeenCalled();
-    });
-
-    it("Should not delete cache when incremental cache is disabled", async () => {
-      globalThis.disableIncrementalCache = true;
-
-      await cache.set("key", undefined);
-
-      expect(incrementalCache.delete).not.toHaveBeenCalled();
     });
 
     it("Should set cache when for ROUTE", async () => {
