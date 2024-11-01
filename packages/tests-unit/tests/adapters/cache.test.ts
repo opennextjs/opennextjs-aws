@@ -195,7 +195,7 @@ describe("S3Cache", () => {
         });
       });
 
-      it("Should return bas64 encoded value when cache data type is route and content is binary", async () => {
+      it("Should return base64 encoded value when cache data type is route and content is binary", async () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "route",
@@ -394,7 +394,7 @@ describe("S3Cache", () => {
 
     it("Should set cache when for APP_ROUTE", async () => {
       await cache.set("key", {
-        kind: "ROUTE",
+        kind: "APP_ROUTE",
         body: Buffer.from("{}"),
         status: 200,
         headers: {
@@ -419,7 +419,7 @@ describe("S3Cache", () => {
 
     it("Should set cache when for PAGES", async () => {
       await cache.set("key", {
-        kind: "PAGE",
+        kind: "PAGES",
         html: "<html></html>",
         pageData: "rsc",
         status: 200,
