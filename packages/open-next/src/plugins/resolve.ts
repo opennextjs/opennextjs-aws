@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 
+import chalk from "chalk";
 import type { Plugin } from "esbuild";
 import type {
   DefaultOverrideOptions,
@@ -75,7 +76,10 @@ export function openNextResolvePlugin({
   return {
     name: "opennext-resolve",
     setup(build) {
-      logger.debug(`OpenNext Resolve plugin for ${fnName}`);
+      logger.debug(
+        chalk.blue("OpenNext Resolve plugin"),
+        fnName ? `for ${fnName}` : "",
+      );
       build.onLoad({ filter: /core(\/|\\)resolve\.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         const overridesEntries = Object.entries(overrides ?? {});

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import chalk from "chalk";
 import type { Plugin } from "esbuild";
 import type { MiddlewareInfo } from "types/next-types.js";
 
@@ -14,6 +15,7 @@ import {
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "../adapters/config/util.js";
+import logger from "../logger.js";
 
 export interface IPluginSettings {
   nextDir: string;
@@ -51,6 +53,7 @@ export function openNextEdgePlugins({
   return {
     name: "opennext-edge",
     setup(build) {
+      logger.debug(chalk.blue("OpenNext Edge plugin"));
       if (edgeFunctionHandlerPath) {
         // If we bundle the routing, we need to resolve the middleware
         build.onResolve({ filter: /\.\/middleware.mjs/g }, () => {

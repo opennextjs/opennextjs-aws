@@ -29,6 +29,7 @@ interface BuildEdgeBundleOptions {
   includeCache?: boolean;
   additionalExternals?: string[];
   onlyBuildOnce?: boolean;
+  name: string;
 }
 
 export async function buildEdgeBundle({
@@ -42,6 +43,7 @@ export async function buildEdgeBundle({
   includeCache,
   additionalExternals,
   onlyBuildOnce,
+  name,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare =
     typeof overrides?.wrapper === "string"
@@ -84,6 +86,7 @@ export async function buildEdgeBundle({
                 }
               : {}),
           },
+          fnName: name,
         }),
         openNextReplacementPlugin({
           name: "externalMiddlewareOverrides",
@@ -222,5 +225,6 @@ export async function generateEdgeBundle(
     options,
     overrides: fnOptions.override,
     additionalExternals: options.config.edgeExternals,
+    name,
   });
 }

@@ -62,6 +62,7 @@ export async function createMiddleware(
       includeCache: config.dangerous?.enableCacheInterception,
       additionalExternals: config.edgeExternals,
       onlyBuildOnce: forceOnlyBuildOnce === true,
+      name: "middleware",
     });
 
     installDependencies(outputPath, config.middleware?.install);
@@ -76,6 +77,7 @@ export async function createMiddleware(
       middlewareInfo,
       options,
       onlyBuildOnce: true,
+      name: "middleware",
     });
   }
 }
