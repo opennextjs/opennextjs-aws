@@ -67,7 +67,7 @@ export function openNextReplacementPlugin({
               `\/\/#override (${id})\n([\\s\\S]*?)\/\/#endOverride`,
             );
             logger.debug(
-              chalk.blue(`Open-next replacement plugin ${name}`),
+              chalk.blue(`OpenNext Replacement plugin ${name}`),
               ` -- Deleting override for ${id}`,
             );
             contents = contents.replace(pattern, "");
