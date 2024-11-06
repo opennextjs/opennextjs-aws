@@ -9,8 +9,8 @@ import type { InternalEvent, InternalResult, Origin } from "types/open-next";
 import { debug } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import {
-  getNextConfigHeaders,
   fixDataPage,
+  getNextConfigHeaders,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
