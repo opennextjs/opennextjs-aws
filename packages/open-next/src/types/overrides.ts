@@ -1,4 +1,15 @@
+import type { Readable } from "node:stream";
+
+import type { StreamCreator } from "http/index";
 import type { Meta } from "types/cache";
+
+import type {
+  BaseEventOrResult,
+  BaseOverride,
+  InternalEvent,
+  InternalResult,
+  Origin,
+} from "./open-next";
 
 // Queue
 
@@ -77,4 +88,50 @@ export type TagCache = {
     tags: { tag: string; path: string; revalidatedAt?: number }[],
   ): Promise<void>;
   name: string;
+};
+
+export type WrapperHandler<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = (
+  handler: OpenNextHandler<E, R>,
+  converter: Converter<E, R>,
+) => Promise<(...args: any[]) => any>;
+
+export type Wrapper<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = BaseOverride & {
+  wrapper: WrapperHandler<E, R>;
+  supportStreaming: boolean;
+  edgeRuntime?: boolean;
+};
+
+export type OpenNextHandler<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = (event: E, responseStream?: StreamCreator) => Promise<R>;
+
+export type Converter<
+  E extends BaseEventOrResult = InternalEvent,
+  R extends BaseEventOrResult = InternalResult,
+> = BaseOverride & {
+  convertFrom: (event: any) => Promise<E>;
+  convertTo: (result: R, originalRequest?: any) => Promise<any>;
+};
+
+export type Warmer = BaseOverride & {
+  invoke: (warmerId: string) => Promise<void>;
+};
+
+export type ImageLoader = BaseOverride & {
+  load: (url: string) => Promise<{
+    body?: Readable;
+    contentType?: string;
+    cacheControl?: string;
+  }>;
+};
+
+export type OriginResolver = BaseOverride & {
+  resolve: (path: string) => Promise<Origin | false>;
 };
