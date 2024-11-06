@@ -1,4 +1,4 @@
-import type { OriginResolver } from "types/open-next";
+import type { OriginResolver } from "types/overrides";
 
 const dummyOriginResolver: OriginResolver = {
   name: "dummy",

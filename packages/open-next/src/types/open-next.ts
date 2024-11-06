@@ -1,12 +1,16 @@
-import type { Readable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
 
-import type { StreamCreator } from "http/index.js";
-
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
-import type { IncrementalCache } from "../overrides/incrementalCache/types";
-import type { Queue } from "../overrides/queue/types";
-import type { TagCache } from "../overrides/tagCache/types";
+import type {
+  Converter,
+  ImageLoader,
+  IncrementalCache,
+  OriginResolver,
+  Queue,
+  TagCache,
+  Warmer,
+  Wrapper,
+} from "./overrides";
 
 export type BaseEventOrResult<T extends string = string> = {
   type: T;
@@ -64,57 +68,12 @@ export type BaseOverride = {
 };
 export type LazyLoadedOverride<T extends BaseOverride> = () => Promise<T>;
 
-export type OpenNextHandler<
-  E extends BaseEventOrResult = InternalEvent,
-  R extends BaseEventOrResult = InternalResult,
-> = (event: E, responseStream?: StreamCreator) => Promise<R>;
-
-export type Converter<
-  E extends BaseEventOrResult = InternalEvent,
-  R extends BaseEventOrResult = InternalResult,
-> = BaseOverride & {
-  convertFrom: (event: any) => Promise<E>;
-  convertTo: (result: R, originalRequest?: any) => Promise<any>;
-};
-
-export type WrapperHandler<
-  E extends BaseEventOrResult = InternalEvent,
-  R extends BaseEventOrResult = InternalResult,
-> = (
-  handler: OpenNextHandler<E, R>,
-  converter: Converter<E, R>,
-) => Promise<(...args: any[]) => any>;
-
-export type Wrapper<
-  E extends BaseEventOrResult = InternalEvent,
-  R extends BaseEventOrResult = InternalResult,
-> = BaseOverride & {
-  wrapper: WrapperHandler<E, R>;
-  supportStreaming: boolean;
-  edgeRuntime?: boolean;
-};
-
-export type Warmer = BaseOverride & {
-  invoke: (warmerId: string) => Promise<void>;
-};
-
-export type ImageLoader = BaseOverride & {
-  load: (url: string) => Promise<{
-    body?: Readable;
-    contentType?: string;
-    cacheControl?: string;
-  }>;
-};
-
 export interface Origin {
   host: string;
   protocol: "http" | "https";
   port?: number;
   customHeaders?: Record<string, string>;
 }
-export type OriginResolver = BaseOverride & {
-  resolve: (path: string) => Promise<Origin | false>;
-};
 
 export type IncludedWrapper =
   | "aws-lambda"

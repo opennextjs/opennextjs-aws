@@ -1,9 +1,9 @@
 import { AwsClient } from "aws4fetch";
+import type { Queue } from "types/overrides";
 import { RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
 import { error } from "../../adapters/logger";
-import type { Queue } from "./types";
 
 let awsClient: AwsClient | null = null;
 

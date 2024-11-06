@@ -1,7 +1,7 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import type { Queue } from "types/overrides";
 
 import { awsLogger } from "../../adapters/logger";
-import type { Queue } from "./types";
 
 // Expected environment variables
 const { REVALIDATION_QUEUE_REGION, REVALIDATION_QUEUE_URL } = process.env;

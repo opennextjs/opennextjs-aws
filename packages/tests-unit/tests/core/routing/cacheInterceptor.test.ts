@@ -1,8 +1,8 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
-import type { Queue } from "@opennextjs/aws/queue/types.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
+import type { Queue } from "@opennextjs/aws/types/overrides.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
 

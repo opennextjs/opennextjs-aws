@@ -1,4 +1,5 @@
-import type { Origin, OriginResolver } from "types/open-next";
+import type { Origin } from "types/open-next";
+import type { OriginResolver } from "types/overrides";
 
 import { debug, error } from "../../adapters/logger";
 

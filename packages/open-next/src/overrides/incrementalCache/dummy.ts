@@ -1,4 +1,4 @@
-import type { IncrementalCache } from "./types";
+import type { IncrementalCache } from "types/overrides";
 
 const dummyIncrementalCache: IncrementalCache = {
   name: "dummy",

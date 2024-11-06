@@ -1,18 +1,19 @@
 import type {
   BaseEventOrResult,
-  Converter,
   DefaultOverrideOptions,
-  ImageLoader,
   InternalEvent,
   InternalResult,
   LazyLoadedOverride,
-  OriginResolver,
   OverrideOptions,
+} from "types/open-next";
+import type {
+  Converter,
+  ImageLoader,
+  OriginResolver,
+  TagCache,
   Warmer,
   Wrapper,
-} from "types/open-next.js";
-
-import type { TagCache } from "../overrides/tagCache/types.js";
+} from "types/overrides";
 
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,
