@@ -1,10 +1,12 @@
+import path from "node:path";
+
 import type { DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteItemCommand,
   DynamoDBClient,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
-import path from "path";
+import type { TagCache } from "types/overrides";
 
 import { awsLogger, debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
@@ -12,7 +14,6 @@ import {
   getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
 } from "./constants";
-import type { TagCache } from "./types";
 
 const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
 

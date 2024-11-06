@@ -1,7 +1,7 @@
-import type { IncrementalCache } from "../overrides/incrementalCache/types.js";
-import type { TagCache } from "../overrides/tagCache/types.js";
-import { isBinaryContentType } from "./binary.js";
-import { debug, error, warn } from "./logger.js";
+import type { IncrementalCache, TagCache } from "types/overrides";
+
+import { isBinaryContentType } from "./binary";
+import { debug, error, warn } from "./logger";
 
 interface CachedFetchValue {
   kind: "FETCH";

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import path from "node:path";
+
 import { AwsClient } from "aws4fetch";
-import path from "path";
+import type { TagCache } from "types/overrides";
 import { RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
@@ -10,7 +12,6 @@ import {
   getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
 } from "./constants";
-import type { TagCache } from "./types";
 
 let awsClient: AwsClient | null = null;
 

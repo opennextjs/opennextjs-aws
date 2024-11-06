@@ -1,4 +1,4 @@
-import type { TagCache } from "./types";
+import type { TagCache } from "types/overrides";
 
 // We don't want to throw error on this one because we might use it when we don't need tag cache
 const dummyTagCache: TagCache = {

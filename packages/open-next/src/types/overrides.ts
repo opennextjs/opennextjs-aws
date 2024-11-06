@@ -1,5 +1,23 @@
 import type { Meta } from "types/cache";
 
+// Queue
+
+export interface QueueMessage {
+  MessageDeduplicationId: string;
+  MessageBody: {
+    host: string;
+    url: string;
+  };
+  MessageGroupId: string;
+}
+
+export interface Queue {
+  send(message: QueueMessage): Promise<void>;
+  name: string;
+}
+
+// Incremental cache
+
 export type S3CachedFile =
   | {
       type: "redirect";
@@ -46,5 +64,17 @@ export type IncrementalCache = {
     isFetch?: IsFetch,
   ): Promise<void>;
   delete(key: string): Promise<void>;
+  name: string;
+};
+
+// Tag cache
+
+export type TagCache = {
+  getByTag(tag: string): Promise<string[]>;
+  getByPath(path: string): Promise<string[]>;
+  getLastModified(path: string, lastModified?: number): Promise<number>;
+  writeTags(
+    tags: { tag: string; path: string; revalidatedAt?: number }[],
+  ): Promise<void>;
   name: string;
 };

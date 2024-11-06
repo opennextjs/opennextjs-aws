@@ -4,9 +4,7 @@ import type { ReadableStream } from "node:stream/web";
 import type { StreamCreator } from "http/index.js";
 
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
-import type { IncrementalCache } from "../overrides/incrementalCache/types";
-import type { Queue } from "../overrides/queue/types";
-import type { TagCache } from "../overrides/tagCache/types";
+import type { IncrementalCache, Queue, TagCache } from "./overrides";
 
 export type BaseEventOrResult<T extends string = string> = {
   type: T;

@@ -1,4 +1,4 @@
-import type { Queue } from "./types";
+import type { Queue } from "types/overrides";
 
 const dummyQueue: Queue = {
   name: "dummy",
