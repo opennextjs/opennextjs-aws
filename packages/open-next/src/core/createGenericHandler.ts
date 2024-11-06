@@ -35,8 +35,7 @@ export async function createGenericHandler<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
 >(handler: GenericHandler<Type, E, R>) {
-  //First we load the config
-  // @ts-expect-error
+  // @ts-expect-error `./open-next.config.mjs` exists only in the build output
   const config: OpenNextConfig = await import("./open-next.config.mjs").then(
     (m) => m.default,
   );
