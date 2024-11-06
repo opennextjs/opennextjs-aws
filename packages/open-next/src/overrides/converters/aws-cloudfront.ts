@@ -8,7 +8,8 @@ import type {
   CloudFrontRequestResult,
 } from "aws-lambda";
 import { parseCookies } from "http/util";
-import type { Converter, InternalEvent, InternalResult } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
+import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";

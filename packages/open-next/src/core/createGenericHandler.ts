@@ -4,8 +4,8 @@ import type {
   InternalEvent,
   InternalResult,
   OpenNextConfig,
-  OpenNextHandler,
 } from "types/open-next";
+import type { OpenNextHandler } from "types/overrides";
 
 import { debug } from "../adapters/logger";
 import { resolveConverter, resolveWrapper } from "./resolve";

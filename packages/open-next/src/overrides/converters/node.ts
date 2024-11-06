@@ -1,6 +1,8 @@
-import type { IncomingMessage } from "http";
+import type { IncomingMessage } from "node:http";
+
 import { parseCookies } from "http/util";
-import type { Converter, InternalResult } from "types/open-next";
+import type { InternalResult } from "types/open-next";
+import type { Converter } from "types/overrides";
 
 const converter: Converter = {
   convertFrom: async (req: IncomingMessage) => {

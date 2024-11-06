@@ -1,7 +1,8 @@
 import { Buffer } from "node:buffer";
 
 import { parseCookies } from "http/util";
-import type { Converter, InternalEvent, InternalResult } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
+import type { Converter } from "types/overrides";
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 

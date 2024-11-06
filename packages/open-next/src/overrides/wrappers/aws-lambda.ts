@@ -9,7 +9,7 @@ import type {
   CloudFrontRequestResult,
 } from "aws-lambda";
 import type { StreamCreator } from "http/openNextResponse";
-import type { WrapperHandler } from "types/open-next";
+import type { WrapperHandler } from "types/overrides";
 
 import type {
   WarmerEvent,

@@ -1,4 +1,4 @@
-import type { Converter } from "types/open-next";
+import type { Converter } from "types/overrides";
 
 type DummyEventOrResult = {
   type: "dummy";

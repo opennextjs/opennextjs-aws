@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 
-import type { StreamCreator } from "http/index.js";
-import type { WrapperHandler } from "types/open-next";
+import type { StreamCreator } from "http/index";
+import type { WrapperHandler } from "types/overrides";
 
 import { debug, error } from "../../adapters/logger";
 

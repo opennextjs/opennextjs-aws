@@ -1,8 +1,5 @@
-import type {
-  InternalEvent,
-  InternalResult,
-  WrapperHandler,
-} from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
+import type { WrapperHandler } from "types/overrides";
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 

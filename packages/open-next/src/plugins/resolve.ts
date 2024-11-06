@@ -4,15 +4,13 @@ import chalk from "chalk";
 import type { Plugin } from "esbuild";
 import type {
   DefaultOverrideOptions,
-  ImageLoader,
   IncludedImageLoader,
   IncludedOriginResolver,
   IncludedWarmer,
   LazyLoadedOverride,
-  OriginResolver,
   OverrideOptions,
-  Warmer,
 } from "types/open-next";
+import type { ImageLoader, OriginResolver, Warmer } from "types/overrides";
 
 import logger from "../logger.js";
 
