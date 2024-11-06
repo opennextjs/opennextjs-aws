@@ -30,10 +30,10 @@ declare global {
 }
 
 export async function createMainHandler() {
-  //First we load the config
-  const config: OpenNextConfig = await import(
-    process.cwd() + "/open-next.config.mjs"
-  ).then((m) => m.default);
+  // @ts-expect-error `./open-next.config.mjs` exists only in the build output
+  const config: OpenNextConfig = await import("./open-next.config.mjs").then(
+    (m) => m.default,
+  );
 
   const thisFunction = globalThis.fnName
     ? config.functions![globalThis.fnName]
