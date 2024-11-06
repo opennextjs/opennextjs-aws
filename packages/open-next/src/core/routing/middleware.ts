@@ -46,38 +46,41 @@ export async function handleMiddleware(
   internalEvent: InternalEvent,
   middlewareLoader: MiddlewareLoader = defaultMiddlewareLoader,
 ): Promise<MiddlewareOutputEvent | InternalResult> {
-  const { query } = internalEvent;
-  const normalizedPath = localizePath(internalEvent);
+  const headers = internalEvent.headers;
+
+  // We bypass the middleware if the request is internal
+  if (headers["x-isr"]) return internalEvent;
+
   // We only need the normalizedPath to check if the middleware should run
+  const normalizedPath = localizePath(internalEvent);
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
-  // We bypass the middleware if the request is internal
-  if (internalEvent.headers["x-isr"]) return internalEvent;
 
   // Retrieve the protocol:
   // - In lambda, the url only contains the rawPath and the query - default to https
   // - In cloudflare, the protocol is usually http in dev and https in production
   const protocol = internalEvent.url.startsWith("http://") ? "http:" : "https:";
 
-  const host = internalEvent.headers.host
-    ? `${protocol}//${internalEvent.headers.host}`
+  const host = headers.host
+    ? `${protocol}//${headers.host}`
     : "http://localhost:3000";
 
   const initialUrl = new URL(normalizedPath, host);
-  initialUrl.search = convertToQueryString(query);
+  initialUrl.search = convertToQueryString(internalEvent.query);
   const url = initialUrl.toString();
 
   const middleware = await middlewareLoader();
 
   const result: Response = await middleware.default({
+    // `geo` is pre Next 15.
     geo: {
-      city: internalEvent.headers["x-open-next-city"],
-      country: internalEvent.headers["x-open-next-country"],
-      region: internalEvent.headers["x-open-next-region"],
-      latitude: internalEvent.headers["x-open-next-latitude"],
-      longitude: internalEvent.headers["x-open-next-longitude"],
+      city: headers["x-open-next-city"],
+      country: headers["x-open-next-country"],
+      region: headers["x-open-next-region"],
+      latitude: headers["x-open-next-latitude"],
+      longitude: headers["x-open-next-longitude"],
     },
-    headers: internalEvent.headers,
+    headers,
     method: internalEvent.method || "GET",
     nextConfig: {
       basePath: NextConfig.basePath,

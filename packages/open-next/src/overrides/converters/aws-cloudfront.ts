@@ -21,7 +21,7 @@ import {
 } from "../../core/routing/util";
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
-const CloudFrontBlacklistedHeaders = [
+const cloudfrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers
   "connection",
   "expect",
@@ -86,6 +86,7 @@ async function convertFromCloudFrontRequestEvent(
 ): Promise<InternalEvent> {
   const { method, uri, querystring, body, headers, clientIp } =
     event.Records[0].cf.request;
+
   return {
     type: "core",
     method,
@@ -119,7 +120,7 @@ function convertToCloudfrontHeaders(
     .map(([key, value]) => [key.toLowerCase(), value] as const)
     .filter(
       ([key]) =>
-        !CloudFrontBlacklistedHeaders.some((header) =>
+        !cloudfrontBlacklistedHeaders.some((header) =>
           typeof header === "string" ? header === key : header.test(key),
         ) &&
         // Only remove read-only headers when directly responding in lambda@edge
