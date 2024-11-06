@@ -1,6 +1,6 @@
+import { Readable } from "stream";
 import converter from "@opennextjs/aws/overrides/converters/aws-apigw-v2.js";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
-import { Readable } from "stream";
 import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({}));

@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 
-import { build } from "esbuild";
 import path from "path";
+import { build } from "esbuild";
 
 const externals = [
   // This one was causing trouble, don't know why

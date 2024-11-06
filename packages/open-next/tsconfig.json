@@ -10,7 +10,7 @@
       "types/*": ["./src/types/*"],
       "config/*": ["./src/adapters/config/*"],
       "http/*": ["./src/http/*"],
-      "utils/*": ["./src/utils/*"],
+      "utils/*": ["./src/utils/*"]
     }
   }
 }

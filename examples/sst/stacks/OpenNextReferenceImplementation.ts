@@ -1,15 +1,17 @@
 import { execSync } from "node:child_process";
 
+import { readFileSync } from "fs";
+import path from "path";
 import type { BehaviorOptions, ICachePolicy } from "aws-cdk-lib/aws-cloudfront";
 import {
   AllowedMethods,
   CacheCookieBehavior,
-  CachedMethods,
   CacheHeaderBehavior,
   CachePolicy,
   CacheQueryStringBehavior,
-  Distribution,
+  CachedMethods,
   Function as CloudfrontFunction,
+  Distribution,
   FunctionCode,
   FunctionEventType,
   OriginRequestPolicy,
@@ -25,8 +27,8 @@ import type { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
-  Code,
   Function as CdkFunction,
+  Code,
   FunctionUrlAuthType,
   InvokeMode,
   Runtime,
@@ -48,8 +50,6 @@ import {
   PhysicalResourceId,
 } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
-import { readFileSync } from "fs";
-import path from "path";
 import { Stack as SSTStack } from "sst/constructs";
 
 type BaseFunction = {

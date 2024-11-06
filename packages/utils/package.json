@@ -8,9 +8,7 @@
   },
   "typesVersions": {
     "*": {
-      "types": [
-        "./dist/*.d.ts"
-      ]
+      "types": ["./dist/*.d.ts"]
     }
   },
   "scripts": {

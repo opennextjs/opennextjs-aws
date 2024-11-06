@@ -11,8 +11,8 @@ import type { TagCache } from "types/overrides";
 import { awsLogger, debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
 import {
-  getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
+  getDynamoBatchWriteCommandConcurrency,
 } from "./constants";
 
 const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
