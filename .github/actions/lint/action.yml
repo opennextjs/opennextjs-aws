@@ -1,13 +1,16 @@
 name: Lint codebase
-description: Run eslint to lint codebase and ensure code quality
+description: Run biome to lint codebase and ensure code quality
 
 runs:
-    using: 'composite'
+    using: "composite"
     steps:
         - name: Install dependencies
           run: pnpm install
           shell: bash
 
-        - name: Run eslint
-          run: pnpm lint
+        - name: Setup Biome CLI
+          uses: biomejs/setup-biome@v2.2.1
+
+        - name: Run biome
+          run: biome ci --reporter=github
           shell: bash

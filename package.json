@@ -8,8 +8,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "clean": "turbo run clean && rm -rf node_modules pnpm-lock.yaml",
-    "lint": "eslint --ext .js,.ts,.tsx .",
-    "lint:fix": "eslint --fix --ext .js,.ts,.tsx .",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --fix",
     "test": "turbo run test",
     "e2e:test": "turbo run e2e:test",
     "version": "./.changeset/version",
@@ -17,10 +17,9 @@
     "release-snapshot": "./.changeset/snapshot"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
-    "@sladg/eslint-config-base": "1.4.1",
-    "eslint": "^8.47.0",
     "pkg-pr-new": "^0.0.29",
     "turbo": "1.10.12"
   },
