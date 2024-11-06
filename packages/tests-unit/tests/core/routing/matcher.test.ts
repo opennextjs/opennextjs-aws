@@ -1,7 +1,7 @@
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
-  addNextConfigHeaders,
   fixDataPage,
+  getNextConfigHeaders,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
@@ -39,17 +39,17 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
-describe("addNextConfigHeaders", () => {
+describe("getNextConfigHeaders", () => {
   it("should return empty object for undefined configHeaders", () => {
     const event = createEvent({});
-    const result = addNextConfigHeaders(event);
+    const result = getNextConfigHeaders(event);
 
     expect(result).toEqual({});
   });
 
   it("should return empty object for empty configHeaders", () => {
     const event = createEvent({});
-    const result = addNextConfigHeaders(event, []);
+    const result = getNextConfigHeaders(event, []);
 
     expect(result).toEqual({});
   });
@@ -59,7 +59,7 @@ describe("addNextConfigHeaders", () => {
       url: "/",
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/",
         regex: "^/$",
@@ -82,7 +82,7 @@ describe("addNextConfigHeaders", () => {
       url: "/",
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/",
         regex: "^/$",
@@ -98,7 +98,7 @@ describe("addNextConfigHeaders", () => {
       url: "/hello-world",
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/(.*)",
         regex: "^(?:/(.*))(?:/)?$",
@@ -129,7 +129,7 @@ describe("addNextConfigHeaders", () => {
       },
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/(.*)",
         regex: "^(?:/(.*))(?:/)?$",
@@ -156,7 +156,7 @@ describe("addNextConfigHeaders", () => {
       },
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/(.*)",
         regex: "^(?:/(.*))(?:/)?$",
@@ -183,7 +183,7 @@ describe("addNextConfigHeaders", () => {
       },
     });
 
-    const result = addNextConfigHeaders(event, [
+    const result = getNextConfigHeaders(event, [
       {
         source: "/(.*)",
         regex: "^(?:/(.*))(?:/)?$",

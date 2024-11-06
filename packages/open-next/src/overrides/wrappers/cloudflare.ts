@@ -6,12 +6,20 @@ import type {
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
+const cfPropNameToHeaderName = {
+  city: "x-open-next-city",
+  country: "x-open-next-country",
+  region: "x-open-next-region",
+  latitude: "x-open-next-latitude",
+  longitude: "x-open-next-longitude",
+};
+
 const handler: WrapperHandler<
   InternalEvent,
   InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
 > =
   async (handler, converter) =>
-  async (event: Request, env: Record<string, string>): Promise<Response> => {
+  async (request: Request, env: Record<string, string>): Promise<Response> => {
     globalThis.process = process;
 
     // Set the environment variables
@@ -22,7 +30,20 @@ const handler: WrapperHandler<
       }
     }
 
-    const internalEvent = await converter.convertFrom(event);
+    const internalEvent = await converter.convertFrom(request);
+
+    // Retrieve geo information from the cloudflare request
+    // See https://developers.cloudflare.com/workers/runtime-apis/request
+    // Note: This code could be moved to a cloudflare specific converter when one is created.
+    const cfProperties = (request as any).cf as Record<string, string | null>;
+    for (const [propName, headerName] of Object.entries(
+      cfPropNameToHeaderName,
+    )) {
+      const propValue = cfProperties[propName];
+      if (propValue !== null) {
+        internalEvent.headers[headerName] = propValue;
+      }
+    }
 
     const response = await handler(internalEvent);
 

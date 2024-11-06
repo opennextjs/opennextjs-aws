@@ -9,14 +9,16 @@ import type { InternalEvent, InternalResult, Origin } from "types/open-next";
 import { debug } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import {
-  addNextConfigHeaders,
   fixDataPage,
+  getNextConfigHeaders,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
 } from "./routing/matcher";
 import { handleMiddleware } from "./routing/middleware";
 
+export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
+export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 export interface MiddlewareOutputEvent {
   internalEvent: InternalEvent;
   isExternalRewrite: boolean;
@@ -57,15 +59,27 @@ const dynamicRegexp = RoutesManifest.routes.dynamic.map(
     ),
 );
 
+// Geolocation headers starting from Nextjs 15
+// See https://github.com/vercel/vercel/blob/7714b1c/packages/functions/src/headers.ts
+const geoHeaderToNextHeader = {
+  "x-open-next-city": "x-vercel-ip-city",
+  "x-open-next-country": "x-vercel-ip-country",
+  "x-open-next-region": "x-vercel-ip-country-region",
+  "x-open-next-latitude": "x-vercel-ip-latitude",
+  "x-open-next-longitude": "x-vercel-ip-longitude",
+};
+
 function applyMiddlewareHeaders(
   eventHeaders: Record<string, string | string[]>,
   middlewareHeaders: Record<string, string | string[] | undefined>,
   setPrefix = true,
 ) {
+  const keyPrefix = setPrefix ? MIDDLEWARE_HEADER_PREFIX : "";
   Object.entries(middlewareHeaders).forEach(([key, value]) => {
     if (value) {
-      eventHeaders[`${setPrefix ? "x-middleware-response-" : ""}${key}`] =
-        Array.isArray(value) ? value.join(",") : value;
+      eventHeaders[keyPrefix + key] = Array.isArray(value)
+        ? value.join(",")
+        : value;
     }
   });
 }
@@ -73,7 +87,17 @@ function applyMiddlewareHeaders(
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | MiddlewareOutputEvent> {
-  const nextHeaders = addNextConfigHeaders(event, ConfigHeaders);
+  // Add Next geo headers
+  for (const [openNextGeoName, nextGeoName] of Object.entries(
+    geoHeaderToNextHeader,
+  )) {
+    const value = event.headers[openNextGeoName];
+    if (value) {
+      event.headers[nextGeoName] = value;
+    }
+  }
+
+  const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
 
   let internalEvent = fixDataPage(event, BuildId);
   if ("statusCode" in internalEvent) {

@@ -114,31 +114,26 @@ function convertMatch(
   toDestination: PathFunction,
   destination: string,
 ) {
-  if (match) {
-    const { params } = match;
-    const isUsingParams = Object.keys(params).length > 0;
-    if (isUsingParams) {
-      return toDestination(params);
-    } else {
-      return destination;
-    }
-  } else {
+  if (!match) {
     return destination;
   }
+
+  const { params } = match;
+  const isUsingParams = Object.keys(params).length > 0;
+  return isUsingParams ? toDestination(params) : destination;
 }
 
-export function addNextConfigHeaders(
+export function getNextConfigHeaders(
   event: InternalEvent,
   configHeaders?: Header[] | undefined,
-) {
-  const addedHeaders: Record<string, string | undefined> = {};
+): Record<string, string | undefined> {
+  if (!configHeaders) {
+    return {};
+  }
 
-  if (!configHeaders) return addedHeaders;
-  const { rawPath, headers, query, cookies } = event;
-  const matcher = routeHasMatcher(headers, cookies, query);
+  const matcher = routeHasMatcher(event.headers, event.cookies, event.query);
 
   const requestHeaders: Record<string, string> = {};
-
   const localizedRawPath = localizePath(event);
 
   for (const {
@@ -149,7 +144,7 @@ export function addNextConfigHeaders(
     source,
     locale,
   } of configHeaders) {
-    const path = locale === false ? rawPath : localizedRawPath;
+    const path = locale === false ? event.rawPath : localizedRawPath;
     if (
       new RegExp(regex).test(path) &&
       checkHas(matcher, has) &&
@@ -163,7 +158,7 @@ export function addNextConfigHeaders(
           const value = convertMatch(_match, compile(h.value), h.value);
           requestHeaders[key] = value;
         } catch {
-          debug("Error matching header ", h.key, " with value ", h.value);
+          debug(`Error matching header ${h.key} with value ${h.value}`);
           requestHeaders[h.key] = h.value;
         }
       });
