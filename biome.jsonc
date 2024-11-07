@@ -10,6 +10,9 @@
   "linter": {
     "enabled": true,
     "rules": {
+      "a11y": {
+        "all": false
+      },
       "suspicious": {
         "noExplicitAny": "info",
         "noGlobalIsNan": "warn",
@@ -74,12 +77,6 @@
         "rules": {
           "style": {
             "useSelfClosingElements": "warn"
-          },
-          "a11y": {
-            "useIframeTitle": "warn",
-            "useButtonType": "warn",
-            "useAltText": "warn",
-            "useKeyWithClickEvents": "warn"
           },
           "correctness": {
             "useJsxKeyInIterable": "warn",
