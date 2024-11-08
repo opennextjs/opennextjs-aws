@@ -6,7 +6,7 @@ import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 const cfPropNameToHeaderName = {
   city: "x-open-next-city",
   country: "x-open-next-country",
-  region: "x-open-next-region",
+  regionCode: "x-open-next-region",
   latitude: "x-open-next-latitude",
   longitude: "x-open-next-longitude",
 };
