@@ -6,7 +6,6 @@ describe("parseCookies", () => {
     expect(parseCookies(null)).toBe([]);
     expect(parseCookies(undefined)).toBe([]);
     expect(parseCookies([])).toBe([]);
-
   });
   it("parse single cookie", () => {
     const cookies = parseCookies(
