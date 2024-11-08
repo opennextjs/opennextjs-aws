@@ -74,10 +74,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const htmlPages = buildHelper.getHtmlPages(dotNextPath);
   buildHelper.removeFiles(
     outputPath,
-    (file) =>
-      file.endsWith(".js") ||
-      file.endsWith(".js.nft.json") ||
-      (file.endsWith(".html") && htmlPages.has(file)),
+    ({ relativePath }) =>
+      relativePath.endsWith(".js") ||
+      relativePath.endsWith(".js.nft.json") ||
+      (relativePath.endsWith(".html") && htmlPages.has(relativePath)),
   );
 
   // Merge cache files into a single file
@@ -95,8 +95,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   buildHelper.traverseFiles(
     outputPath,
     () => true,
-    (filepath) => {
-      const ext = path.extname(filepath);
+    ({ absolutePath }) => {
+      const ext = path.extname(absolutePath);
       switch (ext) {
         case ".meta":
         case ".html":
@@ -104,12 +104,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         case ".body":
         case ".rsc":
           const newFilePath =
-            filepath
-              .substring(0, filepath.length - ext.length)
+            absolutePath
+              .substring(0, absolutePath.length - ext.length)
               .replace(/\.prefetch$/, "") + ".cache";
 
           cacheFilesPath[newFilePath] = {
-            [ext.slice(1)]: filepath,
+            [ext.slice(1)]: absolutePath,
             ...cacheFilesPath[newFilePath],
           };
           break;
@@ -161,9 +161,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     // Traverse files inside cache to find all meta files and cache tags associated with them
     buildHelper.traverseFiles(
       outputPath,
-      (file) => file.endsWith(".meta"),
-      (filePath) => {
-        const fileContent = fs.readFileSync(filePath, "utf8");
+      ({ absolutePath }) => absolutePath.endsWith(".meta"),
+      ({ absolutePath, relativePath }) => {
+        const fileContent = fs.readFileSync(absolutePath, "utf8");
         const fileData = JSON.parse(fileContent);
         if (fileData.headers?.["x-next-cache-tags"]) {
           fileData.headers["x-next-cache-tags"]
@@ -175,7 +175,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
                 path: {
                   S: path.posix.join(
                     buildId,
-                    path.relative(outputPath, filePath).replace(".meta", ""),
+                    relativePath.replace(".meta", ""),
                   ),
                 },
                 // We don't care about the revalidation time here, we just need to make sure it's there
@@ -199,17 +199,14 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
       buildHelper.traverseFiles(
         fetchCachePath,
         () => true,
-        (filepath) => {
-          const fileContent = fs.readFileSync(filepath, "utf8");
+        ({ absolutePath, relativePath }) => {
+          const fileContent = fs.readFileSync(absolutePath, "utf8");
           const fileData = JSON.parse(fileContent);
           fileData?.tags?.forEach((tag: string) => {
             metaFiles.push({
               tag: { S: path.posix.join(buildId, tag) },
               path: {
-                S: path.posix.join(
-                  buildId,
-                  path.relative(fetchCachePath, filepath),
-                ),
+                S: path.posix.join(buildId, relativePath),
               },
               revalidatedAt: { N: "1" },
             });
@@ -235,7 +232,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   }
 
   // We need to remove files later because we need the metafiles for dynamodb tags cache
-  buildHelper.removeFiles(outputPath, (file) => !file.endsWith(".cache"));
+  buildHelper.removeFiles(
+    outputPath,
+    ({ relativePath }) => !relativePath.endsWith(".cache"),
+  );
 
   return { useTagCache };
 }

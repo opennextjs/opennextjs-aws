@@ -167,47 +167,56 @@ export async function esbuildAsync(
   }
 }
 
+/**
+ * Recursively delete files.
+ *
+ * @see `traverseFiles`.
+ *  
+ * @param root Root directory to search.
+ * @param conditionFn Predicate used to delete the files.
+ */
 export function removeFiles(
   root: string,
-  conditionFn: (file: string) => boolean,
-  searchingDir: string = "",
+  conditionFn: (paths: {
+    absolutePath: string;
+    relativePath: string;
+  }) => boolean,
 ) {
-  traverseFiles(
-    root,
-    conditionFn,
-    (filePath) => fs.rmSync(filePath, { force: true }),
-    searchingDir,
+  traverseFiles(root, conditionFn, ({ absolutePath }) =>
+    fs.rmSync(absolutePath, { force: true }),
   );
 }
 
 /**
  * Recursively traverse files in a directory and call `callbackFn` when `conditionFn` returns true
+ *
+ * The callbacks are passed both the absolute and relative (to root) path to files.
+ *
  * @param root - Root directory to search
- * @param conditionFn - Called to determine if `callbackFn` should be called
- * @param callbackFn - Called when `conditionFn` returns true
+ * @param conditionFn - Called to determine if `callbackFn` should be called.
+ * @param callbackFn - Called when `conditionFn` returns true.
  * @param searchingDir - Directory to search (used for recursion)
  */
 export function traverseFiles(
   root: string,
-  conditionFn: (file: string) => boolean,
-  callbackFn: (filePath: string) => void,
+  conditionFn: (paths: {
+    absolutePath: string;
+    relativePath: string;
+  }) => boolean,
+  callbackFn: (paths: { absolutePath: string; relativePath: string }) => void,
   searchingDir: string = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
-    const filePath = path.join(root, searchingDir, file);
+    const relativePath = path.join(searchingDir, file);
+    const absolutePath = path.join(root, relativePath);
 
-    if (fs.statSync(filePath).isDirectory()) {
-      traverseFiles(
-        root,
-        conditionFn,
-        callbackFn,
-        path.join(searchingDir, file),
-      );
+    if (fs.statSync(absolutePath).isDirectory()) {
+      traverseFiles(root, conditionFn, callbackFn, relativePath);
       return;
     }
 
-    if (conditionFn(path.join(searchingDir, file))) {
-      callbackFn(filePath);
+    if (conditionFn({ absolutePath, relativePath })) {
+      callbackFn({ absolutePath, relativePath });
     }
   });
 }
