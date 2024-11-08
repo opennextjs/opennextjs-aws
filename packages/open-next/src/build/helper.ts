@@ -171,7 +171,7 @@ export async function esbuildAsync(
  * Recursively delete files.
  *
  * @see `traverseFiles`.
- *  
+ *
  * @param root Root directory to search.
  * @param conditionFn Predicate used to delete the files.
  */
