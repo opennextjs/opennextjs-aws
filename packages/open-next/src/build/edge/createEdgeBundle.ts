@@ -1,8 +1,8 @@
 import { mkdirSync } from "node:fs";
 
-import { build } from "esbuild";
 import fs from "fs";
 import path from "path";
+import { build } from "esbuild";
 import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import type {
   IncludedConverter,

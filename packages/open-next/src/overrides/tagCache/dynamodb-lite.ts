@@ -9,8 +9,8 @@ import { customFetchClient } from "utils/fetch";
 import { debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
 import {
-  getDynamoBatchWriteCommandConcurrency,
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
+  getDynamoBatchWriteCommandConcurrency,
 } from "./constants";
 
 let awsClient: AwsClient | null = null;

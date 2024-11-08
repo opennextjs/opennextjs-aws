@@ -1,6 +1,6 @@
+import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { execSync } from "node:child_process";
 
 const THANKLESS_COMMITTERS = ["thdxr", "fwang", "jayair", "conico974"];
 
@@ -11,11 +11,7 @@ const { version } = JSON.parse(
 const changes = new Set();
 
 // We only need to look for changes in packages/open-next
-const changelog = path.join(
-  "packages",
-  "open-next",
-  "CHANGELOG.md",
-);
+const changelog = path.join("packages", "open-next", "CHANGELOG.md");
 const lines = (await fs.readFile(changelog)).toString().split("\n");
 let start = false;
 for (let line of lines) {
@@ -44,7 +40,6 @@ for (let line of lines) {
     if (line.startsWith("## ")) break;
   }
 }
-
 
 const notes = ["#### Changes", ...changes];
 console.log(notes.join("\n"));

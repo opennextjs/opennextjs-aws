@@ -1,4 +1,4 @@
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import type { Queue } from "types/overrides";
 
 import { awsLogger } from "../../adapters/logger";

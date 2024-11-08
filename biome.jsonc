@@ -1,0 +1,93 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true
+  },
+  "organizeImports": { "enabled": true },
+  "formatter": { "enabled": true, "indentStyle": "space" },
+  "css": { "formatter": { "quoteStyle": "single" } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "a11y": {
+        "all": false
+      },
+      "suspicious": {
+        "noExplicitAny": "info",
+        "noGlobalIsNan": "warn",
+        "noImplicitAnyLet": "warn",
+        "noAssignInExpressions": "warn",
+        "noConfusingVoidType": "warn",
+        "useNamespaceKeyword": "warn" // safe fix
+      },
+      "style": {
+        "noUnusedTemplateLiteral": "warn",
+        "noInferrableTypes": "warn", // safe fix
+        "noUselessElse": "warn",
+        "useNodejsImportProtocol": "warn",
+        "useTemplate": "warn",
+        "useNumberNamespace": "warn", // safe fix
+        "noNonNullAssertion": "warn",
+        "useImportType": "warn",
+        "noParameterAssign": "warn",
+        "useDefaultParameterLast": "warn",
+        "noCommaOperator": "warn",
+        "useConst": "warn",
+        "useSingleVarDeclarator": "warn",
+        "noVar": "warn",
+        "useShorthandFunctionType": "warn" // safe fix
+      },
+      "correctness": {
+        "noSwitchDeclarations": "warn",
+        "noUnnecessaryContinue": "warn",
+        "noInnerDeclarations": "warn"
+      },
+      "complexity": {
+        "useLiteralKeys": "warn",
+        "noForEach": "off",
+        "noUselessSwitchCase": "warn",
+        "noUselessConstructor": "warn",
+        "noBannedTypes": "warn",
+        "noUselessTernary": "warn",
+        "useArrowFunction": "warn", // safe fix
+        "noExtraBooleanCast": "warn",
+        "useOptionalChain": "warn"
+      },
+      "performance": {
+        "noDelete": "warn",
+        "noAccumulatingSpread": "warn"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "include": ["packages/tests-unit/**", "packages/tests-e2e/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noRedeclare": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": ["examples/**/*"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useSelfClosingElements": "warn"
+          },
+          "correctness": {
+            "useJsxKeyInIterable": "warn",
+            "useExhaustiveDependencies": "warn"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "warn",
+            "noRedeclare": "warn"
+          }
+        }
+      }
+    }
+  ]
+}

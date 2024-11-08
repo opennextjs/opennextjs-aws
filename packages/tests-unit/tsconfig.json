@@ -22,15 +22,9 @@
     "target": "ES2022",
     "sourceMap": true,
     "paths": {
-      "@opennextjs/aws/*": ["../open-next/src/*"],
+      "@opennextjs/aws/*": ["../open-next/src/*"]
     }
   },
-  "include": [
-    "."
-  ],
-  "exclude": [
-    "dist",
-    "build",
-    "node_modules"
-  ]
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"]
 }

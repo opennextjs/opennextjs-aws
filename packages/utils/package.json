@@ -8,15 +8,12 @@
   },
   "typesVersions": {
     "*": {
-      "types": [
-        "./dist/*.d.ts"
-      ]
+      "types": ["./dist/*.d.ts"]
     }
   },
   "scripts": {
     "build": "tsup ./src/*.ts --format cjs --dts",
     "dev": "tsup ./src/*.ts --format cjs --dts --watch",
-    "lint": "TIMING=1 eslint \"**/*.ts*\"",
     "clean": "rm -rf .turbo && rm -rf node_modules"
   },
   "dependencies": {},
