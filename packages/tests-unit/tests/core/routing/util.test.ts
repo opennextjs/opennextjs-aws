@@ -26,7 +26,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 }));
 
 declare global {
-  var __als: any;
+  var __openNextAls: any;
   var lastModified: any;
   var openNextDebug: boolean;
   var openNextVersion: string;
@@ -531,7 +531,7 @@ describe("addOpenNextHeader", () => {
     delete config.NextConfig["poweredByHeader"];
     globalThis.openNextDebug = false;
     globalThis.openNextVersion = "1.0.0";
-    globalThis.__als = {
+    globalThis.__openNextAls = {
       getStore: () => ({
         requestId: "123",
       }),
@@ -583,7 +583,7 @@ describe("revalidateIfRequired", () => {
       name: "mock",
     };
 
-    globalThis.__als = {
+    globalThis.__openNextAls = {
       getStore: vi.fn(),
     };
 
@@ -628,7 +628,7 @@ describe("revalidateIfRequired", () => {
 describe("fixISRHeaders", () => {
   beforeEach(() => {
     vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
-    globalThis.__als = {
+    globalThis.__openNextAls = {
       getStore: () => ({
         requestId: "123",
       }),
