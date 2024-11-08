@@ -168,24 +168,12 @@ export async function esbuildAsync(
 }
 
 /**
- * Recursively delete files.
- *
- * @see `traverseFiles`.
- *
- * @param root Root directory to search.
- * @param conditionFn Predicate used to delete the files.
+ *  Type of the parameter of `traverseFiles` callbacks
  */
-export function removeFiles(
-  root: string,
-  conditionFn: (paths: {
-    absolutePath: string;
-    relativePath: string;
-  }) => boolean,
-) {
-  traverseFiles(root, conditionFn, ({ absolutePath }) =>
-    fs.rmSync(absolutePath, { force: true }),
-  );
-}
+export type TraversePath = {
+  absolutePath: string;
+  relativePath: string;
+};
 
 /**
  * Recursively traverse files in a directory and call `callbackFn` when `conditionFn` returns true
@@ -199,11 +187,8 @@ export function removeFiles(
  */
 export function traverseFiles(
   root: string,
-  conditionFn: (paths: {
-    absolutePath: string;
-    relativePath: string;
-  }) => boolean,
-  callbackFn: (paths: { absolutePath: string; relativePath: string }) => void,
+  conditionFn: (paths: TraversePath) => boolean,
+  callbackFn: (paths: TraversePath) => void,
   searchingDir: string = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
@@ -219,6 +204,23 @@ export function traverseFiles(
       callbackFn({ absolutePath, relativePath });
     }
   });
+}
+
+/**
+ * Recursively delete files.
+ *
+ * @see `traverseFiles`.
+ *
+ * @param root Root directory to search.
+ * @param conditionFn Predicate used to delete the files.
+ */
+export function removeFiles(
+  root: string,
+  conditionFn: (paths: TraversePath) => boolean,
+) {
+  traverseFiles(root, conditionFn, ({ absolutePath }) =>
+    fs.rmSync(absolutePath, { force: true }),
+  );
 }
 
 export function getHtmlPages(dotNextPath: string) {
