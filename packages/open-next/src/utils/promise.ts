@@ -58,3 +58,14 @@ export class DetachedPromiseRunner {
     });
   }
 }
+
+export async function awaitAllDetachedPromise() {
+  const promisesToAwait =
+    globalThis.__als.getStore()?.pendingPromiseRunner.await() ??
+    Promise.resolve();
+  if (globalThis.openNextWaitUntil) {
+    globalThis.openNextWaitUntil(promisesToAwait);
+    return;
+  }
+  await promisesToAwait;
+}

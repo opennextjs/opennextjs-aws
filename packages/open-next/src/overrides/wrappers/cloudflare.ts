@@ -11,13 +11,22 @@ const cfPropNameToHeaderName = {
   longitude: "x-open-next-longitude",
 };
 
+interface WorkerContext {
+  waitUntil: (promise: Promise<unknown>) => void;
+}
+
 const handler: WrapperHandler<
   InternalEvent,
   InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
 > =
   async (handler, converter) =>
-  async (request: Request, env: Record<string, string>): Promise<Response> => {
+  async (
+    request: Request,
+    env: Record<string, string>,
+    ctx: WorkerContext,
+  ): Promise<Response> => {
     globalThis.process = process;
+    globalThis.openNextWaitUntil = ctx.waitUntil;
 
     // Set the environment variables
     // Cloudflare suggests to not override the process.env object but instead apply the values to it

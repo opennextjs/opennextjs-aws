@@ -138,11 +138,18 @@ declare global {
 
   /**
    * The AsyncLocalStorage instance that is used to store the request context.
-   * Only available in main functions.
+   * Only available in main, middleware and edge functions.
    * TODO: should be available everywhere in the future.
-   * Defined in `requestHandler.ts`.
+   * Defined in `requestHandler.ts`, `middleware.ts` and `edge-adapter.ts`.
    */
   var __als: AsyncLocalStorage<OpenNextRequestContext>;
+
+  /**
+   * The function that is used to run background tasks even after the response has been sent.
+   * This one is defined by the wrapper function as most of them don't need or support this feature.
+   * If not present, all the awaiting promises will be resolved before sending the response.
+   */
+  var openNextWaitUntil: ((promise: Promise<void>) => void) | undefined;
 
   /**
    * The entries object that contains the functions that are available in the function.

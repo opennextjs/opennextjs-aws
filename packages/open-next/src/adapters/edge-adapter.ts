@@ -1,6 +1,7 @@
 import type { ReadableStream } from "node:stream/web";
 
 import type { InternalEvent, InternalResult } from "types/open-next";
+import { awaitAllDetachedPromise } from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
 
 // We import it like that so that the edge plugin can replace it
@@ -63,6 +64,8 @@ const defaultHandler = async (
 
       const body =
         (response.body as ReadableStream<Uint8Array>) ?? emptyReadableStream();
+
+      await awaitAllDetachedPromise();
 
       return {
         type: "core",

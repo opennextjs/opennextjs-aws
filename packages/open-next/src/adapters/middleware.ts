@@ -1,4 +1,5 @@
 import type { InternalEvent, Origin } from "types/open-next";
+import { awaitAllDetachedPromise } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
@@ -51,6 +52,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
         if (!result.isExternalRewrite) {
           origin = await originResolver.resolve(result.internalEvent.rawPath);
         }
+        await awaitAllDetachedPromise();
         return {
           type: "middleware",
           internalEvent: result.internalEvent,
