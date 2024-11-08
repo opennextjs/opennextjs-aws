@@ -30,6 +30,6 @@ test("Server Side Render", async ({ page }) => {
 
 test("Server Side Render with env", async ({ page }) => {
   await page.goto("/ssr/");
-  let el = page.getByText("Env:");
+  const el = page.getByText("Env:");
   expect(await el.textContent()).toEqual("Env: bar");
 });

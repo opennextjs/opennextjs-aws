@@ -50,7 +50,7 @@ const wrapper: WrapperHandler = async (handler, converter) => {
       resolve();
     });
 
-    server.listen(parseInt(process.env.PORT ?? "3000", 10));
+    server.listen(Number.parseInt(process.env.PORT ?? "3000", 10));
   });
 
   server.on("error", (err) => {

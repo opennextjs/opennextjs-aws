@@ -406,7 +406,7 @@ export function generateMessageGroupId(rawPath: string) {
   const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   // This will generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
   // This means that we could have 1000 revalidate request at the same time
-  const maxConcurrency = parseInt(
+  const maxConcurrency = Number.parseInt(
     process.env.MAX_REVALIDATE_CONCURRENCY ?? "10",
   );
   const randomInt = Math.floor(randomFloat * maxConcurrency);
@@ -455,7 +455,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     debug("cache-control", cacheControl, globalThis.lastModified, Date.now());
     if (typeof cacheControl !== "string") return;
     const match = cacheControl.match(regex);
-    const sMaxAge = match ? parseInt(match[1]) : undefined;
+    const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
 
     // 31536000 is the default s-maxage value for SSG pages
     if (sMaxAge && sMaxAge !== 31536000) {

@@ -56,7 +56,7 @@ async function insert(
   const parsedData = data.map((item) => ({
     tag: item.tag.S,
     path: item.path.S,
-    revalidatedAt: parseInt(item.revalidatedAt.N),
+    revalidatedAt: Number.parseInt(item.revalidatedAt.N),
   }));
 
   await tagCache.writeTags(parsedData);

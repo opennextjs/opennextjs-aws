@@ -20,7 +20,7 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
 
     loading = page.getByText("Loading...");
     await expect(loading).toBeVisible();
-    let el = page.getByText("Time:");
+    const el = page.getByText("Time:");
     await expect(el).toBeVisible();
     const time = await el.textContent();
     expect(time).not.toEqual(lastTime);

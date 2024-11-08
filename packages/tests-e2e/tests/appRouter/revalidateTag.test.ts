@@ -17,7 +17,7 @@ test("Revalidate tag", async ({ page, request }) => {
   });
   await page.goto("/revalidate-tag");
   let elLayout = page.getByText("Fetched time:");
-  let time = await elLayout.textContent();
+  const time = await elLayout.textContent();
   let newTime;
 
   let response = await responsePromise;

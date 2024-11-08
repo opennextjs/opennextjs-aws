@@ -54,7 +54,7 @@ function parse(
       throw new Error(`Invalid ${options.type} header`);
     }
 
-    let token = params[0].toLowerCase();
+    const token = params[0].toLowerCase();
     if (!token) {
       throw new Error(`Invalid ${options.type} header`);
     }
@@ -74,7 +74,7 @@ function parse(
         throw new Error(`Invalid ${options.type} header`);
       }
 
-      const score = parseFloat(value);
+      const score = Number.parseFloat(value);
       if (score === 0) {
         continue;
       }

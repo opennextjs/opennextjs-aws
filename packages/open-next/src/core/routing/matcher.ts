@@ -207,7 +207,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     const toDestinationQuery = compile(
       escapeRegex(encodePlusQueryString ?? "") ?? "",
     );
-    let params = {
+    const params = {
       // params for the source
       ...getParamsFromSource(match(escapeRegex(rewrite?.source) ?? ""))(
         pathToUse,

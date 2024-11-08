@@ -18,7 +18,7 @@ test("Headers", async ({ page }) => {
   expect(headers["e2e-headers"]).toEqual("next.config.js");
 
   // Request header should be available in RSC
-  let el = page.getByText(`request-header`);
+  const el = page.getByText(`request-header`);
   await expect(el).toBeVisible();
 
   // Both these headers should not be present cause poweredByHeader is false in appRouter

@@ -31,7 +31,7 @@ export function parseNumberFromEnv(
     return envValue;
   }
 
-  const parsedValue = parseInt(envValue);
+  const parsedValue = Number.parseInt(envValue);
 
   return isNaN(parsedValue) ? undefined : parsedValue;
 }

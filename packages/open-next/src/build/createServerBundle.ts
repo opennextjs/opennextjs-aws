@@ -210,31 +210,35 @@ async function generateBundle(
   ];
 
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
-  await buildHelper.esbuildAsync({
-    entryPoints: [
-      path.join(options.openNextDistDir, "adapters", "server-adapter.js"),
-    ],
-    external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
-    outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
-    banner: {
-      js: [
-        `globalThis.monorepoPackagePath = "${packagePath}";`,
-        "import process from 'node:process';",
-        "import { Buffer } from 'node:buffer';",
-        "import { createRequire as topLevelCreateRequire } from 'module';",
-        "const require = topLevelCreateRequire(import.meta.url);",
-        "import bannerUrl from 'url';",
-        "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
-        name === "default" ? "" : `globalThis.fnName = "${name}";`,
-      ].join(""),
+  await buildHelper.esbuildAsync(
+    {
+      entryPoints: [
+        path.join(options.openNextDistDir, "adapters", "server-adapter.js"),
+      ],
+      external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
+      outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
+      banner: {
+        js: [
+          `globalThis.monorepoPackagePath = "${packagePath}";`,
+          "import process from 'node:process';",
+          "import { Buffer } from 'node:buffer';",
+          "import { createRequire as topLevelCreateRequire } from 'module';",
+          "const require = topLevelCreateRequire(import.meta.url);",
+          "import bannerUrl from 'url';",
+          "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+          name === "default" ? "" : `globalThis.fnName = "${name}";`,
+        ].join(""),
+      },
+      plugins,
+      alias: {
+        ...(isBundled
+          ? {
+              "next/dist/server/next-server.js":
+                "./next-server.runtime.prod.js",
+            }
+          : {}),
+      },
     },
-    plugins,
-    alias: {
-      ...(isBundled
-        ? { "next/dist/server/next-server.js": "./next-server.runtime.prod.js" }
-        : undefined),
-    }
-  },
     options,
   );
 

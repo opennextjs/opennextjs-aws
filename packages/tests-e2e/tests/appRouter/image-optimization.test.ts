@@ -14,7 +14,7 @@ test("Image Optimization", async ({ page }) => {
   const imageContentType = imageResponse.headers()["content-type"];
   expect(imageContentType).toBe("image/webp");
 
-  let el = page.locator("img");
+  const el = page.locator("img");
   await expect(el).toHaveJSProperty("complete", true);
   await expect(el).not.toHaveJSProperty("naturalWidth", 0);
 });
