@@ -2,10 +2,10 @@ import { parseCookies } from "@opennextjs/aws/http/util.js";
 
 describe("parseCookies", () => {
   it("returns an empty list if cookies is emptyish", () => {
-    expect(parseCookies("")).toBe([]);
-    expect(parseCookies(null)).toBe([]);
-    expect(parseCookies(undefined)).toBe([]);
-    expect(parseCookies([])).toBe([]);
+    expect(parseCookies("")).toEqual([]);
+    expect(parseCookies(null)).toEqual([]);
+    expect(parseCookies(undefined)).toEqual([]);
+    expect(parseCookies([])).toEqual([]);
   });
   it("parse single cookie", () => {
     const cookies = parseCookies(
