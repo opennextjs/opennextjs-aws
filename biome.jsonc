@@ -5,7 +5,7 @@
     "ignoreUnknown": true
   },
   "organizeImports": { "enabled": true },
-  "formatter": { "enabled": true, "useEditorconfig": true },
+  "formatter": { "enabled": true, "indentStyle": "space" },
   "css": { "formatter": { "quoteStyle": "single" } },
   "linter": {
     "enabled": true,
