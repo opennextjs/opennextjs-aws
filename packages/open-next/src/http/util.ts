@@ -32,7 +32,7 @@ export const convertHeader = (header: http.OutgoingHttpHeader) => {
 export function parseCookies(
   cookies: string | string[] | null | undefined,
 ): string[] {
-  if (cookies == null) {
+  if (!cookies) {
     return [];
   }
 
