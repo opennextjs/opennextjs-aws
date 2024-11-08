@@ -65,16 +65,14 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     const appPath = path.join(serverPath, "app");
     buildHelper.traverseFiles(
       appPath,
-      (file) => {
-        if (file.endsWith("page.js") || file.endsWith("route.js")) {
-          const route = `app/${file.replace(/\.js$/, "")}`;
-          if (!foundRoutes.has(route)) {
-            remainingRoutes.add(route);
-          }
+      ({ relativePath }) =>
+        relativePath.endsWith("page.js") || relativePath.endsWith("route.js"),
+      ({ relativePath }) => {
+        const route = `app/${relativePath.replace(/\.js$/, "")}`;
+        if (!foundRoutes.has(route)) {
+          remainingRoutes.add(route);
         }
-        return false;
       },
-      () => {},
     );
   }
 
@@ -83,16 +81,13 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     const pagePath = path.join(serverPath, "pages");
     buildHelper.traverseFiles(
       pagePath,
-      (file) => {
-        if (file.endsWith(".js")) {
-          const route = `pages/${file.replace(/\.js$/, "")}`;
-          if (!foundRoutes.has(route)) {
-            remainingRoutes.add(route);
-          }
+      ({ relativePath }) => relativePath.endsWith(".js"),
+      ({ relativePath }) => {
+        const route = `pages/${relativePath.replace(/\.js$/, "")}`;
+        if (!foundRoutes.has(route)) {
+          remainingRoutes.add(route);
         }
-        return false;
       },
-      () => {},
     );
   }
 
