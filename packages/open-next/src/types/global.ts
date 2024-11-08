@@ -142,7 +142,7 @@ declare global {
    * TODO: should be available everywhere in the future.
    * Defined in `requestHandler.ts`, `middleware.ts` and `edge-adapter.ts`.
    */
-  var __als: AsyncLocalStorage<OpenNextRequestContext>;
+  var __openNextAls: AsyncLocalStorage<OpenNextRequestContext>;
 
   /**
    * The function that is used to run background tasks even after the response has been sent.

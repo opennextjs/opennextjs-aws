@@ -322,7 +322,8 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   }
   if (globalThis.openNextDebug) {
     headers["X-OpenNext-Version"] = globalThis.openNextVersion;
-    headers["X-OpenNext-RequestId"] = globalThis.__als.getStore()?.requestId;
+    headers["X-OpenNext-RequestId"] =
+      globalThis.__openNextAls.getStore()?.requestId;
   }
 }
 
@@ -362,7 +363,7 @@ export async function revalidateIfRequired(
     try {
       const hash = (str: string) =>
         crypto.createHash("md5").update(str).digest("hex");
-      const requestId = globalThis.__als.getStore()?.requestId ?? "";
+      const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
 
       const lastModified =
         globalThis.lastModified[requestId] > 0
@@ -438,7 +439,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  const requestId = globalThis.__als.getStore()?.requestId ?? "";
+  const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
   const _lastModified = globalThis.lastModified[requestId] ?? 0;
   if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
     // calculate age

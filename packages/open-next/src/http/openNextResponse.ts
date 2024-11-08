@@ -89,7 +89,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       }
       // In some cases we might not have a store i.e. for example in the image optimization function
       // We may want to reconsider this in the future, it might be intersting to have access to this store everywhere
-      globalThis.__als
+      globalThis.__openNextAls
         ?.getStore()
         ?.pendingPromiseRunner.add(onEnd(this.headers));
       const bodyLength = this.getBody().length;
@@ -161,7 +161,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     // Initial headers should be merged with the new headers
     // These initial headers are the one created either in the middleware or in next.config.js
     const mergeHeadersPriority =
-      globalThis.__als?.getStore()?.mergeHeadersPriority ?? "middleware";
+      globalThis.__openNextAls?.getStore()?.mergeHeadersPriority ??
+      "middleware";
     if (this.initialHeaders) {
       this.headers =
         mergeHeadersPriority === "middleware"

@@ -61,7 +61,7 @@ export class DetachedPromiseRunner {
 
 async function awaitAllDetachedPromise() {
   const promisesToAwait =
-    globalThis.__als.getStore()?.pendingPromiseRunner.await() ??
+    globalThis.__openNextAls.getStore()?.pendingPromiseRunner.await() ??
     Promise.resolve();
   if (globalThis.openNextWaitUntil) {
     globalThis.openNextWaitUntil(promisesToAwait);
@@ -78,7 +78,7 @@ function provideNextAfterProvider() {
   // Remove this when vercel builder is updated to provide '@next/request-context'.
   const VERCEL_REQUEST_CONTEXT_SYMBOL = Symbol.for("@vercel/request-context");
 
-  const openNextStoreContext = globalThis.__als.getStore();
+  const openNextStoreContext = globalThis.__openNextAls.getStore();
 
   const awaiter =
     globalThis.openNextWaitUntil ??
@@ -102,10 +102,10 @@ function provideNextAfterProvider() {
 }
 
 export function runWithOpenNextRequestContext<T>(
-  isISRRevalidation = false,
+  { isISRRevalidation }: { isISRRevalidation: boolean },
   fn: () => Promise<T>,
 ): Promise<T> {
-  return globalThis.__als.run(
+  return globalThis.__openNextAls.run(
     {
       requestId: Math.random().toString(36),
       pendingPromiseRunner: new DetachedPromiseRunner(),

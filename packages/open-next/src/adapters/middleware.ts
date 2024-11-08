@@ -12,7 +12,7 @@ import {
 import routingHandler from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
-globalThis.__als = new AsyncLocalStorage();
+globalThis.__openNextAls = new AsyncLocalStorage();
 
 const defaultHandler = async (internalEvent: InternalEvent) => {
   const originResolver = await resolveOriginResolver(
@@ -35,7 +35,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
 
   // We run everything in the async local storage context so that it is available in the external middleware
   return runWithOpenNextRequestContext(
-    internalEvent.headers["x-isr"] === "1",
+    { isISRRevalidation: internalEvent.headers["x-isr"] === "1" },
     async () => {
       const result = await routingHandler(internalEvent);
       if ("internalEvent" in result) {

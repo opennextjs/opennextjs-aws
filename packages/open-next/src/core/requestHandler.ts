@@ -16,7 +16,7 @@ import routingHandler, {
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
-globalThis.__als = new AsyncLocalStorage();
+globalThis.__openNextAls = new AsyncLocalStorage();
 
 patchAsyncStorage();
 
@@ -26,7 +26,7 @@ export async function openNextHandler(
 ): Promise<InternalResult> {
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
-    internalEvent.headers["x-isr"] === "1",
+    { isISRRevalidation: internalEvent.headers["x-isr"] === "1" },
     async () => {
       if (internalEvent.headers["x-forwarded-host"]) {
         internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
@@ -105,7 +105,7 @@ export async function openNextHandler(
             preprocessedEvent,
           )
         : "middleware";
-      const store = globalThis.__als.getStore();
+      const store = globalThis.__openNextAls.getStore();
       if (store) {
         store.mergeHeadersPriority = mergeHeadersPriority;
       }
