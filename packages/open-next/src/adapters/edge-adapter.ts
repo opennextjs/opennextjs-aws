@@ -1,7 +1,10 @@
 import type { ReadableStream } from "node:stream/web";
 
 import type { InternalEvent, InternalResult } from "types/open-next";
-import { awaitAllDetachedPromise } from "utils/promise";
+import {
+  awaitAllDetachedPromise,
+  provideNextAfterProvider,
+} from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
 
 // We import it like that so that the edge plugin can replace it
@@ -27,6 +30,7 @@ const defaultHandler = async (
   return globalThis.__als.run(
     { requestId, pendingPromiseRunner, isISRRevalidation },
     async () => {
+      provideNextAfterProvider();
       const host = internalEvent.headers.host
         ? `https://${internalEvent.headers.host}`
         : "http://localhost:3000";

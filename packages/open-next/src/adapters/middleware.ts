@@ -1,5 +1,8 @@
 import type { InternalEvent, Origin } from "types/open-next";
-import { awaitAllDetachedPromise } from "utils/promise";
+import {
+  awaitAllDetachedPromise,
+  provideNextAfterProvider,
+} from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
@@ -45,6 +48,7 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
       isISRRevalidation,
     },
     async () => {
+      provideNextAfterProvider();
       const result = await routingHandler(internalEvent);
       if ("internalEvent" in result) {
         debug("Middleware intercepted event", internalEvent);

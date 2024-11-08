@@ -3,7 +3,10 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { OpenNextNodeResponse, StreamCreator } from "http/index.js";
 import { IncomingMessage } from "http/index.js";
 import type { InternalEvent, InternalResult } from "types/open-next";
-import { awaitAllDetachedPromise } from "utils/promise";
+import {
+  awaitAllDetachedPromise,
+  provideNextAfterProvider,
+} from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { generateOpenNextRequestContext } from "../adapters/util";
@@ -40,6 +43,7 @@ export async function openNextHandler(
         internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
       }
       debug("internalEvent", internalEvent);
+      provideNextAfterProvider();
 
       let preprocessResult: InternalResult | MiddlewareOutputEvent = {
         internalEvent: internalEvent,

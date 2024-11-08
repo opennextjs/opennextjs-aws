@@ -69,3 +69,34 @@ export async function awaitAllDetachedPromise() {
   }
   await promisesToAwait;
 }
+
+export function provideNextAfterProvider() {
+  /** This should be considered unstable until `unstable_after` is stablized. */
+  const NEXT_REQUEST_CONTEXT_SYMBOL = Symbol.for("@next/request-context");
+
+  // This is needed by some lib that relies on the vercel request context to properly await stuff.
+  // Remove this when vercel builder is updated to provide '@next/request-context'.
+  const VERCEL_REQUEST_CONTEXT_SYMBOL = Symbol.for("@vercel/request-context");
+
+  const openNextStoreContext = globalThis.__als.getStore();
+
+  const awaiter =
+    globalThis.openNextWaitUntil ??
+    ((promise: Promise<unknown>) =>
+      openNextStoreContext?.pendingPromiseRunner.add(promise));
+
+  const nextAfterContext = {
+    get: () => ({
+      waitUntil: awaiter,
+    }),
+  };
+
+  //@ts-expect-error
+  globalThis[NEXT_REQUEST_CONTEXT_SYMBOL] = nextAfterContext;
+  // We probably want to avoid providing this everytime since some lib may incorrectly think they are running in Vercel
+  // It may break stuff, but at the same time it will allow libs like `@vercel/otel` to work as expected
+  if (process.env.EMULATE_VERCEL_REQUEST_CONTEXT) {
+    //@ts-expect-error
+    globalThis[VERCEL_REQUEST_CONTEXT_SYMBOL] = nextAfterContext;
+  }
+}
