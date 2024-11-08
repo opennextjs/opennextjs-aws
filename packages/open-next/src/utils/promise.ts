@@ -59,7 +59,7 @@ export class DetachedPromiseRunner {
   }
 }
 
-export async function awaitAllDetachedPromise() {
+async function awaitAllDetachedPromise() {
   const promisesToAwait =
     globalThis.__als.getStore()?.pendingPromiseRunner.await() ??
     Promise.resolve();
@@ -70,7 +70,7 @@ export async function awaitAllDetachedPromise() {
   await promisesToAwait;
 }
 
-export function provideNextAfterProvider() {
+function provideNextAfterProvider() {
   /** This should be considered unstable until `unstable_after` is stablized. */
   const NEXT_REQUEST_CONTEXT_SYMBOL = Symbol.for("@next/request-context");
 
@@ -99,4 +99,23 @@ export function provideNextAfterProvider() {
     //@ts-expect-error
     globalThis[VERCEL_REQUEST_CONTEXT_SYMBOL] = nextAfterContext;
   }
+}
+
+export function runWithOpenNextRequestContext<T>(
+  isISRRevalidation = false,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return globalThis.__als.run(
+    {
+      requestId: Math.random().toString(36),
+      pendingPromiseRunner: new DetachedPromiseRunner(),
+      isISRRevalidation,
+    },
+    async () => {
+      provideNextAfterProvider();
+      const result = await fn();
+      await awaitAllDetachedPromise();
+      return result;
+    },
+  );
 }

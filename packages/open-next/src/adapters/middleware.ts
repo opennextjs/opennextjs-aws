@@ -1,8 +1,5 @@
 import type { InternalEvent, Origin } from "types/open-next";
-import {
-  awaitAllDetachedPromise,
-  provideNextAfterProvider,
-} from "utils/promise";
+import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
@@ -13,7 +10,6 @@ import {
   resolveTagCache,
 } from "../core/resolve";
 import routingHandler from "../core/routingHandler";
-import { generateOpenNextRequestContext } from "./util";
 
 globalThis.internalFetch = fetch;
 globalThis.__als = new AsyncLocalStorage();
@@ -37,18 +33,10 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
   );
   //#endOverride
 
-  const { requestId, pendingPromiseRunner, isISRRevalidation } =
-    generateOpenNextRequestContext(internalEvent.headers["x-isr"] === "1");
-
   // We run everything in the async local storage context so that it is available in the external middleware
-  return globalThis.__als.run(
-    {
-      requestId,
-      pendingPromiseRunner,
-      isISRRevalidation,
-    },
+  return runWithOpenNextRequestContext(
+    internalEvent.headers["x-isr"] === "1",
     async () => {
-      provideNextAfterProvider();
       const result = await routingHandler(internalEvent);
       if ("internalEvent" in result) {
         debug("Middleware intercepted event", internalEvent);
@@ -56,7 +44,6 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
         if (!result.isExternalRewrite) {
           origin = await originResolver.resolve(result.internalEvent.rawPath);
         }
-        await awaitAllDetachedPromise();
         return {
           type: "middleware",
           internalEvent: result.internalEvent,

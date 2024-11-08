@@ -3,13 +3,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { OpenNextNodeResponse, StreamCreator } from "http/index.js";
 import { IncomingMessage } from "http/index.js";
 import type { InternalEvent, InternalResult } from "types/open-next";
-import {
-  awaitAllDetachedPromise,
-  provideNextAfterProvider,
-} from "utils/promise";
+import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
-import { generateOpenNextRequestContext } from "../adapters/util";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import type { MiddlewareOutputEvent } from "./routingHandler";
@@ -28,22 +24,14 @@ export async function openNextHandler(
   internalEvent: InternalEvent,
   responseStreaming?: StreamCreator,
 ): Promise<InternalResult> {
-  const { requestId, pendingPromiseRunner, isISRRevalidation } =
-    generateOpenNextRequestContext(internalEvent.headers["x-isr"] === "1");
-
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
-  return globalThis.__als.run(
-    {
-      requestId,
-      pendingPromiseRunner,
-      isISRRevalidation,
-    },
+  return runWithOpenNextRequestContext(
+    internalEvent.headers["x-isr"] === "1",
     async () => {
       if (internalEvent.headers["x-forwarded-host"]) {
         internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
       }
       debug("internalEvent", internalEvent);
-      provideNextAfterProvider();
 
       let preprocessResult: InternalResult | MiddlewareOutputEvent = {
         internalEvent: internalEvent,
@@ -151,11 +139,12 @@ export async function openNextHandler(
         body,
         isBase64Encoded,
       };
+      const requestId = store?.requestId;
 
-      // reset lastModified. We need to do this to avoid memory leaks
-      delete globalThis.lastModified[requestId];
-
-        await awaitAllDetachedPromise();
+      if (requestId) {
+        // reset lastModified. We need to do this to avoid memory leaks
+        delete globalThis.lastModified[requestId];
+      }
 
       return internalResult;
     },
