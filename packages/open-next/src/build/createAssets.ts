@@ -103,10 +103,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         case ".json":
         case ".body":
         case ".rsc":
-          const newFilePath =
-            absolutePath
-              .substring(0, absolutePath.length - ext.length)
-              .replace(/\.prefetch$/, "") + ".cache";
+          const newFilePath = absolutePath
+            .substring(0, absolutePath.length - ext.length)
+            .replace(/\.prefetch$/, "")
+            .concat(".cache");
 
           cacheFilesPath[newFilePath] = {
             [ext.slice(1)]: absolutePath,
