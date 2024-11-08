@@ -1,6 +1,4 @@
 import type { OpenNextConfig } from "types/open-next";
-import type { IncrementalCache, Queue } from "types/overrides";
-import type { DetachedPromiseRunner } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";

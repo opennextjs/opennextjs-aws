@@ -9,8 +9,10 @@ import {
   resolveTagCache,
 } from "../core/resolve";
 import routingHandler from "../core/routingHandler";
+import { generateOpenNextRequestContext } from "./util";
 
 globalThis.internalFetch = fetch;
+globalThis.__als = new AsyncLocalStorage();
 
 const defaultHandler = async (internalEvent: InternalEvent) => {
   const originResolver = await resolveOriginResolver(
@@ -31,24 +33,37 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
   );
   //#endOverride
 
-  const result = await routingHandler(internalEvent);
-  if ("internalEvent" in result) {
-    debug("Middleware intercepted event", internalEvent);
-    let origin: Origin | false = false;
-    if (!result.isExternalRewrite) {
-      origin = await originResolver.resolve(result.internalEvent.rawPath);
-    }
-    return {
-      type: "middleware",
-      internalEvent: result.internalEvent,
-      isExternalRewrite: result.isExternalRewrite,
-      origin,
-      isISR: result.isISR,
-    };
-  }
+  const { requestId, pendingPromiseRunner, isISRRevalidation } =
+    generateOpenNextRequestContext(internalEvent.headers["x-isr"] === "1");
 
-  debug("Middleware response", result);
-  return result;
+  // We run everything in the async local storage context so that it is available in the external middleware
+  return globalThis.__als.run(
+    {
+      requestId,
+      pendingPromiseRunner,
+      isISRRevalidation,
+    },
+    async () => {
+      const result = await routingHandler(internalEvent);
+      if ("internalEvent" in result) {
+        debug("Middleware intercepted event", internalEvent);
+        let origin: Origin | false = false;
+        if (!result.isExternalRewrite) {
+          origin = await originResolver.resolve(result.internalEvent.rawPath);
+        }
+        return {
+          type: "middleware",
+          internalEvent: result.internalEvent,
+          isExternalRewrite: result.isExternalRewrite,
+          origin,
+          isISR: result.isISR,
+        };
+      }
+
+      debug("Middleware response", result);
+      return result;
+    },
+  );
 };
 
 export const handler = await createGenericHandler({

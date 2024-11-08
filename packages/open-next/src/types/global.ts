@@ -1,7 +1,7 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 import type { OutgoingHttpHeaders } from "node:http";
 
-import type {IncrementalCache, Queue, TagCache} from 'types/overrides';
+import type { IncrementalCache, Queue, TagCache } from "types/overrides";
 
 import type { DetachedPromiseRunner } from "../utils/promise";
 import type { OpenNextConfig } from "./open-next";
@@ -44,6 +44,13 @@ export interface EdgeRoute {
   name: string;
   page: string;
   regex: string[];
+}
+
+interface OpenNextRequestContext {
+  requestId: string;
+  pendingPromiseRunner: DetachedPromiseRunner;
+  isISRRevalidation?: boolean;
+  mergeHeadersPriority?: "middleware" | "handler";
 }
 
 declare global {
@@ -135,12 +142,7 @@ declare global {
    * TODO: should be available everywhere in the future.
    * Defined in `requestHandler.ts`.
    */
-  var __als: AsyncLocalStorage<{
-    requestId: string;
-    pendingPromiseRunner: DetachedPromiseRunner;
-    isISRRevalidation?: boolean;
-    mergeHeadersPriority?: "middleware" | "handler";
-  }>;
+  var __als: AsyncLocalStorage<OpenNextRequestContext>;
 
   /**
    * The entries object that contains the functions that are available in the function.

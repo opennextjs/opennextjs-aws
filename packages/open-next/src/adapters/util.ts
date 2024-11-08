@@ -1,11 +1,21 @@
 //TODO: We should probably move all the utils to a separate location
 
+import { DetachedPromiseRunner } from "utils/promise";
+
 export function setNodeEnv() {
   process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
 }
 
 export function generateUniqueId() {
   return Math.random().toString(36).slice(2, 8);
+}
+
+export function generateOpenNextRequestContext(isISRRevalidation = false) {
+  return {
+    requestId: Math.random().toString(36),
+    pendingPromiseRunner: new DetachedPromiseRunner(),
+    isISRRevalidation,
+  };
 }
 
 /**
