@@ -132,7 +132,8 @@ function isApp() {
 }
 
 export function applyOverride() {
-  mod._resolveFilename = ((
+  // biome-ignore lint/complexity/useArrowFunction: could cause problems with `this` binding
+  mod._resolveFilename = function (
     originalResolveFilename: typeof resolveFilename,
     requestMapApp: Map<string, string>,
     requestMapPage: Map<string, string>,
@@ -140,7 +141,7 @@ export function applyOverride() {
     parent: any,
     isMain: boolean,
     options: any,
-  ) => {
+  ) {
     const hookResolved = isApp()
       ? requestMapApp.get(request)
       : requestMapPage.get(request);
@@ -148,5 +149,5 @@ export function applyOverride() {
     return originalResolveFilename.call(mod, request, parent, isMain, options);
 
     // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
-  }).bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
+  }.bind(null, resolveFilename, hookPropertyMapApp, hookPropertyMapPage);
 }
