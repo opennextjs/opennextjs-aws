@@ -395,7 +395,7 @@ export async function revalidateIfRequired(
 export function generateMessageGroupId(rawPath: string) {
   let a = cyrb128(rawPath);
   // We use mulberry32 to generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
-  var t = (a += 0x6d2b79f5);
+  let t = (a += 0x6d2b79f5);
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;

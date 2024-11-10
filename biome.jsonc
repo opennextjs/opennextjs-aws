@@ -29,8 +29,7 @@
         "noParameterAssign": "warn",
         "useDefaultParameterLast": "warn",
         "noCommaOperator": "warn",
-        "useSingleVarDeclarator": "warn",
-        "noVar": "warn"
+        "useSingleVarDeclarator": "warn"
       },
       "correctness": {
         "noSwitchDeclarations": "warn",

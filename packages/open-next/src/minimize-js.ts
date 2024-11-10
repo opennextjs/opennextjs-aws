@@ -9,9 +9,9 @@ import path from "node:path";
 import minify from "@node-minify/core";
 import terser from "@node-minify/terser";
 
-var failed_files = [];
-var total_files = 0;
-var options = {};
+const failed_files = [];
+let total_files = 0;
+const options = {};
 
 const promiseSeries = async (tasks, initial) => {
   if (!Array.isArray(tasks)) {
@@ -48,12 +48,12 @@ const minifyJSON = async (file) => {
   try {
     if (options.compress_json || options.packagejson) {
       total_files++;
-      var is_package_json = file.indexOf("package.json") > -1;
-      var data = await fs.readFile(file, "utf8");
-      var json = JSON.parse(data);
-      var new_json = {};
+      const is_package_json = file.indexOf("package.json") > -1;
+      const data = await fs.readFile(file, "utf8");
+      const json = JSON.parse(data);
+      let new_json = {};
       if (options.packagejson && is_package_json) {
-        var { name, version, bin, main, binary, engines } = json;
+        const { name, version, bin, main, binary, engines } = json;
         new_json = { name, version };
         if (bin) new_json.bin = bin;
         if (binary) new_json.binary = binary;
@@ -69,14 +69,14 @@ const minifyJSON = async (file) => {
 };
 
 const walk = async (currentDirPath) => {
-  var js_files = [];
-  var json_files = [];
-  var dirs = [];
-  var current_dirs = await fs.readdir(currentDirPath);
+  const js_files = [];
+  const json_files = [];
+  const dirs = [];
+  const current_dirs = await fs.readdir(currentDirPath);
   for (const name of current_dirs) {
-    var filePath = path.join(currentDirPath, name);
-    var stat = await fs.stat(filePath);
-    var is_bin = /\.bin$/;
+    const filePath = path.join(currentDirPath, name);
+    const stat = await fs.stat(filePath);
+    const is_bin = /\.bin$/;
     if (stat.isFile()) {
       if (filePath.substr(-5) === ".json") json_files.push(filePath);
       else if (filePath.substr(-3) === ".js" || options.all_js)
@@ -85,8 +85,8 @@ const walk = async (currentDirPath) => {
       dirs.push(filePath);
     }
   }
-  var js_promise = Promise.all(js_files.map((f) => minifyJS(f)));
-  var json_promise = Promise.all(json_files.map((f) => minifyJSON(f)));
+  const js_promise = Promise.all(js_files.map((f) => minifyJS(f)));
+  const json_promise = Promise.all(json_files.map((f) => minifyJSON(f)));
   await Promise.all([js_promise, json_promise]);
   await promiseSeries(dirs.map((dir) => () => walk(dir)));
 };
