@@ -18,25 +18,19 @@
         "noGlobalIsNan": "warn",
         "noImplicitAnyLet": "warn",
         "noAssignInExpressions": "warn",
-        "noConfusingVoidType": "warn",
-        "useNamespaceKeyword": "warn" // safe fix
+        "noConfusingVoidType": "warn"
       },
       "style": {
         "noUnusedTemplateLiteral": "warn",
-        "noInferrableTypes": "warn", // safe fix
         "noUselessElse": "warn",
         "useNodejsImportProtocol": "warn",
         "useTemplate": "warn",
-        "useNumberNamespace": "warn", // safe fix
         "noNonNullAssertion": "warn",
-        "useImportType": "warn",
         "noParameterAssign": "warn",
         "useDefaultParameterLast": "warn",
         "noCommaOperator": "warn",
-        "useConst": "warn",
         "useSingleVarDeclarator": "warn",
-        "noVar": "warn",
-        "useShorthandFunctionType": "warn" // safe fix
+        "noVar": "warn"
       },
       "correctness": {
         "noSwitchDeclarations": "warn",
@@ -50,7 +44,6 @@
         "noUselessConstructor": "warn",
         "noBannedTypes": "warn",
         "noUselessTernary": "warn",
-        "useArrowFunction": "warn", // safe fix
         "noExtraBooleanCast": "warn",
         "useOptionalChain": "warn"
       },
