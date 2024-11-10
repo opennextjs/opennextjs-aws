@@ -81,7 +81,7 @@ export async function copyTracedFiles(
 
   const computeCopyFilesForPage = (pagePath: string) => {
     const fullFilePath = `server/${pagePath}.js`;
-    let requiredFiles;
+    let requiredFiles: { files: string[] };
     try {
       requiredFiles = JSON.parse(
         readFileSync(

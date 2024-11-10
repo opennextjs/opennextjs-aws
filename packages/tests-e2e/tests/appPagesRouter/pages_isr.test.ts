@@ -13,7 +13,7 @@ test("Incremental Static Regeneration", async ({ page }) => {
   let el = page.getByText("Time:");
   // Track the static time
   let time = await el.textContent();
-  let newTime;
+  let newTime: typeof time;
   let tempTime = time;
   do {
     await wait(1000);

@@ -16,7 +16,6 @@
       "suspicious": {
         "noExplicitAny": "info",
         "noGlobalIsNan": "warn",
-        "noImplicitAnyLet": "warn",
         "noAssignInExpressions": "warn",
         "noConfusingVoidType": "warn"
       },
