@@ -15,7 +15,6 @@
       },
       "suspicious": {
         "noExplicitAny": "info",
-        "noGlobalIsNan": "warn",
         "noAssignInExpressions": "warn",
         "noConfusingVoidType": "warn"
       },
