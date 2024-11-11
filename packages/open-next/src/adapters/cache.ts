@@ -297,7 +297,7 @@ export default class S3Cache {
       } else {
         switch (data.kind) {
           case "ROUTE":
-          case "APP_ROUTE":
+          case "APP_ROUTE": {
             const { body, status, headers } = data;
             await globalThis.incrementalCache.set(
               key,
@@ -316,6 +316,7 @@ export default class S3Cache {
               false,
             );
             break;
+          }
           case "PAGE":
           case "PAGES": {
             const { html, pageData, status, headers } = data;

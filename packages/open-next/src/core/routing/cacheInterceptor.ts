@@ -178,7 +178,7 @@ export async function cacheInterceptor(
             cachedData.value,
             cachedData.lastModified,
           );
-        case "redirect":
+        case "redirect": {
           const cacheControl = await computeCacheControl(
             localizedPath,
             "",
@@ -197,6 +197,7 @@ export async function cacheInterceptor(
             },
             isBase64Encoded: false,
           };
+        }
         default:
           return event;
       }

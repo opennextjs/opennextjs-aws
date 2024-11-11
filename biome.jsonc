@@ -25,7 +25,6 @@
         "noCommaOperator": "warn"
       },
       "correctness": {
-        "noSwitchDeclarations": "warn",
         "noUnnecessaryContinue": "warn",
         "noInnerDeclarations": "warn"
       },
