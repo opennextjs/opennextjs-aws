@@ -30,8 +30,7 @@
       },
       "complexity": {
         "noForEach": "off",
-        "noBannedTypes": "warn",
-        "useOptionalChain": "warn"
+        "noBannedTypes": "warn"
       },
       "performance": {
         "noDelete": "warn",
