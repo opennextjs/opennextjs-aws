@@ -92,12 +92,12 @@ async function generateResult(
   let isDataRequest = false;
   switch (cachedValue.type) {
     case "app":
-      isDataRequest = Boolean(event.headers["rsc"]);
+      isDataRequest = Boolean(event.headers.rsc);
       body = isDataRequest ? cachedValue.rsc : cachedValue.html;
       type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
       break;
     case "page":
-      isDataRequest = Boolean(event.query["__nextDataReq"]);
+      isDataRequest = Boolean(event.query.__nextDataReq);
       body = isDataRequest
         ? JSON.stringify(cachedValue.json)
         : cachedValue.html;
@@ -107,7 +107,7 @@ async function generateResult(
   const cacheControl = await computeCacheControl(
     localizedPath,
     body,
-    event.headers["host"],
+    event.headers.host,
     cachedValue.revalidate,
     lastModified,
   );
@@ -168,7 +168,7 @@ export async function cacheInterceptor(
           return event;
         }
       }
-      const host = event.headers["host"];
+      const host = event.headers.host;
       switch (cachedData.value?.type) {
         case "app":
         case "page":

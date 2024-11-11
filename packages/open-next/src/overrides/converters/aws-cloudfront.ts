@@ -176,7 +176,7 @@ async function convertToCloudFrontRequestResult(
       return cloudfrontResult;
     }
     let customOrigin = origin?.custom as CloudFrontCustomOrigin;
-    let host = responseHeaders["host"] ?? responseHeaders["Host"];
+    let host = responseHeaders.host ?? responseHeaders.Host;
     if (result.origin) {
       customOrigin = {
         ...customOrigin,

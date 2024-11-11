@@ -60,7 +60,7 @@ function normalizeAPIGatewayProxyEventV2Headers(
   const headers: Record<string, string> = {};
 
   if (Array.isArray(cookies)) {
-    headers["cookie"] = cookies.join("; ");
+    headers.cookie = cookies.join("; ");
   }
 
   for (const [key, value] of Object.entries(rawHeaders || {})) {

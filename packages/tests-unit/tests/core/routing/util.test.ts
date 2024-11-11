@@ -528,7 +528,7 @@ describe("fixSWRCacheHeader", () => {
 
 describe("addOpenNextHeader", () => {
   beforeEach(() => {
-    delete config.NextConfig["poweredByHeader"];
+    delete config.NextConfig.poweredByHeader;
     globalThis.openNextDebug = false;
     globalThis.openNextVersion = "1.0.0";
     globalThis.__openNextAls = {

@@ -38,7 +38,7 @@ const converter: Converter = {
         "::1",
       query,
       cookies: Object.fromEntries(
-        parseCookies(req.headers["cookie"])?.map((cookie) => {
+        parseCookies(req.headers.cookie)?.map((cookie) => {
           const [key, value] = cookie.split("=");
           return [key, value];
         }) ?? [],

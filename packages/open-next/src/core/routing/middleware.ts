@@ -163,9 +163,9 @@ export async function handleMiddleware(
       newUrl = rewriteUrlObject.pathname;
 
       // Reset the query params if the middleware is a rewrite
-      if (middlewareQueryString["__nextDataReq"]) {
+      if (middlewareQueryString.__nextDataReq) {
         middlewareQueryString = {
-          __nextDataReq: middlewareQueryString["__nextDataReq"],
+          __nextDataReq: middlewareQueryString.__nextDataReq,
         };
       } else {
         middlewareQueryString = {};

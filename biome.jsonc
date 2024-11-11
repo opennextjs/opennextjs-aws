@@ -29,7 +29,6 @@
         "noInnerDeclarations": "warn"
       },
       "complexity": {
-        "useLiteralKeys": "warn",
         "noForEach": "off",
         "noUselessSwitchCase": "warn",
         "noUselessConstructor": "warn",
