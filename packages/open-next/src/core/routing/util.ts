@@ -409,10 +409,10 @@ export function generateMessageGroupId(rawPath: string) {
 
 // Used to generate a hash int from a string
 function cyrb128(str: string) {
-  let h1 = 1779033703,
-    h2 = 3144134277,
-    h3 = 1013904242,
-    h4 = 2773480762;
+  let h1 = 1779033703;
+  let h2 = 3144134277;
+  let h3 = 1013904242;
+  let h4 = 2773480762;
   for (let i = 0, k: number; i < str.length; i++) {
     k = str.charCodeAt(i);
     h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
