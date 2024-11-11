@@ -39,8 +39,6 @@ async function defaultHandler(
   switch (event.requestType) {
     case "delete":
       return remove();
-    case "create":
-    case "update":
     default:
       return insert(event.requestType);
   }

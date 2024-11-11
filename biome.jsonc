@@ -30,7 +30,6 @@
       },
       "complexity": {
         "noForEach": "off",
-        "noUselessSwitchCase": "warn",
         "noUselessConstructor": "warn",
         "noBannedTypes": "warn",
         "noUselessTernary": "warn",
