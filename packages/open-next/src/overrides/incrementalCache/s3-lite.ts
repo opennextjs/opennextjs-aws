@@ -15,16 +15,15 @@ const getAwsClient = () => {
   const { CACHE_BUCKET_REGION } = process.env;
   if (awsClient) {
     return awsClient;
-  } else {
-    awsClient = new AwsClient({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      sessionToken: process.env.AWS_SESSION_TOKEN,
-      region: CACHE_BUCKET_REGION,
-      retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
-    });
-    return awsClient;
   }
+  awsClient = new AwsClient({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    sessionToken: process.env.AWS_SESSION_TOKEN,
+    region: CACHE_BUCKET_REGION,
+    retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
+  });
+  return awsClient;
 };
 
 const awsFetch = async (key: string, options: RequestInit) => {
@@ -55,17 +54,17 @@ const incrementalCache: IncrementalCache = {
 
     if (result.status === 404) {
       throw new IgnorableError("Not found");
-    } else if (result.status !== 200) {
-      throw new RecoverableError(`Failed to get cache: ${result.status}`);
-    } else {
-      const cacheData: any = await result.json();
-      return {
-        value: cacheData,
-        lastModified: new Date(
-          result.headers.get("last-modified") ?? "",
-        ).getTime(),
-      };
     }
+    if (result.status !== 200) {
+      throw new RecoverableError(`Failed to get cache: ${result.status}`);
+    }
+    const cacheData: any = await result.json();
+    return {
+      value: cacheData,
+      lastModified: new Date(
+        result.headers.get("last-modified") ?? "",
+      ).getTime(),
+    };
   },
   async set(key, value, isFetch): Promise<void> {
     const response = await awsFetch(

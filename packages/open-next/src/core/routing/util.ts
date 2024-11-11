@@ -184,9 +184,8 @@ function filterHeadersForProxy(
     const lowerKey = key.toLowerCase();
     if (disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz"))
       return;
-    else {
-      filteredHeaders[key] = value?.toString() ?? "";
-    }
+
+    filteredHeaders[key] = value?.toString() ?? "";
   });
   return filteredHeaders;
 }

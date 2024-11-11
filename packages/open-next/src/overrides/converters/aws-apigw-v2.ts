@@ -42,13 +42,14 @@ function normalizeAPIGatewayProxyEventV2Body(
   const { body, isBase64Encoded } = event;
   if (Buffer.isBuffer(body)) {
     return body;
-  } else if (typeof body === "string") {
-    return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
-  } else if (typeof body === "object") {
-    return Buffer.from(JSON.stringify(body));
-  } else {
-    return Buffer.from("", "utf8");
   }
+  if (typeof body === "string") {
+    return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
+  }
+  if (typeof body === "object") {
+    return Buffer.from(JSON.stringify(body));
+  }
+  return Buffer.from("", "utf8");
 }
 
 function normalizeAPIGatewayProxyEventV2Headers(

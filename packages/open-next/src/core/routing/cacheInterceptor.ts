@@ -45,7 +45,8 @@ async function computeCacheControl(
       "x-opennext-cache": "ERROR",
       etag,
     };
-  } else if (finalRevalidate !== CACHE_ONE_YEAR) {
+  }
+  if (finalRevalidate !== CACHE_ONE_YEAR) {
     const sMaxAge = Math.max(finalRevalidate - age, 1);
     debug("sMaxAge", {
       finalRevalidate,
@@ -71,13 +72,12 @@ async function computeCacheControl(
       "x-opennext-cache": isStale ? "STALE" : "HIT",
       etag,
     };
-  } else {
-    return {
-      "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-      "x-opennext-cache": "HIT",
-      etag,
-    };
   }
+  return {
+    "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+    "x-opennext-cache": "HIT",
+    etag,
+  };
 }
 
 async function generateResult(

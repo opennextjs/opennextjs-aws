@@ -96,14 +96,12 @@ const indexHandler = "index.handler";
 async function canStream(opts: FunctionOptions) {
   if (!opts.override?.wrapper) {
     return false;
-  } else {
-    if (typeof opts.override.wrapper === "string") {
-      return opts.override.wrapper === "aws-lambda-streaming";
-    } else {
-      const wrapper = await opts.override.wrapper();
-      return wrapper.supportStreaming;
-    }
   }
+  if (typeof opts.override.wrapper === "string") {
+    return opts.override.wrapper === "aws-lambda-streaming";
+  }
+  const wrapper = await opts.override.wrapper();
+  return wrapper.supportStreaming;
 }
 
 async function extractOverrideName(
@@ -115,10 +113,9 @@ async function extractOverrideName(
   }
   if (typeof override === "string") {
     return override;
-  } else {
-    const overrideModule = await override();
-    return overrideModule.name;
   }
+  const overrideModule = await override();
+  return overrideModule.name;
 }
 
 async function extractOverrideFn(override?: DefaultOverrideOptions) {

@@ -101,13 +101,12 @@ See the docs for more information on how to bundle edge runtime functions.
 --------------------------------------------------------------------------------
         `,
         );
-      } else {
-        throw new Error(`
+      }
+      throw new Error(`
 --------------------------------------------------------------------------------
 We cannot find the route for ${pagePath}.
 File ${fullFilePath} does not exist
 --------------------------------------------------------------------------------`);
-      }
     }
     const dir = path.dirname(fullFilePath);
     extractFiles(

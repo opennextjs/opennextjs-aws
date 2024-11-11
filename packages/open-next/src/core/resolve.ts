@@ -23,11 +23,10 @@ export async function resolveConverter<
 ): Promise<Converter<E, R>> {
   if (typeof converter === "function") {
     return converter();
-  } else {
-    const m_1 = await import(`../overrides/converters/aws-apigw-v2.js`);
-    // @ts-expect-error
-    return m_1.default;
   }
+  const m_1 = await import(`../overrides/converters/aws-apigw-v2.js`);
+  // @ts-expect-error
+  return m_1.default;
 }
 
 export async function resolveWrapper<
@@ -36,12 +35,11 @@ export async function resolveWrapper<
 >(wrapper: DefaultOverrideOptions<E, R>["wrapper"]): Promise<Wrapper<E, R>> {
   if (typeof wrapper === "function") {
     return wrapper();
-  } else {
-    // This will be replaced by the bundler
-    const m_1 = await import("../overrides/wrappers/aws-lambda.js");
-    // @ts-expect-error
-    return m_1.default;
   }
+  // This will be replaced by the bundler
+  const m_1 = await import("../overrides/wrappers/aws-lambda.js");
+  // @ts-expect-error
+  return m_1.default;
 }
 
 /**
@@ -55,11 +53,10 @@ export async function resolveTagCache(
 ): Promise<TagCache> {
   if (typeof tagCache === "function") {
     return tagCache();
-  } else {
-    // This will be replaced by the bundler
-    const m_1 = await import("../overrides/tagCache/dynamodb.js");
-    return m_1.default;
   }
+  // This will be replaced by the bundler
+  const m_1 = await import("../overrides/tagCache/dynamodb.js");
+  return m_1.default;
 }
 
 /**
@@ -71,10 +68,9 @@ export async function resolveTagCache(
 export async function resolveQueue(queue: OverrideOptions["queue"]) {
   if (typeof queue === "function") {
     return queue();
-  } else {
-    const m_1 = await import("../overrides/queue/sqs.js");
-    return m_1.default;
   }
+  const m_1 = await import("../overrides/queue/sqs.js");
+  return m_1.default;
 }
 
 /**
@@ -88,10 +84,9 @@ export async function resolveIncrementalCache(
 ) {
   if (typeof incrementalCache === "function") {
     return incrementalCache();
-  } else {
-    const m_1 = await import("../overrides/incrementalCache/s3.js");
-    return m_1.default;
   }
+  const m_1 = await import("../overrides/incrementalCache/s3.js");
+  return m_1.default;
 }
 
 /**
@@ -104,10 +99,9 @@ export async function resolveImageLoader(
 ) {
   if (typeof imageLoader === "function") {
     return imageLoader();
-  } else {
-    const m_1 = await import("../overrides/imageLoader/s3.js");
-    return m_1.default;
   }
+  const m_1 = await import("../overrides/imageLoader/s3.js");
+  return m_1.default;
 }
 
 /**
@@ -119,10 +113,9 @@ export async function resolveOriginResolver(
 ) {
   if (typeof originResolver === "function") {
     return originResolver();
-  } else {
-    const m_1 = await import("../overrides/originResolver/pattern-env.js");
-    return m_1.default;
   }
+  const m_1 = await import("../overrides/originResolver/pattern-env.js");
+  return m_1.default;
 }
 
 /**
@@ -133,8 +126,7 @@ export async function resolveWarmerInvoke(
 ) {
   if (typeof warmer === "function") {
     return warmer();
-  } else {
-    const m_1 = await import("../overrides/warmer/aws-lambda.js");
-    return m_1.default;
   }
+  const m_1 = await import("../overrides/warmer/aws-lambda.js");
+  return m_1.default;
 }

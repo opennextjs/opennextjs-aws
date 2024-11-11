@@ -10,15 +10,14 @@ let awsClient: AwsClient | null = null;
 const getAwsClient = () => {
   if (awsClient) {
     return awsClient;
-  } else {
-    awsClient = new AwsClient({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      sessionToken: process.env.AWS_SESSION_TOKEN,
-      region: process.env.REVALIDATION_QUEUE_REGION,
-    });
-    return awsClient;
   }
+  awsClient = new AwsClient({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    sessionToken: process.env.AWS_SESSION_TOKEN,
+    region: process.env.REVALIDATION_QUEUE_REGION,
+  });
+  return awsClient;
 };
 
 const awsFetch = (body: RequestInit["body"]) => {

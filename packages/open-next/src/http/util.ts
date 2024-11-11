@@ -11,9 +11,8 @@ export const parseHeaders = (
   for (const [key, value] of Object.entries(headers)) {
     if (value === undefined) {
       continue;
-    } else {
-      result[key.toLowerCase()] = convertHeader(value);
     }
+    result[key.toLowerCase()] = convertHeader(value);
   }
 
   return result;
@@ -22,11 +21,11 @@ export const parseHeaders = (
 export const convertHeader = (header: http.OutgoingHttpHeader) => {
   if (typeof header === "string") {
     return header;
-  } else if (Array.isArray(header)) {
-    return header.join(",");
-  } else {
-    return String(header);
   }
+  if (Array.isArray(header)) {
+    return header.join(",");
+  }
+  return String(header);
 };
 
 export function parseCookies(

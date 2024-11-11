@@ -114,10 +114,9 @@ export default async function routingHandler(
   let middlewareResponseHeaders: Record<string, string | string[]> = {};
   if ("statusCode" in middleware) {
     return middleware;
-  } else {
-    middlewareResponseHeaders = middleware.responseHeaders || {};
-    internalEvent = middleware;
   }
+  middlewareResponseHeaders = middleware.responseHeaders || {};
+  internalEvent = middleware;
 
   // At this point internalEvent is an InternalEvent or a MiddlewareOutputEvent
 

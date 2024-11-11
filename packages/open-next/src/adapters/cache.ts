@@ -233,7 +233,8 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData?.type === "page" || cacheData?.type === "app") {
+      }
+      if (cacheData?.type === "page" || cacheData?.type === "app") {
         if (globalThis.isNextAfter15 && cacheData?.type === "app") {
           return {
             lastModified: _lastModified,
@@ -258,7 +259,8 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData?.type === "redirect") {
+      }
+      if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
           value: {
@@ -266,10 +268,9 @@ export default class S3Cache {
             props: cacheData.props,
           },
         } as CacheHandlerValue;
-      } else {
-        warn("Unknown cache type", cacheData);
-        return null;
       }
+      warn("Unknown cache type", cacheData);
+      return null;
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
       debug("Failed to get body cache", e);

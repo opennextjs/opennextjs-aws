@@ -286,7 +286,8 @@ function handleTrailingSlashRedirect(
       isBase64Encoded: false,
     };
     // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (
+  }
+  if (
     !NextConfig.trailingSlash &&
     event.rawPath.endsWith("/") &&
     event.rawPath !== "/"
@@ -303,7 +304,8 @@ function handleTrailingSlashRedirect(
       body: emptyBody,
       isBase64Encoded: false,
     };
-  } else return false;
+  }
+  return false;
 }
 
 export function handleRedirects(

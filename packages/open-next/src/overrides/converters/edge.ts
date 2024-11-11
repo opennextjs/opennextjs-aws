@@ -95,16 +95,15 @@ const converter: Converter<
         // @ts-expect-error - This is a Cloudflare specific option
         cf: cfCache,
       });
-    } else {
-      const headers = new Headers();
-      for (const [key, value] of Object.entries(result.headers)) {
-        headers.set(key, Array.isArray(value) ? value.join(",") : value);
-      }
-      return new Response(result.body as ReadableStream, {
-        status: result.statusCode,
-        headers: headers,
-      });
     }
+    const headers = new Headers();
+    for (const [key, value] of Object.entries(result.headers)) {
+      headers.set(key, Array.isArray(value) ? value.join(",") : value);
+    }
+    return new Response(result.body as ReadableStream, {
+      status: result.statusCode,
+      headers: headers,
+    });
   },
   name: "edge",
 };
