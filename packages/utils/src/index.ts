@@ -9,7 +9,7 @@ export function generateUniqueId() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-export async function wait(n: number = 1000) {
+export async function wait(n = 1000) {
   return new Promise((res) => {
     setTimeout(res, n);
   });

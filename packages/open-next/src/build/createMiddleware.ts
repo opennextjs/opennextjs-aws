@@ -2,9 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 import logger from "../logger.js";
-import {
-  type MiddlewareInfo,
-  type MiddlewareManifest,
+import type {
+  MiddlewareInfo,
+  MiddlewareManifest,
 } from "../types/next-types.js";
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";

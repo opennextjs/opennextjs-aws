@@ -14,12 +14,17 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
   const outputPath = path.join(outputDir, "assets");
   fs.mkdirSync(outputPath, { recursive: true });
 
-  // Next.js outputs assets into multiple files. Copy into the same directory.
-  // Copy over:
-  // - .next/BUILD_ID => _next/BUILD_ID
-  // - .next/static   => _next/static
-  // - public/*       => *
-  // - app/favicon.ico or src/app/favicon.ico  => favicon.ico
+  /**
+   * Next.js outputs assets into multiple files. Copy into the same directory.
+   *
+   * Copy over:
+   * - .next/BUILD_ID => BUILD_ID
+   * - .next/static   => _next/static
+   * - public/*       => *
+   * - app/favicon.ico or src/app/favicon.ico  => favicon.ico
+   *
+   * Note: BUILD_ID is used by the SST infra.
+   */
   fs.copyFileSync(
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),

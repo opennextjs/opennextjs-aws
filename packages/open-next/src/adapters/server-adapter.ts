@@ -28,7 +28,8 @@ export const handler = await createMainHandler();
 //////////////////////
 
 function setNextjsServerWorkingDirectory() {
-  // WORKAROUND: Set `NextServer` working directory (AWS specific) — https://github.com/serverless-stack/open-next#workaround-set-nextserver-working-directory-aws-specific
+  // WORKAROUND: Set `NextServer` working directory (AWS specific)
+  // See https://opennext.js.org/aws/v2/advanced/workaround#workaround-set-nextserver-working-directory-aws-specific
   process.chdir(__dirname);
 }
 

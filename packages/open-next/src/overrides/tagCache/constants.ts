@@ -11,7 +11,7 @@ export const getDynamoBatchWriteCommandConcurrency = (): number => {
     process.env.DYNAMO_BATCH_WRITE_COMMAND_CONCURRENCY;
   const parsedDynamoBatchWriteCommandConcurrencyFromEnv =
     dynamoBatchWriteCommandConcurrencyFromEnv
-      ? parseInt(dynamoBatchWriteCommandConcurrencyFromEnv)
+      ? Number.parseInt(dynamoBatchWriteCommandConcurrencyFromEnv)
       : undefined;
 
   if (

@@ -28,15 +28,15 @@ export interface StreamCreator {
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
   statusCode!: number;
-  statusMessage: string = "";
+  statusMessage = "";
   headers: OutgoingHttpHeaders = {};
   private _cookies: string[] = [];
   private responseStream?: Writable;
-  headersSent: boolean = false;
+  headersSent = false;
   _chunks: Buffer[] = [];
 
   // To comply with the ServerResponse interface :
-  strictContentLength: boolean = false;
+  strictContentLength = false;
   assignSocket(_socket: Socket): void {
     throw new Error(CANNOT_BE_USED);
   }
@@ -61,10 +61,10 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
    * It will never be defined
    */
   req!: IncomingMessage;
-  chunkedEncoding: boolean = false;
-  shouldKeepAlive: boolean = true;
-  useChunkedEncodingByDefault: boolean = true;
-  sendDate: boolean = false;
+  chunkedEncoding = false;
+  shouldKeepAlive = true;
+  useChunkedEncodingByDefault = true;
+  sendDate = false;
   connection: Socket | null = null;
   socket: Socket | null = null;
   setTimeout(_msecs: number, _callback?: (() => void) | undefined): this {
@@ -174,8 +174,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
               ...this.headers,
             };
       const initialCookies = parseCookies(
-        (this.initialHeaders[SET_COOKIE_HEADER] as string | string[]) ?? [],
-      ) as string[];
+        this.initialHeaders[SET_COOKIE_HEADER],
+      );
       this._cookies =
         mergeHeadersPriority === "middleware"
           ? [...this._cookies, ...initialCookies]

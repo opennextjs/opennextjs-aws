@@ -9,7 +9,10 @@ import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
 import type { MiddlewareOutputEvent } from "./routingHandler";
-import routingHandler from "./routingHandler";
+import routingHandler, {
+  MIDDLEWARE_HEADER_PREFIX,
+  MIDDLEWARE_HEADER_PREFIX_LEN,
+} from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
@@ -51,107 +54,103 @@ export async function openNextHandler(
       ? preprocessResult.headers
       : preprocessResult.internalEvent.headers;
 
-  const overwrittenResponseHeaders = Object.entries(
-    "type" in preprocessResult
-      ? preprocessResult.headers
-      : preprocessResult.internalEvent.headers,
-  ).reduce((acc, [key, value]) => {
-    if (!key.startsWith("x-middleware-response-")) {
-      return acc;
-    } else {
-      const newKey = key.replace("x-middleware-response-", "");
-      delete headers[key];
-      headers[newKey] = value;
-      return { ...acc, [newKey]: value };
+  const overwrittenResponseHeaders: Record<string, string | string[]> = {};
+
+  for (const [rawKey, value] of Object.entries(headers)) {
+    if (!rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
+      continue;
     }
-  }, {});
+    const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
+    overwrittenResponseHeaders[key] = value;
+    headers[key] = value;
+    delete headers[rawKey];
+  }
 
   if ("type" in preprocessResult) {
-    // // res is used only in the streaming case
+    // response is used only in the streaming case
     if (responseStreaming) {
-      const res = createServerResponse(
+      const response = createServerResponse(
         internalEvent,
         headers,
         responseStreaming,
       );
-      res.statusCode = preprocessResult.statusCode;
-      res.flushHeaders();
+      response.statusCode = preprocessResult.statusCode;
+      response.flushHeaders();
       const [bodyToConsume, bodyToReturn] = preprocessResult.body.tee();
       for await (const chunk of bodyToConsume) {
-        res.write(chunk);
+        response.write(chunk);
       }
-      res.end();
+      response.end();
       preprocessResult.body = bodyToReturn;
     }
     return preprocessResult;
-  } else {
-    const preprocessedEvent = preprocessResult.internalEvent;
-    debug("preprocessedEvent", preprocessedEvent);
-    const reqProps = {
-      method: preprocessedEvent.method,
-      url: preprocessedEvent.url,
-      //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
-      // There is 3 way we can handle revalidation:
-      // 1. We could just let the revalidation go as normal, but due to race condtions the revalidation will be unreliable
-      // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
-      // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
-      headers: { ...headers, purpose: "prefetch" },
-      body: preprocessedEvent.body,
-      remoteAddress: preprocessedEvent.remoteAddress,
-    };
-    const requestId = Math.random().toString(36);
-    const pendingPromiseRunner: DetachedPromiseRunner =
-      new DetachedPromiseRunner();
-    const isISRRevalidation = headers["x-isr"] === "1";
-    const mergeHeadersPriority = globalThis.openNextConfig.dangerous
-      ?.headersAndCookiesPriority
-      ? globalThis.openNextConfig.dangerous.headersAndCookiesPriority(
-          preprocessedEvent,
-        )
-      : "middleware";
-    const internalResult = await globalThis.__als.run(
-      {
-        requestId,
-        pendingPromiseRunner,
-        isISRRevalidation,
-        mergeHeadersPriority,
-      },
-      async () => {
-        const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
-        const req = new IncomingMessage(reqProps);
-        const res = createServerResponse(
-          preprocessedEvent,
-          overwrittenResponseHeaders,
-          responseStreaming,
-        );
-
-        await processRequest(
-          req,
-          res,
-          preprocessedEvent,
-          preprocessedResult.isExternalRewrite,
-        );
-
-        const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
-
-        const internalResult = {
-          type: internalEvent.type,
-          statusCode,
-          headers,
-          body,
-          isBase64Encoded,
-        };
-
-        // reset lastModified. We need to do this to avoid memory leaks
-        delete globalThis.lastModified[requestId];
-
-        await pendingPromiseRunner.await();
-
-        return internalResult;
-      },
-    );
-    return internalResult;
   }
+
+  const preprocessedEvent = preprocessResult.internalEvent;
+  debug("preprocessedEvent", preprocessedEvent);
+  const reqProps = {
+    method: preprocessedEvent.method,
+    url: preprocessedEvent.url,
+    //WORKAROUND: We pass this header to the serverless function to mimic a prefetch request which will not trigger revalidation since we handle revalidation differently
+    // There is 3 way we can handle revalidation:
+    // 1. We could just let the revalidation go as normal, but due to race conditions the revalidation will be unreliable
+    // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
+    // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
+    headers: { ...headers, purpose: "prefetch" },
+    body: preprocessedEvent.body,
+    remoteAddress: preprocessedEvent.remoteAddress,
+  };
+  const requestId = Math.random().toString(36);
+  const pendingPromiseRunner = new DetachedPromiseRunner();
+  const isISRRevalidation = headers["x-isr"] === "1";
+  const mergeHeadersPriority = globalThis.openNextConfig.dangerous
+    ?.headersAndCookiesPriority
+    ? globalThis.openNextConfig.dangerous.headersAndCookiesPriority(
+        preprocessedEvent,
+      )
+    : "middleware";
+  const internalResult = await globalThis.__als.run(
+    {
+      requestId,
+      pendingPromiseRunner,
+      isISRRevalidation,
+      mergeHeadersPriority,
+    },
+    async () => {
+      const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
+      const req = new IncomingMessage(reqProps);
+      const res = createServerResponse(
+        preprocessedEvent,
+        overwrittenResponseHeaders,
+        responseStreaming,
+      );
+
+      await processRequest(
+        req,
+        res,
+        preprocessedEvent,
+        preprocessedResult.isExternalRewrite,
+      );
+
+      const { statusCode, headers, isBase64Encoded, body } = convertRes(res);
+
+      const internalResult = {
+        type: internalEvent.type,
+        statusCode,
+        headers,
+        body,
+        isBase64Encoded,
+      };
+
+      // reset lastModified. We need to do this to avoid memory leaks
+      delete globalThis.lastModified[requestId];
+
+      await pendingPromiseRunner.await();
+
+      return internalResult;
+    },
+  );
+  return internalResult;
 }
 
 async function processRequest(
@@ -169,18 +168,16 @@ async function processRequest(
     // `serverHandler` is replaced at build time depending on user's
     // nextjs version to patch Nextjs 13.4.x and future breaking changes.
 
-    const { rawPath } = internalEvent;
-
     if (isExternalRewrite) {
       return proxyRequest(internalEvent, res);
-    } else {
-      //#override applyNextjsPrebundledReact
-      setNextjsPrebundledReact(rawPath);
-      //#endOverride
-
-      // Next Server
-      await requestHandler(req, res);
     }
+
+    //#override applyNextjsPrebundledReact
+    setNextjsPrebundledReact(internalEvent.rawPath);
+    //#endOverride
+
+    // Next Server
+    await requestHandler(req, res);
   } catch (e: any) {
     // This might fail when using bundled next, importing won't do the trick either
     if (e.constructor.name === "NoFallbackError") {

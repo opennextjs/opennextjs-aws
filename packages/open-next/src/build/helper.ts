@@ -189,7 +189,7 @@ export function traverseFiles(
   root: string,
   conditionFn: (paths: TraversePath) => boolean,
   callbackFn: (paths: TraversePath) => void,
-  searchingDir: string = "",
+  searchingDir = "",
 ) {
   fs.readdirSync(path.join(root, searchingDir)).forEach((file) => {
     const relativePath = path.join(searchingDir, file);

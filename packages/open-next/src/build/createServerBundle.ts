@@ -197,24 +197,17 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(disableRouting ? ["trustHostHeader"] : []),
         ...(!isBefore13413 ? ["requestHandlerHost"] : []),
-        ...(!isAfter141 ? ["stableIncrementalCache"] : []),
-        ...(isAfter141 ? ["experimentalIncrementalCacheHandler"] : []),
+        ...(isAfter141
+          ? ["experimentalIncrementalCacheHandler"]
+          : ["stableIncrementalCache"]),
       ],
     }),
 
     openNextResolvePlugin({
       fnName: name,
-      overrides: overrides,
+      overrides,
     }),
   ];
-
-  if (plugins && plugins.length > 0) {
-    logger.debug(
-      `Applying plugins:: [${plugins
-        .map(({ name }) => name)
-        .join(",")}] for Next version: ${options.nextVersion}`,
-    );
-  }
 
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
   await buildHelper.esbuildAsync(
@@ -238,9 +231,12 @@ async function generateBundle(
       },
       plugins,
       alias: {
-        "next/dist/server/next-server.js": isBundled
-          ? "./next-server.runtime.prod.js"
-          : "next/dist/server/next-server.js",
+        ...(isBundled
+          ? {
+              "next/dist/server/next-server.js":
+                "./next-server.runtime.prod.js",
+            }
+          : {}),
       },
     },
     options,

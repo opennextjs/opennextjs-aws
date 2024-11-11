@@ -19,11 +19,11 @@ const converter: Converter<
     const searchParams = new URL(event.url).searchParams;
     const query: Record<string, string | string[]> = {};
     for (const [key, value] of searchParams.entries()) {
-      if (query[key]) {
+      if (key in query) {
         if (Array.isArray(query[key])) {
-          (query[key] as string[]).push(value);
+          query[key].push(value);
         } else {
-          query[key] = [query[key] as string, value];
+          query[key] = [query[key], value];
         }
       } else {
         query[key] = value;
@@ -38,6 +38,11 @@ const converter: Converter<
     const rawPath = new URL(event.url).pathname;
     const method = event.method;
     const shouldHaveBody = method !== "GET" && method !== "HEAD";
+    const cookies: Record<string, string> = Object.fromEntries(
+      parseCookies(event.headers.get("cookie")).map((cookie) =>
+        cookie.split("="),
+      ),
+    );
 
     return {
       type: "core",
@@ -45,15 +50,10 @@ const converter: Converter<
       rawPath,
       url: event.url,
       body: shouldHaveBody ? Buffer.from(body) : undefined,
-      headers: headers,
-      remoteAddress: (event.headers.get("x-forwarded-for") as string) ?? "::1",
+      headers,
+      remoteAddress: event.headers.get("x-forwarded-for") ?? "::1",
       query,
-      cookies: Object.fromEntries(
-        parseCookies(event.headers.get("cookie") ?? "")?.map((cookie) => {
-          const [key, value] = cookie.split("=");
-          return [key, value];
-        }) ?? [],
-      ),
+      cookies,
     };
   },
   convertTo: async (result) => {

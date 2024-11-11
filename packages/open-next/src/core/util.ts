@@ -16,7 +16,8 @@ import {
   overrideHooks as overrideNextjsRequireHooks,
 } from "./require-hooks.js";
 
-// WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+// WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled Reac
+// See https://opennext.js.org/aws/v2/advanced/workaround#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 // Step 1: Need to override the require hooks for React before Next.js server
 //         overrides them with prebundled ones in the case of app dir
 // Step 2: Import Next.js server
@@ -76,7 +77,8 @@ export function loadMiddlewareManifest(nextDir: string) {
 
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {
-  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React — https://github.com/serverless-stack/open-next#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
+  // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
+  // See https://opennext.js.org/aws/v2/advanced/workaround#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
 
   const routes = [
     ...RoutesManifest.routes.static,

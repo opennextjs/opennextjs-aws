@@ -146,13 +146,10 @@ export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
  * @__PURE__
  */
 export function escapeRegex(str: string) {
-  let path = str.replace(/\(\.\)/g, "_µ1_");
-
-  path = path.replace(/\(\.{2}\)/g, "_µ2_");
-
-  path = path.replace(/\(\.{3}\)/g, "_µ3_");
-
-  return path;
+  return str
+    .replaceAll("(.)", "_µ1_")
+    .replaceAll("(..)", "_µ2_")
+    .replaceAll("(...)", "_µ3_");
 }
 
 /**
@@ -160,13 +157,10 @@ export function escapeRegex(str: string) {
  * @__PURE__
  */
 export function unescapeRegex(str: string) {
-  let path = str.replace(/_µ1_/g, "(.)");
-
-  path = path.replace(/_µ2_/g, "(..)");
-
-  path = path.replace(/_µ3_/g, "(...)");
-
-  return path;
+  return str
+    .replaceAll("_µ1_", "(.)")
+    .replaceAll("_µ2_", "(..)")
+    .replaceAll("_µ3_", "(...)");
 }
 
 /**
@@ -298,7 +292,8 @@ export function fixCacheHeaderForHtmlPages(
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  // WORKAROUND: `NextServer` does not set cache headers for HTML pages — https://github.com/serverless-stack/open-next#workaround-nextserver-does-not-set-cache-headers-for-html-pages
+  // WORKAROUND: `NextServer` does not set cache headers for HTML pages
+  // https://opennext.js.org/aws/v2/advanced/workaround#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   if (HtmlPages.includes(rawPath)) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
@@ -411,7 +406,7 @@ export function generateMessageGroupId(rawPath: string) {
   const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   // This will generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
   // This means that we could have 1000 revalidate request at the same time
-  const maxConcurrency = parseInt(
+  const maxConcurrency = Number.parseInt(
     process.env.MAX_REVALIDATE_CONCURRENCY ?? "10",
   );
   const randomInt = Math.floor(randomFloat * maxConcurrency);
@@ -460,7 +455,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     debug("cache-control", cacheControl, globalThis.lastModified, Date.now());
     if (typeof cacheControl !== "string") return;
     const match = cacheControl.match(regex);
-    const sMaxAge = match ? parseInt(match[1]) : undefined;
+    const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
 
     // 31536000 is the default s-maxage value for SSG pages
     if (sMaxAge && sMaxAge !== 31536000) {

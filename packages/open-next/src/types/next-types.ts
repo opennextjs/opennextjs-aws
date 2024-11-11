@@ -173,10 +173,8 @@ export type Options = {
   buildId: string;
   isExternalRewrite?: boolean;
 };
-export interface PluginHandler {
-  (
-    req: IncomingMessage,
-    res: OpenNextNodeResponse,
-    options: Options,
-  ): Promise<OpenNextNodeResponse | undefined>;
-}
+export type PluginHandler = (
+  req: IncomingMessage,
+  res: OpenNextNodeResponse,
+  options: Options,
+) => Promise<OpenNextNodeResponse | undefined>;
