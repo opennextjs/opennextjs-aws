@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       await wait(2000);
       await writer.write(
         `data: ${JSON.stringify({
-          message: "hello:" + i,
+          message: `hello:${i}`,
           time: new Date().toISOString(),
         })}\n\n`,
       );

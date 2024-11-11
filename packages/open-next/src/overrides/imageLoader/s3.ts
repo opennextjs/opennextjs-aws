@@ -25,7 +25,7 @@ const s3Loader: ImageLoader = {
       new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: keyPrefix
-          ? keyPrefix + "/" + key.replace(/^\//, "")
+          ? `${keyPrefix}/${key.replace(/^\//, "")}`
           : key.replace(/^\//, ""),
       }),
     );

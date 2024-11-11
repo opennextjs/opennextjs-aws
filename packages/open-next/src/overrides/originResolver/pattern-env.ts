@@ -19,12 +19,11 @@ const envLoader: OriginResolver = {
             // Convert cloudfront pattern to regex
             return new RegExp(
               // transform glob pattern to regex
-              "/" +
-                pattern
-                  .replace(/\*\*/g, "(.*)")
-                  .replace(/\*/g, "([^/]*)")
-                  .replace(/\//g, "\\/")
-                  .replace(/\?/g, "."),
+              `/${pattern
+                .replace(/\*\*/g, "(.*)")
+                .replace(/\*/g, "([^/]*)")
+                .replace(/\//g, "\\/")
+                .replace(/\?/g, ".")}`,
             ).test(_path);
           })
         ) {

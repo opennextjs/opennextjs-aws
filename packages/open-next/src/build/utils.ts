@@ -7,9 +7,9 @@ export function printHeader(header: string) {
   logger.info(
     [
       "",
-      "┌" + "─".repeat(header.length + 2) + "┐",
+      `┌${"─".repeat(header.length + 2)}┐`,
       `│ ${header} │`,
-      "└" + "─".repeat(header.length + 2) + "┘",
+      `└${"─".repeat(header.length + 2)}┘`,
       "",
     ].join("\n"),
   );

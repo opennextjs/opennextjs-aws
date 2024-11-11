@@ -20,7 +20,6 @@
       },
       "style": {
         "noUnusedTemplateLiteral": "warn",
-        "useTemplate": "warn",
         "noNonNullAssertion": "warn",
         "noParameterAssign": "warn",
         "useDefaultParameterLast": "warn",
