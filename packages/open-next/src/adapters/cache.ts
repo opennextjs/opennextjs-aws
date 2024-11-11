@@ -121,8 +121,6 @@ function isFetchCache(
 }
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class S3Cache {
-  constructor(_ctx: CacheHandlerContext) {}
-
   public async get(
     key: string,
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
