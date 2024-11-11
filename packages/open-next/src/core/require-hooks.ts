@@ -142,6 +142,7 @@ export function applyOverride() {
     const hookResolved = isApp()
       ? requestMapApp.get(request)
       : requestMapPage.get(request);
+    //! biome-ignore lint/style/noParameterAssign: <explanation> <-- doesn't work
     if (hookResolved) request = hookResolved;
     return originalResolveFilename.call(mod, request, parent, isMain, options);
 

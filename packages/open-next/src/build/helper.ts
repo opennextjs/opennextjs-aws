@@ -271,9 +271,11 @@ export function getNextVersion(appPath: string): string {
 export function compareSemver(v1: string, v2: string): number {
   if (v1 === "latest") return 1;
   if (/^[^\d]/.test(v1)) {
+    // biome-ignore lint/style/noParameterAssign: <explanation>
     v1 = v1.substring(1);
   }
   if (/^[^\d]/.test(v2)) {
+    // biome-ignore lint/style/noParameterAssign: <explanation>
     v2 = v2.substring(1);
   }
   const [major1, minor1, patch1] = v1.split(".").map(Number);

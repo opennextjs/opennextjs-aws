@@ -3,6 +3,7 @@ import os from "node:os";
 import logger from "../logger.js";
 
 export function printHeader(header: string) {
+  // biome-ignore lint/style/noParameterAssign: <explanation>
   header = `OpenNext — ${header}`;
   logger.info(
     [
