@@ -10,8 +10,8 @@ import {
   statSync,
   symlinkSync,
   writeFileSync,
-} from "fs";
-import path from "path";
+} from "node:fs";
+import path from "node:path";
 import type { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";

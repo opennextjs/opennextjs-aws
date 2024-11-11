@@ -1,4 +1,4 @@
-import { Readable } from "stream";
+import { Readable } from "node:stream";
 import converter from "@opennextjs/aws/overrides/converters/aws-cloudfront.js";
 import type {
   CloudFrontRequestEvent,

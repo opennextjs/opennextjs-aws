@@ -1,4 +1,4 @@
-import type { Writable } from "stream";
+import type { Writable } from "node:stream";
 import type { APIGatewayProxyEventV2, Context } from "aws-lambda";
 
 export interface ResponseStream extends Writable {

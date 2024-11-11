@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveTagCache } from "../core/resolve.js";

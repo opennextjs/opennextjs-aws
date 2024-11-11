@@ -3,10 +3,10 @@ import type {
   OutgoingHttpHeader,
   OutgoingHttpHeaders,
   ServerResponse,
-} from "http";
-import type { Socket } from "net";
-import type { TransformCallback, Writable } from "stream";
-import { Transform } from "stream";
+} from "node:http";
+import type { Socket } from "node:net";
+import type { TransformCallback, Writable } from "node:stream";
+import { Transform } from "node:stream";
 
 import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";

@@ -8,7 +8,7 @@ import { error } from "../adapters/logger.js";
 
 // This module will only be loaded once per process.
 
-const mod = require("module");
+const mod = require("node:module");
 
 const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();

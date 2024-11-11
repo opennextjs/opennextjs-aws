@@ -1,4 +1,4 @@
-const mod = require("module");
+const mod = require("node:module");
 
 const resolveFilename = mod._resolveFilename;
 

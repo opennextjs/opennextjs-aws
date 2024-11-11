@@ -20,7 +20,6 @@
       },
       "style": {
         "noUnusedTemplateLiteral": "warn",
-        "useNodejsImportProtocol": "warn",
         "useTemplate": "warn",
         "noNonNullAssertion": "warn",
         "noParameterAssign": "warn",

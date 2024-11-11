@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 
-import { readFileSync } from "fs";
-import path from "path";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { BehaviorOptions, ICachePolicy } from "aws-cdk-lib/aws-cloudfront";
 import {
   AllowedMethods,
