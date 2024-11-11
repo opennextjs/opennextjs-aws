@@ -22,7 +22,6 @@
         "noUnusedTemplateLiteral": "warn",
         "noNonNullAssertion": "warn",
         "noParameterAssign": "warn",
-        "useDefaultParameterLast": "warn",
         "noCommaOperator": "warn",
         "useSingleVarDeclarator": "warn"
       },

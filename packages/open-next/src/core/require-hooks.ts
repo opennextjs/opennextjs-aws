@@ -24,10 +24,7 @@ export function overrideHooks(config: NextConfig) {
   }
 }
 
-function addHookAliases(
-  aliases: [string, string][] = [],
-  type: "app" | "page",
-) {
+function addHookAliases(aliases: [string, string][], type: "app" | "page") {
   for (const [key, value] of aliases) {
     type === "app"
       ? hookPropertyMapApp.set(key, value)
