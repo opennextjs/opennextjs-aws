@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("Next after", async ({ request }) => {
   const initialSSG = await request.get("/api/after/ssg");
