@@ -14,25 +14,21 @@
         "all": false
       },
       "suspicious": {
-        "noExplicitAny": "info",
-        "noAssignInExpressions": "warn",
-        "noConfusingVoidType": "warn"
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noConfusingVoidType": "off"
       },
       "style": {
-        "noNonNullAssertion": "warn",
-        "noParameterAssign": "warn",
-        "noCommaOperator": "warn"
-      },
-      "correctness": {
-        "noUnnecessaryContinue": "warn",
-        "noInnerDeclarations": "warn"
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "info",
+        "noCommaOperator": "info"
       },
       "complexity": {
         "noForEach": "off",
-        "noBannedTypes": "warn"
+        "noBannedTypes": "off"
       },
       "performance": {
-        "noDelete": "warn"
+        "noDelete": "off"
       }
     }
   },
@@ -42,7 +38,7 @@
       "linter": {
         "rules": {
           "suspicious": {
-            "noRedeclare": "warn"
+            "noRedeclare": "off"
           }
         }
       }
@@ -52,15 +48,15 @@
       "linter": {
         "rules": {
           "style": {
-            "useSelfClosingElements": "warn"
+            "useSelfClosingElements": "off"
           },
           "correctness": {
-            "useJsxKeyInIterable": "warn",
-            "useExhaustiveDependencies": "warn"
+            "useJsxKeyInIterable": "off",
+            "useExhaustiveDependencies": "off"
           },
           "suspicious": {
-            "noArrayIndexKey": "warn",
-            "noRedeclare": "warn"
+            "noArrayIndexKey": "off",
+            "noRedeclare": "off"
           }
         }
       }
