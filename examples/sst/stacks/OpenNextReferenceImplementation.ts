@@ -391,26 +391,24 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         .filter((b) => b.pattern !== "*")
         .reduce(
           (acc, behavior) => {
-            return {
-              ...acc,
-              [behavior.pattern]: {
-                origin: behavior.origin
-                  ? origins[behavior.origin]
-                  : origins.default,
-                viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
-                cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
-                cachePolicy:
-                  behavior.origin === "s3"
-                    ? this.staticCachePolicy
-                    : this.serverCachePolicy,
-                originRequestPolicy:
-                  behavior.origin === "s3"
-                    ? undefined
-                    : OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                functionAssociations: fnAssociations,
-              },
+            acc[behavior.pattern] = {
+              origin: behavior.origin
+                ? origins[behavior.origin]
+                : origins.default,
+              viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+              allowedMethods: AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
+              cachedMethods: CachedMethods.CACHE_GET_HEAD_OPTIONS,
+              cachePolicy:
+                behavior.origin === "s3"
+                  ? this.staticCachePolicy
+                  : this.serverCachePolicy,
+              originRequestPolicy:
+                behavior.origin === "s3"
+                  ? undefined
+                  : OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+              functionAssociations: fnAssociations,
             };
+            return acc;
           },
           {} as Record<string, BehaviorOptions>,
         ),

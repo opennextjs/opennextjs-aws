@@ -31,7 +31,8 @@ export function convertFromQueryString(query: string) {
   return queryParts.reduce(
     (acc, part) => {
       const [key, value] = part.split("=");
-      return { ...acc, [key]: value };
+      acc[key] = value;
+      return acc;
     },
     {} as Record<string, string>,
   );

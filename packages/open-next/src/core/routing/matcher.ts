@@ -214,11 +214,11 @@ export function handleRewrites<T extends RewriteDefinition>(
       ),
       // params for the has
       ...rewrite.has?.reduce((acc, cur) => {
-        return { ...acc, ...computeHas(cur) };
+        return Object.assign(acc, computeHas(cur));
       }, {}),
       // params for the missing
       ...rewrite.missing?.reduce((acc, cur) => {
-        return { ...acc, ...computeHas(cur) };
+        return Object.assign(acc, computeHas(cur));
       }, {}),
     };
     const isUsingParams = Object.keys(params).length > 0;

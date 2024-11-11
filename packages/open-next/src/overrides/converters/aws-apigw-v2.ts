@@ -84,10 +84,14 @@ async function convertFromAPIGatewayProxyEventV2(
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
     cookies:
-      event.cookies?.reduce((acc, cur) => {
-        const [key, value] = cur.split("=");
-        return { ...acc, [key]: value };
-      }, {}) ?? {},
+      event.cookies?.reduce(
+        (acc, cur) => {
+          const [key, value] = cur.split("=");
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) ?? {},
   };
 }
 

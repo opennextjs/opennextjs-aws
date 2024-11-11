@@ -101,10 +101,14 @@ async function convertFromCloudFrontRequestEvent(
     remoteAddress: clientIp,
     query: convertToQuery(querystring),
     cookies:
-      headers.cookie?.reduce((acc, cur) => {
-        const { key, value } = cur;
-        return { ...acc, [key ?? ""]: value };
-      }, {}) ?? {},
+      headers.cookie?.reduce(
+        (acc, cur) => {
+          const { key = "", value } = cur;
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) ?? {},
   };
 }
 
