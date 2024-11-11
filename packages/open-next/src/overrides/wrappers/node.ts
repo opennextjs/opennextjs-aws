@@ -33,9 +33,9 @@ const wrapper: WrapperHandler = async (handler, converter) => {
   await new Promise<void>((resolve) => {
     server.on("listening", () => {
       const cleanup = (code: number) => {
-        debug(`Closing server`);
+        debug("Closing server");
         server.close(() => {
-          debug(`Server closed`);
+          debug("Server closed");
           process.exit(code);
         });
       };

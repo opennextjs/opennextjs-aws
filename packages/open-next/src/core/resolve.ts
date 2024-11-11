@@ -24,7 +24,7 @@ export async function resolveConverter<
   if (typeof converter === "function") {
     return converter();
   }
-  const m_1 = await import(`../overrides/converters/aws-apigw-v2.js`);
+  const m_1 = await import("../overrides/converters/aws-apigw-v2.js");
   // @ts-expect-error
   return m_1.default;
 }

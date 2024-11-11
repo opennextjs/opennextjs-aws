@@ -97,17 +97,17 @@ const toResolveMap = (map: Record<string, string>): [string, string][] =>
 
 // Override built-in React packages if necessary
 function overrideReact(config: NextConfig) {
-  addHookAliases([["react", require.resolve(`react`)]], "page");
+  addHookAliases([["react", require.resolve("react")]], "page");
 
   // ignore: react/jsx-dev-runtime is not available on older version of Next.js ie. v13.1.6
   // react/jsx-runtime is not available on newer version of Next.js ie. v13.4.10-canary.3
   try {
     addHookAliases(
-      [["react/jsx-runtime", require.resolve(`react/jsx-runtime`)]],
+      [["react/jsx-runtime", require.resolve("react/jsx-runtime")]],
       "page",
     );
     addHookAliases(
-      [["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)]],
+      [["react/jsx-dev-runtime", require.resolve("react/jsx-dev-runtime")]],
       "page",
     );
   } catch (e) {}

@@ -47,4 +47,4 @@ console.log(`::set-output name=notes::${notes.join("%0A")}`);
 console.log(`::set-output name=version::v${version}`);
 
 execSync(`git tag v${version}`);
-execSync(`git push origin --tags`);
+execSync("git push origin --tags");

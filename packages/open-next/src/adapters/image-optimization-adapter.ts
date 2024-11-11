@@ -190,7 +190,7 @@ function buildFailureResponse(
     );
     response.writeHead(500, {
       Vary: "Accept",
-      "Cache-Control": `public,max-age=60,immutable`,
+      "Cache-Control": "public,max-age=60,immutable",
       "Content-Type": "application/json",
     });
     response.end(e?.message || e?.toString() || "An error occurred");
@@ -202,7 +202,7 @@ function buildFailureResponse(
     headers: {
       Vary: "Accept",
       // For failed images, allow client to retry after 1 minute.
-      "Cache-Control": `public,max-age=60,immutable`,
+      "Cache-Control": "public,max-age=60,immutable",
       "Content-Type": "application/json",
     },
     body: toReadableStream(e?.message || e?.toString() || "An error occurred"),

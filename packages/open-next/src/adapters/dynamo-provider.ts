@@ -47,7 +47,7 @@ async function defaultHandler(
 async function insert(
   requestType: InitializationFunctionEvent["requestType"],
 ): Promise<InitializationFunctionEvent> {
-  const file = readFileSync(`dynamodb-cache.json`, "utf8");
+  const file = readFileSync("dynamodb-cache.json", "utf8");
 
   const data: DataType[] = JSON.parse(file);
 

@@ -19,7 +19,6 @@
         "noConfusingVoidType": "warn"
       },
       "style": {
-        "noUnusedTemplateLiteral": "warn",
         "noNonNullAssertion": "warn",
         "noParameterAssign": "warn",
         "noCommaOperator": "warn"

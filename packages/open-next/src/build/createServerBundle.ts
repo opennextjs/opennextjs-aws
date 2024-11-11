@@ -304,7 +304,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
 }
 
 async function minifyServerBundle(outputDir: string) {
-  logger.info(`Minimizing server function...`);
+  logger.info("Minimizing server function...");
 
   await minifyAll(outputDir, {
     compress_json: true,

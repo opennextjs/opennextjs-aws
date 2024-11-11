@@ -29,7 +29,7 @@ const defaultHandler = async (event: RevalidateEvent) => {
   const failedRecords: RevalidateEvent["records"] = [];
   for (const record of event.records) {
     const { host, url } = record;
-    debug(`Revalidating stale page`, { host, url });
+    debug("Revalidating stale page", { host, url });
 
     // Make a HEAD request to the page to revalidate it. This will trigger
     // the page to be re-rendered and cached in S3
@@ -67,7 +67,7 @@ const defaultHandler = async (event: RevalidateEvent) => {
           },
         );
         req.on("error", (err) => {
-          error(`Error revalidating page`, { host, url });
+          error("Error revalidating page", { host, url });
           reject(err);
         });
         req.end();

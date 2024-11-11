@@ -18,7 +18,7 @@ test.describe("Next Config Redirect", () => {
     await page.goto("/");
     await page.goto("/next-config-redirect-missing");
 
-    await page.waitForURL(`/config-redirect?missing=true`);
+    await page.waitForURL("/config-redirect?missing=true");
 
     const el = page.getByText("I was redirected from next.config.js", {
       exact: true,
@@ -41,7 +41,7 @@ test.describe("Next Config Redirect", () => {
     await page.goto("/");
     await page.goto("/next-config-redirect-has");
 
-    await page.waitForURL(`/config-redirect?has=true`);
+    await page.waitForURL("/config-redirect?has=true");
 
     const el = page.getByText("I was redirected from next.config.js", {
       exact: true,
@@ -52,7 +52,7 @@ test.describe("Next Config Redirect", () => {
     await page.goto("/");
     await page.goto("/next-config-redirect-has-with-value");
 
-    await page.waitForURL(`/config-redirect?hasWithValue=true`);
+    await page.waitForURL("/config-redirect?hasWithValue=true");
 
     const el = page.getByText("I was redirected from next.config.js", {
       exact: true,
@@ -64,7 +64,7 @@ test.describe("Next Config Redirect", () => {
     await page.goto("/next-config-redirect-has-with-bad-value");
 
     // did not redirect
-    await page.waitForURL(`/next-config-redirect-has-with-bad-value`);
+    await page.waitForURL("/next-config-redirect-has-with-bad-value");
 
     // 404 not found
     const el = page.getByText("This page could not be found.", {

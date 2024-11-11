@@ -98,7 +98,7 @@ export async function minifyAll(dir, opts) {
   //process.stdout.write(".\n");
   //console.log("Total found files: " + total_files);
   if (failed_files.length) {
-    console.log(`\n\nFailed to minify files:`);
+    console.log("\n\nFailed to minify files:");
     failed_files.forEach((f) => console.log(`\t${f}`));
   }
 }
