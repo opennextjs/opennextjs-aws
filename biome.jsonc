@@ -31,7 +31,6 @@
       "complexity": {
         "noForEach": "off",
         "noBannedTypes": "warn",
-        "noExtraBooleanCast": "warn",
         "useOptionalChain": "warn"
       },
       "performance": {
