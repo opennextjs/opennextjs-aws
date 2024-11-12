@@ -425,7 +425,7 @@ function cyrb128(str: string) {
   h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
   h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
   h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-  // biome-ignore lint/style/noCommaOperator: <explanation>
+  // biome-ignore lint/style/noCommaOperator:
   (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
   return h1 >>> 0;
 }
