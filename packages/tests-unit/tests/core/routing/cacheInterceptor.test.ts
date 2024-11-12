@@ -68,12 +68,14 @@ const queue = {
   send: vi.fn(),
 };
 
-globalThis.incrementalCache = incrementalCache;
-globalThis.tagCache = tagCache;
-
 declare global {
   var queue: Queue;
+  var incrementalCache: any;
+  var tagCache: any;
 }
+
+globalThis.incrementalCache = incrementalCache;
+globalThis.tagCache = tagCache;
 globalThis.queue = queue;
 
 beforeEach(() => {

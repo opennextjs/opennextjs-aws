@@ -1,5 +1,3 @@
-import type { IncrementalCache, TagCache } from "types/overrides";
-
 import { isBinaryContentType } from "./binary";
 import { debug, error, warn } from "./logger";
 
@@ -98,15 +96,6 @@ const CACHE_EXTENSION_REGEX = /\.(cache|fetch)$/;
 
 export function hasCacheExtension(key: string) {
   return CACHE_EXTENSION_REGEX.test(key);
-}
-
-declare global {
-  var incrementalCache: IncrementalCache;
-  var tagCache: TagCache;
-  var disableDynamoDBCache: boolean;
-  var disableIncrementalCache: boolean;
-  var lastModified: Record<string, number>;
-  var isNextAfter15: boolean;
 }
 
 function isFetchCache(
@@ -227,7 +216,7 @@ export default class S3Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
-      const requestId = globalThis.__als.getStore()?.requestId ?? "";
+      const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
       globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
         return {
@@ -298,7 +287,7 @@ export default class S3Cache {
     }
     // This one might not even be necessary anymore
     // Better be safe than sorry
-    const detachedPromise = globalThis.__als
+    const detachedPromise = globalThis.__openNextAls
       .getStore()
       ?.pendingPromiseRunner.withResolvers<void>();
     try {

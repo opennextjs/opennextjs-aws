@@ -1,8 +1,4 @@
-import type { AsyncLocalStorage } from "node:async_hooks";
-
 import type { OpenNextConfig } from "types/open-next";
-import type { IncrementalCache, Queue } from "types/overrides";
-import type { DetachedPromiseRunner } from "utils/promise";
 
 import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
@@ -14,19 +10,6 @@ import {
   resolveTagCache,
   resolveWrapper,
 } from "./resolve";
-
-declare global {
-  var queue: Queue;
-  var incrementalCache: IncrementalCache;
-  var fnName: string | undefined;
-  var serverId: string;
-  var __als: AsyncLocalStorage<{
-    requestId: string;
-    pendingPromiseRunner: DetachedPromiseRunner;
-    isISRRevalidation?: boolean;
-    mergeHeadersPriority?: "middleware" | "handler";
-  }>;
-}
 
 export async function createMainHandler() {
   // @ts-expect-error `./open-next.config.mjs` exists only in the build output

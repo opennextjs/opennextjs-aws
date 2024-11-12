@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    after: true,
+  },
   redirects: async () => {
     return [
       {

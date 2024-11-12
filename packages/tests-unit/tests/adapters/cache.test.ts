@@ -2,6 +2,11 @@
 import S3Cache, { hasCacheExtension } from "@opennextjs/aws/adapters/cache.js";
 import { vi } from "vitest";
 
+declare global {
+  var disableIncrementalCache: boolean;
+  var isNextAfter15: boolean;
+}
+
 describe("hasCacheExtension", () => {
   it("Should returns true if has an extension and it is a CacheExtension", () => {
     expect(hasCacheExtension("hello.cache")).toBeTruthy();
@@ -51,7 +56,7 @@ describe("S3Cache", () => {
   };
   globalThis.tagCache = tagCache;
 
-  globalThis.__als = {
+  globalThis.__openNextAls = {
     getStore: vi.fn().mockReturnValue({
       requestId: "123",
       pendingPromiseRunner: {

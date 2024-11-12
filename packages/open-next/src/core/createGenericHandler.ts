@@ -10,10 +10,6 @@ import type { OpenNextHandler } from "types/overrides";
 import { debug } from "../adapters/logger";
 import { resolveConverter, resolveWrapper } from "./resolve";
 
-declare global {
-  var openNextConfig: Partial<OpenNextConfig>;
-}
-
 type HandlerType =
   | "imageOptimization"
   | "revalidate"
