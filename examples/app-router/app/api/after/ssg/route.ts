@@ -8,6 +8,5 @@ export async function GET() {
     tags: ["date"],
   });
   const date = await dateFn();
-  console.log("date", date);
-  return NextResponse.json({ date: date });
+  return NextResponse.json({ date });
 }

@@ -80,14 +80,14 @@ function provideNextAfterProvider() {
 
   const openNextStoreContext = globalThis.__openNextAls.getStore();
 
-  const awaiter =
+  const waitUntil =
     globalThis.openNextWaitUntil ??
     ((promise: Promise<unknown>) =>
       openNextStoreContext?.pendingPromiseRunner.add(promise));
 
   const nextAfterContext = {
     get: () => ({
-      waitUntil: awaiter,
+      waitUntil,
     }),
   };
 
