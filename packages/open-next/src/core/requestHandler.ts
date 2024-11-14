@@ -70,10 +70,29 @@ export async function openNextHandler(
         "isExternalRewrite" in preprocessResult &&
         preprocessResult.isExternalRewrite
       ) {
-        const proxyResult = await globalThis.proxyExternalRequest.proxy(
-          preprocessResult.internalEvent,
-        );
-        preprocessResult = proxyResult;
+        try {
+          const proxyResult = await globalThis.proxyExternalRequest.proxy(
+            preprocessResult.internalEvent,
+          );
+          preprocessResult = proxyResult;
+        } catch (e) {
+          error("External request failed.", e);
+          preprocessResult = {
+            internalEvent: {
+              type: "core",
+              rawPath: "/500",
+              method: "GET",
+              headers: {},
+              url: "/500",
+              query: {},
+              cookies: {},
+              remoteAddress: "",
+            },
+            isExternalRewrite: false,
+            isISR: false,
+            origin: false,
+          };
+        }
       }
 
       if ("type" in preprocessResult) {
