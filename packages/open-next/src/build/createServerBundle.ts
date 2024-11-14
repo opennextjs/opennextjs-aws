@@ -134,7 +134,9 @@ async function generateBundle(
   // Bundle next server if necessary
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
   if (isBundled) {
-    await bundleNextServer(path.join(outputPath, packagePath), appPath);
+    await bundleNextServer(path.join(outputPath, packagePath), appPath, {
+      debug: options.debug,
+    });
   }
 
   // Copy middleware

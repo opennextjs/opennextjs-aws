@@ -42,7 +42,11 @@ const externals = [
   "next/dist/compiled/next-server",
 ];
 
-export async function bundleNextServer(outputDir: string, appPath: string) {
+export async function bundleNextServer(
+  outputDir: string,
+  appPath: string,
+  { debug = false },
+) {
   const require = createRequire(`${appPath}/package.json`);
   const entrypoint = require.resolve("next/dist/esm/server/next-server.js");
 
@@ -54,7 +58,7 @@ export async function bundleNextServer(outputDir: string, appPath: string) {
     // packages: "external",
     format: "cjs",
     external: externals,
-    minify: true,
+    minify: !debug,
     outfile: path.join(outputDir, "next-server.runtime.prod.js"),
     sourcemap: false,
     plugins: [
