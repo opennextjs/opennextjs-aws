@@ -54,13 +54,13 @@ export function error(...args: any[]) {
     if (error.logLevel === 0) {
       debug(...args);
       return;
-    } else if (error.logLevel === 1) {
+    }
+    if (error.logLevel === 1) {
       warn(...args);
       return;
-    } else {
-      console.error(...args);
-      return;
     }
+    console.error(...args);
+    return;
   } else {
     console.error(...args);
   }

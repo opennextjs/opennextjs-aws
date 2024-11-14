@@ -6,7 +6,7 @@ import logger from "../logger.js";
 import * as buildHelper from "./helper.js";
 
 export function createStaticAssets(options: buildHelper.BuildOptions) {
-  logger.info(`Bundling static assets...`);
+  logger.info("Bundling static assets...");
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
@@ -56,7 +56,7 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
  * @returns Whether tag cache is used.
  */
 export function createCacheAssets(options: buildHelper.BuildOptions) {
-  logger.info(`Bundling cache assets...`);
+  logger.info("Bundling cache assets...");
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = path.relative(options.monorepoRoot, appBuildOutputPath);
@@ -107,7 +107,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         case ".html":
         case ".json":
         case ".body":
-        case ".rsc":
+        case ".rsc": {
           const newFilePath = absolutePath
             .substring(0, absolutePath.length - ext.length)
             .replace(/\.prefetch$/, "")
@@ -118,6 +118,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             ...cacheFilesPath[newFilePath],
           };
           break;
+        }
         case ".map":
           break;
         default:

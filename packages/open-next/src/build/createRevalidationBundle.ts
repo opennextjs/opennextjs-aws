@@ -9,7 +9,7 @@ import { installDependencies } from "./installDeps.js";
 export async function createRevalidationBundle(
   options: buildHelper.BuildOptions,
 ) {
-  logger.info(`Bundling revalidation function...`);
+  logger.info("Bundling revalidation function...");
 
   const { appBuildOutputPath, config, outputDir } = options;
 

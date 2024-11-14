@@ -69,10 +69,14 @@ async function convertFromAPIGatewayProxyEvent(
       event.multiValueQueryStringParameters ?? {},
     ),
     cookies:
-      event.multiValueHeaders?.cookie?.reduce((acc, cur) => {
-        const [key, value] = cur.split("=");
-        return { ...acc, [key]: value };
-      }, {}) ?? {},
+      event.multiValueHeaders?.cookie?.reduce(
+        (acc, cur) => {
+          const [key, value] = cur.split("=");
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) ?? {},
   };
 }
 

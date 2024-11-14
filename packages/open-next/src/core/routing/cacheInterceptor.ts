@@ -45,7 +45,8 @@ async function computeCacheControl(
       "x-opennext-cache": "ERROR",
       etag,
     };
-  } else if (finalRevalidate !== CACHE_ONE_YEAR) {
+  }
+  if (finalRevalidate !== CACHE_ONE_YEAR) {
     const sMaxAge = Math.max(finalRevalidate - age, 1);
     debug("sMaxAge", {
       finalRevalidate,
@@ -71,13 +72,12 @@ async function computeCacheControl(
       "x-opennext-cache": isStale ? "STALE" : "HIT",
       etag,
     };
-  } else {
-    return {
-      "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-      "x-opennext-cache": "HIT",
-      etag,
-    };
   }
+  return {
+    "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+    "x-opennext-cache": "HIT",
+    etag,
+  };
 }
 
 async function generateResult(
@@ -92,12 +92,12 @@ async function generateResult(
   let isDataRequest = false;
   switch (cachedValue.type) {
     case "app":
-      isDataRequest = Boolean(event.headers["rsc"]);
+      isDataRequest = Boolean(event.headers.rsc);
       body = isDataRequest ? cachedValue.rsc : cachedValue.html;
       type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
       break;
     case "page":
-      isDataRequest = Boolean(event.query["__nextDataReq"]);
+      isDataRequest = Boolean(event.query.__nextDataReq);
       body = isDataRequest
         ? JSON.stringify(cachedValue.json)
         : cachedValue.html;
@@ -107,7 +107,7 @@ async function generateResult(
   const cacheControl = await computeCacheControl(
     localizedPath,
     body,
-    event.headers["host"],
+    event.headers.host,
     cachedValue.revalidate,
     lastModified,
   );
@@ -168,7 +168,7 @@ export async function cacheInterceptor(
           return event;
         }
       }
-      const host = event.headers["host"];
+      const host = event.headers.host;
       switch (cachedData.value?.type) {
         case "app":
         case "page":
@@ -178,7 +178,7 @@ export async function cacheInterceptor(
             cachedData.value,
             cachedData.lastModified,
           );
-        case "redirect":
+        case "redirect": {
           const cacheControl = await computeCacheControl(
             localizedPath,
             "",
@@ -197,6 +197,7 @@ export async function cacheInterceptor(
             },
             isBase64Encoded: false,
           };
+        }
         default:
           return event;
       }

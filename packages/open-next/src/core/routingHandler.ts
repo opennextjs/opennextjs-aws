@@ -27,17 +27,17 @@ export interface MiddlewareOutputEvent {
 }
 
 // Add the locale prefix to the regex so we correctly match the rawPath
-const optionalLocalePrefixRegex = !!RoutesManifest.locales.length
-  ? `^/(?:${RoutesManifest.locales.map((locale) => locale + "/?").join("|")})?`
+const optionalLocalePrefixRegex = RoutesManifest.locales.length
+  ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`
   : "^/";
 
 // Add the basepath prefix to the regex so we correctly match the rawPath
-const optionalBasepathPrefixRegex = !!RoutesManifest.basePath
+const optionalBasepathPrefixRegex = RoutesManifest.basePath
   ? `^${RoutesManifest.basePath}/?`
   : "^/";
 
 // Add the basePath prefix to the api routes
-const apiPrefix = !!RoutesManifest.basePath
+const apiPrefix = RoutesManifest.basePath
   ? `${RoutesManifest.basePath}/api`
   : "/api";
 
@@ -114,10 +114,9 @@ export default async function routingHandler(
   let middlewareResponseHeaders: Record<string, string | string[]> = {};
   if ("statusCode" in middleware) {
     return middleware;
-  } else {
-    middlewareResponseHeaders = middleware.responseHeaders || {};
-    internalEvent = middleware;
   }
+  middlewareResponseHeaders = middleware.responseHeaders || {};
+  internalEvent = middleware;
 
   // At this point internalEvent is an InternalEvent or a MiddlewareOutputEvent
 

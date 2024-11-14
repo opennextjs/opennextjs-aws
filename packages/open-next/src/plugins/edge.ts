@@ -100,7 +100,7 @@ globalThis._ROUTES = ${JSON.stringify(routes)};
 
 ${
   isInCloudfare
-    ? ``
+    ? ""
     : `
 import {readFileSync} from "node:fs";
 import path from "node:path";

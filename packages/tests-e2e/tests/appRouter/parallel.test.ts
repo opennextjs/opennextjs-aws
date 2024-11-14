@@ -4,7 +4,7 @@ test("Parallel routes", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: "Parallel" }).click();
 
-  await page.waitForURL(`/parallel`);
+  await page.waitForURL("/parallel");
 
   // Neither are selected, so A/B shouldn't be rendered
   let routeA = page.getByText("Parallel Route A");

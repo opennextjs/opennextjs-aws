@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 export async function createImageOptimizationBundle(
   options: buildHelper.BuildOptions,
 ) {
-  logger.info(`Bundling image optimization function...`);
+  logger.info("Bundling image optimization function...");
 
   const { appBuildOutputPath, config, outputDir } = options;
 

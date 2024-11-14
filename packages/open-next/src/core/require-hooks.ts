@@ -8,7 +8,7 @@ import { error } from "../adapters/logger.js";
 
 // This module will only be loaded once per process.
 
-const mod = require("module");
+const mod = require("node:module");
 
 const resolveFilename = mod._resolveFilename;
 const hookPropertyMapApp = new Map();
@@ -24,10 +24,7 @@ export function overrideHooks(config: NextConfig) {
   }
 }
 
-function addHookAliases(
-  aliases: [string, string][] = [],
-  type: "app" | "page",
-) {
+function addHookAliases(aliases: [string, string][], type: "app" | "page") {
   for (const [key, value] of aliases) {
     type === "app"
       ? hookPropertyMapApp.set(key, value)
@@ -100,17 +97,17 @@ const toResolveMap = (map: Record<string, string>): [string, string][] =>
 
 // Override built-in React packages if necessary
 function overrideReact(config: NextConfig) {
-  addHookAliases([["react", require.resolve(`react`)]], "page");
+  addHookAliases([["react", require.resolve("react")]], "page");
 
   // ignore: react/jsx-dev-runtime is not available on older version of Next.js ie. v13.1.6
   // react/jsx-runtime is not available on newer version of Next.js ie. v13.4.10-canary.3
   try {
     addHookAliases(
-      [["react/jsx-runtime", require.resolve(`react/jsx-runtime`)]],
+      [["react/jsx-runtime", require.resolve("react/jsx-runtime")]],
       "page",
     );
     addHookAliases(
-      [["react/jsx-dev-runtime", require.resolve(`react/jsx-dev-runtime`)]],
+      [["react/jsx-dev-runtime", require.resolve("react/jsx-dev-runtime")]],
       "page",
     );
   } catch (e) {}
@@ -144,6 +141,7 @@ export function applyOverride() {
     const hookResolved = isApp()
       ? requestMapApp.get(request)
       : requestMapPage.get(request);
+    // biome-ignore lint/style/noParameterAssign:
     if (hookResolved) request = hookResolved;
     return originalResolveFilename.call(mod, request, parent, isMain, options);
 

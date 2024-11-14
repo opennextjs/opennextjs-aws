@@ -40,7 +40,7 @@ export async function compileOpenNextConfig(
   const config = (await import(configPath)).default as OpenNextConfig;
   if (!config || !config.default) {
     logger.error(
-      `config.default cannot be empty, it should be at least {}, see more info here: https://opennext.js.org/config#configuration-file`,
+      "config.default cannot be empty, it should be at least {}, see more info here: https://opennext.js.org/config#configuration-file",
     );
     process.exit(1);
   }

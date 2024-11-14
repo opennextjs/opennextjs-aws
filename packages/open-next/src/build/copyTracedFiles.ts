@@ -10,8 +10,8 @@ import {
   statSync,
   symlinkSync,
   writeFileSync,
-} from "fs";
-import path from "path";
+} from "node:fs";
+import path from "node:path";
 import type { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";
@@ -81,7 +81,7 @@ export async function copyTracedFiles(
 
   const computeCopyFilesForPage = (pagePath: string) => {
     const fullFilePath = `server/${pagePath}.js`;
-    let requiredFiles;
+    let requiredFiles: { files: string[] };
     try {
       requiredFiles = JSON.parse(
         readFileSync(
@@ -101,13 +101,12 @@ See the docs for more information on how to bundle edge runtime functions.
 --------------------------------------------------------------------------------
         `,
         );
-      } else {
-        throw new Error(`
+      }
+      throw new Error(`
 --------------------------------------------------------------------------------
 We cannot find the route for ${pagePath}.
 File ${fullFilePath} does not exist
 --------------------------------------------------------------------------------`);
-      }
     }
     const dir = path.dirname(fullFilePath);
     extractFiles(

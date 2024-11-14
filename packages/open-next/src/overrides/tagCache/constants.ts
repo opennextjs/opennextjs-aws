@@ -16,7 +16,7 @@ export const getDynamoBatchWriteCommandConcurrency = (): number => {
 
   if (
     parsedDynamoBatchWriteCommandConcurrencyFromEnv &&
-    !isNaN(parsedDynamoBatchWriteCommandConcurrencyFromEnv)
+    !Number.isNaN(parsedDynamoBatchWriteCommandConcurrencyFromEnv)
   ) {
     return parsedDynamoBatchWriteCommandConcurrencyFromEnv;
   }

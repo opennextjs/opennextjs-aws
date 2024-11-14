@@ -214,11 +214,11 @@ export function handleRewrites<T extends RewriteDefinition>(
       ),
       // params for the has
       ...rewrite.has?.reduce((acc, cur) => {
-        return { ...acc, ...computeHas(cur) };
+        return Object.assign(acc, computeHas(cur));
       }, {}),
       // params for the missing
       ...rewrite.missing?.reduce((acc, cur) => {
-        return { ...acc, ...computeHas(cur) };
+        return Object.assign(acc, computeHas(cur));
       }, {}),
     };
     const isUsingParams = Object.keys(params).length > 0;
@@ -286,7 +286,8 @@ function handleTrailingSlashRedirect(
       isBase64Encoded: false,
     };
     // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (
+  }
+  if (
     !NextConfig.trailingSlash &&
     event.rawPath.endsWith("/") &&
     event.rawPath !== "/"
@@ -303,7 +304,8 @@ function handleTrailingSlashRedirect(
       body: emptyBody,
       isBase64Encoded: false,
     };
-  } else return false;
+  }
+  return false;
 }
 
 export function handleRedirects(
@@ -378,7 +380,7 @@ export function handleFallbackFalse(
     });
   const locales = NextConfig.i18n?.locales;
   const routesAlreadyHaveLocale =
-    (locales !== undefined && locales.includes(rawPath.split("/")[1])) ||
+    locales?.includes(rawPath.split("/")[1]) ||
     // If we don't use locales, we don't need to add the default locale
     locales === undefined;
   const localizedPath = routesAlreadyHaveLocale

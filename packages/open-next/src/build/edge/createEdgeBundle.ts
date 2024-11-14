@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { build } from "esbuild";
 import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import type {

@@ -42,13 +42,14 @@ function normalizeAPIGatewayProxyEventV2Body(
   const { body, isBase64Encoded } = event;
   if (Buffer.isBuffer(body)) {
     return body;
-  } else if (typeof body === "string") {
-    return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
-  } else if (typeof body === "object") {
-    return Buffer.from(JSON.stringify(body));
-  } else {
-    return Buffer.from("", "utf8");
   }
+  if (typeof body === "string") {
+    return Buffer.from(body, isBase64Encoded ? "base64" : "utf8");
+  }
+  if (typeof body === "object") {
+    return Buffer.from(JSON.stringify(body));
+  }
+  return Buffer.from("", "utf8");
 }
 
 function normalizeAPIGatewayProxyEventV2Headers(
@@ -59,7 +60,7 @@ function normalizeAPIGatewayProxyEventV2Headers(
   const headers: Record<string, string> = {};
 
   if (Array.isArray(cookies)) {
-    headers["cookie"] = cookies.join("; ");
+    headers.cookie = cookies.join("; ");
   }
 
   for (const [key, value] of Object.entries(rawHeaders || {})) {
@@ -83,10 +84,14 @@ async function convertFromAPIGatewayProxyEventV2(
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
     cookies:
-      event.cookies?.reduce((acc, cur) => {
-        const [key, value] = cur.split("=");
-        return { ...acc, [key]: value };
-      }, {}) ?? {},
+      event.cookies?.reduce(
+        (acc, cur) => {
+          const [key, value] = cur.split("=");
+          acc[key] = value;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) ?? {},
   };
 }
 

@@ -19,12 +19,11 @@ const envLoader: OriginResolver = {
             // Convert cloudfront pattern to regex
             return new RegExp(
               // transform glob pattern to regex
-              "/" +
-                pattern
-                  .replace(/\*\*/g, "(.*)")
-                  .replace(/\*/g, "([^/]*)")
-                  .replace(/\//g, "\\/")
-                  .replace(/\?/g, "."),
+              `/${pattern
+                .replace(/\*\*/g, "(.*)")
+                .replace(/\*/g, "([^/]*)")
+                .replace(/\//g, "\\/")
+                .replace(/\?/g, ".")}`,
             ).test(_path);
           })
         ) {
@@ -32,13 +31,13 @@ const envLoader: OriginResolver = {
           return origin[key];
         }
       }
-      if (_path.startsWith("/_next/image") && origin["imageOptimizer"]) {
+      if (_path.startsWith("/_next/image") && origin.imageOptimizer) {
         debug("Using origin", "imageOptimizer", _path);
-        return origin["imageOptimizer"];
+        return origin.imageOptimizer;
       }
-      if (origin["default"]) {
-        debug("Using default origin", origin["default"], _path);
-        return origin["default"];
+      if (origin.default) {
+        debug("Using default origin", origin.default, _path);
+        return origin.default;
       }
       return false as const;
     } catch (e) {

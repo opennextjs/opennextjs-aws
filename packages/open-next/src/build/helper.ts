@@ -101,7 +101,7 @@ export function esbuildSync(
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: debug ? false : true,
+    minify: !debug,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
@@ -137,7 +137,7 @@ export async function esbuildAsync(
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: debug ? false : true,
+    minify: !debug,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
@@ -271,9 +271,11 @@ export function getNextVersion(appPath: string): string {
 export function compareSemver(v1: string, v2: string): number {
   if (v1 === "latest") return 1;
   if (/^[^\d]/.test(v1)) {
+    // biome-ignore lint/style/noParameterAssign:
     v1 = v1.substring(1);
   }
   if (/^[^\d]/.test(v2)) {
+    // biome-ignore lint/style/noParameterAssign:
     v2 = v2.substring(1);
   }
   const [major1, minor1, patch1] = v1.split(".").map(Number);

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import type { InstallOptions } from "types/open-next";
 
 import logger from "../logger.js";

@@ -5,7 +5,7 @@ export default async function SearchQuery(props: {
 }) {
   const propsSearchParams = await props.searchParams;
   const mwSearchParams = (await headers()).get("search-params");
-  const multiValueParams = propsSearchParams["multi"];
+  const multiValueParams = propsSearchParams.multi;
   const multiValueArray = Array.isArray(multiValueParams)
     ? multiValueParams
     : [multiValueParams];

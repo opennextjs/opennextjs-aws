@@ -20,7 +20,7 @@ export async function createMiddleware(
   options: buildHelper.BuildOptions,
   { forceOnlyBuildOnce = false } = {},
 ) {
-  logger.info(`Bundling middleware function...`);
+  logger.info("Bundling middleware function...");
 
   const { appBuildOutputPath, config, outputDir } = options;
 

@@ -31,7 +31,7 @@ const defaultHandler = async (
       const url = initialUrl.toString();
 
       // @ts-expect-error - This is bundled
-      const handler = await import(`./middleware.mjs`);
+      const handler = await import("./middleware.mjs");
 
       const response: Response = await handler.default({
         headers: internalEvent.headers,

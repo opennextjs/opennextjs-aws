@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveTagCache } from "../core/resolve.js";
@@ -39,8 +39,6 @@ async function defaultHandler(
   switch (event.requestType) {
     case "delete":
       return remove();
-    case "create":
-    case "update":
     default:
       return insert(event.requestType);
   }
@@ -49,7 +47,7 @@ async function defaultHandler(
 async function insert(
   requestType: InitializationFunctionEvent["requestType"],
 ): Promise<InitializationFunctionEvent> {
-  const file = readFileSync(`dynamodb-cache.json`, "utf8");
+  const file = readFileSync("dynamodb-cache.json", "utf8");
 
   const data: DataType[] = JSON.parse(file);
 

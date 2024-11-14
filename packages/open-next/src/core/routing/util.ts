@@ -31,7 +31,8 @@ export function convertFromQueryString(query: string) {
   return queryParts.reduce(
     (acc, part) => {
       const [key, value] = part.split("=");
-      return { ...acc, [key]: value };
+      acc[key] = value;
+      return acc;
     },
     {} as Record<string, string>,
   );
@@ -184,9 +185,8 @@ function filterHeadersForProxy(
     const lowerKey = key.toLowerCase();
     if (disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz"))
       return;
-    else {
-      filteredHeaders[key] = value?.toString() ?? "";
-    }
+
+    filteredHeaders[key] = value?.toString() ?? "";
   });
   return filteredHeaders;
 }
@@ -372,7 +372,7 @@ export async function revalidateIfRequired(
 
       // For some weird cases, lastModified is not set, haven't been able to figure out yet why
       // For those cases we add the etag to the deduplication id, it might help
-      const etag = headers["etag"] ?? headers["ETag"] ?? "";
+      const etag = headers.etag ?? headers.ETag ?? "";
 
       await globalThis.queue.send({
         MessageBody: { host, url: revalidateUrl },
@@ -395,7 +395,7 @@ export async function revalidateIfRequired(
 export function generateMessageGroupId(rawPath: string) {
   let a = cyrb128(rawPath);
   // We use mulberry32 to generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
-  var t = (a += 0x6d2b79f5);
+  let t = (a += 0x6d2b79f5);
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
   const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -410,11 +410,11 @@ export function generateMessageGroupId(rawPath: string) {
 
 // Used to generate a hash int from a string
 function cyrb128(str: string) {
-  let h1 = 1779033703,
-    h2 = 3144134277,
-    h3 = 1013904242,
-    h4 = 2773480762;
-  for (let i = 0, k; i < str.length; i++) {
+  let h1 = 1779033703;
+  let h2 = 3144134277;
+  let h3 = 1013904242;
+  let h4 = 2773480762;
+  for (let i = 0, k: number; i < str.length; i++) {
     k = str.charCodeAt(i);
     h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
     h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
@@ -425,6 +425,7 @@ function cyrb128(str: string) {
   h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
   h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
   h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+  // biome-ignore lint/style/noCommaOperator:
   (h1 ^= h2 ^ h3 ^ h4), (h2 ^= h1), (h3 ^= h1), (h4 ^= h1);
   return h1 >>> 0;
 }

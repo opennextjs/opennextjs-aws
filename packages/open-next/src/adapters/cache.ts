@@ -121,8 +121,6 @@ function isFetchCache(
 }
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class S3Cache {
-  constructor(_ctx: CacheHandlerContext) {}
-
   public async get(
     key: string,
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
@@ -233,7 +231,8 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData?.type === "page" || cacheData?.type === "app") {
+      }
+      if (cacheData?.type === "page" || cacheData?.type === "app") {
         if (globalThis.isNextAfter15 && cacheData?.type === "app") {
           return {
             lastModified: _lastModified,
@@ -258,7 +257,8 @@ export default class S3Cache {
             headers: meta?.headers,
           },
         } as CacheHandlerValue;
-      } else if (cacheData?.type === "redirect") {
+      }
+      if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
           value: {
@@ -266,10 +266,9 @@ export default class S3Cache {
             props: cacheData.props,
           },
         } as CacheHandlerValue;
-      } else {
-        warn("Unknown cache type", cacheData);
-        return null;
       }
+      warn("Unknown cache type", cacheData);
+      return null;
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
       debug("Failed to get body cache", e);
@@ -296,7 +295,7 @@ export default class S3Cache {
       } else {
         switch (data.kind) {
           case "ROUTE":
-          case "APP_ROUTE":
+          case "APP_ROUTE": {
             const { body, status, headers } = data;
             await globalThis.incrementalCache.set(
               key,
@@ -315,6 +314,7 @@ export default class S3Cache {
               false,
             );
             break;
+          }
           case "PAGE":
           case "PAGES": {
             const { html, pageData, status, headers } = data;

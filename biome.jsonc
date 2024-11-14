@@ -14,49 +14,21 @@
         "all": false
       },
       "suspicious": {
-        "noExplicitAny": "info",
-        "noGlobalIsNan": "warn",
-        "noImplicitAnyLet": "warn",
-        "noAssignInExpressions": "warn",
-        "noConfusingVoidType": "warn",
-        "useNamespaceKeyword": "warn" // safe fix
+        "noExplicitAny": "off",
+        "noAssignInExpressions": "off",
+        "noConfusingVoidType": "off"
       },
       "style": {
-        "noUnusedTemplateLiteral": "warn",
-        "noInferrableTypes": "warn", // safe fix
-        "noUselessElse": "warn",
-        "useNodejsImportProtocol": "warn",
-        "useTemplate": "warn",
-        "useNumberNamespace": "warn", // safe fix
-        "noNonNullAssertion": "warn",
-        "useImportType": "warn",
-        "noParameterAssign": "warn",
-        "useDefaultParameterLast": "warn",
-        "noCommaOperator": "warn",
-        "useConst": "warn",
-        "useSingleVarDeclarator": "warn",
-        "noVar": "warn",
-        "useShorthandFunctionType": "warn" // safe fix
-      },
-      "correctness": {
-        "noSwitchDeclarations": "warn",
-        "noUnnecessaryContinue": "warn",
-        "noInnerDeclarations": "warn"
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "info",
+        "noCommaOperator": "info"
       },
       "complexity": {
-        "useLiteralKeys": "warn",
         "noForEach": "off",
-        "noUselessSwitchCase": "warn",
-        "noUselessConstructor": "warn",
-        "noBannedTypes": "warn",
-        "noUselessTernary": "warn",
-        "useArrowFunction": "warn", // safe fix
-        "noExtraBooleanCast": "warn",
-        "useOptionalChain": "warn"
+        "noBannedTypes": "off"
       },
       "performance": {
-        "noDelete": "warn",
-        "noAccumulatingSpread": "warn"
+        "noDelete": "off"
       }
     }
   },
@@ -66,7 +38,7 @@
       "linter": {
         "rules": {
           "suspicious": {
-            "noRedeclare": "warn"
+            "noRedeclare": "off"
           }
         }
       }
@@ -76,15 +48,15 @@
       "linter": {
         "rules": {
           "style": {
-            "useSelfClosingElements": "warn"
+            "useSelfClosingElements": "off"
           },
           "correctness": {
-            "useJsxKeyInIterable": "warn",
-            "useExhaustiveDependencies": "warn"
+            "useJsxKeyInIterable": "off",
+            "useExhaustiveDependencies": "off"
           },
           "suspicious": {
-            "noArrayIndexKey": "warn",
-            "noRedeclare": "warn"
+            "noArrayIndexKey": "off",
+            "noRedeclare": "off"
           }
         }
       }

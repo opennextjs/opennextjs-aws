@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 
-import path from "path";
+import path from "node:path";
 import { build } from "esbuild";
 
 const externals = [

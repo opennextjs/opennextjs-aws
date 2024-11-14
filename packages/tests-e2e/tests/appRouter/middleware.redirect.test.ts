@@ -5,7 +5,7 @@ test("Middleware Redirect", async ({ page, context }) => {
   await page.getByRole("link", { name: "/Redirect" }).click();
 
   // URL is immediately redirected
-  await page.waitForURL(`/redirect-destination`);
+  await page.waitForURL("/redirect-destination");
   let el = page.getByText("Redirect Destination", { exact: true });
   await expect(el).toBeVisible();
 

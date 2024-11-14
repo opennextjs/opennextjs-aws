@@ -29,6 +29,7 @@ function parse(
       lowers.set(lower, { orig: preference, pos: pos++ });
       if (options.prefixMatch) {
         const parts = lower.split("-");
+        // biome-ignore lint/style/noCommaOperator:
         while ((parts.pop(), parts.length > 0)) {
           const joined = parts.join("-");
           if (!lowers.has(joined)) {

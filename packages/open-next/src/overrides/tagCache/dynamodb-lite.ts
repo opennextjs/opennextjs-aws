@@ -19,16 +19,15 @@ const getAwsClient = () => {
   const { CACHE_BUCKET_REGION } = process.env;
   if (awsClient) {
     return awsClient;
-  } else {
-    awsClient = new AwsClient({
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      sessionToken: process.env.AWS_SESSION_TOKEN,
-      region: CACHE_BUCKET_REGION,
-      retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
-    });
-    return awsClient;
   }
+  awsClient = new AwsClient({
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    sessionToken: process.env.AWS_SESSION_TOKEN,
+    region: CACHE_BUCKET_REGION,
+    retries: parseNumberFromEnv(process.env.AWS_SDK_S3_MAX_ATTEMPTS),
+  });
+  return awsClient;
 };
 const awsFetch = (
   body: RequestInit["body"],

@@ -1,4 +1,4 @@
-const mod = require("module");
+const mod = require("node:module");
 
 const resolveFilename = mod._resolveFilename;
 
@@ -15,9 +15,8 @@ export function patchAsyncStorage() {
       request.endsWith("static-generation-async-storage.external.js")
     ) {
       return require.resolve("./patchedAsyncStorage.cjs");
-    } else if (
-      request.endsWith("static-generation-async-storage.external.original")
-    ) {
+    }
+    if (request.endsWith("static-generation-async-storage.external.original")) {
       return originalResolveFilename.call(
         mod,
         request.replace(".original", ".js"),
@@ -25,14 +24,8 @@ export function patchAsyncStorage() {
         isMain,
         options,
       );
-    } else
-      return originalResolveFilename.call(
-        mod,
-        request,
-        parent,
-        isMain,
-        options,
-      );
+    }
+    return originalResolveFilename.call(mod, request, parent, isMain, options);
 
     // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
   }).bind(null, resolveFilename);

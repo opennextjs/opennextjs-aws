@@ -3,10 +3,10 @@ import type {
   OutgoingHttpHeader,
   OutgoingHttpHeaders,
   ServerResponse,
-} from "http";
-import type { Socket } from "net";
-import type { TransformCallback, Writable } from "stream";
-import { Transform } from "stream";
+} from "node:http";
+import type { Socket } from "node:net";
+import type { TransformCallback, Writable } from "node:stream";
+import { Transform } from "node:stream";
 
 import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";
@@ -208,14 +208,13 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     const key = name.toLowerCase();
     if (!this.hasHeader(key)) {
       return this.setHeader(key, value);
-    } else {
-      const existingHeader = this.getHeader(key) as string | string[];
-      const toAppend = Array.isArray(value) ? value : [value];
-      const newValue = Array.isArray(existingHeader)
-        ? [...existingHeader, ...toAppend]
-        : [existingHeader, ...toAppend];
-      return this.setHeader(key, newValue);
     }
+    const existingHeader = this.getHeader(key) as string | string[];
+    const toAppend = Array.isArray(value) ? value : [value];
+    const newValue = Array.isArray(existingHeader)
+      ? [...existingHeader, ...toAppend]
+      : [existingHeader, ...toAppend];
+    return this.setHeader(key, newValue);
   }
 
   // Might be used in next page api routes

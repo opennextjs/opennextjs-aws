@@ -67,7 +67,7 @@ export async function defaultHandler(
     // It might be useful for cases where the user wants to use a different host than the one in the request
     // It could even allow to have multiple hosts for the image optimization by setting the HOST environment variable in the wrapper for example
     if (!process.env.HOST) {
-      const headersHost = headers["x-forwarded-host"] || headers["host"];
+      const headersHost = headers["x-forwarded-host"] || headers.host;
       process.env.HOST = headersHost;
     }
 
@@ -155,7 +155,7 @@ function buildSuccessResponse(
   };
   debug("result", result);
   if (etag) {
-    headers["ETag"] = etag;
+    headers.ETag = etag;
   }
 
   if (streamCreator) {
@@ -190,7 +190,7 @@ function buildFailureResponse(
     );
     response.writeHead(500, {
       Vary: "Accept",
-      "Cache-Control": `public,max-age=60,immutable`,
+      "Cache-Control": "public,max-age=60,immutable",
       "Content-Type": "application/json",
     });
     response.end(e?.message || e?.toString() || "An error occurred");
@@ -202,7 +202,7 @@ function buildFailureResponse(
     headers: {
       Vary: "Accept",
       // For failed images, allow client to retry after 1 minute.
-      "Cache-Control": `public,max-age=60,immutable`,
+      "Cache-Control": "public,max-age=60,immutable",
       "Content-Type": "application/json",
     },
     body: toReadableStream(e?.message || e?.toString() || "An error occurred"),
