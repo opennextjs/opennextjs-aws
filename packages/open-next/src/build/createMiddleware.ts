@@ -57,7 +57,10 @@ export async function createMiddleware(
       outfile: path.join(outputPath, "handler.mjs"),
       middlewareInfo,
       options,
-      overrides: config.middleware?.override,
+      overrides: {
+        ...config.middleware.override,
+        originResolver: config.middleware.originResolver,
+      },
       defaultConverter: "aws-cloudfront",
       includeCache: config.dangerous?.enableCacheInterception,
       additionalExternals: config.edgeExternals,

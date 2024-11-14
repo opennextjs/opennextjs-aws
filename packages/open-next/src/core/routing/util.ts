@@ -165,33 +165,6 @@ export function unescapeRegex(str: string) {
 }
 
 /**
- *
- * @__PURE__
- */
-function filterHeadersForProxy(
-  headers: Record<string, string | string[] | undefined>,
-) {
-  const filteredHeaders: Record<string, string | string[]> = {};
-  const disallowedHeaders = [
-    "host",
-    "connection",
-    "via",
-    "x-cache",
-    "transfer-encoding",
-    "content-encoding",
-    "content-length",
-  ];
-  Object.entries(headers).forEach(([key, value]) => {
-    const lowerKey = key.toLowerCase();
-    if (disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz"))
-      return;
-
-    filteredHeaders[key] = value?.toString() ?? "";
-  });
-  return filteredHeaders;
-}
-
-/**
  * @__PURE__
  */
 export function convertBodyToReadableStream(
@@ -207,61 +180,6 @@ export function convertBodyToReadableStream(
     },
   });
   return readable;
-}
-
-/**
- *
- * @__PURE__
- */
-export async function proxyRequest(
-  internalEvent: InternalEvent,
-  res: OpenNextNodeResponse,
-) {
-  const { url, headers, method, body } = internalEvent;
-  const request = await import("node:https").then((m) => m.request);
-  debug("proxyRequest", url);
-  await new Promise<void>((resolve, reject) => {
-    const filteredHeaders = filterHeadersForProxy(headers);
-    debug("filteredHeaders", filteredHeaders);
-    const req = request(
-      url,
-      {
-        headers: filteredHeaders,
-        method,
-        rejectUnauthorized: false,
-      },
-      (_res) => {
-        res.writeHead(
-          _res.statusCode ?? 200,
-          filterHeadersForProxy(_res.headers),
-        );
-        if (_res.headers["content-encoding"] === "br") {
-          _res.pipe(require("node:zlib").createBrotliDecompress()).pipe(res);
-        } else if (_res.headers["content-encoding"] === "gzip") {
-          _res.pipe(require("node:zlib").createGunzip()).pipe(res);
-        } else {
-          _res.pipe(res);
-        }
-
-        _res.on("error", (e) => {
-          error("proxyRequest error", e);
-          res.end();
-          reject(e);
-        });
-        res.on("finish", () => {
-          resolve();
-        });
-      },
-    );
-
-    if (body && method !== "GET" && method !== "HEAD") {
-      req.write(body);
-    }
-    req.end();
-  });
-  // console.log("result", result);
-  // res.writeHead(result.status, resHeaders);
-  // res.end(await result.text());
 }
 
 enum CommonHeaders {

@@ -135,3 +135,7 @@ export type ImageLoader = BaseOverride & {
 export type OriginResolver = BaseOverride & {
   resolve: (path: string) => Promise<Origin | false>;
 };
+
+export type ProxyExternalRequest = BaseOverride & {
+  proxy: (event: InternalEvent) => Promise<InternalResult>;
+};

@@ -1,6 +1,7 @@
 import type {
   BaseEventOrResult,
   DefaultOverrideOptions,
+  IncludedProxyExternalRequest,
   InternalEvent,
   InternalResult,
   LazyLoadedOverride,
@@ -10,6 +11,7 @@ import type {
   Converter,
   ImageLoader,
   OriginResolver,
+  ProxyExternalRequest,
   TagCache,
   Warmer,
   Wrapper,
@@ -128,5 +130,20 @@ export async function resolveWarmerInvoke(
     return warmer();
   }
   const m_1 = await import("../overrides/warmer/aws-lambda.js");
+  return m_1.default;
+}
+
+/**
+ * @__PURE__
+ */
+export async function resolveProxyRequest(
+  proxyRequest?:
+    | LazyLoadedOverride<ProxyExternalRequest>
+    | IncludedProxyExternalRequest,
+) {
+  if (typeof proxyRequest === "function") {
+    return proxyRequest();
+  }
+  const m_1 = await import("../overrides/proxyExternalRequest/node.js");
   return m_1.default;
 }

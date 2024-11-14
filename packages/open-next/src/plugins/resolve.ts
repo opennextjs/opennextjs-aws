@@ -6,11 +6,17 @@ import type {
   DefaultOverrideOptions,
   IncludedImageLoader,
   IncludedOriginResolver,
+  IncludedProxyExternalRequest,
   IncludedWarmer,
   LazyLoadedOverride,
   OverrideOptions,
 } from "types/open-next";
-import type { ImageLoader, OriginResolver, Warmer } from "types/overrides";
+import type {
+  ImageLoader,
+  OriginResolver,
+  ProxyExternalRequest,
+  Warmer,
+} from "types/overrides";
 
 import logger from "../logger.js";
 
@@ -26,6 +32,9 @@ export interface IPluginSettings {
       | LazyLoadedOverride<OriginResolver>
       | IncludedOriginResolver;
     warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
+    proxyExternalRequest?:
+      | LazyLoadedOverride<ProxyExternalRequest>
+      | IncludedProxyExternalRequest;
   };
   fnName?: string;
 }
@@ -50,6 +59,7 @@ const nameToFolder = {
   imageLoader: "imageLoader",
   originResolver: "originResolver",
   warmer: "warmer",
+  proxyExternalRequest: "proxyExternalRequest",
 };
 
 const defaultOverrides = {
@@ -61,6 +71,7 @@ const defaultOverrides = {
   imageLoader: "s3",
   originResolver: "pattern-env",
   warmer: "aws-lambda",
+  proxyExternalRequest: "node",
 };
 
 /**

@@ -6,6 +6,7 @@ import type {
   ImageLoader,
   IncrementalCache,
   OriginResolver,
+  ProxyExternalRequest,
   Queue,
   TagCache,
   Warmer,
@@ -102,6 +103,8 @@ export type IncludedOriginResolver = "pattern-env";
 
 export type IncludedWarmer = "aws-lambda";
 
+export type IncludedProxyExternalRequest = "node" | "fetch";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -145,6 +148,14 @@ export interface OverrideOptions extends DefaultOverrideOptions {
    * @default "sqs"
    */
   queue?: IncludedQueue | LazyLoadedOverride<Queue>;
+
+  /**
+   * Add possibility to override the default proxy for external rewrite
+   * @default "node"
+   */
+  proxyExternalRequest?:
+    | IncludedProxyExternalRequest
+    | LazyLoadedOverride<ProxyExternalRequest>;
 }
 
 export interface InstallOptions {

@@ -1,7 +1,12 @@
 import type { AsyncLocalStorage } from "node:async_hooks";
 import type { OutgoingHttpHeaders } from "node:http";
 
-import type { IncrementalCache, Queue, TagCache } from "types/overrides";
+import type {
+  IncrementalCache,
+  ProxyExternalRequest,
+  Queue,
+  TagCache,
+} from "types/overrides";
 
 import type { DetachedPromiseRunner } from "../utils/promise";
 import type { OpenNextConfig } from "./open-next";
@@ -194,4 +199,11 @@ declare global {
    * Defined in `createMainHandler` or in `adapter/middleware.ts`.
    */
   var queue: Queue;
+
+  /**
+   * The function that is used when resolving external rewrite requests.
+   * Only available in main functions
+   * Defined in `createMainHandler`.
+   */
+  var proxyExternalRequest: ProxyExternalRequest;
 }
