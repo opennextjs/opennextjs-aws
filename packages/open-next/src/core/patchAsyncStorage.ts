@@ -3,14 +3,13 @@ const mod = require("node:module");
 const resolveFilename = mod._resolveFilename;
 
 export function patchAsyncStorage() {
-  // biome-ignore lint/complexity/useArrowFunction: could cause problems with `this` binding
-  mod._resolveFilename = function (
+  mod._resolveFilename = ((
     originalResolveFilename: typeof resolveFilename,
     request: string,
     parent: any,
     isMain: boolean,
     options: any,
-  ) {
+  ) => {
     if (
       request.endsWith("static-generation-async-storage.external") ||
       request.endsWith("static-generation-async-storage.external.js")
@@ -29,5 +28,5 @@ export function patchAsyncStorage() {
     return originalResolveFilename.call(mod, request, parent, isMain, options);
 
     // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
-  }.bind(null, resolveFilename);
+  }).bind(null, resolveFilename);
 }
