@@ -1,22 +1,15 @@
 import type {
   BaseEventOrResult,
   DefaultOverrideOptions,
-  IncludedProxyExternalRequest,
-  IncludedWarmer,
   InternalEvent,
   InternalResult,
-  LazyLoadedOverride,
+  OpenNextConfig,
   OverrideOptions,
 } from "types/open-next";
-import type {
-  Converter,
-  ImageLoader,
-  OriginResolver,
-  ProxyExternalRequest,
-  TagCache,
-  Warmer,
-  Wrapper,
-} from "types/overrides";
+import type { Converter, TagCache, Wrapper } from "types/overrides";
+
+// Just a little utility type to remove undefined from a type
+type RemoveUndefined<T> = T extends undefined ? never : T;
 
 export async function resolveConverter<
   E extends BaseEventOrResult = InternalEvent,
@@ -98,7 +91,7 @@ export async function resolveIncrementalCache(
  * @__PURE__
  */
 export async function resolveImageLoader(
-  imageLoader: LazyLoadedOverride<ImageLoader> | string,
+  imageLoader: RemoveUndefined<OpenNextConfig["imageOptimization"]>["loader"],
 ) {
   if (typeof imageLoader === "function") {
     return imageLoader();
@@ -112,7 +105,9 @@ export async function resolveImageLoader(
  * @__PURE__
  */
 export async function resolveOriginResolver(
-  originResolver?: LazyLoadedOverride<OriginResolver> | string,
+  originResolver: RemoveUndefined<
+    OpenNextConfig["middleware"]
+  >["originResolver"],
 ) {
   if (typeof originResolver === "function") {
     return originResolver();
@@ -125,7 +120,7 @@ export async function resolveOriginResolver(
  * @__PURE__
  */
 export async function resolveWarmerInvoke(
-  warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer,
+  warmer: RemoveUndefined<OpenNextConfig["warmer"]>["invokeFunction"],
 ) {
   if (typeof warmer === "function") {
     return warmer();
@@ -138,9 +133,7 @@ export async function resolveWarmerInvoke(
  * @__PURE__
  */
 export async function resolveProxyRequest(
-  proxyRequest?:
-    | LazyLoadedOverride<ProxyExternalRequest>
-    | IncludedProxyExternalRequest,
+  proxyRequest: OverrideOptions["proxyExternalRequest"],
 ) {
   if (typeof proxyRequest === "function") {
     return proxyRequest();

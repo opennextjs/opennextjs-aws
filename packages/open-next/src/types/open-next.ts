@@ -309,7 +309,7 @@ export interface OpenNextConfig {
    * @default undefined
    */
   warmer?: DefaultFunctionOptions<WarmerEvent, WarmerResponse> & {
-    invokeFunction: IncludedWarmer | LazyLoadedOverride<Warmer>;
+    invokeFunction?: IncludedWarmer | LazyLoadedOverride<Warmer>;
   };
 
   /**

@@ -91,6 +91,10 @@ export async function buildEdgeBundle({
                       : "sqs-lite",
                 }
               : {}),
+            originResolver:
+              typeof overrides?.originResolver === "string"
+                ? overrides.originResolver
+                : "pattern-env",
           },
           fnName: name,
         }),
