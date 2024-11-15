@@ -1,7 +1,7 @@
 import type { InternalEvent, Origin } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
-import { debug } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
 import {
   resolveIncrementalCache,
@@ -57,7 +57,23 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
             isISR: result.isISR,
           };
         }
-        return externalRequestProxy.proxy(result.internalEvent);
+        try {
+          return externalRequestProxy.proxy(result.internalEvent);
+        } catch (e) {
+          error("External request failed.", e);
+          return {
+            type: "middleware",
+            internalEvent: {
+              ...result.internalEvent,
+              rawPath: "/500",
+              url: "/500",
+              method: "GET",
+            },
+            isExternalRewrite: result.isExternalRewrite,
+            origin: false,
+            isISR: result.isISR,
+          };
+        }
       }
 
       debug("Middleware response", result);
