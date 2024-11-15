@@ -45,9 +45,10 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
       const result = await routingHandler(internalEvent);
       if ("internalEvent" in result) {
         debug("Middleware intercepted event", internalEvent);
-        let origin: Origin | false = false;
         if (!result.isExternalRewrite) {
-          origin = await originResolver.resolve(result.internalEvent.rawPath);
+          const origin = await originResolver.resolve(
+            result.internalEvent.rawPath,
+          );
           return {
             type: "middleware",
             internalEvent: result.internalEvent,

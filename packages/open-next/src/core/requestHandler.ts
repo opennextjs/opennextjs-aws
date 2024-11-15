@@ -71,10 +71,9 @@ export async function openNextHandler(
         preprocessResult.isExternalRewrite
       ) {
         try {
-          const proxyResult = await globalThis.proxyExternalRequest.proxy(
+          preprocessResult = await globalThis.proxyExternalRequest.proxy(
             preprocessResult.internalEvent,
           );
-          preprocessResult = proxyResult;
         } catch (e) {
           error("External request failed.", e);
           preprocessResult = {
