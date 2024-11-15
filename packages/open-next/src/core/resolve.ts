@@ -2,6 +2,7 @@ import type {
   BaseEventOrResult,
   DefaultOverrideOptions,
   IncludedProxyExternalRequest,
+  IncludedWarmer,
   InternalEvent,
   InternalResult,
   LazyLoadedOverride,
@@ -124,7 +125,7 @@ export async function resolveOriginResolver(
  * @__PURE__
  */
 export async function resolveWarmerInvoke(
-  warmer?: LazyLoadedOverride<Warmer> | "aws-lambda",
+  warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer,
 ) {
   if (typeof warmer === "function") {
     return warmer();

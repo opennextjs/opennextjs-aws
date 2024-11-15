@@ -80,7 +80,8 @@ export type IncludedWrapper =
   | "aws-lambda"
   | "aws-lambda-streaming"
   | "node"
-  | "cloudflare";
+  | "cloudflare"
+  | "dummy";
 
 export type IncludedConverter =
   | "aws-apigw-v2"
@@ -91,19 +92,19 @@ export type IncludedConverter =
   | "sqs-revalidate"
   | "dummy";
 
-export type IncludedQueue = "sqs" | "sqs-lite";
+export type IncludedQueue = "sqs" | "sqs-lite" | "dummy";
 
-export type IncludedIncrementalCache = "s3" | "s3-lite";
+export type IncludedIncrementalCache = "s3" | "s3-lite" | "dummy";
 
-export type IncludedTagCache = "dynamodb" | "dynamodb-lite";
+export type IncludedTagCache = "dynamodb" | "dynamodb-lite" | "dummy";
 
-export type IncludedImageLoader = "s3" | "host";
+export type IncludedImageLoader = "s3" | "host" | "dummy";
 
-export type IncludedOriginResolver = "pattern-env";
+export type IncludedOriginResolver = "pattern-env" | "dummy";
 
-export type IncludedWarmer = "aws-lambda";
+export type IncludedWarmer = "aws-lambda" | "dummy";
 
-export type IncludedProxyExternalRequest = "node" | "fetch";
+export type IncludedProxyExternalRequest = "node" | "fetch" | "dummy";
 
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
