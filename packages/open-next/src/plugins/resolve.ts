@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import chalk from "chalk";
 import type { Plugin } from "esbuild";
 import type {
+  DefaultOverrideOptions,
   IncludedImageLoader,
   IncludedOriginResolver,
   IncludedWarmer,
@@ -15,8 +16,8 @@ import logger from "../logger.js";
 
 export interface IPluginSettings {
   overrides?: {
-    wrapper?: OverrideOptions["wrapper"];
-    converter?: OverrideOptions["converter"];
+    wrapper?: DefaultOverrideOptions<any, any>["wrapper"];
+    converter?: DefaultOverrideOptions<any, any>["converter"];
     tagCache?: OverrideOptions["tagCache"];
     queue?: OverrideOptions["queue"];
     incrementalCache?: OverrideOptions["incrementalCache"];
