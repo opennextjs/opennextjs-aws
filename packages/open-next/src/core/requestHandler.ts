@@ -87,6 +87,7 @@ export async function openNextHandler(
               cookies: {},
               remoteAddress: "",
             },
+            // On error we need to rewrite to the 500 page which is an internal rewrite
             isExternalRewrite: false,
             isISR: false,
             origin: false,

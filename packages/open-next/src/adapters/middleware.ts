@@ -69,7 +69,8 @@ const defaultHandler = async (internalEvent: InternalEvent) => {
               url: "/500",
               method: "GET",
             },
-            isExternalRewrite: result.isExternalRewrite,
+            // On error we need to rewrite to the 500 page which is an internal rewrite
+            isExternalRewrite: false,
             origin: false,
             isISR: result.isISR,
           };
