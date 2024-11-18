@@ -95,6 +95,10 @@ export async function buildEdgeBundle({
               typeof overrides?.originResolver === "string"
                 ? overrides.originResolver
                 : "pattern-env",
+            proxyExternalRequest:
+              typeof overrides?.proxyExternalRequest === "string"
+                ? overrides.proxyExternalRequest
+                : "node",
           },
           fnName: name,
         }),

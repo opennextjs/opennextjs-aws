@@ -3,27 +3,20 @@ import { readFileSync } from "node:fs";
 import chalk from "chalk";
 import type { Plugin } from "esbuild";
 import type {
-  DefaultOverrideOptions,
   IncludedImageLoader,
   IncludedOriginResolver,
-  IncludedProxyExternalRequest,
   IncludedWarmer,
   LazyLoadedOverride,
   OverrideOptions,
 } from "types/open-next";
-import type {
-  ImageLoader,
-  OriginResolver,
-  ProxyExternalRequest,
-  Warmer,
-} from "types/overrides";
+import type { ImageLoader, OriginResolver, Warmer } from "types/overrides";
 
 import logger from "../logger.js";
 
 export interface IPluginSettings {
   overrides?: {
-    wrapper?: DefaultOverrideOptions<any, any>["wrapper"];
-    converter?: DefaultOverrideOptions<any, any>["converter"];
+    wrapper?: OverrideOptions["wrapper"];
+    converter?: OverrideOptions["converter"];
     tagCache?: OverrideOptions["tagCache"];
     queue?: OverrideOptions["queue"];
     incrementalCache?: OverrideOptions["incrementalCache"];
@@ -32,9 +25,7 @@ export interface IPluginSettings {
       | LazyLoadedOverride<OriginResolver>
       | IncludedOriginResolver;
     warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
-    proxyExternalRequest?:
-      | LazyLoadedOverride<ProxyExternalRequest>
-      | IncludedProxyExternalRequest;
+    proxyExternalRequest?: OverrideOptions["proxyExternalRequest"];
   };
   fnName?: string;
 }
