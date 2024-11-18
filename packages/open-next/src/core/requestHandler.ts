@@ -67,8 +67,7 @@ export async function openNextHandler(
       }
 
       if (
-        "isExternalRewrite" in preprocessResult &&
-        preprocessResult.isExternalRewrite
+        preprocessResult.isExternalRewrite === true
       ) {
         try {
           preprocessResult = await globalThis.proxyExternalRequest.proxy(
