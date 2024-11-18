@@ -18,13 +18,16 @@ function filterHeadersForProxy(
     "content-encoding",
     "content-length",
   ];
-  Object.entries(headers).forEach(([key, value]) => {
-    const lowerKey = key.toLowerCase();
-    if (disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz"))
-      return;
-
-    filteredHeaders[key] = value?.toString() ?? "";
-  });
+  Object.entries(headers)
+    .filter(([key, _]) => {
+      const lowerKey = key.toLowerCase();
+      return !(
+        disallowedHeaders.includes(lowerKey) || lowerKey.startsWith("x-amz")
+      );
+    })
+    .forEach(([key, value]) => {
+      filteredHeaders[key] = value?.toString() ?? "";
+    });
   return filteredHeaders;
 }
 

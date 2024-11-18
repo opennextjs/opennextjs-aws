@@ -67,6 +67,7 @@ export async function openNextHandler(
       }
 
       if (
+        "isExternalRewrite" in preprocessResult &&
         preprocessResult.isExternalRewrite === true
       ) {
         try {
