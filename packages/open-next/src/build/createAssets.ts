@@ -44,7 +44,9 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
 
   const faviconPath = path.join(appPath, appSrcPath, "favicon.ico");
 
-  if (fs.existsSync(faviconPath)) {
+  // We need to check if the favicon is either a file or directory.
+  // If it's a directory, we assume it's a route handler and ignore it.
+  if (fs.existsSync(faviconPath) && fs.lstatSync(faviconPath).isFile()) {
     fs.copyFileSync(faviconPath, path.join(outputPath, "favicon.ico"));
   }
 }
