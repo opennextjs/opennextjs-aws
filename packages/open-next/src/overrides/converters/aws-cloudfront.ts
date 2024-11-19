@@ -18,7 +18,6 @@ import {
   convertToQuery,
   convertToQueryString,
   createServerResponse,
-  proxyRequest,
 } from "../../core/routing/util";
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
@@ -159,26 +158,7 @@ async function convertToCloudFrontRequestResult(
     const responseHeaders = result.internalEvent.headers;
 
     // Handle external rewrite
-    if (result.isExternalRewrite) {
-      const serverResponse = createServerResponse(result.internalEvent, {});
-      await proxyRequest(result.internalEvent, serverResponse);
-      const externalResult = convertRes(serverResponse);
-      const body = await fromReadableStream(
-        externalResult.body,
-        externalResult.isBase64Encoded,
-      );
-      const cloudfrontResult = {
-        status: externalResult.statusCode.toString(),
-        statusDescription: "OK",
-        headers: convertToCloudfrontHeaders(externalResult.headers, true),
-        bodyEncoding: externalResult.isBase64Encoded
-          ? ("base64" as const)
-          : ("text" as const),
-        body,
-      };
-      debug("externalResult", cloudfrontResult);
-      return cloudfrontResult;
-    }
+
     let customOrigin = origin?.custom as CloudFrontCustomOrigin;
     let host = responseHeaders.host ?? responseHeaders.Host;
     if (result.origin) {

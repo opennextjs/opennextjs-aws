@@ -6,11 +6,14 @@ import { build } from "esbuild";
 import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import type {
   IncludedConverter,
+  IncludedOriginResolver,
+  LazyLoadedOverride,
   OverrideOptions,
   RouteTemplate,
   SplittedFunctionOptions,
 } from "types/open-next";
 
+import type { OriginResolver } from "types/overrides.js";
 import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
@@ -23,7 +26,11 @@ interface BuildEdgeBundleOptions {
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
-  overrides?: OverrideOptions;
+  overrides?: OverrideOptions & {
+    originResolver?:
+      | LazyLoadedOverride<OriginResolver>
+      | IncludedOriginResolver;
+  };
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
   includeCache?: boolean;
@@ -84,6 +91,14 @@ export async function buildEdgeBundle({
                       : "sqs-lite",
                 }
               : {}),
+            originResolver:
+              typeof overrides?.originResolver === "string"
+                ? overrides.originResolver
+                : "pattern-env",
+            proxyExternalRequest:
+              typeof overrides?.proxyExternalRequest === "string"
+                ? overrides.proxyExternalRequest
+                : "node",
           },
           fnName: name,
         }),

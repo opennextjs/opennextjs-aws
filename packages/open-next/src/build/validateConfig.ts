@@ -18,6 +18,7 @@ const compatibilityMatrix: Record<IncludedWrapper, IncludedConverter[]> = {
   "aws-lambda-streaming": ["aws-apigw-v2"],
   cloudflare: ["edge"],
   node: ["node"],
+  dummy: [],
 };
 
 function validateFunctionOptions(fnOptions: FunctionOptions) {

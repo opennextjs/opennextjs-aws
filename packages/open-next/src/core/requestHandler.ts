@@ -7,7 +7,8 @@ import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
-import { convertRes, createServerResponse, proxyRequest } from "./routing/util";
+import { resolveProxyRequest } from "./resolve";
+import { convertRes, createServerResponse } from "./routing/util";
 import type { MiddlewareOutputEvent } from "./routingHandler";
 import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
@@ -65,6 +66,35 @@ export async function openNextHandler(
         delete headers[rawKey];
       }
 
+      if (
+        "isExternalRewrite" in preprocessResult &&
+        preprocessResult.isExternalRewrite === true
+      ) {
+        try {
+          preprocessResult = await globalThis.proxyExternalRequest.proxy(
+            preprocessResult.internalEvent,
+          );
+        } catch (e) {
+          error("External request failed.", e);
+          preprocessResult = {
+            internalEvent: {
+              type: "core",
+              rawPath: "/500",
+              method: "GET",
+              headers: {},
+              url: "/500",
+              query: {},
+              cookies: {},
+              remoteAddress: "",
+            },
+            // On error we need to rewrite to the 500 page which is an internal rewrite
+            isExternalRewrite: false,
+            isISR: false,
+            origin: false,
+          };
+        }
+      }
+
       if ("type" in preprocessResult) {
         // response is used only in the streaming case
         if (responseStreaming) {
@@ -110,7 +140,6 @@ export async function openNextHandler(
         store.mergeHeadersPriority = mergeHeadersPriority;
       }
 
-      const preprocessedResult = preprocessResult as MiddlewareOutputEvent;
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
         preprocessedEvent,
@@ -118,12 +147,7 @@ export async function openNextHandler(
         responseStreaming,
       );
 
-      await processRequest(
-        req,
-        res,
-        preprocessedEvent,
-        preprocessedResult.isExternalRewrite,
-      );
+      await processRequest(req, res, preprocessedEvent);
 
       const {
         statusCode,
@@ -155,7 +179,6 @@ async function processRequest(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
   internalEvent: InternalEvent,
-  isExternalRewrite?: boolean,
 ) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
@@ -163,13 +186,6 @@ async function processRequest(
   delete req.body;
 
   try {
-    // `serverHandler` is replaced at build time depending on user's
-    // nextjs version to patch Nextjs 13.4.x and future breaking changes.
-
-    if (isExternalRewrite) {
-      return proxyRequest(internalEvent, res);
-    }
-
     //#override applyNextjsPrebundledReact
     setNextjsPrebundledReact(internalEvent.rawPath);
     //#endOverride

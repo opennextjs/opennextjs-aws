@@ -6,6 +6,7 @@ import { openNextHandler } from "./requestHandler";
 import {
   resolveConverter,
   resolveIncrementalCache,
+  resolveProxyRequest,
   resolveQueue,
   resolveTagCache,
   resolveWrapper,
@@ -32,6 +33,10 @@ export async function createMainHandler() {
   );
 
   globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
+
+  globalThis.proxyExternalRequest = await resolveProxyRequest(
+    thisFunction.override?.proxyExternalRequest,
+  );
 
   globalThis.lastModified = {};
 

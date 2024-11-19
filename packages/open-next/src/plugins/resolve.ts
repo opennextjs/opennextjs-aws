@@ -26,6 +26,7 @@ export interface IPluginSettings {
       | LazyLoadedOverride<OriginResolver>
       | IncludedOriginResolver;
     warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
+    proxyExternalRequest?: OverrideOptions["proxyExternalRequest"];
   };
   fnName?: string;
 }
@@ -50,6 +51,7 @@ const nameToFolder = {
   imageLoader: "imageLoader",
   originResolver: "originResolver",
   warmer: "warmer",
+  proxyExternalRequest: "proxyExternalRequest",
 };
 
 const defaultOverrides = {
@@ -61,6 +63,7 @@ const defaultOverrides = {
   imageLoader: "s3",
   originResolver: "pattern-env",
   warmer: "aws-lambda",
+  proxyExternalRequest: "node",
 };
 
 /**
