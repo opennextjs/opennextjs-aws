@@ -169,13 +169,11 @@ ${contents}
         const MiddlewareManifest = loadMiddlewareManifest(nextDir);
 
         const contents = `
-  import path from "path";
+  import path from "node:path";
 
   import { debug } from "../logger";
 
-  if(!globalThis.__dirname) {
-    globalThis.__dirname = ""
-  }
+  globalThis.__dirname ??= "";
 
   export const NEXT_DIR = path.join(__dirname, ".next");
   export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
