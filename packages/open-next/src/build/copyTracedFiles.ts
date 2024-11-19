@@ -38,9 +38,8 @@ export async function copyTracedFiles(
   const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
 
-  const extractFiles = (files: string[], from = standaloneNextDir) => {
-    return files.map((f) => path.resolve(from, f));
-  };
+  const extractFiles = (files: string[], from = standaloneNextDir) =>
+    files.map((f) => path.resolve(from, f));
 
   // On next 14+, we might not have to include those files
   // For next 13, we need to include them otherwise we get runtime error
@@ -203,25 +202,36 @@ File ${fullFilePath} does not exist
     }
   });
 
-  readdirSync(standaloneNextDir).forEach((f) => {
-    if (statSync(path.join(standaloneNextDir, f)).isDirectory()) return;
-    copyFileSync(path.join(standaloneNextDir, f), path.join(outputNextDir, f));
-  });
+  readdirSync(standaloneNextDir)
+    .filter(
+      (fileOrDir) =>
+        !statSync(path.join(standaloneNextDir, fileOrDir)).isDirectory(),
+    )
+    .forEach((file) =>
+      copyFileSync(
+        path.join(standaloneNextDir, file),
+        path.join(outputNextDir, file),
+      ),
+    );
 
   // We then need to copy all the files at the root of server
 
   mkdirSync(path.join(outputNextDir, "server"), { recursive: true });
 
-  readdirSync(path.join(standaloneNextDir, "server")).forEach((f) => {
-    if (statSync(path.join(standaloneNextDir, "server", f)).isDirectory())
-      return;
-    if (f !== "server.js") {
+  readdirSync(path.join(standaloneNextDir, "server"))
+    .filter(
+      (fileOrDir) =>
+        !statSync(
+          path.join(standaloneNextDir, "server", fileOrDir),
+        ).isDirectory(),
+    )
+    .filter((file) => file !== "server.js")
+    .forEach((file) =>
       copyFileSync(
-        path.join(standaloneNextDir, "server", f),
-        path.join(path.join(outputNextDir, "server"), f),
-      );
-    }
-  });
+        path.join(standaloneNextDir, "server", file),
+        path.join(path.join(outputNextDir, "server"), file),
+      ),
+    );
 
   // Copy patch file
   copyPatchFile(path.join(outputDir, packagePath));
@@ -285,11 +295,9 @@ File ${fullFilePath} does not exist
       }
     });
 
-    staticFiles.forEach((f: string) => {
-      if (f.endsWith(".html")) {
-        copyStaticFile(`server/${f}`);
-      }
-    });
+    staticFiles
+      .filter((file) => file.endsWith(".html"))
+      .forEach((file) => copyStaticFile(`server/${file}`));
   }
 
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
