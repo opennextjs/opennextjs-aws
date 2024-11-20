@@ -300,7 +300,7 @@ importers:
   packages/utils:
     devDependencies:
       '@types/node':
-        specifier: 20.5.0
+        specifier: 'catalog:'
         version: 20.5.0
       tsup:
         specifier: 7.2.0
