@@ -15,15 +15,27 @@ catalogs:
     '@types/react-dom':
       specifier: npm:types-react-dom@19.0.0-rc.1
       version: 19.0.0-rc.1
+    autoprefixer:
+      specifier: 10.4.15
+      version: 10.4.15
     next:
       specifier: 15.0.1
       version: 15.0.1
+    postcss:
+      specifier: 8.4.27
+      version: 8.4.27
     react:
       specifier: 19.0.0-rc-69d4b800-20241021
       version: 19.0.0-rc-69d4b800-20241021
     react-dom:
       specifier: 19.0.0-rc-69d4b800-20241021
       version: 19.0.0-rc-69d4b800-20241021
+    tailwindcss:
+      specifier: 3.3.3
+      version: 3.3.3
+    typescript:
+      specifier: 5.6.3
+      version: 5.6.3
 
 importers:
 
@@ -73,17 +85,17 @@ importers:
         specifier: 'catalog:'
         version: types-react-dom@19.0.0-rc.1
       autoprefixer:
-        specifier: 10.4.15
+        specifier: 'catalog:'
         version: 10.4.15(postcss@8.4.27)
       postcss:
-        specifier: 8.4.27
+        specifier: 'catalog:'
         version: 8.4.27
       tailwindcss:
-        specifier: 3.3.3
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5))
+        specifier: 'catalog:'
+        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3))
       typescript:
-        specifier: ^4.9.3
-        version: 4.9.5
+        specifier: 'catalog:'
+        version: 5.6.3
 
   examples/app-router:
     dependencies:
@@ -113,54 +125,54 @@ importers:
         specifier: 'catalog:'
         version: types-react-dom@19.0.0-rc.1
       autoprefixer:
-        specifier: 10.4.15
+        specifier: 'catalog:'
         version: 10.4.15(postcss@8.4.27)
       postcss:
-        specifier: 8.4.27
+        specifier: 'catalog:'
         version: 8.4.27
       tailwindcss:
-        specifier: 3.3.3
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5))
+        specifier: 'catalog:'
+        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3))
       typescript:
-        specifier: ^4.9.3
-        version: 4.9.5
+        specifier: 'catalog:'
+        version: 5.6.3
 
   examples/pages-router:
     dependencies:
       '@example/shared':
         specifier: workspace:*
         version: link:../shared
-      '@types/node':
-        specifier: 'catalog:'
-        version: 20.5.0
-      autoprefixer:
-        specifier: 10.4.15
-        version: 10.4.15(postcss@8.4.27)
       next:
         specifier: 'catalog:'
         version: 15.0.1(react-dom@19.0.0-rc-69d4b800-20241021(react@19.0.0-rc-69d4b800-20241021))(react@19.0.0-rc-69d4b800-20241021)
-      postcss:
-        specifier: 8.4.27
-        version: 8.4.27
       react:
         specifier: 'catalog:'
         version: 19.0.0-rc-69d4b800-20241021
       react-dom:
         specifier: 'catalog:'
         version: 19.0.0-rc-69d4b800-20241021(react@19.0.0-rc-69d4b800-20241021)
-      tailwindcss:
-        specifier: 3.3.3
-        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5))
-      typescript:
-        specifier: ^4.9.3
-        version: 4.9.5
     devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.5.0
       '@types/react':
         specifier: 'catalog:'
         version: types-react@19.0.0-rc.1
       '@types/react-dom':
         specifier: 'catalog:'
         version: types-react-dom@19.0.0-rc.1
+      autoprefixer:
+        specifier: 'catalog:'
+        version: 10.4.15(postcss@8.4.27)
+      postcss:
+        specifier: 'catalog:'
+        version: 8.4.27
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3))
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
 
   examples/shared:
     dependencies:
@@ -4775,11 +4787,6 @@ packages:
 
   types-react@19.0.0-rc.1:
     resolution: {integrity: sha512-RshndUfqTW6K3STLPis8BtAYCGOkMbtvYsi90gmVNDZBXUyUc5juf2PE9LfS/JmOlUIRO8cWTS/1MTnmhjDqyQ==}
-
-  typescript@4.9.5:
-    resolution: {integrity: sha512-1FXk9E2Hm+QzZQ7z+McJiHL4NW1F2EzMu9Nq9i3zAaGqibafqYwCVU6WyWAuyQRRzOlxou8xZSyXLEN8oKj24g==}
-    engines: {node: '>=4.2.0'}
-    hasBin: true
 
   typescript@5.6.3:
     resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
@@ -10001,25 +10008,17 @@ snapshots:
 
   possible-typed-array-names@1.0.0: {}
 
-  postcss-import@15.1.0(postcss@8.4.27):
+  postcss-import@15.1.0(postcss@8.4.47):
     dependencies:
-      postcss: 8.4.27
+      postcss: 8.4.47
       postcss-value-parser: 4.2.0
       read-cache: 1.0.0
       resolve: 1.22.8
 
-  postcss-js@4.0.1(postcss@8.4.27):
+  postcss-js@4.0.1(postcss@8.4.47):
     dependencies:
       camelcase-css: 2.0.1
-      postcss: 8.4.27
-
-  postcss-load-config@4.0.2(postcss@8.4.27)(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5)):
-    dependencies:
-      lilconfig: 3.1.2
-      yaml: 2.6.0
-    optionalDependencies:
-      postcss: 8.4.27
-      ts-node: 10.9.1(@types/node@20.5.0)(typescript@4.9.5)
+      postcss: 8.4.47
 
   postcss-load-config@4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3)):
     dependencies:
@@ -10029,9 +10028,9 @@ snapshots:
       postcss: 8.4.47
       ts-node: 10.9.1(@types/node@20.5.0)(typescript@5.6.3)
 
-  postcss-nested@6.2.0(postcss@8.4.27):
+  postcss-nested@6.2.0(postcss@8.4.47):
     dependencies:
-      postcss: 8.4.27
+      postcss: 8.4.47
       postcss-selector-parser: 6.1.2
 
   postcss-selector-parser@6.1.2:
@@ -10644,7 +10643,7 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
 
-  tailwindcss@3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5)):
+  tailwindcss@3.3.3(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3)):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -10660,11 +10659,11 @@ snapshots:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.1.1
-      postcss: 8.4.27
-      postcss-import: 15.1.0(postcss@8.4.27)
-      postcss-js: 4.0.1(postcss@8.4.27)
-      postcss-load-config: 4.0.2(postcss@8.4.27)(ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5))
-      postcss-nested: 6.2.0(postcss@8.4.27)
+      postcss: 8.4.47
+      postcss-import: 15.1.0(postcss@8.4.47)
+      postcss-js: 4.0.1(postcss@8.4.47)
+      postcss-load-config: 4.0.2(postcss@8.4.47)(ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3))
+      postcss-nested: 6.2.0(postcss@8.4.47)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.8
       sucrase: 3.35.0
@@ -10749,25 +10748,6 @@ snapshots:
   tree-kill@1.2.2: {}
 
   ts-interface-checker@0.1.13: {}
-
-  ts-node@10.9.1(@types/node@20.5.0)(typescript@4.9.5):
-    dependencies:
-      '@cspotcode/source-map-support': 0.8.1
-      '@tsconfig/node10': 1.0.11
-      '@tsconfig/node12': 1.0.11
-      '@tsconfig/node14': 1.0.3
-      '@tsconfig/node16': 1.0.4
-      '@types/node': 20.5.0
-      acorn: 8.13.0
-      acorn-walk: 8.3.4
-      arg: 4.1.3
-      create-require: 1.1.1
-      diff: 4.0.2
-      make-error: 1.3.6
-      typescript: 4.9.5
-      v8-compile-cache-lib: 3.0.1
-      yn: 3.1.1
-    optional: true
 
   ts-node@10.9.1(@types/node@20.5.0)(typescript@5.6.3):
     dependencies:
@@ -10870,8 +10850,6 @@ snapshots:
   types-react@19.0.0-rc.1:
     dependencies:
       csstype: 3.1.3
-
-  typescript@4.9.5: {}
 
   typescript@5.6.3: {}
 

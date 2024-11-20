@@ -12,17 +12,17 @@
   },
   "dependencies": {
     "@example/shared": "workspace:*",
-    "@types/node": "catalog:",
-    "autoprefixer": "10.4.15",
     "next": "catalog:",
-    "postcss": "8.4.27",
     "react": "catalog:",
-    "react-dom": "catalog:",
-    "tailwindcss": "3.3.3",
-    "typescript": "^4.9.3"
+    "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "tailwindcss": "catalog:",
+    "postcss": "catalog:",
+    "autoprefixer": "catalog:",
+    "typescript": "catalog:"
   }
 }
