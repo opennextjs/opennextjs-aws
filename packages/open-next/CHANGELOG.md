@@ -1,5 +1,24 @@
 # open-next
 
+## 3.2.2
+
+### Patch Changes
+
+- [#617](https://github.com/opennextjs/opennextjs-aws/pull/617) [`6f798debb575b157acb2f5068658f95ace0fae50`](https://github.com/opennextjs/opennextjs-aws/commit/6f798debb575b157acb2f5068658f95ace0fae50) Thanks [@vicb](https://github.com/vicb)! - feat: add support for Next15 geolocation
+
+- [#638](https://github.com/opennextjs/opennextjs-aws/pull/638) [`fe600ac6f5e513376cf233a5d2ce68affaa3aa5a`](https://github.com/opennextjs/opennextjs-aws/commit/fe600ac6f5e513376cf233a5d2ce68affaa3aa5a) Thanks [@vicb](https://github.com/vicb)! - fix(http): Set content-length only if body is present
+
+  The body is undefined when using the edge converter and the method is GET or HEAD
+
+- [#626](https://github.com/opennextjs/opennextjs-aws/pull/626) [`5f0cbc8feac9eec728c27bb3b7ff5c3f3bc26716`](https://github.com/opennextjs/opennextjs-aws/commit/5f0cbc8feac9eec728c27bb3b7ff5c3f3bc26716) Thanks [@conico974](https://github.com/conico974)! - add support for next/after
+  It can also be used to emulate vercel request context (the waitUntil) for lib that may rely on it on serverless env. It needs this env variable EMULATE_VERCEL_REQUEST_CONTEXT to be set to be enabled
+
+- [#632](https://github.com/opennextjs/opennextjs-aws/pull/632) [`8b51108d9aee7e5ed3027c1ceda99091b579951d`](https://github.com/opennextjs/opennextjs-aws/commit/8b51108d9aee7e5ed3027c1ceda99091b579951d) Thanks [@conico974](https://github.com/conico974)! - fix 304 incorrectly set as 200
+
+- [#630](https://github.com/opennextjs/opennextjs-aws/pull/630) [`b999c4e9a38499680bed77ddeb94b62a3301c0fa`](https://github.com/opennextjs/opennextjs-aws/commit/b999c4e9a38499680bed77ddeb94b62a3301c0fa) Thanks [@conico974](https://github.com/conico974)! - Feat: Allow overriding the proxying for external rewrite
+
+- [#633](https://github.com/opennextjs/opennextjs-aws/pull/633) [`ba84259d2e35e79a562a7e3f055e350a03c9d651`](https://github.com/opennextjs/opennextjs-aws/commit/ba84259d2e35e79a562a7e3f055e350a03c9d651) Thanks [@chanceaclark](https://github.com/chanceaclark)! - When copying over assets, check to see if favicon.ico is a file. In some cases favicon.ico is a folder that can contain a route handler.
+
 ## 3.2.1
 
 ### Patch Changes
