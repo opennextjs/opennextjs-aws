@@ -251,13 +251,13 @@ importers:
         specifier: ^8.10.109
         version: 8.10.145
       '@types/node':
-        specifier: 20.5.0
+        specifier: 'catalog:'
         version: 20.5.0
       tsc-alias:
         specifier: ^1.8.8
         version: 1.8.10
       typescript:
-        specifier: ^5.6.3
+        specifier: 'catalog:'
         version: 5.6.3
 
   packages/tests-e2e:
