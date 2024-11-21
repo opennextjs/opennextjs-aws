@@ -45,9 +45,9 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.109",
-    "@types/node": "^18.16.1",
+    "@types/node": "catalog:",
     "tsc-alias": "^1.8.8",
-    "typescript": "^5.6.3"
+    "typescript": "catalog:"
   },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"

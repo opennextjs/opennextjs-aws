@@ -251,8 +251,8 @@ importers:
         specifier: ^8.10.109
         version: 8.10.145
       '@types/node':
-        specifier: ^18.16.1
-        version: 18.19.59
+        specifier: 20.5.0
+        version: 20.5.0
       tsc-alias:
         specifier: ^1.8.8
         version: 1.8.10
@@ -2207,9 +2207,6 @@ packages:
 
   '@types/node@12.20.55':
     resolution: {integrity: sha512-J8xLz7q2OFulZ2cyGTLE1TbbZcjpno7FaN6zdJNrgAdrJ+DZzh/uFR6YrTb4C+nXakvud8Q4+rbhoIWlYQbUFQ==}
-
-  '@types/node@18.19.59':
-    resolution: {integrity: sha512-vizm2EqwV/7Zay+A6J3tGl9Lhr7CjZe2HmWS988sefiEmsyP9CeXEleho6i4hJk/8UtZAo0bWN4QPZZr83RxvQ==}
 
   '@types/node@20.5.0':
     resolution: {integrity: sha512-Mgq7eCtoTjT89FqNoTzzXg2XvCi5VMhRV6+I2aYanc6kQCBImeNaAYRs/DyoVqk1YEUJK5gN9VO7HRIdz4Wo3Q==}
@@ -4796,9 +4793,6 @@ packages:
   ufo@1.5.4:
     resolution: {integrity: sha512-UsUk3byDzKd04EyoZ7U4DOlxQaD14JUKQl6/P7wiX4FNvUfm3XL246n9W5AmqwW5RSFJ27NAuM0iLscAOYUiGQ==}
 
-  undici-types@5.26.5:
-    resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
-
   undici@5.28.4:
     resolution: {integrity: sha512-72RFADWFqKmUb2hmmvNODKL3p9hcB6Gt2DOQMis1SEBaV6a4MH8soBvzg+95CYhCKPFedut2JY9bMfrDl9D23g==}
     engines: {node: '>=14.0'}
@@ -7181,7 +7175,7 @@ snapshots:
       '@jest/schemas': 29.6.3
       '@types/istanbul-lib-coverage': 2.0.6
       '@types/istanbul-reports': 3.0.4
-      '@types/node': 18.19.59
+      '@types/node': 20.5.0
       '@types/yargs': 17.0.33
       chalk: 4.1.2
 
@@ -7385,7 +7379,7 @@ snapshots:
 
   '@playwright/test@1.37.0':
     dependencies:
-      '@types/node': 18.19.59
+      '@types/node': 20.5.0
       playwright-core: 1.37.0
     optionalDependencies:
       fsevents: 2.3.2
@@ -7978,10 +7972,6 @@ snapshots:
 
   '@types/node@12.20.55': {}
 
-  '@types/node@18.19.59':
-    dependencies:
-      undici-types: 5.26.5
-
   '@types/node@20.5.0': {}
 
   '@types/prop-types@15.7.13': {}
@@ -7993,7 +7983,7 @@ snapshots:
 
   '@types/readable-stream@4.0.16':
     dependencies:
-      '@types/node': 18.19.59
+      '@types/node': 20.5.0
       safe-buffer: 5.1.2
 
   '@types/resolve@1.20.6': {}
@@ -8008,7 +7998,7 @@ snapshots:
 
   '@types/ws@8.5.12':
     dependencies:
-      '@types/node': 18.19.59
+      '@types/node': 20.5.0
 
   '@types/yargs-parser@21.0.3': {}
 
@@ -9466,7 +9456,7 @@ snapshots:
   jest-util@29.7.0:
     dependencies:
       '@jest/types': 29.6.3
-      '@types/node': 18.19.59
+      '@types/node': 20.5.0
       chalk: 4.1.2
       ci-info: 3.9.0
       graceful-fs: 4.2.11
@@ -10854,8 +10844,6 @@ snapshots:
   typescript@5.6.3: {}
 
   ufo@1.5.4: {}
-
-  undici-types@5.26.5: {}
 
   undici@5.28.4:
     dependencies:
