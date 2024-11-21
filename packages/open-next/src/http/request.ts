@@ -28,8 +28,10 @@ export class IncomingMessage extends http.IncomingMessage {
       destroy: Function.prototype,
     });
 
-    if (typeof headers["content-length"] === "undefined") {
-      headers["content-length"] = Buffer.byteLength(body).toString();
+    // Set the content length when there is a body.
+    // See https://httpwg.org/specs/rfc9110.html#field.content-length
+    if (body) {
+      headers["content-length"] ??= String(Buffer.byteLength(body));
     }
 
     Object.assign(this, {
