@@ -21,18 +21,12 @@
   },
   "typesVersions": {
     "*": {
-      "*": [
-        "dist/*"
-      ]
+      "*": ["dist/*"]
     }
   },
   "keywords": [],
   "author": "",
-  "files": [
-    "dist",
-    "assets",
-    "README.md"
-  ],
+  "files": ["dist", "assets", "README.md"],
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.398.0",
     "@aws-sdk/client-lambda": "^3.398.0",
