@@ -78,23 +78,11 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
 
   constructor(
     private fixHeaders: (headers: OutgoingHttpHeaders) => void,
-    onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
+    private onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
     private streamCreator?: StreamCreator,
     private initialHeaders?: OutgoingHttpHeaders,
   ) {
     super();
-    this.once("finish", () => {
-      if (!this.headersSent) {
-        this.flushHeaders();
-      }
-      // In some cases we might not have a store i.e. for example in the image optimization function
-      // We may want to reconsider this in the future, it might be intersting to have access to this store everywhere
-      globalThis.__openNextAls
-        ?.getStore()
-        ?.pendingPromiseRunner.add(onEnd(this.headers));
-      const bodyLength = this.getBody().length;
-      this.streamCreator?.onFinish(bodyLength);
-    });
   }
 
   // Necessary for next 12
@@ -305,16 +293,26 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     callback();
   }
 
-  //This is only here because of aws broken streaming implementation.
-  //Hopefully one day they will be able to give us a working streaming implementation in lambda for everyone
-  //If you're lucky you have a working streaming implementation in your aws account and don't need this
-  //If not you can set the OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE env variable to true
-  //BE CAREFUL: Aws keeps rolling out broken streaming implementations even on accounts that had working ones before
-  //This is not dependent on the node runtime used
-  //There is another known issue with aws lambda streaming where the request reach the lambda only way after the request has been sent by the client. For this there is absolutely nothing we can do, contact aws support if that's your case
   _flush(callback: TransformCallback): void {
+    if (!this.headersSent) {
+      this.flushHeaders();
+    }
+    // In some cases we might not have a store i.e. for example in the image optimization function
+    // We may want to reconsider this in the future, it might be intersting to have access to this store everywhere
+    globalThis.__openNextAls
+      ?.getStore()
+      ?.pendingPromiseRunner.add(this.onEnd(this.headers));
+    const bodyLength = this.getBody().length;
+    this.streamCreator?.onFinish(bodyLength);
+
+    //This is only here because of aws broken streaming implementation.
+    //Hopefully one day they will be able to give us a working streaming implementation in lambda for everyone
+    //If you're lucky you have a working streaming implementation in your aws account and don't need this
+    //If not you can set the OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE env variable to true
+    //BE CAREFUL: Aws keeps rolling out broken streaming implementations even on accounts that had working ones before
+    //This is not dependent on the node runtime used
     if (
-      this.getBody().length < 1 &&
+      bodyLength === 0 &&
       // We use an env variable here because not all aws account have the same behavior
       // On some aws accounts the response will hang if the body is empty
       // We are modifying the response body here, this is not a good practice
