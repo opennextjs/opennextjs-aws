@@ -41,12 +41,14 @@ const handler: WrapperHandler<
     // Retrieve geo information from the cloudflare request
     // See https://developers.cloudflare.com/workers/runtime-apis/request
     // Note: This code could be moved to a cloudflare specific converter when one is created.
-    const cfProperties = (request as any).cf as Record<string, string | null>;
+    const cfProperties = (request as any).cf as
+      | Record<string, string | null>
+      | undefined;
     for (const [propName, headerName] of Object.entries(
       cfPropNameToHeaderName,
     )) {
-      const propValue = cfProperties[propName];
-      if (propValue !== null) {
+      const propValue = cfProperties?.[propName];
+      if (propValue != null) {
         internalEvent.headers[headerName] = propValue;
       }
     }

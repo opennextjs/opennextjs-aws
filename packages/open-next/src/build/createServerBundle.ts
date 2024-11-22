@@ -117,7 +117,6 @@ async function generateBundle(
   //       `node_modules` inside `.next/standalone`, and others inside
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
-  const isMonorepo = monorepoRoot !== appPath;
   const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
   fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
 
@@ -244,6 +243,7 @@ async function generateBundle(
     options,
   );
 
+  const isMonorepo = monorepoRoot !== appPath;
   if (isMonorepo) {
     addMonorepoEntrypoint(outputPath, packagePath);
   }
@@ -301,7 +301,7 @@ function addMonorepoEntrypoint(outputPath: string, packagePath: string) {
   const packagePosixPath = packagePath.split(path.sep).join(path.posix.sep);
   fs.writeFileSync(
     path.join(outputPath, "index.mjs"),
-    [`export * from "./${packagePosixPath}/index.mjs";`].join(""),
+    `export * from "./${packagePosixPath}/index.mjs";`,
   );
 }
 
