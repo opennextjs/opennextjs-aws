@@ -81,6 +81,7 @@ export type IncludedWrapper =
   | "aws-lambda-streaming"
   | "node"
   | "cloudflare"
+  | "cloudflare-streaming"
   | "dummy";
 
 export type IncludedConverter =
