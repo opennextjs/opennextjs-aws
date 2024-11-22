@@ -16,7 +16,9 @@ const converter: Converter<
   InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
 > = {
   convertFrom: async (event: Request) => {
-    const searchParams = new URL(event.url).searchParams;
+    const url = new URL(event.url);
+
+    const searchParams = url.searchParams;
     const query: Record<string, string | string[]> = {};
     for (const [key, value] of searchParams.entries()) {
       if (key in query) {
@@ -29,13 +31,13 @@ const converter: Converter<
         query[key] = value;
       }
     }
-    //Transform body into Buffer
+    // Transform body into Buffer
     const body = await event.arrayBuffer();
     const headers: Record<string, string> = {};
     event.headers.forEach((value, key) => {
       headers[key] = value;
     });
-    const rawPath = new URL(event.url).pathname;
+    const rawPath = url.pathname;
     const method = event.method;
     const shouldHaveBody = method !== "GET" && method !== "HEAD";
     const cookies: Record<string, string> = Object.fromEntries(
@@ -100,9 +102,10 @@ const converter: Converter<
     for (const [key, value] of Object.entries(result.headers)) {
       headers.set(key, Array.isArray(value) ? value.join(",") : value);
     }
+
     return new Response(result.body as ReadableStream, {
       status: result.statusCode,
-      headers: headers,
+      headers,
     });
   },
   name: "edge",

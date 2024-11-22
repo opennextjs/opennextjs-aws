@@ -99,7 +99,7 @@ export function validateConfig(config: OpenNextConfig) {
   }
   if (config.dangerous?.disableTagCache) {
     logger.warn(
-      `You've disabled tag cache. 
+      `You've disabled tag cache.
        This means that revalidatePath and revalidateTag from next/cache will not work.
        It is safe to disable if you only use page router`,
     );
