@@ -5,6 +5,8 @@ export interface BaseOpenNextError {
   readonly logLevel: 0 | 1 | 2;
 }
 
+const IGNORABLE_ERROR_NAME = "IgnorableError";
+
 // This is an error that can be totally ignored
 // It don't even need to be logged, or only in debug mode
 export class IgnorableError extends Error implements BaseOpenNextError {
@@ -13,8 +15,15 @@ export class IgnorableError extends Error implements BaseOpenNextError {
   readonly logLevel = 0;
   constructor(message: string) {
     super(message);
-    this.name = "IgnorableError";
+    this.name = IGNORABLE_ERROR_NAME;
   }
+}
+
+// Note that `e instanceof IgnorableError` might not work across bundles
+// embedding a distinct implementation of `IgnorableError`.
+export function isIgnorableError(error: unknown): error is IgnorableError {
+  const anyError = error as any;
+  return anyError.__openNextInternal && anyError.name === IGNORABLE_ERROR_NAME;
 }
 
 // This is an error that can be recovered from

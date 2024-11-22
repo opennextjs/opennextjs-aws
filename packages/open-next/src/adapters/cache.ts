@@ -1,3 +1,4 @@
+import { IgnorableError, isIgnorableError } from "utils/error";
 import { isBinaryContentType } from "./binary";
 import { debug, error, warn } from "./logger";
 
@@ -192,7 +193,11 @@ export default class S3Cache {
       } as CacheHandlerValue;
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
-      debug("Failed to get fetch cache", e);
+      if (isIgnorableError(e)) {
+        debug("Failed to get fetch cache", e.message);
+      } else {
+        debug("Failed to get fetch cache", e);
+      }
       return null;
     }
   }
@@ -271,7 +276,11 @@ export default class S3Cache {
       return null;
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
-      debug("Failed to get body cache", e);
+      if (isIgnorableError(e)) {
+        debug("Failed to get body cache", e.message);
+      } else {
+        debug("Failed to get body cache", e);
+      }
       return null;
     }
   }
@@ -409,7 +418,11 @@ export default class S3Cache {
       }
       debug("Finished setting cache");
     } catch (e) {
-      error("Failed to set cache", e);
+      if (isIgnorableError(e)) {
+        debug("Failed to set cache", e.message);
+      } else {
+        error("Failed to set cache", e);
+      }
     } finally {
       // We need to resolve the promise even if there was an error
       detachedPromise?.resolve();
@@ -456,7 +469,11 @@ export default class S3Cache {
         await globalThis.tagCache.writeTags(toInsert);
       }
     } catch (e) {
-      error("Failed to revalidate tag", e);
+      if (isIgnorableError(e)) {
+        debug("Failed to revalidate tag", e.message);
+      } else {
+        error("Failed to revalidate tag", e);
+      }
     }
   }
 }
