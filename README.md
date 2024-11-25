@@ -77,18 +77,23 @@ To run `OpenNext` locally:
 
 1. Clone this repository.
 1. Build `open-next`:
+
    ```bash
    cd packages/open-next
    pnpm build
    ```
+
 1. Run `open-next` in watch mode:
+
    ```bash
    pnpm dev
    ```
+
 1. Now, you can make changes in `open-next` and build your Next.js app to test the changes.
+
    ```bash
    cd path/to/my/nextjs/app
-   path/to/open-next/packages/open-next/dist/index.js build
+   path/to/opennextjs-aws/packages/open-next/dist/index.js build
    ```
 
 ### Coldstart
