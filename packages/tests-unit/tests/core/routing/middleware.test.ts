@@ -146,7 +146,7 @@ describe("handleMiddleware", () => {
       responseHeaders: {
         "x-middleware-rewrite": "http://localhost/rewrite",
       },
-      externalRewrite: false,
+      isExternalRewrite: false,
     });
   });
 
@@ -176,7 +176,7 @@ describe("handleMiddleware", () => {
         __nextDataReq: "1",
         newKey: "value",
       },
-      externalRewrite: false,
+      isExternalRewrite: false,
     });
   });
 
@@ -201,7 +201,7 @@ describe("handleMiddleware", () => {
       responseHeaders: {
         "x-middleware-rewrite": "http://external/rewrite",
       },
-      externalRewrite: true,
+      isExternalRewrite: true,
     });
   });
 
@@ -221,7 +221,7 @@ describe("handleMiddleware", () => {
         "custom-header": "value",
       },
       responseHeaders: {},
-      externalRewrite: false,
+      isExternalRewrite: false,
     });
   });
 
