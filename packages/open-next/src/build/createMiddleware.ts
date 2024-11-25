@@ -44,7 +44,7 @@ export async function createMiddleware(
     buildHelper.copyOpenNextConfig(
       options.buildDir,
       outputPath,
-      config.middleware.override?.wrapper === "cloudflare",
+      await buildHelper.isEdgeRuntime(config.middleware.override),
     );
 
     // Bundle middleware

@@ -62,7 +62,7 @@ const handler: WrapperHandler<
 
 export default {
   wrapper: handler,
-  name: "cloudflare",
+  name: "cloudflare-edge",
   supportStreaming: true,
   edgeRuntime: true,
 } satisfies Wrapper<InternalEvent, InternalResult | MiddlewareOutputEvent>;

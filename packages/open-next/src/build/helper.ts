@@ -5,7 +5,10 @@ import url from "node:url";
 
 import type { BuildOptions as ESBuildOptions } from "esbuild";
 import { build as buildAsync, buildSync } from "esbuild";
-import type { OpenNextConfig } from "types/open-next.js";
+import type {
+  DefaultOverrideOptions,
+  OpenNextConfig,
+} from "types/open-next.js";
 
 import logger from "../logger.js";
 
@@ -355,4 +358,19 @@ export function initOutputDir(options: BuildOptions) {
   const { buildDir } = options;
   fs.mkdirSync(buildDir, { recursive: true });
   fs.cpSync(options.tempBuildDir, buildDir, { recursive: true });
+}
+
+/**
+ * @returns Whether the edge runtime is used
+ */
+export async function isEdgeRuntime(
+  overrides: DefaultOverrideOptions | undefined,
+) {
+  if (!overrides?.wrapper) {
+    return false;
+  }
+  if (typeof overrides.wrapper === "string") {
+    return overrides.wrapper.startsWith("cloudflare");
+  }
+  return (await overrides?.wrapper?.())?.edgeRuntime;
 }
