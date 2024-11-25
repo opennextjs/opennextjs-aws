@@ -1,5 +1,5 @@
 import type { InternalEvent, InternalResult } from "types/open-next";
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
@@ -65,4 +65,7 @@ export default {
   name: "cloudflare",
   supportStreaming: true,
   edgeRuntime: true,
-};
+} satisfies Wrapper<
+  InternalEvent,
+  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
+>;

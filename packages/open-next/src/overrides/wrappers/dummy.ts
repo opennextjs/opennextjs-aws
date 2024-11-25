@@ -1,9 +1,9 @@
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 const dummyWrapper: WrapperHandler = async () => async () => undefined;
 
 export default {
   name: "dummy",
-  handler: dummyWrapper,
+  wrapper: dummyWrapper,
   supportStreaming: false,
-};
+} satisfies Wrapper;
