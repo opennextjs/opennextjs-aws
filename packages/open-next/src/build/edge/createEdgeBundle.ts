@@ -18,7 +18,7 @@ import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import type { BuildOptions } from "../helper.js";
+import { type BuildOptions, isEdgeRuntime } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
 interface BuildEdgeBundleOptions {
@@ -52,10 +52,7 @@ export async function buildEdgeBundle({
   onlyBuildOnce,
   name,
 }: BuildEdgeBundleOptions) {
-  const isInCloudfare =
-    typeof overrides?.wrapper === "string"
-      ? overrides.wrapper === "cloudflare"
-      : (await overrides?.wrapper?.())?.edgeRuntime;
+  const isInCloudfare = await isEdgeRuntime(overrides);
   await esbuildAsync(
     {
       entryPoints: [entrypoint],

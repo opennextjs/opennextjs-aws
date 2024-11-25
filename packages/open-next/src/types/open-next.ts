@@ -80,8 +80,10 @@ export type IncludedWrapper =
   | "aws-lambda"
   | "aws-lambda-streaming"
   | "node"
+  // @deprecated - use "cloudflare-edge" instead.
   | "cloudflare"
-  | "cloudflare-streaming"
+  | "cloudflare-edge"
+  | "cloudflare-node"
   | "dummy";
 
 export type IncludedConverter =

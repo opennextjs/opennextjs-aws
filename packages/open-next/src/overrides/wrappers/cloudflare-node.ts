@@ -67,6 +67,6 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
 
 export default {
   wrapper: handler,
-  name: "cloudflare-streaming",
+  name: "cloudflare-node",
   supportStreaming: true,
 } satisfies Wrapper;

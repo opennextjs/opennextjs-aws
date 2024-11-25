@@ -84,14 +84,19 @@ export function openNextResolvePlugin({
       build.onLoad({ filter: /core(\/|\\)resolve\.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         const overridesEntries = Object.entries(overrides ?? {});
-        for (const [overrideName, overrideValue] of overridesEntries) {
+        for (let [overrideName, overrideValue] of overridesEntries) {
           if (!overrideValue) {
             continue;
+          }
+          if (overrideName === "wrapper" && overrideValue === "cloudflare") {
+            // "cloudflare" is deprecated and replaced by "cloudflare-edge".
+            overrideValue = "cloudflare-edge";
           }
           const folder =
             nameToFolder[overrideName as keyof typeof nameToFolder];
           const defaultOverride =
             defaultOverrides[overrideName as keyof typeof defaultOverrides];
+
           contents = contents.replace(
             `../overrides/${folder}/${defaultOverride}.js`,
             `../overrides/${folder}/${getOverrideOrDummy(overrideValue)}.js`,

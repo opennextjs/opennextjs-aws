@@ -94,7 +94,7 @@ export function withCloudflare<
               routes: [fn.routes],
               patterns: [fn.patterns],
               override: {
-                wrapper: "cloudflare",
+                wrapper: "cloudflare-edge",
                 converter: "edge",
               },
             }
@@ -110,7 +110,7 @@ export function withCloudflare<
       external: true,
       originResolver: "pattern-env",
       override: {
-        wrapper: "cloudflare",
+        wrapper: "cloudflare-edge",
         converter: "edge",
       },
     },
