@@ -34,8 +34,9 @@ export async function openNextHandler(
       }
       debug("internalEvent", internalEvent);
 
-      let preprocessResult: InternalResult | MiddlewareOutputEvent = {
-        internalEvent: internalEvent,
+      let routingResult: InternalResult | MiddlewareOutputEvent = {
+        type: "middleware",
+        internalEvent,
         isExternalRewrite: false,
         origin: false,
         isISR: false,
@@ -43,16 +44,16 @@ export async function openNextHandler(
 
       //#override withRouting
       try {
-        preprocessResult = await routingHandler(internalEvent);
+        routingResult = await routingHandler(internalEvent);
       } catch (e) {
         warn("Routing failed.", e);
       }
       //#endOverride
 
       const headers =
-        "type" in preprocessResult
-          ? preprocessResult.headers
-          : preprocessResult.internalEvent.headers;
+        routingResult.type === "middleware"
+          ? routingResult.internalEvent.headers
+          : routingResult.headers;
 
       const overwrittenResponseHeaders: Record<string, string | string[]> = {};
 
@@ -67,16 +68,17 @@ export async function openNextHandler(
       }
 
       if (
-        "isExternalRewrite" in preprocessResult &&
-        preprocessResult.isExternalRewrite === true
+        routingResult.type === "middleware" &&
+        routingResult.isExternalRewrite === true
       ) {
         try {
-          preprocessResult = await globalThis.proxyExternalRequest.proxy(
-            preprocessResult.internalEvent,
+          routingResult = await globalThis.proxyExternalRequest.proxy(
+            routingResult.internalEvent,
           );
         } catch (e) {
           error("External request failed.", e);
-          preprocessResult = {
+          routingResult = {
+            type: "middleware",
             internalEvent: {
               type: "core",
               rawPath: "/500",
@@ -95,7 +97,7 @@ export async function openNextHandler(
         }
       }
 
-      if ("type" in preprocessResult) {
+      if (routingResult.type === "core") {
         // response is used only in the streaming case
         if (responseStreaming) {
           const response = createServerResponse(
@@ -103,18 +105,19 @@ export async function openNextHandler(
             headers,
             responseStreaming,
           );
-          response.statusCode = preprocessResult.statusCode;
+          response.statusCode = routingResult.statusCode;
           response.flushHeaders();
-          const [bodyToConsume, bodyToReturn] = preprocessResult.body.tee();
+          const [bodyToConsume, bodyToReturn] = routingResult.body.tee();
           for await (const chunk of bodyToConsume) {
             response.write(chunk);
           }
           response.end();
-          preprocessResult.body = bodyToReturn;
+          routingResult.body = bodyToReturn;
         }
-        return preprocessResult;
+        return routingResult;
       }
-      const preprocessedEvent = preprocessResult.internalEvent;
+
+      const preprocessedEvent = routingResult.internalEvent;
       debug("preprocessedEvent", preprocessedEvent);
       const reqProps = {
         method: preprocessedEvent.method,

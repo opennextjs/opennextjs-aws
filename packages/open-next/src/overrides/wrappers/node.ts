@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 
 import type { StreamCreator } from "http/index";
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { debug, error } from "../../adapters/logger";
 
@@ -66,4 +66,4 @@ export default {
   wrapper,
   name: "node",
   supportStreaming: true,
-};
+} satisfies Wrapper;

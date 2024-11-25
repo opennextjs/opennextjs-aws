@@ -19,7 +19,9 @@ import { handleMiddleware } from "./routing/middleware";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
+
 export interface MiddlewareOutputEvent {
+  type: "middleware";
   internalEvent: InternalEvent;
   isExternalRewrite: boolean;
   origin: Origin | false;
@@ -110,17 +112,16 @@ export default async function routingHandler(
     return redirect;
   }
 
-  const middleware = await handleMiddleware(internalEvent);
-  let middlewareResponseHeaders: Record<string, string | string[]> = {};
-  if ("statusCode" in middleware) {
-    return middleware;
+  const middlewareEventOrResult = await handleMiddleware(internalEvent);
+  const isInternalResult = "statusCode" in middlewareEventOrResult;
+  if (isInternalResult) {
+    return middlewareEventOrResult;
   }
-  middlewareResponseHeaders = middleware.responseHeaders || {};
-  internalEvent = middleware;
+  const middlewareResponseHeaders = middlewareEventOrResult.responseHeaders;
+  let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
+  // internalEvent is `InternalEvent | InternalMiddlewareEvent`
+  internalEvent = middlewareEventOrResult;
 
-  // At this point internalEvent is an InternalEvent or a MiddlewareOutputEvent
-
-  let isExternalRewrite = middleware.externalRewrite ?? false;
   if (!isExternalRewrite) {
     // First rewrite to be applied
     const beforeRewrites = handleRewrites(
@@ -233,6 +234,7 @@ export default async function routingHandler(
   });
 
   return {
+    type: "middleware",
     internalEvent,
     isExternalRewrite,
     origin: false,

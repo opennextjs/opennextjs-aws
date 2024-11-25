@@ -1,14 +1,10 @@
 import type { InternalEvent, InternalResult } from "types/open-next";
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { Writable } from "node:stream";
 import type { StreamCreator } from "http/index";
-import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
-const handler: WrapperHandler<
-  InternalEvent,
-  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
-> =
+const handler: WrapperHandler<InternalEvent, InternalResult> =
   async (handler, converter) =>
   async (
     request: Request,
@@ -73,5 +69,4 @@ export default {
   wrapper: handler,
   name: "cloudflare-streaming",
   supportStreaming: true,
-  edgeRuntime: true,
-};
+} satisfies Wrapper;

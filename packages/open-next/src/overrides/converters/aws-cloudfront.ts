@@ -111,10 +111,6 @@ async function convertFromCloudFrontRequestEvent(
   };
 }
 
-type MiddlewareEvent = {
-  type: "middleware";
-} & MiddlewareOutputEvent;
-
 function convertToCloudfrontHeaders(
   headers: Record<string, OutgoingHttpHeader>,
   directResponse?: boolean,
@@ -150,7 +146,7 @@ function convertToCloudfrontHeaders(
 }
 
 async function convertToCloudFrontRequestResult(
-  result: InternalResult | MiddlewareEvent,
+  result: InternalResult | MiddlewareOutputEvent,
   originalRequest: CloudFrontRequestEvent,
 ): Promise<CloudFrontRequestResult> {
   if (result.type === "middleware") {

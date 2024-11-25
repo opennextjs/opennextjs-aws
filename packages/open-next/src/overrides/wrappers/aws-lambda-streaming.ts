@@ -3,7 +3,7 @@ import zlib from "node:zlib";
 
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type { StreamCreator } from "http/index";
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { debug, error } from "../../adapters/logger";
 import type {
@@ -119,4 +119,4 @@ export default {
   wrapper: handler,
   name: "aws-lambda-streaming",
   supportStreaming: true,
-};
+} satisfies Wrapper;

@@ -1,5 +1,5 @@
 import type { InternalEvent, InternalResult } from "types/open-next";
-import type { WrapperHandler } from "types/overrides";
+import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
@@ -17,7 +17,7 @@ interface WorkerContext {
 
 const handler: WrapperHandler<
   InternalEvent,
-  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
+  InternalResult | MiddlewareOutputEvent
 > =
   async (handler, converter) =>
   async (
@@ -65,4 +65,4 @@ export default {
   name: "cloudflare",
   supportStreaming: true,
   edgeRuntime: true,
-};
+} satisfies Wrapper<InternalEvent, InternalResult | MiddlewareOutputEvent>;
