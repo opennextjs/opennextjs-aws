@@ -17,7 +17,7 @@ interface WorkerContext {
 
 const handler: WrapperHandler<
   InternalEvent,
-  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
+  InternalResult | MiddlewareOutputEvent
 > =
   async (handler, converter) =>
   async (
@@ -65,7 +65,4 @@ export default {
   name: "cloudflare",
   supportStreaming: true,
   edgeRuntime: true,
-} satisfies Wrapper<
-  InternalEvent,
-  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
->;
+} satisfies Wrapper<InternalEvent, InternalResult | MiddlewareOutputEvent>;

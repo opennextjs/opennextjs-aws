@@ -3,7 +3,6 @@ import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { Writable } from "node:stream";
 import type { StreamCreator } from "http/index";
-import type { MiddlewareOutputEvent } from "../../core/routingHandler";
 
 const handler: WrapperHandler<InternalEvent, InternalResult> =
   async (handler, converter) =>

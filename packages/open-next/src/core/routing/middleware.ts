@@ -23,9 +23,9 @@ const middlewareManifest = MiddlewareManifest;
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
-type MiddlewareOutputEvent = InternalEvent & {
+type InternalMiddlewareEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;
-  externalRewrite?: boolean;
+  isExternalRewrite?: boolean;
 };
 
 type Middleware = (request: Request) => Response | Promise<Response>;
@@ -45,7 +45,7 @@ function defaultMiddlewareLoader() {
 export async function handleMiddleware(
   internalEvent: InternalEvent,
   middlewareLoader: MiddlewareLoader = defaultMiddlewareLoader,
-): Promise<MiddlewareOutputEvent | InternalResult> {
+): Promise<InternalMiddlewareEvent | InternalResult> {
   const headers = internalEvent.headers;
 
   // We bypass the middleware if the request is internal
@@ -142,14 +142,14 @@ export async function handleMiddleware(
       statusCode: statusCode,
       headers: resHeaders,
       isBase64Encoded: false,
-    };
+    } satisfies InternalResult;
   }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
   let rewritten = false;
-  let externalRewrite = false;
+  let isExternalRewrite = false;
   let middlewareQueryString = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
@@ -157,7 +157,7 @@ export async function handleMiddleware(
     if (isExternal(rewriteUrl, internalEvent.headers.host as string)) {
       newUrl = rewriteUrl;
       rewritten = true;
-      externalRewrite = true;
+      isExternalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
       newUrl = rewriteUrlObject.pathname;
@@ -184,14 +184,13 @@ export async function handleMiddleware(
     // transfer response body to res
     const body = result.body as ReadableStream<Uint8Array>;
 
-    // await pipeReadable(result.response.body, res);
     return {
       type: internalEvent.type,
       statusCode: statusCode,
       headers: resHeaders,
       body,
       isBase64Encoded: false,
-    };
+    } satisfies InternalResult;
   }
 
   return {
@@ -207,6 +206,6 @@ export async function handleMiddleware(
     query: middlewareQueryString,
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
-    externalRewrite,
-  };
+    isExternalRewrite,
+  } satisfies InternalMiddlewareEvent;
 }
