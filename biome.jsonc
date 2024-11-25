@@ -5,7 +5,11 @@
     "ignoreUnknown": true
   },
   "organizeImports": { "enabled": true },
-  "formatter": { "enabled": true, "indentStyle": "space" },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "ignore": ["**/package.json"]
+  },
   "css": { "formatter": { "quoteStyle": "single" } },
   "linter": {
     "enabled": true,
