@@ -13,15 +13,9 @@ describe("logger adapter", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => null);
 
     beforeEach(() => {
-      // Direct debug to console.log
-      globalThis.openNextDebug = true;
       debug.mockClear();
       warn.mockClear();
       error.mockClear();
-    });
-
-    afterAll(() => {
-      globalThis.openNextDebug = false;
     });
 
     const ignorableError = new IgnorableError("ignorable");

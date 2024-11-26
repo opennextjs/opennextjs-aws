@@ -52,7 +52,8 @@ export function error(...args: any[]) {
     }
     if (error.logLevel === 0) {
       // Display the name and the message instead of full Open Next errors.
-      return debug(
+      // console.log is used so that logging does not depend on openNextDebug.
+      return console.log(
         ...args.map((arg) =>
           isOpenNextError(arg) ? `${arg.name}: ${arg.message}` : arg,
         ),
