@@ -9,7 +9,7 @@ import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next.js";
 
-import { isBinaryContentType } from "../../adapters/binary.js";
+import { isBinaryContentType } from "../../utils/binary.js";
 import { debug, error } from "../../adapters/logger.js";
 
 /**

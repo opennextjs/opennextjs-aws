@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isBinaryContentType } from "../adapters/binary.js";
+import { isBinaryContentType } from "../utils/binary.js";
 import logger from "../logger.js";
 import * as buildHelper from "./helper.js";
 
