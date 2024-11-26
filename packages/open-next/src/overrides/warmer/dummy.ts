@@ -1,9 +1,10 @@
 import type { Warmer } from "types/overrides";
+import { FatalError } from "utils/error";
 
 const dummyWarmer: Warmer = {
   name: "dummy",
   invoke: async (_: string) => {
-    throw new Error("Dummy warmer is not implemented");
+    throw new FatalError("Dummy warmer is not implemented");
   },
 };
 

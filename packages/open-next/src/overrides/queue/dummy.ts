@@ -1,9 +1,10 @@
 import type { Queue } from "types/overrides";
+import { FatalError } from "utils/error";
 
 const dummyQueue: Queue = {
   name: "dummy",
   send: async () => {
-    throw new Error("Dummy queue is not implemented");
+    throw new FatalError("Dummy queue is not implemented");
   },
 };
 
