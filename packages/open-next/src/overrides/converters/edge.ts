@@ -13,7 +13,7 @@ declare global {
 
 const converter: Converter<
   InternalEvent,
-  InternalResult | ({ type: "middleware" } & MiddlewareOutputEvent)
+  InternalResult | MiddlewareOutputEvent
 > = {
   convertFrom: async (event: Request) => {
     const url = new URL(event.url);
