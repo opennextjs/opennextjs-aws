@@ -19,7 +19,7 @@
   "dependencies": {},
   "devDependencies": {
     "tsup": "7.2.0",
-    "@types/node": "20.5.0"
+    "@types/node": "catalog:"
   },
   "publishConfig": {
     "access": "public"

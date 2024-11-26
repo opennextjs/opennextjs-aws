@@ -163,7 +163,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
               ...this.headers,
             };
       const initialCookies = parseCookies(
-        this.initialHeaders[SET_COOKIE_HEADER],
+        this.initialHeaders[SET_COOKIE_HEADER]?.toString(),
       );
       this._cookies =
         mergeHeadersPriority === "middleware"

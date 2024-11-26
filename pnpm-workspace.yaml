@@ -1,3 +1,15 @@
 packages:
   - "examples/*"
   - "packages/*"
+
+catalog:
+  next: 15.0.1
+  react: 19.0.0-rc-69d4b800-20241021
+  react-dom: 19.0.0-rc-69d4b800-20241021
+  "@types/node": 20.17.6
+  "@types/react": npm:types-react@19.0.0-rc.1
+  "@types/react-dom": npm:types-react-dom@19.0.0-rc.1
+  autoprefixer: 10.4.15
+  postcss: 8.4.27
+  tailwindcss: 3.3.3
+  typescript: 5.6.3
