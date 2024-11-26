@@ -1,4 +1,4 @@
-import type { BaseOpenNextError } from "utils/error";
+import { type BaseOpenNextError, isOpenNextError } from "utils/error";
 
 export function debug(...args: any[]) {
   if (globalThis.openNextDebug) {
@@ -42,28 +42,34 @@ const isDownplayedErrorLog = (errorLog: AwsSdkClientCommandErrorLog) =>
 
 export function error(...args: any[]) {
   // we try to catch errors from the aws-sdk client and downplay some of them
-  if (
-    args.some((arg: AwsSdkClientCommandErrorLog) => isDownplayedErrorLog(arg))
-  ) {
+  if (args.some((arg) => isDownplayedErrorLog(arg))) {
     debug(...args);
-  } else if (args.some((arg) => arg.__openNextInternal)) {
+  } else if (args.some((arg) => isOpenNextError(arg))) {
     // In case of an internal error, we log it with the appropriate log level
-    const error = args.find(
-      (arg) => arg.__openNextInternal,
-    ) as BaseOpenNextError;
-    if (error.logLevel === 0) {
-      debug(...args);
+    const error = args.find((arg) => isOpenNextError(arg))!;
+    if (error.logLevel < getOpenNextErrorLogLevel()) {
       return;
+    }
+    if (error.logLevel === 0) {
+      // Display the name and the message instead of full Open Next errors.
+      // console.log is used so that logging does not depend on openNextDebug.
+      return console.log(
+        ...args.map((arg) =>
+          isOpenNextError(arg) ? `${arg.name}: ${arg.message}` : arg,
+        ),
+      );
     }
     if (error.logLevel === 1) {
-      warn(...args);
-      return;
+      // Display the name and the message instead of full Open Next errors.
+      return warn(
+        ...args.map((arg) =>
+          isOpenNextError(arg) ? `${arg.name}: ${arg.message}` : arg,
+        ),
+      );
     }
-    console.error(...args);
-    return;
-  } else {
-    console.error(...args);
+    return console.error(...args);
   }
+  console.error(...args);
 }
 
 export const awsLogger = {
@@ -73,3 +79,23 @@ export const awsLogger = {
   warn,
   error,
 };
+
+/**
+ * Retrieves the log level for internal errors from the
+ * OPEN_NEXT_ERROR_LOG_LEVEL environment variable.
+ *
+ * @returns The numerical log level 0 (debug), 1 (warn), or 2 (error)
+ */
+function getOpenNextErrorLogLevel(): number {
+  const strLevel = process.env.OPEN_NEXT_ERROR_LOG_LEVEL ?? "1";
+  switch (strLevel.toLowerCase()) {
+    case "debug":
+    case "0":
+      return 0;
+    case "error":
+    case "2":
+      return 2;
+    default:
+      return 1;
+  }
+}
