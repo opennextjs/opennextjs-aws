@@ -39,3 +39,11 @@ export class FatalError extends Error implements BaseOpenNextError {
     this.name = "FatalError";
   }
 }
+
+export function isOpenNextError(e: any): e is BaseOpenNextError & Error {
+  try {
+    return "__openNextInternal" in e;
+  } catch {
+    return false;
+  }
+}
