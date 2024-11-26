@@ -70,10 +70,7 @@ describe("S3Cache", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    cache = new S3Cache({
-      _appDir: false,
-      _requestHeaders: undefined as never,
-    });
+    cache = new S3Cache();
 
     globalThis.disableIncrementalCache = false;
     globalThis.isNextAfter15 = false;
