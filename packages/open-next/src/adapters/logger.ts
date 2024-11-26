@@ -1,4 +1,4 @@
-import { type BaseOpenNextError, isOpenNextError } from "utils/error";
+import { isOpenNextError } from "utils/error";
 
 export function debug(...args: any[]) {
   if (globalThis.openNextDebug) {
