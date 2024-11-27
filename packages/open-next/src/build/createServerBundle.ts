@@ -134,7 +134,7 @@ async function generateBundle(
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
   if (isBundled) {
     await bundleNextServer(path.join(outputPath, packagePath), appPath, {
-      debug: options.debug,
+      minify: options.minify,
     });
   }
 
