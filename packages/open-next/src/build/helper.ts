@@ -43,6 +43,8 @@ export function normalizeOptions(
     appPackageJsonPath = findNextPackageJsonPath(appPath, monorepoRoot);
   }
 
+  const debug = Boolean(process.env.OPEN_NEXT_DEBUG) ?? false;
+
   return {
     appBuildOutputPath: buildOutputPath,
     appPackageJsonPath,
@@ -50,7 +52,9 @@ export function normalizeOptions(
     appPublicPath: path.join(appPath, "public"),
     buildDir: path.join(outputDir, ".build"),
     config,
-    debug: Boolean(process.env.OPEN_NEXT_DEBUG) ?? false,
+    debug,
+    // Whether ESBuild should minify the code
+    minify: !debug,
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
     openNextVersion: getOpenNextVersion(),
@@ -98,13 +102,13 @@ export function esbuildSync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug } = options;
+  const { openNextVersion, debug, minify } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: !debug,
+    minify,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
@@ -134,13 +138,13 @@ export async function esbuildAsync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug } = options;
+  const { openNextVersion, debug, minify } = options;
   const result = await buildAsync({
     target: "esnext",
     format: "esm",
     platform: "node",
     bundle: true,
-    minify: !debug,
+    minify,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,

@@ -160,7 +160,7 @@ globalThis.AsyncLocalStorage = AsyncLocalStorage;
       outfile,
       allowOverwrite: true,
       bundle: true,
-      minify: !options.debug,
+      minify: options.minify,
       platform: "node",
       format: "esm",
       conditions: ["workerd", "worker", "browser"],
