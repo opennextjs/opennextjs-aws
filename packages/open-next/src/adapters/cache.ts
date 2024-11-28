@@ -1,4 +1,4 @@
-import { isBinaryContentType } from "./binary";
+import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
 interface CachedFetchValue {

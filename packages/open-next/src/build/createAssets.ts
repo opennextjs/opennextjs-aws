@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { isBinaryContentType } from "../adapters/binary.js";
 import logger from "../logger.js";
+import { isBinaryContentType } from "../utils/binary.js";
 import * as buildHelper from "./helper.js";
 
 export function createStaticAssets(options: buildHelper.BuildOptions) {

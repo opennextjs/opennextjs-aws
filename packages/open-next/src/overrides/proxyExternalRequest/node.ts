@@ -3,7 +3,7 @@ import { request } from "node:https";
 import { Readable } from "node:stream";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { ProxyExternalRequest } from "types/overrides";
-import { isBinaryContentType } from "../../adapters/binary";
+import { isBinaryContentType } from "../../utils/binary";
 
 function filterHeadersForProxy(
   headers: Record<string, string | string[] | undefined>,
