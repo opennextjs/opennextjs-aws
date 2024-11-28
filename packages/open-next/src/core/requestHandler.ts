@@ -19,7 +19,9 @@ import { requestHandler, setNextjsPrebundledReact } from "./util";
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
 
+//#override patchAsyncStorage
 patchAsyncStorage();
+//#endOverride
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
