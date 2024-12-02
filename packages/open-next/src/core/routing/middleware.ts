@@ -23,7 +23,7 @@ const middlewareManifest = MiddlewareManifest;
 
 const middleMatch = getMiddlewareMatch(middlewareManifest);
 
-type InternalMiddlewareEvent = InternalEvent & {
+type MiddlewareEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;
   isExternalRewrite?: boolean;
 };
@@ -45,7 +45,7 @@ function defaultMiddlewareLoader() {
 export async function handleMiddleware(
   internalEvent: InternalEvent,
   middlewareLoader: MiddlewareLoader = defaultMiddlewareLoader,
-): Promise<InternalMiddlewareEvent | InternalResult> {
+): Promise<MiddlewareEvent | InternalResult> {
   const headers = internalEvent.headers;
 
   // We bypass the middleware if the request is internal
@@ -207,5 +207,5 @@ export async function handleMiddleware(
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
     isExternalRewrite,
-  } satisfies InternalMiddlewareEvent;
+  } satisfies MiddlewareEvent;
 }

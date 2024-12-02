@@ -7,9 +7,8 @@ import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
-import { resolveProxyRequest } from "./resolve";
 import { convertRes, createServerResponse } from "./routing/util";
-import type { MiddlewareOutputEvent } from "./routingHandler";
+import type { RoutingResult } from "./routingHandler";
 import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
@@ -34,8 +33,7 @@ export async function openNextHandler(
       }
       debug("internalEvent", internalEvent);
 
-      let routingResult: InternalResult | MiddlewareOutputEvent = {
-        type: "middleware",
+      let routingResult: InternalResult | RoutingResult = {
         internalEvent,
         isExternalRewrite: false,
         origin: false,
@@ -51,9 +49,9 @@ export async function openNextHandler(
       //#endOverride
 
       const headers =
-        routingResult.type === "middleware"
-          ? routingResult.internalEvent.headers
-          : routingResult.headers;
+        "type" in routingResult
+          ? routingResult.headers
+          : routingResult.internalEvent.headers;
 
       const overwrittenResponseHeaders: Record<string, string | string[]> = {};
 
@@ -68,7 +66,7 @@ export async function openNextHandler(
       }
 
       if (
-        routingResult.type === "middleware" &&
+        "isExternalRewrite" in routingResult &&
         routingResult.isExternalRewrite === true
       ) {
         try {
@@ -78,7 +76,6 @@ export async function openNextHandler(
         } catch (e) {
           error("External request failed.", e);
           routingResult = {
-            type: "middleware",
             internalEvent: {
               type: "core",
               rawPath: "/500",
@@ -97,7 +94,7 @@ export async function openNextHandler(
         }
       }
 
-      if (routingResult.type === "core") {
+      if ("type" in routingResult) {
         // response is used only in the streaming case
         if (responseStreaming) {
           const response = createServerResponse(

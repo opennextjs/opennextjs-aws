@@ -19,7 +19,7 @@ import {
   convertToQueryString,
   createServerResponse,
 } from "../../core/routing/util";
-import type { MiddlewareOutputEvent } from "../../core/routingHandler";
+import type { MiddlewareResult } from "../../core/routingHandler";
 
 const cloudfrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers
@@ -146,7 +146,7 @@ function convertToCloudfrontHeaders(
 }
 
 async function convertToCloudFrontRequestResult(
-  result: InternalResult | MiddlewareOutputEvent,
+  result: InternalResult | MiddlewareResult,
   originalRequest: CloudFrontRequestEvent,
 ): Promise<CloudFrontRequestResult> {
   if (result.type === "middleware") {

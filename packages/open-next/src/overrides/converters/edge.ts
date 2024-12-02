@@ -4,17 +4,14 @@ import { parseCookies } from "http/util";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
 
-import type { MiddlewareOutputEvent } from "../../core/routingHandler";
+import type { MiddlewareResult } from "../../core/routingHandler";
 
 declare global {
   // Makes convertTo returns the request instead of fetching it.
   var __dangerous_ON_edge_converter_returns_request: boolean | undefined;
 }
 
-const converter: Converter<
-  InternalEvent,
-  InternalResult | MiddlewareOutputEvent
-> = {
+const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
   convertFrom: async (event: Request) => {
     const url = new URL(event.url);
 
