@@ -1,4 +1,4 @@
-import type { InternalEvent, Origin } from "types/open-next";
+import type { InternalEvent, InternalResult, Origin } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error } from "../adapters/logger";
@@ -10,12 +10,14 @@ import {
   resolveQueue,
   resolveTagCache,
 } from "../core/resolve";
-import routingHandler from "../core/routingHandler";
+import routingHandler, { type MiddlewareResult } from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
 globalThis.__openNextAls = new AsyncLocalStorage();
 
-const defaultHandler = async (internalEvent: InternalEvent) => {
+const defaultHandler = async (
+  internalEvent: InternalEvent,
+): Promise<InternalResult | MiddlewareResult> => {
   const originResolver = await resolveOriginResolver(
     globalThis.openNextConfig.middleware?.originResolver,
   );
