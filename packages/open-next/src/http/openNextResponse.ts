@@ -82,7 +82,9 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   get finished() {
-    return this.writableFinished && (this.responseStream?.writableFinished ?? true);
+    return this.responseStream
+      ? this.responseStream?.writableFinished
+      : this.writableFinished;
   }
 
   setHeader(name: string, value: string | string[]): this {
