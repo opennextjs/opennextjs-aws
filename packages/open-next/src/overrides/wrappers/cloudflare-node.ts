@@ -31,9 +31,6 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     const url = new URL(internalEvent.url);
     (internalEvent.url as string) = url.href.slice(url.origin.length);
 
-    const { promise: promiseResponse, resolve: resolveResponse } =
-      Promise.withResolvers<Response>();
-
     const streamCreator: StreamCreator = {
       writeHeaders(prelude: {
         statusCode: number;
@@ -52,7 +49,6 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           status: statusCode,
           headers: responseHeaders,
         });
-        resolveResponse(response);
 
         return Writable.fromWeb(writable);
       },
@@ -60,9 +56,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
       onFinish: (_length: number) => {},
     };
 
-    ctx.waitUntil(handler(internalEvent, streamCreator));
-
-    return promiseResponse;
+    const internalResult = await handler(internalEvent, streamCreator);
+    return converter.convertTo(internalResult);
   };
 
 export default {
