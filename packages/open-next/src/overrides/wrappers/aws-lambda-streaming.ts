@@ -2,9 +2,9 @@ import { Readable, type Writable } from "node:stream";
 import zlib from "node:zlib";
 
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
-import type { StreamCreator } from "http/index";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
+import type { StreamCreator } from "types/open-next";
 import { debug, error } from "../../adapters/logger";
 import type {
   WarmerEvent,
@@ -92,10 +92,6 @@ const handler: WrapperHandler = async (handler, converter) =>
 
           return compressedStream ?? responseStream;
         },
-        onWrite: () => {
-          // _hasWriten = true;
-        },
-        onFinish: () => {},
       };
 
       const response = await handler(internalEvent, streamCreator);

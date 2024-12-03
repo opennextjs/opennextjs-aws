@@ -8,9 +8,9 @@ import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
-import type { StreamCreator } from "http/openNextResponse";
 import type { WrapperHandler } from "types/overrides";
 
+import type { StreamCreator } from "types/open-next";
 import type {
   WarmerEvent,
   WarmerResponse,
@@ -58,9 +58,6 @@ const handler: WrapperHandler =
             callback();
           },
         });
-      },
-      onFinish: () => {
-        // Do nothing
       },
     };
 

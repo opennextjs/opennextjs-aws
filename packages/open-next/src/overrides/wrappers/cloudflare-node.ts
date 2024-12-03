@@ -1,8 +1,11 @@
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  StreamCreator,
+} from "types/open-next";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { Writable } from "node:stream";
-import type { StreamCreator } from "http/index";
 
 const handler: WrapperHandler<InternalEvent, InternalResult> =
   async (handler, converter) =>
@@ -56,8 +59,6 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
 
         return Writable.fromWeb(writable);
       },
-      onWrite: () => {},
-      onFinish: (_length: number) => {},
     };
 
     ctx.waitUntil(handler(internalEvent, streamCreator));

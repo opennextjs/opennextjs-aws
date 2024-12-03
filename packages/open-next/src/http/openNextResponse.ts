@@ -8,22 +8,12 @@ import type { Socket } from "node:net";
 import type { TransformCallback, Writable } from "node:stream";
 import { Transform } from "node:stream";
 
+import type { StreamCreator } from "types/open-next";
 import { debug } from "../adapters/logger";
 import { parseCookies, parseHeaders } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 const CANNOT_BE_USED = "This cannot be used in OpenNext";
-
-export interface StreamCreator {
-  writeHeaders(prelude: {
-    statusCode: number;
-    cookies: string[];
-    headers: Record<string, string>;
-  }): Writable;
-  // Just to fix an issue with aws lambda streaming with empty body
-  onWrite?: () => void;
-  onFinish: (length: number) => void;
-}
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
@@ -92,9 +82,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   get finished() {
-    return Boolean(
-      this.writableFinished && this.responseStream?.writableFinished,
-    );
+    return this.writableFinished && (this.responseStream?.writableFinished ?? true);
   }
 
   setHeader(name: string, value: string | string[]): this {
@@ -303,7 +291,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       ?.getStore()
       ?.pendingPromiseRunner.add(this.onEnd(this.headers));
     const bodyLength = this.getBody().length;
-    this.streamCreator?.onFinish(bodyLength);
+    this.streamCreator?.onFinish?.(bodyLength);
 
     //This is only here because of aws broken streaming implementation.
     //Hopefully one day they will be able to give us a working streaming implementation in lambda for everyone

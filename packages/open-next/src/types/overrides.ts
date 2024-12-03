@@ -1,6 +1,5 @@
 import type { Readable } from "node:stream";
 
-import type { StreamCreator } from "http/index";
 import type { Meta } from "types/cache";
 
 import type {
@@ -9,6 +8,7 @@ import type {
   InternalEvent,
   InternalResult,
   Origin,
+  StreamCreator,
 } from "./open-next";
 
 // Queue
