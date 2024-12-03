@@ -4,7 +4,11 @@ import {
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
-import type { InternalEvent, InternalResult, Origin } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  RoutingResult,
+} from "types/open-next";
 
 import { debug } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
@@ -19,14 +23,6 @@ import { handleMiddleware } from "./routing/middleware";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
-
-export interface MiddlewareOutputEvent {
-  type: "middleware";
-  internalEvent: InternalEvent;
-  isExternalRewrite: boolean;
-  origin: Origin | false;
-  isISR: boolean;
-}
 
 // Add the locale prefix to the regex so we correctly match the rawPath
 const optionalLocalePrefixRegex = RoutesManifest.locales.length
@@ -88,7 +84,7 @@ function applyMiddlewareHeaders(
 
 export default async function routingHandler(
   event: InternalEvent,
-): Promise<InternalResult | MiddlewareOutputEvent> {
+): Promise<InternalResult | RoutingResult> {
   // Add Next geo headers
   for (const [openNextGeoName, nextGeoName] of Object.entries(
     geoHeaderToNextHeader,
@@ -112,15 +108,15 @@ export default async function routingHandler(
     return redirect;
   }
 
-  const middlewareEventOrResult = await handleMiddleware(internalEvent);
-  const isInternalResult = "statusCode" in middlewareEventOrResult;
-  if (isInternalResult) {
-    return middlewareEventOrResult;
+  const eventOrResult = await handleMiddleware(internalEvent);
+  const isResult = "statusCode" in eventOrResult;
+  if (isResult) {
+    return eventOrResult;
   }
-  const middlewareResponseHeaders = middlewareEventOrResult.responseHeaders;
-  let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
-  // internalEvent is `InternalEvent | InternalMiddlewareEvent`
-  internalEvent = middlewareEventOrResult;
+  const middlewareResponseHeaders = eventOrResult.responseHeaders;
+  let isExternalRewrite = eventOrResult.isExternalRewrite ?? false;
+  // internalEvent is `InternalEvent | MiddlewareEvent`
+  internalEvent = eventOrResult;
 
   if (!isExternalRewrite) {
     // First rewrite to be applied
@@ -234,7 +230,6 @@ export default async function routingHandler(
   });
 
   return {
-    type: "middleware",
     internalEvent,
     isExternalRewrite,
     origin: false,

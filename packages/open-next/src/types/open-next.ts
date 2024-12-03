@@ -95,6 +95,17 @@ export type IncludedConverter =
   | "sqs-revalidate"
   | "dummy";
 
+export interface RoutingResult {
+  internalEvent: InternalEvent;
+  isExternalRewrite: boolean;
+  origin: Origin | false;
+  isISR: boolean;
+}
+
+export interface MiddlewareResult
+  extends RoutingResult,
+    BaseEventOrResult<"middleware"> {}
+
 export type IncludedQueue = "sqs" | "sqs-lite" | "dummy";
 
 export type IncludedIncrementalCache = "s3" | "s3-lite" | "dummy";
