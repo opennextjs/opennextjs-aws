@@ -50,7 +50,11 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           responseHeaders.append("Set-Cookie", cookie);
         }
 
-        const { readable, writable } = new TransformStream();
+        const { readable, writable } = new TransformStream({
+          transform(chunk, controller) {
+            controller.enqueue(Uint8Array.from(chunk.chunk ?? chunk));
+          },
+        });
         const response = new Response(readable, {
           status: statusCode,
           headers: responseHeaders,
