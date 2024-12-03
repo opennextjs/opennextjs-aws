@@ -3,11 +3,15 @@ import type { OutgoingHttpHeaders } from "node:http";
 import { Readable } from "node:stream";
 
 import { BuildId, HtmlPages, NextConfig } from "config/index.js";
-import type { IncomingMessage, StreamCreator } from "http/index.js";
+import type { IncomingMessage } from "http/index.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
-import type { InternalEvent, InternalResult } from "types/open-next.js";
+import type {
+  InternalEvent,
+  InternalResult,
+  StreamCreator,
+} from "types/open-next.js";
 
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";

@@ -1,8 +1,8 @@
 import { createServer } from "node:http";
 
-import type { StreamCreator } from "http/index";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
+import type { StreamCreator } from "types/open-next";
 import { debug, error } from "../../adapters/logger";
 
 const wrapper: WrapperHandler = async (handler, converter) => {
@@ -15,9 +15,6 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         res.flushHeaders();
         res.uncork();
         return res;
-      },
-      onFinish: () => {
-        // Is it necessary to do something here?
       },
     };
     if (internalEvent.rawPath === "/__health") {

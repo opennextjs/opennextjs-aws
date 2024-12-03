@@ -1,11 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import type { OpenNextNodeResponse, StreamCreator } from "http/index.js";
+import type { OpenNextNodeResponse } from "http/index.js";
 import { IncomingMessage } from "http/index.js";
 import type {
   InternalEvent,
   InternalResult,
   RoutingResult,
+  StreamCreator,
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 

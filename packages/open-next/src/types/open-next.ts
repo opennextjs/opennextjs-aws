@@ -1,5 +1,6 @@
 import type { ReadableStream } from "node:stream/web";
 
+import type { Writable } from "node:stream";
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type {
   Converter,
@@ -34,6 +35,17 @@ export type InternalResult = {
   body: ReadableStream;
   isBase64Encoded: boolean;
 } & BaseEventOrResult<"core">;
+
+export interface StreamCreator {
+  writeHeaders(prelude: {
+    statusCode: number;
+    cookies: string[];
+    headers: Record<string, string>;
+  }): Writable;
+  // Just to fix an issue with aws lambda streaming with empty body
+  onWrite?: () => void;
+  onFinish?: (length: number) => void;
+}
 
 export interface DangerousOptions {
   /**
