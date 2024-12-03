@@ -8,18 +8,16 @@ import type {
   CloudFrontRequestResult,
 } from "aws-lambda";
 import { parseCookies } from "http/util";
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareResult,
+} from "types/open-next";
 import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import {
-  convertRes,
-  convertToQuery,
-  convertToQueryString,
-  createServerResponse,
-} from "../../core/routing/util";
-import type { MiddlewareResult } from "../../core/routingHandler";
+import { convertToQuery, convertToQueryString } from "../../core/routing/util";
 
 const cloudfrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers

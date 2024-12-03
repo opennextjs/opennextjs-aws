@@ -1,7 +1,9 @@
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareResult,
+} from "types/open-next";
 import type { Wrapper, WrapperHandler } from "types/overrides";
-
-import type { MiddlewareResult } from "../../core/routingHandler";
 
 const cfPropNameToHeaderName = {
   city: "x-open-next-city",

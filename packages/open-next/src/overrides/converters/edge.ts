@@ -1,10 +1,12 @@
 import { Buffer } from "node:buffer";
 
 import { parseCookies } from "http/util";
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareResult,
+} from "types/open-next";
 import type { Converter } from "types/overrides";
-
-import type { MiddlewareResult } from "../../core/routingHandler";
 
 declare global {
   // Makes convertTo returns the request instead of fetching it.
