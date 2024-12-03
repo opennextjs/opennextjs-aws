@@ -2,13 +2,16 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import type { OpenNextNodeResponse, StreamCreator } from "http/index.js";
 import { IncomingMessage } from "http/index.js";
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  RoutingResult,
+} from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse } from "./routing/util";
-import type { RoutingResult } from "./routingHandler";
 import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,

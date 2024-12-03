@@ -1,4 +1,8 @@
-import type { InternalEvent, InternalResult, Origin } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareResult,
+} from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { debug, error } from "../adapters/logger";
@@ -10,7 +14,7 @@ import {
   resolveQueue,
   resolveTagCache,
 } from "../core/resolve";
-import routingHandler, { type MiddlewareResult } from "../core/routingHandler";
+import routingHandler from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
 globalThis.__openNextAls = new AsyncLocalStorage();
