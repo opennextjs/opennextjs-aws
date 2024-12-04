@@ -13,10 +13,10 @@ import {
   fixSWRCacheHeader,
   getMiddlewareMatch,
   getUrlParts,
+  invalidateCDNOnRequest,
   isExternal,
   revalidateIfRequired,
   unescapeRegex,
-  invalidateCDNOnRequest,
 } from "@opennextjs/aws/core/routing/util.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
