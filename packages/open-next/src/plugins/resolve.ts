@@ -27,7 +27,7 @@ export interface IPluginSettings {
       | IncludedOriginResolver;
     warmer?: LazyLoadedOverride<Warmer> | IncludedWarmer;
     proxyExternalRequest?: OverrideOptions["proxyExternalRequest"];
-    cdnInvalidation?: OverrideOptions["cdnInvalidation"]
+    cdnInvalidation?: OverrideOptions["cdnInvalidation"];
   };
   fnName?: string;
 }
@@ -53,7 +53,7 @@ const nameToFolder = {
   originResolver: "originResolver",
   warmer: "warmer",
   proxyExternalRequest: "proxyExternalRequest",
-  cdnInvalidation: "cdnInvalidation"
+  cdnInvalidation: "cdnInvalidation",
 };
 
 const defaultOverrides = {
@@ -66,7 +66,7 @@ const defaultOverrides = {
   originResolver: "pattern-env",
   warmer: "aws-lambda",
   proxyExternalRequest: "node",
-  cdnInvalidation: "dummy"
+  cdnInvalidation: "dummy",
 };
 
 /**

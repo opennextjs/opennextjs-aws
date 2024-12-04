@@ -40,8 +40,8 @@ export async function createMainHandler() {
   );
 
   globalThis.cdnInvalidationHandler = await resolveCdnInvalidation(
-    thisFunction.override?.cdnInvalidation
-  )
+    thisFunction.override?.cdnInvalidation,
+  );
 
   globalThis.lastModified = {};
 

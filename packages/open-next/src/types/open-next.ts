@@ -133,7 +133,7 @@ export type IncludedWarmer = "aws-lambda" | "dummy";
 
 export type IncludedProxyExternalRequest = "node" | "fetch" | "dummy";
 
-export type IncludedCDNInvalidationHandler = "cloudfront" | "dummy"
+export type IncludedCDNInvalidationHandler = "cloudfront" | "dummy";
 
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
@@ -191,7 +191,7 @@ export interface OverrideOptions extends DefaultOverrideOptions {
    * Add possibility to override the default cdn invalidation for On Demand Revalidation
    * @default "dummy"
    */
-  cdnInvalidation?: 
+  cdnInvalidation?:
     | IncludedCDNInvalidationHandler
     | LazyLoadedOverride<CDNInvalidationHandler>;
 }
