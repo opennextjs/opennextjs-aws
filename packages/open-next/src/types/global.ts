@@ -2,6 +2,7 @@ import type { AsyncLocalStorage } from "node:async_hooks";
 import type { OutgoingHttpHeaders } from "node:http";
 
 import type {
+  CDNInvalidationHandler,
   IncrementalCache,
   ProxyExternalRequest,
   Queue,
@@ -206,4 +207,11 @@ declare global {
    * Defined in `createMainHandler`.
    */
   var proxyExternalRequest: ProxyExternalRequest;
+
+  /**
+   * The function that will be called when the CDN needs invalidating (either from `revalidateTag` or from `res.revalidate`)
+   * Available in main functions
+   * Defined in `createMainHandler`
+   */
+  var cdnInvalidationHandler: CDNInvalidationHandler;
 }

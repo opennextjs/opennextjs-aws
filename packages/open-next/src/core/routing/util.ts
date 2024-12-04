@@ -420,8 +420,34 @@ export function createServerResponse(
         internalEvent.rawPath,
         _headers,
       );
+      await invalidateCDNOnRequest({
+        rawPath: internalEvent.rawPath,
+        isIsrRevalidation: internalEvent.headers["x-isr"] === "1",
+        headers: _headers,
+      });
     },
     responseStream,
     headers,
   );
+}
+
+export async function invalidateCDNOnRequest(params: {
+  //TODO: use the initialPath instead of rawPath, a rewrite could have happened and would make cdn invalidation fail
+  rawPath: string;
+  isIsrRevalidation?: boolean;
+  headers: OutgoingHttpHeaders;
+}) {
+  const { rawPath, isIsrRevalidation, headers } = params;
+  if (
+    !isIsrRevalidation &&
+    headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED"
+  ) {
+    await globalThis.cdnInvalidationHandler.invalidatePaths([
+      {
+        path: rawPath,
+        //TODO: Here we assume that the path is for page router, this might not be the case
+        isAppRouter: false,
+      },
+    ]);
+  }
 }

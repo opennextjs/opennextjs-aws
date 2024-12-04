@@ -433,6 +433,25 @@ export default class Cache {
 
         // Update all keys with the given tag with revalidatedAt set to now
         await globalThis.tagCache.writeTags(toInsert);
+
+        // We can now invalidate all paths in the CDN
+        const uniquePaths = Array.from(
+          new Set(
+            toInsert
+              // We need to filter fetch cache key as they are not in the CDN
+              .filter((t) => t.tag.startsWith("_N_T_/"))
+              .map((t) => t.path),
+          ),
+        );
+        if (uniquePaths.length > 0) {
+          await globalThis.cdnInvalidationHandler.invalidatePaths(
+            uniquePaths.map((path) => ({
+              path,
+              // Here we can be sure that the path is from app router
+              isAppRouter: true,
+            })),
+          );
+        }
       }
     } catch (e) {
       error("Failed to revalidate tag", e);

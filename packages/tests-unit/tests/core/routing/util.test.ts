@@ -16,6 +16,7 @@ import {
   isExternal,
   revalidateIfRequired,
   unescapeRegex,
+  invalidateCDNOnRequest,
 } from "@opennextjs/aws/core/routing/util.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
@@ -30,6 +31,7 @@ declare global {
   var lastModified: any;
   var openNextDebug: boolean;
   var openNextVersion: string;
+  var cdnInvalidationHandler: any;
 }
 
 type Res = {
@@ -731,5 +733,61 @@ describe("fixISRHeaders", () => {
     expect(headers["cache-control"]).toBe(
       "s-maxage=2, stale-while-revalidate=2592000",
     );
+  });
+});
+
+describe("invalidateCDNOnRequest", () => {
+  beforeEach(() => {
+    globalThis.cdnInvalidationHandler = {
+      invalidatePaths: vi.fn(),
+    };
+  });
+
+  it("should not call invalidatePaths when x-nextjs-cache is not REVALIDATED", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "HIT",
+    };
+    await invalidateCDNOnRequest({
+      rawPath: "/path",
+      headers,
+    });
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("should not call invalidatePaths when x-nextjs-cache is REVALIDATED but on ISR request", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "REVALIDATED",
+    };
+    await invalidateCDNOnRequest({
+      rawPath: "/path",
+      headers,
+      isIsrRevalidation: true,
+    });
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("should call invalidatePaths when x-nextjs-cache is REVALIDATED", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "REVALIDATED",
+    };
+    await invalidateCDNOnRequest({
+      rawPath: "/path",
+      headers,
+    });
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).toHaveBeenCalledWith([
+      {
+        path: "/path",
+        isAppRouter: false,
+      },
+    ]);
   });
 });
