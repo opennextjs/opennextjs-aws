@@ -141,3 +141,17 @@ export async function resolveProxyRequest(
   const m_1 = await import("../overrides/proxyExternalRequest/node.js");
   return m_1.default;
 }
+
+
+/**
+ * @__PURE__
+ */
+export async function resolveCdnInvalidation(
+  cdnInvalidation: OverrideOptions["cdnInvalidation"]
+) {
+  if(typeof cdnInvalidation === "function") {
+    return cdnInvalidation()
+  }
+  const m_1 = await import("../overrides/cdnInvalidation/dummy.js");
+  return m_1.default
+}
