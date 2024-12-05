@@ -431,6 +431,7 @@ export function createServerResponse(
   );
 }
 
+// This function is used only for `res.revalidate()`
 export async function invalidateCDNOnRequest(params: {
   //TODO: use the initialPath instead of rawPath, a rewrite could have happened and would make cdn invalidation fail
   rawPath: string;
