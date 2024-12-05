@@ -440,7 +440,7 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith("_N_T_/"))
-              .map((t) => t.path),
+              .map((t) => `/${t.path}`),
           ),
         );
         if (uniquePaths.length > 0) {
