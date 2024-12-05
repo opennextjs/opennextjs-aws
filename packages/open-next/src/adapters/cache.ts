@@ -456,6 +456,7 @@ export default class S3Cache {
         await globalThis.tagCache.writeTags(toInsert);
 
         // We can now invalidate all paths in the CDN
+        // This only applies to `revalidateTag`, not to `res.revalidate()`
         const uniquePaths = Array.from(
           new Set(
             toInsert
