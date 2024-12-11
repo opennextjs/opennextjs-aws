@@ -48,7 +48,7 @@ export function middleware(request: NextRequest) {
   if (
     path.startsWith("/revalidate-tag") ||
     path.startsWith("/revalidate-path") ||
-    path.startsWith("/api/after/ssg") 
+    path.startsWith("/api/after/ssg")
   ) {
     responseHeaders.set(
       "cache-control",
