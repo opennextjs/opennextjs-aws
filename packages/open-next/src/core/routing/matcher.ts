@@ -336,7 +336,8 @@ export function fixDataPage(
   buildId: string,
 ): InternalEvent | InternalResult {
   const { rawPath, query } = internalEvent;
-  const dataPattern = `/_next/data/${buildId}`;
+  const dataPattern = `${NextConfig.basePath ?? ""}/_next/data/${buildId}`;
+
   // Return 404 for data requests that don't match the buildId
   if (rawPath.startsWith("/_next/data") && !rawPath.startsWith(dataPattern)) {
     return {
