@@ -1,12 +1,15 @@
 import {
+  AppPathsManifest,
   BuildId,
   ConfigHeaders,
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
+import type { RouteDefinition } from "types/next-types";
 import type {
   InternalEvent,
   InternalResult,
+  RouteType,
   RoutingResult,
 } from "types/open-next";
 
@@ -22,6 +25,7 @@ import {
 import { handleMiddleware } from "./routing/middleware";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
+export const INTERNAL_HEADER_PREFIX = "x-opennext-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 
 // Add the locale prefix to the regex so we correctly match the rawPath
@@ -39,23 +43,49 @@ const apiPrefix = RoutesManifest.basePath
   ? `${RoutesManifest.basePath}/api`
   : "/api";
 
-const staticRegexp = RoutesManifest.routes.static.map(
-  (route) =>
-    new RegExp(
-      route.regex
-        .replace("^/", optionalLocalePrefixRegex)
-        .replace("^/", optionalBasepathPrefixRegex),
-    ),
-);
+export function routeMatcher(routeDefinitions: RouteDefinition[]) {
+  const regexp = routeDefinitions.map((route) => {
+    return {
+      page: route.page,
+      regexp: new RegExp(
+        route.regex
+          .replace("^/", optionalLocalePrefixRegex)
+          .replace("^/", optionalBasepathPrefixRegex),
+      ),
+    };
+  });
+  const appPathsSet = new Set(
+    Object.keys(AppPathsManifest)
+      .filter((key) => key.endsWith("/page"))
+      // Remove the /page suffix
+      .map((key) => key.replace(/\/page$/, "")),
+  );
+  const routePathsSet = new Set(
+    Object.keys(AppPathsManifest)
+      .filter((key) => key.endsWith("/route"))
+      // Remove the /route suffix
+      .map((key) => key.replace(/\/route$/, "")),
+  );
+  return function matchRoute(path: string) {
+    const foundRoute = regexp.find((route) => route.regexp.test(path));
+    let routeType: RouteType | undefined = undefined;
+    if (foundRoute) {
+      routeType = appPathsSet.has(foundRoute.page)
+        ? "app"
+        : routePathsSet.has(foundRoute.page)
+          ? "route"
+          : "page";
+      return {
+        page: foundRoute.page,
+        routeType,
+      };
+    }
+    return false;
+  };
+}
 
-const dynamicRegexp = RoutesManifest.routes.dynamic.map(
-  (route) =>
-    new RegExp(
-      route.regex
-        .replace("^/", optionalLocalePrefixRegex)
-        .replace("^/", optionalBasepathPrefixRegex),
-    ),
-);
+const staticRouteMatcher = routeMatcher(RoutesManifest.routes.static);
+const dynamicRouteMatcher = routeMatcher(RoutesManifest.routes.dynamic);
 
 // Geolocation headers starting from Nextjs 15
 // See https://github.com/vercel/vercel/blob/7714b1c/packages/functions/src/headers.ts
@@ -95,6 +125,17 @@ export default async function routingHandler(
     }
   }
 
+  // First we remove internal headers
+  // We don't want to allow users to set these headers
+  for (const key of Object.keys(event.headers)) {
+    if (
+      key.startsWith(INTERNAL_HEADER_PREFIX) ||
+      key.startsWith(MIDDLEWARE_HEADER_PREFIX)
+    ) {
+      delete event.headers[key];
+    }
+  }
+
   const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
 
   let internalEvent = fixDataPage(event, BuildId);
@@ -127,12 +168,8 @@ export default async function routingHandler(
     internalEvent = beforeRewrites.internalEvent;
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
-
-  const isStaticRoute =
-    !isExternalRewrite &&
-    staticRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
-    );
+  const foundStaticRoute = staticRouteMatcher(internalEvent.rawPath);
+  const isStaticRoute = !isExternalRewrite && Boolean(foundStaticRoute);
 
   if (!isStaticRoute && !isExternalRewrite) {
     // Second rewrite to be applied
@@ -151,11 +188,9 @@ export default async function routingHandler(
   );
   internalEvent = fallbackEvent;
 
-  const isDynamicRoute =
-    !isExternalRewrite &&
-    dynamicRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
-    );
+  const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
+  const isDynamicRoute = !isExternalRewrite && Boolean(foundDynamicRoute);
+
   if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
@@ -185,12 +220,8 @@ export default async function routingHandler(
     !isApiRoute &&
     !isNextImageRoute &&
     // We need to check again once all rewrites have been applied
-    !staticRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
-    ) &&
-    !dynamicRegexp.some((route) =>
-      route.test((internalEvent as InternalEvent).rawPath),
-    )
+    !staticRouteMatcher(internalEvent.rawPath) &&
+    !dynamicRouteMatcher(internalEvent.rawPath)
   ) {
     internalEvent = {
       ...internalEvent,
@@ -229,10 +260,27 @@ export default async function routingHandler(
     ...nextHeaders,
   });
 
+  const resolvedRoute = foundStaticRoute
+    ? foundStaticRoute.page
+    : foundDynamicRoute
+      ? foundDynamicRoute.page
+      : undefined;
+
+  const routeType = foundStaticRoute
+    ? foundStaticRoute.routeType
+    : foundDynamicRoute
+      ? foundDynamicRoute.routeType
+      : // For /api paths we assume that they're route types
+        internalEvent.rawPath.startsWith("/api")
+        ? "route"
+        : undefined;
   return {
     internalEvent,
     isExternalRewrite,
     origin: false,
     isISR,
+    initialPath: event.rawPath,
+    resolvedRoute,
+    routeType,
   };
 }

@@ -57,10 +57,19 @@ const defaultHandler = async (
           );
           return {
             type: "middleware",
-            internalEvent: result.internalEvent,
+            internalEvent: {
+              ...result.internalEvent,
+              headers: {
+                ...result.internalEvent.headers,
+                "x-opennext-initial-path": internalEvent.rawPath,
+                "x-opennext-resolved-route": result.resolvedRoute ?? "",
+                "x-opennext-route-type": result.routeType ?? "",
+              },
+            },
             isExternalRewrite: result.isExternalRewrite,
             origin,
             isISR: result.isISR,
+            initialPath: result.initialPath,
           };
         }
         try {
@@ -79,6 +88,7 @@ const defaultHandler = async (
             isExternalRewrite: false,
             origin: false,
             isISR: result.isISR,
+            initialPath: result.internalEvent.rawPath,
           };
         }
       }
