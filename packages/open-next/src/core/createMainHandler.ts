@@ -4,6 +4,7 @@ import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
 import { openNextHandler } from "./requestHandler";
 import {
+  resolveCdnInvalidation,
   resolveConverter,
   resolveIncrementalCache,
   resolveProxyRequest,
@@ -36,6 +37,10 @@ export async function createMainHandler() {
 
   globalThis.proxyExternalRequest = await resolveProxyRequest(
     thisFunction.override?.proxyExternalRequest,
+  );
+
+  globalThis.cdnInvalidationHandler = await resolveCdnInvalidation(
+    thisFunction.override?.cdnInvalidation,
   );
 
   globalThis.lastModified = {};
