@@ -39,6 +39,7 @@ describe("isBinaryContentType", () => {
     { type: "audio/3gpp", binary: true },
     { type: "audio/aac", binary: true },
     { type: "audio/basic", binary: true },
+    { type: "audio/flac", binary: true },
     { type: "audio/mpeg", binary: true },
     { type: "audio/ogg", binary: true },
     { type: "audio/wavaudio/webm", binary: true },

@@ -27,6 +27,7 @@ const commonBinaryMimeTypes = new Set([
   "audio/3gpp",
   "audio/aac",
   "audio/basic",
+  "audio/flac",
   "audio/mpeg",
   "audio/ogg",
   "audio/wavaudio/webm",
