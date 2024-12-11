@@ -501,8 +501,6 @@ describe("fixDataPage", () => {
 
     expect(response.statusCode).not.toEqual(404);
     expect(response).toEqual(event);
-
-    NextConfig.basePath = undefined;
   });
 
   it("should remove json extension from data requests and add __nextDataReq to query", () => {
@@ -533,7 +531,5 @@ describe("fixDataPage", () => {
       rawPath: "/test/file",
       url: "/test/file?hello=world&__nextDataReq=1",
     });
-
-    NextConfig.basePath = undefined;
   });
 });
