@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { debug } from "../logger";
 import {
+  loadAppPathsManifest,
   loadAppPathsManifestKeys,
   loadBuildId,
   loadConfig,
@@ -9,7 +10,6 @@ import {
   loadHtmlPages,
   loadMiddlewareManifest,
   loadPrerenderManifest,
-  // loadPublicAssets,
   loadRoutesManifest,
 } from "./util.js";
 
@@ -31,3 +31,4 @@ export const AppPathsManifestKeys =
   /* @__PURE__ */ loadAppPathsManifestKeys(NEXT_DIR);
 export const MiddlewareManifest =
   /* @__PURE__ */ loadMiddlewareManifest(NEXT_DIR);
+export const AppPathsManifest = loadAppPathsManifest(NEXT_DIR);
