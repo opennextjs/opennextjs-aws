@@ -491,7 +491,7 @@ describe("fixDataPage", () => {
   });
 
   it("should not return 404 for data requests (with base path) that don't match the buildId", () => {
-    NextConfig.basePath = "/base";
+    NextConfig.basePath = '/base';
 
     const event = createEvent({
       url: "/base/_next/data/abc/test",
@@ -501,6 +501,8 @@ describe("fixDataPage", () => {
 
     expect(response.statusCode).not.toEqual(404);
     expect(response).toEqual(event);
+
+    NextConfig.basePath = undefined;
   });
 
   it("should remove json extension from data requests and add __nextDataReq to query", () => {
@@ -518,7 +520,7 @@ describe("fixDataPage", () => {
   });
 
   it("should remove json extension from data requests (with base path) and add __nextDataReq to query", () => {
-    NextConfig.basePath = "/base";
+    NextConfig.basePath = '/base';
 
     const event = createEvent({
       url: "/base/_next/data/abc/test/file.json?hello=world",
@@ -531,5 +533,7 @@ describe("fixDataPage", () => {
       rawPath: "/test/file",
       url: "/test/file?hello=world&__nextDataReq=1",
     });
+
+    NextConfig.basePath = undefined;
   });
 });
