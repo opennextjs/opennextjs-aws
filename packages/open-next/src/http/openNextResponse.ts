@@ -14,7 +14,7 @@ import { parseCookies, parseHeaders } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 const CANNOT_BE_USED = "This cannot be used in OpenNext";
-const ERROR_CODES = [404, 500, 403, 401];
+const ERROR_CODES = [401, 403, 404, 500];
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
