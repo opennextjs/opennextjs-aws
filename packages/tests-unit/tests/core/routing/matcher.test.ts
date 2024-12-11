@@ -490,6 +490,21 @@ describe("fixDataPage", () => {
     expect(response).toEqual(event);
   });
 
+  it("should not return 404 for data requests (with base path) that don't match the buildId", () => {
+    NextConfig.basePath = '/base';
+
+    const event = createEvent({
+      url: "/base/_next/data/abc/test",
+    });
+
+    const response = fixDataPage(event, "abc");
+
+    expect(response.statusCode).not.toEqual(404);
+    expect(response).toEqual(event);
+
+    NextConfig.basePath = undefined;
+  });
+
   it("should remove json extension from data requests and add __nextDataReq to query", () => {
     const event = createEvent({
       url: "/_next/data/abc/test/file.json?hello=world",
@@ -502,5 +517,23 @@ describe("fixDataPage", () => {
       rawPath: "/test/file",
       url: "/test/file?hello=world&__nextDataReq=1",
     });
+  });
+
+  it("should remove json extension from data requests (with base path) and add __nextDataReq to query", () => {
+    NextConfig.basePath = '/base';
+
+    const event = createEvent({
+      url: "/base/_next/data/abc/test/file.json?hello=world",
+    });
+
+    const response = fixDataPage(event, "abc");
+
+    expect(response).toEqual({
+      ...event,
+      rawPath: "/test/file",
+      url: "/test/file?hello=world&__nextDataReq=1",
+    });
+
+    NextConfig.basePath = undefined;
   });
 });
