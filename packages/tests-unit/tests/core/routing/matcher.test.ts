@@ -491,7 +491,7 @@ describe("fixDataPage", () => {
   });
 
   it("should not return 404 for data requests (with base path) that don't match the buildId", () => {
-    NextConfig.basePath = '/base';
+    NextConfig.basePath = "/base";
 
     const event = createEvent({
       url: "/base/_next/data/abc/test",
@@ -520,7 +520,7 @@ describe("fixDataPage", () => {
   });
 
   it("should remove json extension from data requests (with base path) and add __nextDataReq to query", () => {
-    NextConfig.basePath = '/base';
+    NextConfig.basePath = "/base";
 
     const event = createEvent({
       url: "/base/_next/data/abc/test/file.json?hello=world",
