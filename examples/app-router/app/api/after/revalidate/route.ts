@@ -1,5 +1,5 @@
 import { revalidateTag } from "next/cache";
-import { NextResponse, unstable_after as after } from "next/server";
+import { NextResponse, after } from "next/server";
 
 export function POST() {
   after(

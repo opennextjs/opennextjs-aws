@@ -47,7 +47,8 @@ export function middleware(request: NextRequest) {
   // It is so that cloudfront doesn't cache the response
   if (
     path.startsWith("/revalidate-tag") ||
-    path.startsWith("/revalidate-path")
+    path.startsWith("/revalidate-path") ||
+    path.startsWith("/api/after/ssg")
   ) {
     responseHeaders.set(
       "cache-control",
