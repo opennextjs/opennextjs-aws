@@ -1,3 +1,5 @@
+// @ts-nocheck
+// This file is used only for Next 14.1 and below. Typing is correct for these versions.
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { APIGatewayProxyEventHeaders } from "aws-lambda";
@@ -26,7 +28,6 @@ export async function optimizeImage(
     imageParams,
     nextConfig,
     false, // not in dev mode
-    // @ts-expect-error - This file is used only for Next 14.1 and below. Typing is correct for these versions.
     handleRequest,
   );
   debug("optimized result", result);
