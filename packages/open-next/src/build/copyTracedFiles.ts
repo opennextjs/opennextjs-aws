@@ -136,7 +136,7 @@ File ${fullFilePath} does not exist
       computeCopyFilesForPage(pagePath);
     } catch (e) {
       if (alternativePath) {
-        computeCopyFilesForPage(alternativePath);
+        safeComputeCopyFilesForPage(alternativePath);
       }
     }
   };
