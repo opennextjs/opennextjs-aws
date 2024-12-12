@@ -1,8 +1,8 @@
-import { debug, error } from "node:console";
 import { request } from "node:https";
 import { Readable } from "node:stream";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { ProxyExternalRequest } from "types/overrides";
+import { debug, error } from "../../adapters/logger";
 import { isBinaryContentType } from "../../utils/binary";
 
 function filterHeadersForProxy(
