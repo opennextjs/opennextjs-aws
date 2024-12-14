@@ -26,6 +26,9 @@ import { handleMiddleware } from "./routing/middleware";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
+export const INTERNAL_HEADER_INITIAL_PATH = `${INTERNAL_HEADER_PREFIX}initial-path`;
+export const INTERNAL_HEADER_RESOLVED_ROUTE = `${INTERNAL_HEADER_PREFIX}resolved-route`;
+export const INTERNAL_HEADER_ROUTE_TYPE = `${INTERNAL_HEADER_PREFIX}route-type`;
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 
 // Add the locale prefix to the regex so we correctly match the rawPath
@@ -191,7 +194,7 @@ export default async function routingHandler(
   const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
   const isDynamicRoute = !isExternalRewrite && Boolean(foundDynamicRoute);
 
-  if (!isDynamicRoute && !isStaticRoute && !isExternalRewrite) {
+  if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
     // Fallback rewrite to be applied
     const fallbackRewrites = handleRewrites(
       internalEvent,
@@ -216,12 +219,14 @@ export default async function routingHandler(
   // If we still haven't found a route, we show the 404 page
   // We need to ensure that rewrites are applied before showing the 404 page
   if (
-    !isRouteFoundBeforeAllRewrites &&
-    !isApiRoute &&
-    !isNextImageRoute &&
-    // We need to check again once all rewrites have been applied
-    !staticRouteMatcher(internalEvent.rawPath) &&
-    !dynamicRouteMatcher(internalEvent.rawPath)
+    !(
+      isRouteFoundBeforeAllRewrites ||
+      isApiRoute ||
+      isNextImageRoute ||
+      // We need to check again once all rewrites have been applied
+      staticRouteMatcher(internalEvent.rawPath) ||
+      dynamicRouteMatcher(internalEvent.rawPath)
+    )
   ) {
     internalEvent = {
       ...internalEvent,
@@ -260,20 +265,20 @@ export default async function routingHandler(
     ...nextHeaders,
   });
 
-  const resolvedRoute = foundStaticRoute
-    ? foundStaticRoute.page
-    : foundDynamicRoute
-      ? foundDynamicRoute.page
-      : undefined;
+  let resolvedRoute: string | undefined;
+  let routeType: RouteType | undefined;
 
-  const routeType = foundStaticRoute
-    ? foundStaticRoute.routeType
-    : foundDynamicRoute
-      ? foundDynamicRoute.routeType
-      : // For /api paths we assume that they're route types
-        internalEvent.rawPath.startsWith("/api")
-        ? "route"
-        : undefined;
+  if (foundStaticRoute) {
+    resolvedRoute = foundStaticRoute.page;
+    routeType = foundStaticRoute.routeType;
+  } else if (foundDynamicRoute) {
+    resolvedRoute = foundDynamicRoute.page;
+    routeType = foundDynamicRoute.routeType;
+  } else if (isApiRoute) {
+    // For /api paths we assume that they're route types
+    routeType = "route";
+  }
+
   return {
     internalEvent,
     isExternalRewrite,

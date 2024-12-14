@@ -15,7 +15,9 @@ import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse } from "./routing/util";
 import routingHandler, {
-  INTERNAL_HEADER_PREFIX,
+  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_RESOLVED_ROUTE,
+  INTERNAL_HEADER_ROUTE_TYPE,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
@@ -39,20 +41,23 @@ export async function openNextHandler(
       }
       debug("internalEvent", internalEvent);
 
+      // These 3 will get overwritten by the routing handler if not using an external middleware
+      const internalHeaders = {
+        initialPath:
+          internalEvent.headers[INTERNAL_HEADER_INITIAL_PATH] ??
+          internalEvent.rawPath,
+        resolvedRoute: internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTE],
+        routeType: internalEvent.headers[INTERNAL_HEADER_ROUTE_TYPE] as
+          | RouteType
+          | undefined,
+      };
+
       let routingResult: InternalResult | RoutingResult = {
         internalEvent,
         isExternalRewrite: false,
         origin: false,
         isISR: false,
-        // These 3 will get overwritten by the routing handler if not using an external middleware
-        initialPath:
-          internalEvent.headers[`${INTERNAL_HEADER_PREFIX}-initial-path`] ??
-          internalEvent.rawPath,
-        resolvedRoute:
-          internalEvent.headers[`${INTERNAL_HEADER_PREFIX}-resolved-route`],
-        routeType: internalEvent.headers[
-          `${INTERNAL_HEADER_PREFIX}-route-type`
-        ] as RouteType | undefined,
+        ...internalHeaders,
       };
 
       //#override withRouting

@@ -14,7 +14,11 @@ import {
   resolveQueue,
   resolveTagCache,
 } from "../core/resolve";
-import routingHandler from "../core/routingHandler";
+import routingHandler, {
+  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_RESOLVED_ROUTE,
+  INTERNAL_HEADER_ROUTE_TYPE,
+} from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -61,9 +65,9 @@ const defaultHandler = async (
               ...result.internalEvent,
               headers: {
                 ...result.internalEvent.headers,
-                "x-opennext-initial-path": internalEvent.rawPath,
-                "x-opennext-resolved-route": result.resolvedRoute ?? "",
-                "x-opennext-route-type": result.routeType ?? "",
+                [INTERNAL_HEADER_INITIAL_PATH]: internalEvent.rawPath,
+                [INTERNAL_HEADER_RESOLVED_ROUTE]: result.resolvedRoute ?? "",
+                [INTERNAL_HEADER_ROUTE_TYPE]: result.routeType ?? "",
               },
             },
             isExternalRewrite: result.isExternalRewrite,
