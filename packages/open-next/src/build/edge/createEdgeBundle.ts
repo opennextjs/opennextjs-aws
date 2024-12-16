@@ -132,7 +132,7 @@ import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 
 ${
-  ''
+  ""
   /**
    * Next.js sets this `__import_unsupported` on `globalThis` (with `configurable: false`):
    *  https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/web/globals.ts#L94-L98
