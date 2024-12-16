@@ -131,6 +131,18 @@ globalThis.Buffer = Buffer;
 import {AsyncLocalStorage} from "node:async_hooks";
 globalThis.AsyncLocalStorage = AsyncLocalStorage;
 
+${
+  ''
+  /**
+   * Next.js sets this `__import_unsupported` on `globalThis` (with `configurable: false`):
+   *  https://github.com/vercel/next.js/blob/5b7833e3/packages/next/src/server/web/globals.ts#L94-L98
+   *
+   * It does so in both the middleware and the main server, so if the middleware runs in the same place
+   * as the main handler this code gets run twice triggering a runtime error.
+   *
+   * For this reason we need to patch `Object.defineProperty` to avoid this issue.
+   */
+}
 const defaultDefineProperty = Object.defineProperty;
 Object.defineProperty = function(o, p, a) {
   if(p=== '__import_unsupported' && Boolean(globalThis.__import_unsupported)) {
