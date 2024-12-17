@@ -73,29 +73,11 @@ type IncrementalCacheContext = {
   tags?: string[] | undefined;
 };
 
-interface CacheHandlerContext {
-  fs?: never;
-  dev?: boolean;
-  flushToDisk?: boolean;
-  serverDistDir?: string;
-  maxMemoryCacheSize?: number;
-  _appDir: boolean;
-  _requestHeaders: never;
-  fetchCacheKeyPrefix?: string;
-}
-
 interface CacheHandlerValue {
   lastModified?: number;
   age?: number;
   cacheState?: string;
   value: IncrementalCacheValue | null;
-}
-
-/** Beginning single backslash is intentional, to look for the dot + the extension. Do not escape it again. */
-const CACHE_EXTENSION_REGEX = /\.(cache|fetch)$/;
-
-export function hasCacheExtension(key: string) {
-  return CACHE_EXTENSION_REGEX.test(key);
 }
 
 function isFetchCache(
@@ -120,7 +102,7 @@ function isFetchCache(
   return false;
 }
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
-export default class S3Cache {
+export default class Cache {
   public async get(
     key: string,
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
@@ -152,7 +134,7 @@ export default class S3Cache {
         key,
         true,
       );
-      // const { Body, LastModified } = await this.getS3Object(key, "fetch");
+
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,
         lastModified,
@@ -201,10 +183,7 @@ export default class S3Cache {
     try {
       const { value: cacheData, lastModified } =
         await globalThis.incrementalCache.get(key, false);
-      // const { Body, LastModified } = await this.getS3Object(key, "cache");
-      // const cacheData = JSON.parse(
-      //   (await Body?.transformToString()) ?? "{}",
-      // ) as S3CachedFile;
+
       const meta = cacheData?.meta;
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,

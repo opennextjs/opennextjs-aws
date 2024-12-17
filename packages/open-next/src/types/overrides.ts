@@ -29,7 +29,7 @@ export interface Queue {
 
 // Incremental cache
 
-export type S3CachedFile =
+export type CachedFile =
   | {
       type: "redirect";
       props?: Object;
@@ -53,7 +53,7 @@ export type S3CachedFile =
       meta?: Meta;
     };
 
-export type S3FetchCache = Object;
+export type FetchCache = Object;
 
 export type WithLastModified<T> = {
   lastModified?: number;
@@ -61,8 +61,8 @@ export type WithLastModified<T> = {
 };
 
 export type CacheValue<IsFetch extends boolean> = (IsFetch extends true
-  ? S3FetchCache
-  : S3CachedFile) & { revalidate?: number | false };
+  ? FetchCache
+  : CachedFile) & { revalidate?: number | false };
 
 export type IncrementalCache = {
   get<IsFetch extends boolean = false>(

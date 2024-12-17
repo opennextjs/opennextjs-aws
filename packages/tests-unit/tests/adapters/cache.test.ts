@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import S3Cache, { hasCacheExtension } from "@opennextjs/aws/adapters/cache.js";
+import Cache from "@opennextjs/aws/adapters/cache.js";
 import { vi } from "vitest";
 
 declare global {
@@ -7,29 +7,12 @@ declare global {
   var isNextAfter15: boolean;
 }
 
-describe("hasCacheExtension", () => {
-  it("Should returns true if has an extension and it is a CacheExtension", () => {
-    expect(hasCacheExtension("hello.cache")).toBeTruthy();
-  });
-
-  it("Should returns false if has an extension and it is not a CacheExtension", () => {
-    expect(hasCacheExtension("hello.json")).toBeFalsy();
-  });
-
-  it("Should return false if does not have any extension", () => {
-    expect(hasCacheExtension("hello,json")).toBeFalsy();
-  });
-});
-
-describe("S3Cache", () => {
-  let cache: S3Cache;
+describe("CacheHandler", () => {
+  let cache: Cache;
 
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
-  const getFetchCacheSpy = vi.spyOn(S3Cache.prototype, "getFetchCache");
-  const getIncrementalCache = vi.spyOn(
-    S3Cache.prototype,
-    "getIncrementalCache",
-  );
+  const getFetchCacheSpy = vi.spyOn(Cache.prototype, "getFetchCache");
+  const getIncrementalCache = vi.spyOn(Cache.prototype, "getIncrementalCache");
 
   const incrementalCache = {
     name: "mock",
@@ -70,7 +53,7 @@ describe("S3Cache", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    cache = new S3Cache();
+    cache = new Cache();
 
     globalThis.disableIncrementalCache = false;
     globalThis.isNextAfter15 = false;
