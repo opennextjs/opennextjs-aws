@@ -31,22 +31,22 @@ export async function openNextHandler(
   internalEvent: InternalEvent,
   responseStreaming?: StreamCreator,
 ): Promise<InternalResult> {
+  const initialHeaders = internalEvent.headers;
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: internalEvent.headers["x-isr"] === "1" },
+    { isISRRevalidation: initialHeaders["x-isr"] === "1" },
     async () => {
-      if (internalEvent.headers["x-forwarded-host"]) {
-        internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
+      if (initialHeaders["x-forwarded-host"]) {
+        initialHeaders.host = initialHeaders["x-forwarded-host"];
       }
       debug("internalEvent", internalEvent);
 
       // These 2 will get overwritten by the routing handler if not using an external middleware
       const internalHeaders = {
         initialPath:
-          internalEvent.headers[INTERNAL_HEADER_INITIAL_PATH] ??
-          internalEvent.rawPath,
-        resolvedRoutes: internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTES]
-          ? JSON.parse(internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTES])
+          initialHeaders[INTERNAL_HEADER_INITIAL_PATH] ?? internalEvent.rawPath,
+        resolvedRoutes: initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES]
+          ? JSON.parse(initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES])
           : ([] as ResolvedRoute[]),
       };
 

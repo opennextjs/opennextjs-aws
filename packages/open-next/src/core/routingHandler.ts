@@ -28,10 +28,10 @@ import {
 } from "./routing/routeMatcher";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
+export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
 export const INTERNAL_HEADER_INITIAL_PATH = `${INTERNAL_HEADER_PREFIX}initial-path`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
-export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 
 // Geolocation headers starting from Nextjs 15
 // See https://github.com/vercel/vercel/blob/7714b1c/packages/functions/src/headers.ts

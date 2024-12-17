@@ -18,16 +18,14 @@ export const apiPrefix = RoutesManifest.basePath
   : "/api";
 
 function routeMatcher(routeDefinitions: RouteDefinition[]) {
-  const regexp = routeDefinitions.map((route) => {
-    return {
-      page: route.page,
-      regexp: new RegExp(
-        route.regex
-          .replace("^/", optionalLocalePrefixRegex)
-          .replace("^/", optionalBasepathPrefixRegex),
-      ),
-    };
-  });
+  const regexp = routeDefinitions.map((route) => ({
+    page: route.page,
+    regexp: new RegExp(
+      route.regex
+        .replace("^/", optionalLocalePrefixRegex)
+        .replace("^/", optionalBasepathPrefixRegex),
+    ),
+  }));
 
   // We need to use AppPathRoutesManifest here
   const appPathsSet = new Set(
