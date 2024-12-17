@@ -77,7 +77,7 @@ export function loadPrerenderManifest(nextDir: string) {
   return JSON.parse(json) as PrerenderManifest;
 }
 
-export function loadAppPathsManifestKeys(nextDir: string) {
+export function loadAppPathsManifest(nextDir: string) {
   const appPathsManifestPath = path.join(
     nextDir,
     "server",
@@ -86,10 +86,24 @@ export function loadAppPathsManifestKeys(nextDir: string) {
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")
     : "{}";
-  const appPathsManifest = JSON.parse(appPathsManifestJson) as Record<
-    string,
-    string
-  >;
+  return JSON.parse(appPathsManifestJson) as Record<string, string>;
+}
+
+export function loadAppPathRoutesManifest(
+  nextDir: string,
+): Record<string, string> {
+  const appPathRoutesManifestPath = path.join(
+    nextDir,
+    "app-path-routes-manifest.json",
+  );
+  if (fs.existsSync(appPathRoutesManifestPath)) {
+    return JSON.parse(fs.readFileSync(appPathRoutesManifestPath, "utf-8"));
+  }
+  return {};
+}
+
+export function loadAppPathsManifestKeys(nextDir: string) {
+  const appPathsManifest = loadAppPathsManifest(nextDir);
   return Object.keys(appPathsManifest).map((key) => {
     // Remove parallel route
     let cleanedKey = key.replace(/\/@[^\/]+/g, "");

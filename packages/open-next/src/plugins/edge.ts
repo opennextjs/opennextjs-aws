@@ -6,6 +6,8 @@ import type { Plugin } from "esbuild";
 import type { MiddlewareInfo } from "types/next-types.js";
 
 import {
+  loadAppPathRoutesManifest,
+  loadAppPathsManifest,
   loadAppPathsManifestKeys,
   loadBuildId,
   loadConfig,
@@ -167,6 +169,8 @@ ${contents}
         const PrerenderManifest = loadPrerenderManifest(nextDir);
         const AppPathsManifestKeys = loadAppPathsManifestKeys(nextDir);
         const MiddlewareManifest = loadMiddlewareManifest(nextDir);
+        const AppPathsManifest = loadAppPathsManifest(nextDir);
+        const AppPathRoutesManifest = loadAppPathRoutesManifest(nextDir);
 
         const contents = `
   import path from "node:path";
@@ -188,6 +192,9 @@ ${contents}
   export const PrerenderManifest = ${JSON.stringify(PrerenderManifest)};
   export const AppPathsManifestKeys = ${JSON.stringify(AppPathsManifestKeys)};
   export const MiddlewareManifest = ${JSON.stringify(MiddlewareManifest)};
+  export const AppPathsManifest = ${JSON.stringify(AppPathsManifest)};
+  export const AppPathRoutesManifest = ${JSON.stringify(AppPathRoutesManifest)};
+
 
   process.env.NEXT_BUILD_ID = BuildId;
 `;

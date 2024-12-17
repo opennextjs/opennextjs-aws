@@ -14,7 +14,10 @@ import {
   resolveQueue,
   resolveTagCache,
 } from "../core/resolve";
-import routingHandler from "../core/routingHandler";
+import routingHandler, {
+  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_RESOLVED_ROUTES,
+} from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -57,10 +60,20 @@ const defaultHandler = async (
           );
           return {
             type: "middleware",
-            internalEvent: result.internalEvent,
+            internalEvent: {
+              ...result.internalEvent,
+              headers: {
+                ...result.internalEvent.headers,
+                [INTERNAL_HEADER_INITIAL_PATH]: internalEvent.rawPath,
+                [INTERNAL_HEADER_RESOLVED_ROUTES]:
+                  JSON.stringify(result.resolvedRoutes) ?? "[]",
+              },
+            },
             isExternalRewrite: result.isExternalRewrite,
             origin,
             isISR: result.isISR,
+            initialPath: result.initialPath,
+            resolvedRoutes: result.resolvedRoutes,
           };
         }
         try {
@@ -79,6 +92,8 @@ const defaultHandler = async (
             isExternalRewrite: false,
             origin: false,
             isISR: result.isISR,
+            initialPath: result.internalEvent.rawPath,
+            resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }
       }

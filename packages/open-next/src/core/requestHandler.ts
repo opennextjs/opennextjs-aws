@@ -5,6 +5,7 @@ import { IncomingMessage } from "http/index.js";
 import type {
   InternalEvent,
   InternalResult,
+  ResolvedRoute,
   RoutingResult,
   StreamCreator,
 } from "types/open-next";
@@ -14,6 +15,8 @@ import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse } from "./routing/util";
 import routingHandler, {
+  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
@@ -28,20 +31,31 @@ export async function openNextHandler(
   internalEvent: InternalEvent,
   responseStreaming?: StreamCreator,
 ): Promise<InternalResult> {
+  const initialHeaders = internalEvent.headers;
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: internalEvent.headers["x-isr"] === "1" },
+    { isISRRevalidation: initialHeaders["x-isr"] === "1" },
     async () => {
-      if (internalEvent.headers["x-forwarded-host"]) {
-        internalEvent.headers.host = internalEvent.headers["x-forwarded-host"];
+      if (initialHeaders["x-forwarded-host"]) {
+        initialHeaders.host = initialHeaders["x-forwarded-host"];
       }
       debug("internalEvent", internalEvent);
+
+      // These 2 will get overwritten by the routing handler if not using an external middleware
+      const internalHeaders = {
+        initialPath:
+          initialHeaders[INTERNAL_HEADER_INITIAL_PATH] ?? internalEvent.rawPath,
+        resolvedRoutes: initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES]
+          ? JSON.parse(initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES])
+          : ([] as ResolvedRoute[]),
+      };
 
       let routingResult: InternalResult | RoutingResult = {
         internalEvent,
         isExternalRewrite: false,
         origin: false,
         isISR: false,
+        ...internalHeaders,
       };
 
       //#override withRouting
@@ -94,6 +108,8 @@ export async function openNextHandler(
             isExternalRewrite: false,
             isISR: false,
             origin: false,
+            initialPath: internalEvent.rawPath,
+            resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }
       }
