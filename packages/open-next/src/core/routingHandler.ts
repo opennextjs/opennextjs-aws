@@ -115,9 +115,9 @@ export default async function routingHandler(
     isExternalRewrite = beforeRewrites.isExternalRewrite;
   }
   const foundStaticRoute = staticRouteMatcher(internalEvent.rawPath);
-  const isStaticRoute = !isExternalRewrite && Boolean(foundStaticRoute);
+  const isStaticRoute = !isExternalRewrite && foundStaticRoute.length > 0;
 
-  if (!isStaticRoute && !isExternalRewrite) {
+  if (!(isStaticRoute || isExternalRewrite)) {
     // Second rewrite to be applied
     const afterRewrites = handleRewrites(
       internalEvent,
@@ -135,7 +135,7 @@ export default async function routingHandler(
   internalEvent = fallbackEvent;
 
   const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
-  const isDynamicRoute = !isExternalRewrite && Boolean(foundDynamicRoute);
+  const isDynamicRoute = !isExternalRewrite && foundDynamicRoute.length > 0;
 
   if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
     // Fallback rewrite to be applied
@@ -167,8 +167,8 @@ export default async function routingHandler(
       isApiRoute ||
       isNextImageRoute ||
       // We need to check again once all rewrites have been applied
-      staticRouteMatcher(internalEvent.rawPath) ||
-      dynamicRouteMatcher(internalEvent.rawPath)
+      staticRouteMatcher(internalEvent.rawPath).length > 0 ||
+      dynamicRouteMatcher(internalEvent.rawPath).length > 0
     )
   ) {
     internalEvent = {
@@ -209,11 +209,11 @@ export default async function routingHandler(
   });
 
   const resolvedRoutes: ResolvedRoute[] = [
-    ...(Array.isArray(foundStaticRoute) ? foundStaticRoute : []),
-    ...(Array.isArray(foundDynamicRoute) ? foundDynamicRoute : []),
+    ...foundStaticRoute,
+    ...foundDynamicRoute,
   ];
 
-  console.log("resolvedRoutes", resolvedRoutes);
+  debug("resolvedRoutes", resolvedRoutes);
 
   return {
     internalEvent,

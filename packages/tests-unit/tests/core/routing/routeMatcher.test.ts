@@ -75,8 +75,8 @@ describe("routeMatcher", () => {
 
   describe("staticRouteMatcher", () => {
     it("should match static app route", () => {
-      const route = staticRouteMatcher("/app");
-      expect(route).toEqual([
+      const routes = staticRouteMatcher("/app");
+      expect(routes).toEqual([
         {
           route: "/app",
           type: "app",
@@ -85,8 +85,8 @@ describe("routeMatcher", () => {
     });
 
     it("should match static api route", () => {
-      const route = staticRouteMatcher("/api/app");
-      expect(route).toEqual([
+      const routes = staticRouteMatcher("/api/app");
+      expect(routes).toEqual([
         {
           route: "/api/app",
           type: "route",
@@ -95,25 +95,25 @@ describe("routeMatcher", () => {
     });
 
     it("should not match app dynamic route", () => {
-      const route = staticRouteMatcher("/catchAll/slug");
-      expect(route).toEqual(false);
+      const routes = staticRouteMatcher("/catchAll/slug");
+      expect(routes).toEqual([]);
     });
 
     it("should not match page dynamic route", () => {
-      const route = staticRouteMatcher("/page/catchAll/slug");
-      expect(route).toEqual(false);
+      const routes = staticRouteMatcher("/page/catchAll/slug");
+      expect(routes).toEqual([]);
     });
 
     it("should not match random route", () => {
-      const route = staticRouteMatcher("/random");
-      expect(route).toEqual(false);
+      const routes = staticRouteMatcher("/random");
+      expect(routes).toEqual([]);
     });
   });
 
   describe("dynamicRouteMatcher", () => {
     it("should match dynamic app page", () => {
-      const route = dynamicRouteMatcher("/catchAll/slug/b");
-      expect(route).toEqual([
+      const routes = dynamicRouteMatcher("/catchAll/slug/b");
+      expect(routes).toEqual([
         {
           route: "/catchAll/[...slug]",
           type: "app",
@@ -122,8 +122,8 @@ describe("routeMatcher", () => {
     });
 
     it("should match dynamic page router page", () => {
-      const route = dynamicRouteMatcher("/page/catchAll/slug/b");
-      expect(route).toEqual([
+      const routes = dynamicRouteMatcher("/page/catchAll/slug/b");
+      expect(routes).toEqual([
         {
           route: "/page/catchAll/[...slug]",
           type: "page",
@@ -134,13 +134,14 @@ describe("routeMatcher", () => {
     it("should match both the static and dynamic page", () => {
       const pathToMatch = "/page/catchAll/static";
       const dynamicRoutes = dynamicRouteMatcher(pathToMatch);
-      const staticRoutes = staticRouteMatcher(pathToMatch);
       expect(dynamicRoutes).toEqual([
         {
           route: "/page/catchAll/[...slug]",
           type: "page",
         },
       ]);
+
+      const staticRoutes = staticRouteMatcher(pathToMatch);
       expect(staticRoutes).toEqual([
         {
           route: "/page/catchAll/static",

@@ -89,15 +89,17 @@ export function loadAppPathsManifest(nextDir: string) {
   return JSON.parse(appPathsManifestJson) as Record<string, string>;
 }
 
-export function loadAppPathRoutesManifest(nextDir: string) {
+export function loadAppPathRoutesManifest(
+  nextDir: string,
+): Record<string, string> {
   const appPathRoutesManifestPath = path.join(
     nextDir,
     "app-path-routes-manifest.json",
   );
-  const appPathRoutesManifestJson = fs.existsSync(appPathRoutesManifestPath)
-    ? fs.readFileSync(appPathRoutesManifestPath, "utf-8")
-    : "{}";
-  return JSON.parse(appPathRoutesManifestJson) as Record<string, string>;
+  if (fs.existsSync(appPathRoutesManifestPath)) {
+    return JSON.parse(fs.readFileSync(appPathRoutesManifestPath, "utf-8"));
+  }
+  return {};
 }
 
 export function loadAppPathsManifestKeys(nextDir: string) {
