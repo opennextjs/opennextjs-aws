@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "@opennextjs/aws",
-  "version": "3.2.2",
+  "version": "3.3.0",
   "bin": {
     "open-next": "./dist/index.js"
   },
@@ -21,12 +21,18 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["dist/*"]
+      "*": [
+        "dist/*"
+      ]
     }
   },
   "keywords": [],
   "author": "",
-  "files": ["dist", "assets", "README.md"],
+  "files": [
+    "dist",
+    "assets",
+    "README.md"
+  ],
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.398.0",
     "@aws-sdk/client-lambda": "^3.398.0",
