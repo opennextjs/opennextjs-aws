@@ -16,8 +16,7 @@ import {
 } from "../core/resolve";
 import routingHandler, {
   INTERNAL_HEADER_INITIAL_PATH,
-  INTERNAL_HEADER_RESOLVED_ROUTE,
-  INTERNAL_HEADER_ROUTE_TYPE,
+  INTERNAL_HEADER_RESOLVED_ROUTES,
 } from "../core/routingHandler";
 
 globalThis.internalFetch = fetch;
@@ -66,14 +65,15 @@ const defaultHandler = async (
               headers: {
                 ...result.internalEvent.headers,
                 [INTERNAL_HEADER_INITIAL_PATH]: internalEvent.rawPath,
-                [INTERNAL_HEADER_RESOLVED_ROUTE]: result.resolvedRoute ?? "",
-                [INTERNAL_HEADER_ROUTE_TYPE]: result.routeType ?? "",
+                [INTERNAL_HEADER_RESOLVED_ROUTES]:
+                  JSON.stringify(result.resolvedRoutes) ?? "[]",
               },
             },
             isExternalRewrite: result.isExternalRewrite,
             origin,
             isISR: result.isISR,
             initialPath: result.initialPath,
+            resolvedRoutes: result.resolvedRoutes,
           };
         }
         try {
@@ -93,6 +93,7 @@ const defaultHandler = async (
             origin: false,
             isISR: result.isISR,
             initialPath: result.internalEvent.rawPath,
+            resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }
       }

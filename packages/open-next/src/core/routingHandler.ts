@@ -1,5 +1,5 @@
 import {
-  AppPathsManifest,
+  AppPathRoutesManifest,
   BuildId,
   ConfigHeaders,
   PrerenderManifest,
@@ -9,6 +9,7 @@ import type { RouteDefinition } from "types/next-types";
 import type {
   InternalEvent,
   InternalResult,
+  ResolvedRoute,
   RouteType,
   RoutingResult,
 } from "types/open-next";
@@ -27,8 +28,7 @@ import { handleMiddleware } from "./routing/middleware";
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
 export const INTERNAL_HEADER_INITIAL_PATH = `${INTERNAL_HEADER_PREFIX}initial-path`;
-export const INTERNAL_HEADER_RESOLVED_ROUTE = `${INTERNAL_HEADER_PREFIX}resolved-route`;
-export const INTERNAL_HEADER_ROUTE_TYPE = `${INTERNAL_HEADER_PREFIX}route-type`;
+export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 
 // Add the locale prefix to the regex so we correctly match the rawPath
@@ -57,31 +57,35 @@ export function routeMatcher(routeDefinitions: RouteDefinition[]) {
       ),
     };
   });
+
+  // We need to use AppPathRoutesManifest here
   const appPathsSet = new Set(
-    Object.keys(AppPathsManifest)
-      .filter((key) => key.endsWith("/page"))
-      // Remove the /page suffix
-      .map((key) => key.replace(/\/page$/, "")),
+    Object.entries(AppPathRoutesManifest)
+      .filter(([key, _]) => key.endsWith("page"))
+      .map(([_, value]) => value),
   );
   const routePathsSet = new Set(
-    Object.keys(AppPathsManifest)
-      .filter((key) => key.endsWith("/route"))
-      // Remove the /route suffix
-      .map((key) => key.replace(/\/route$/, "")),
+    Object.entries(AppPathRoutesManifest)
+      .filter(([key, _]) => key.endsWith("route"))
+      .map(([_, value]) => value),
   );
   return function matchRoute(path: string) {
-    const foundRoute = regexp.find((route) => route.regexp.test(path));
-    let routeType: RouteType | undefined = undefined;
-    if (foundRoute) {
-      routeType = appPathsSet.has(foundRoute.page)
-        ? "app"
-        : routePathsSet.has(foundRoute.page)
-          ? "route"
-          : "page";
-      return {
-        page: foundRoute.page,
-        routeType,
-      };
+    const foundRoutes = regexp.filter((route) => route.regexp.test(path));
+
+    if (foundRoutes.length > 0) {
+      return foundRoutes.map((foundRoute) => {
+        const routeType: RouteType | undefined = appPathsSet.has(
+          foundRoute.page,
+        )
+          ? "app"
+          : routePathsSet.has(foundRoute.page)
+            ? "route"
+            : "page";
+        return {
+          route: foundRoute.page,
+          type: routeType,
+        };
+      });
     }
     return false;
   };
@@ -265,19 +269,12 @@ export default async function routingHandler(
     ...nextHeaders,
   });
 
-  let resolvedRoute: string | undefined;
-  let routeType: RouteType | undefined;
+  const resolvedRoutes: ResolvedRoute[] = [
+    ...(Array.isArray(foundStaticRoute) ? foundStaticRoute : []),
+    ...(Array.isArray(foundDynamicRoute) ? foundDynamicRoute : []),
+  ];
 
-  if (foundStaticRoute) {
-    resolvedRoute = foundStaticRoute.page;
-    routeType = foundStaticRoute.routeType;
-  } else if (foundDynamicRoute) {
-    resolvedRoute = foundDynamicRoute.page;
-    routeType = foundDynamicRoute.routeType;
-  } else if (isApiRoute) {
-    // For /api paths we assume that they're route types
-    routeType = "route";
-  }
+  console.log("resolvedRoutes", resolvedRoutes);
 
   return {
     internalEvent,
@@ -285,7 +282,6 @@ export default async function routingHandler(
     origin: false,
     isISR,
     initialPath: event.rawPath,
-    resolvedRoute,
-    routeType,
+    resolvedRoutes,
   };
 }

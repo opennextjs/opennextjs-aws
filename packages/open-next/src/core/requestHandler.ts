@@ -5,7 +5,7 @@ import { IncomingMessage } from "http/index.js";
 import type {
   InternalEvent,
   InternalResult,
-  RouteType,
+  ResolvedRoute,
   RoutingResult,
   StreamCreator,
 } from "types/open-next";
@@ -16,8 +16,7 @@ import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse } from "./routing/util";
 import routingHandler, {
   INTERNAL_HEADER_INITIAL_PATH,
-  INTERNAL_HEADER_RESOLVED_ROUTE,
-  INTERNAL_HEADER_ROUTE_TYPE,
+  INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
@@ -41,15 +40,14 @@ export async function openNextHandler(
       }
       debug("internalEvent", internalEvent);
 
-      // These 3 will get overwritten by the routing handler if not using an external middleware
+      // These 2 will get overwritten by the routing handler if not using an external middleware
       const internalHeaders = {
         initialPath:
           internalEvent.headers[INTERNAL_HEADER_INITIAL_PATH] ??
           internalEvent.rawPath,
-        resolvedRoute: internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTE],
-        routeType: internalEvent.headers[INTERNAL_HEADER_ROUTE_TYPE] as
-          | RouteType
-          | undefined,
+        resolvedRoutes: internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTES]
+          ? JSON.parse(internalEvent.headers[INTERNAL_HEADER_RESOLVED_ROUTES])
+          : ([] as ResolvedRoute[]),
       };
 
       let routingResult: InternalResult | RoutingResult = {
@@ -111,7 +109,7 @@ export async function openNextHandler(
             isISR: false,
             origin: false,
             initialPath: internalEvent.rawPath,
-            resolvedRoute: "/500",
+            resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }
       }

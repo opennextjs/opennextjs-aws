@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { debug } from "../logger";
 import {
+  loadAppPathRoutesManifest,
   loadAppPathsManifest,
   loadAppPathsManifestKeys,
   loadBuildId,
@@ -31,4 +32,6 @@ export const AppPathsManifestKeys =
   /* @__PURE__ */ loadAppPathsManifestKeys(NEXT_DIR);
 export const MiddlewareManifest =
   /* @__PURE__ */ loadMiddlewareManifest(NEXT_DIR);
-export const AppPathsManifest = loadAppPathsManifest(NEXT_DIR);
+export const AppPathsManifest = /* @__PURE__ */ loadAppPathsManifest(NEXT_DIR);
+export const AppPathRoutesManifest =
+  /* @__PURE__ */ loadAppPathRoutesManifest(NEXT_DIR);

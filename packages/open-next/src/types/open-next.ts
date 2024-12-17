@@ -109,6 +109,11 @@ export type IncludedConverter =
 
 export type RouteType = "route" | "page" | "app";
 
+export interface ResolvedRoute {
+  route: string;
+  type: RouteType;
+}
+
 export interface RoutingResult {
   internalEvent: InternalEvent;
   // If the request is an external rewrite, if used with an external middleware will be false on every server function
@@ -119,10 +124,9 @@ export interface RoutingResult {
   isISR: boolean;
   // The initial rawPath of the request before applying rewrites, if used with an external middleware will be defined in x-opennext-initial-path header
   initialPath: string;
-  // The resolved route after applying rewrites, if used with an external middleware will be defined in x-opennext-resolved-route header
-  resolvedRoute?: string;
-  // The type of the resolved route, if used with an external middleware will be defined in x-opennext-route-type header
-  routeType?: RouteType;
+
+  // The resolved route after applying rewrites, if used with an external middleware will be defined in x-opennext-resolved-routes header as a json encoded array
+  resolvedRoutes: ResolvedRoute[];
 }
 
 export interface MiddlewareResult
