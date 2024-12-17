@@ -1,16 +1,13 @@
 import {
-  AppPathRoutesManifest,
   BuildId,
   ConfigHeaders,
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
-import type { RouteDefinition } from "types/next-types";
 import type {
   InternalEvent,
   InternalResult,
   ResolvedRoute,
-  RouteType,
   RoutingResult,
 } from "types/open-next";
 
@@ -24,75 +21,17 @@ import {
   handleRewrites,
 } from "./routing/matcher";
 import { handleMiddleware } from "./routing/middleware";
+import {
+  apiPrefix,
+  dynamicRouteMatcher,
+  staticRouteMatcher,
+} from "./routing/routeMatcher";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
 export const INTERNAL_HEADER_INITIAL_PATH = `${INTERNAL_HEADER_PREFIX}initial-path`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
-
-// Add the locale prefix to the regex so we correctly match the rawPath
-const optionalLocalePrefixRegex = RoutesManifest.locales.length
-  ? `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`
-  : "^/";
-
-// Add the basepath prefix to the regex so we correctly match the rawPath
-const optionalBasepathPrefixRegex = RoutesManifest.basePath
-  ? `^${RoutesManifest.basePath}/?`
-  : "^/";
-
-// Add the basePath prefix to the api routes
-const apiPrefix = RoutesManifest.basePath
-  ? `${RoutesManifest.basePath}/api`
-  : "/api";
-
-export function routeMatcher(routeDefinitions: RouteDefinition[]) {
-  const regexp = routeDefinitions.map((route) => {
-    return {
-      page: route.page,
-      regexp: new RegExp(
-        route.regex
-          .replace("^/", optionalLocalePrefixRegex)
-          .replace("^/", optionalBasepathPrefixRegex),
-      ),
-    };
-  });
-
-  // We need to use AppPathRoutesManifest here
-  const appPathsSet = new Set(
-    Object.entries(AppPathRoutesManifest)
-      .filter(([key, _]) => key.endsWith("page"))
-      .map(([_, value]) => value),
-  );
-  const routePathsSet = new Set(
-    Object.entries(AppPathRoutesManifest)
-      .filter(([key, _]) => key.endsWith("route"))
-      .map(([_, value]) => value),
-  );
-  return function matchRoute(path: string) {
-    const foundRoutes = regexp.filter((route) => route.regexp.test(path));
-
-    if (foundRoutes.length > 0) {
-      return foundRoutes.map((foundRoute) => {
-        const routeType: RouteType | undefined = appPathsSet.has(
-          foundRoute.page,
-        )
-          ? "app"
-          : routePathsSet.has(foundRoute.page)
-            ? "route"
-            : "page";
-        return {
-          route: foundRoute.page,
-          type: routeType,
-        };
-      });
-    }
-    return false;
-  };
-}
-
-const staticRouteMatcher = routeMatcher(RoutesManifest.routes.static);
-const dynamicRouteMatcher = routeMatcher(RoutesManifest.routes.dynamic);
 
 // Geolocation headers starting from Nextjs 15
 // See https://github.com/vercel/vercel/blob/7714b1c/packages/functions/src/headers.ts
