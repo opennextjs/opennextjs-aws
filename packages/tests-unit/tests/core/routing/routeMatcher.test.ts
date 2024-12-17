@@ -1,6 +1,6 @@
 import {
-  staticRouteMatcher,
   dynamicRouteMatcher,
+  staticRouteMatcher,
 } from "@opennextjs/aws/core/routing/routeMatcher.js";
 import { vi } from "vitest";
 
