@@ -21,16 +21,15 @@ import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { type BuildOptions, isEdgeRuntime } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
+type Override = OverrideOptions & {
+  originResolver?: LazyLoadedOverride<OriginResolver> | IncludedOriginResolver;
+};
 interface BuildEdgeBundleOptions {
   middlewareInfo?: MiddlewareInfo;
   entrypoint: string;
   outfile: string;
   options: BuildOptions;
-  overrides?: OverrideOptions & {
-    originResolver?:
-      | LazyLoadedOverride<OriginResolver>
-      | IncludedOriginResolver;
-  };
+  overrides?: Override;
   defaultConverter?: IncludedConverter;
   additionalInject?: string;
   includeCache?: boolean;
@@ -53,6 +52,11 @@ export async function buildEdgeBundle({
   name,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare = await isEdgeRuntime(overrides);
+  function override<T extends keyof Override>(target: T) {
+    return typeof overrides?.[target] === "string"
+      ? overrides[target]
+      : undefined;
+  }
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
@@ -64,38 +68,17 @@ export async function buildEdgeBundle({
       plugins: [
         openNextResolvePlugin({
           overrides: {
-            wrapper:
-              typeof overrides?.wrapper === "string"
-                ? overrides.wrapper
-                : "aws-lambda",
-            converter:
-              typeof overrides?.converter === "string"
-                ? overrides.converter
-                : defaultConverter,
+            wrapper: override("wrapper") ?? "aws-lambda",
+            converter: override("converter") ?? defaultConverter,
             ...(includeCache
               ? {
-                  tagCache:
-                    typeof overrides?.tagCache === "string"
-                      ? overrides.tagCache
-                      : "dynamodb-lite",
-                  incrementalCache:
-                    typeof overrides?.incrementalCache === "string"
-                      ? overrides.incrementalCache
-                      : "s3-lite",
-                  queue:
-                    typeof overrides?.queue === "string"
-                      ? overrides.queue
-                      : "sqs-lite",
+                  tagCache: override("tagCache") ?? "dynamodb-lite",
+                  incrementalCache: override("incrementalCache") ?? "s3-lite",
+                  queue: override("queue") ?? "sqs-lite",
                 }
               : {}),
-            originResolver:
-              typeof overrides?.originResolver === "string"
-                ? overrides.originResolver
-                : "pattern-env",
-            proxyExternalRequest:
-              typeof overrides?.proxyExternalRequest === "string"
-                ? overrides.proxyExternalRequest
-                : "node",
+            originResolver: override("originResolver") ?? "pattern-env",
+            proxyExternalRequest: override("proxyExternalRequest") ?? "node",
           },
           fnName: name,
         }),
