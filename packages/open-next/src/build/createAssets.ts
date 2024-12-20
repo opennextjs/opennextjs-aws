@@ -156,15 +156,43 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
   });
 
-  if (!options.config.dangerous?.disableTagCache) {
-    // Generate dynamodb data
-    // We need to traverse the cache to find every .meta file
-    const metaFiles: {
-      tag: { S: string };
-      path: { S: string };
-      revalidatedAt: { N: string };
-    }[] = [];
+  // We need to traverse the cache to find every .meta file
+  const metaFiles: {
+    tag: { S: string };
+    path: { S: string };
+    revalidatedAt: { N: string };
+  }[] = [];
 
+  // Copy fetch-cache to cache folder
+  const fetchCachePath = path.join(
+    appBuildOutputPath,
+    ".next/cache/fetch-cache",
+  );
+  if (fs.existsSync(fetchCachePath)) {
+    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+    fs.mkdirSync(fetchOutputPath, { recursive: true });
+    fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
+
+    buildHelper.traverseFiles(
+      fetchCachePath,
+      () => true,
+      ({ absolutePath, relativePath }) => {
+        const fileContent = fs.readFileSync(absolutePath, "utf8");
+        const fileData = JSON.parse(fileContent);
+        fileData?.tags?.forEach((tag: string) => {
+          metaFiles.push({
+            tag: { S: path.posix.join(buildId, tag) },
+            path: {
+              S: path.posix.join(buildId, relativePath),
+            },
+            revalidatedAt: { N: "1" },
+          });
+        });
+      },
+    );
+  }
+
+  if (!options.config.dangerous?.disableTagCache) {
     // Compute dynamodb cache data
     // Traverse files inside cache to find all meta files and cache tags associated with them
     buildHelper.traverseFiles(
@@ -193,35 +221,6 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         }
       },
     );
-
-    // Copy fetch-cache to cache folder
-    const fetchCachePath = path.join(
-      appBuildOutputPath,
-      ".next/cache/fetch-cache",
-    );
-    if (fs.existsSync(fetchCachePath)) {
-      const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
-      fs.mkdirSync(fetchOutputPath, { recursive: true });
-      fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
-
-      buildHelper.traverseFiles(
-        fetchCachePath,
-        () => true,
-        ({ absolutePath, relativePath }) => {
-          const fileContent = fs.readFileSync(absolutePath, "utf8");
-          const fileData = JSON.parse(fileContent);
-          fileData?.tags?.forEach((tag: string) => {
-            metaFiles.push({
-              tag: { S: path.posix.join(buildId, tag) },
-              path: {
-                S: path.posix.join(buildId, relativePath),
-              },
-              revalidatedAt: { N: "1" },
-            });
-          });
-        },
-      );
-    }
 
     if (metaFiles.length > 0) {
       useTagCache = true;
