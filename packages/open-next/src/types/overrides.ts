@@ -139,3 +139,12 @@ export type OriginResolver = BaseOverride & {
 export type ProxyExternalRequest = BaseOverride & {
   proxy: (event: InternalEvent) => Promise<InternalResult>;
 };
+
+type CDNPath = {
+  path: string;
+  isAppRouter: boolean;
+};
+
+export type CDNInvalidationHandler = BaseOverride & {
+  invalidatePaths: (paths: CDNPath[]) => Promise<void>;
+};
