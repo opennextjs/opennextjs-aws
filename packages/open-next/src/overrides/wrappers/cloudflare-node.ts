@@ -7,6 +7,9 @@ import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { Writable } from "node:stream";
 
+// Response with null body status (101, 204, 205, or 304) cannot have a body.
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
 const handler: WrapperHandler<InternalEvent, InternalResult> =
   async (handler, converter) =>
   async (
@@ -55,7 +58,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
             controller.enqueue(Uint8Array.from(chunk.chunk ?? chunk));
           },
         });
-        const response = new Response(readable, {
+        const body = NULL_BODY_STATUSES.has(statusCode) ? null : readable;
+        const response = new Response(body, {
           status: statusCode,
           headers: responseHeaders,
         });
