@@ -747,10 +747,14 @@ describe("invalidateCDNOnRequest", () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "HIT",
     };
-    await invalidateCDNOnRequest({
-      rawPath: "/path",
+    await invalidateCDNOnRequest(
+      {
+        internalEvent: {
+          headers: {},
+        },
+      },
       headers,
-    });
+    );
 
     expect(
       globalThis.cdnInvalidationHandler.invalidatePaths,
@@ -761,11 +765,17 @@ describe("invalidateCDNOnRequest", () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "REVALIDATED",
     };
-    await invalidateCDNOnRequest({
-      rawPath: "/path",
+    await invalidateCDNOnRequest(
+      {
+        internalEvent: {
+          rawPath: "/path",
+          headers: {
+            "x-isr": "1",
+          },
+        },
+      },
       headers,
-      isIsrRevalidation: true,
-    });
+    );
 
     expect(
       globalThis.cdnInvalidationHandler.invalidatePaths,
@@ -776,17 +786,35 @@ describe("invalidateCDNOnRequest", () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "REVALIDATED",
     };
-    await invalidateCDNOnRequest({
-      rawPath: "/path",
+    await invalidateCDNOnRequest(
+      {
+        initialPath: "/path",
+        internalEvent: {
+          rawPath: "/path",
+          headers: {},
+        },
+        resolvedRoutes: [
+          {
+            type: "app",
+            route: "/path",
+          },
+        ],
+      },
       headers,
-    });
+    );
 
     expect(
       globalThis.cdnInvalidationHandler.invalidatePaths,
     ).toHaveBeenCalledWith([
       {
-        path: "/path",
-        isAppRouter: false,
+        initialPath: "/path",
+        rawPath: "/path",
+        resolvedRoutes: [
+          {
+            type: "app",
+            route: "/path",
+          },
+        ],
       },
     ]);
   });
