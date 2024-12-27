@@ -8,6 +8,7 @@ import type {
   InternalEvent,
   InternalResult,
   Origin,
+  ResolvedRoute,
   StreamCreator,
 } from "./open-next";
 
@@ -141,8 +142,9 @@ export type ProxyExternalRequest = BaseOverride & {
 };
 
 type CDNPath = {
-  path: string;
-  isAppRouter: boolean;
+  initialPath: string;
+  rawPath: string;
+  resolvedRoutes: ResolvedRoute[];
 };
 
 export type CDNInvalidationHandler = BaseOverride & {

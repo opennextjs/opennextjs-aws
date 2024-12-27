@@ -447,9 +447,15 @@ export default class Cache {
         if (uniquePaths.length > 0) {
           await globalThis.cdnInvalidationHandler.invalidatePaths(
             uniquePaths.map((path) => ({
-              path,
-              // Here we can be sure that the path is from app router
-              isAppRouter: true,
+              initialPath: path,
+              rawPath: path,
+              resolvedRoutes: [
+                {
+                  route: path,
+                  // TODO: ideally here we should check if it's an app router page or route
+                  type: "app",
+                },
+              ],
             })),
           );
         }

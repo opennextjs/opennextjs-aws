@@ -8,14 +8,20 @@ const cloudfront = new CloudFrontClient({});
 export default {
   name: "cloudfront",
   invalidatePaths: async (paths) => {
-    //TODO: test the constructed paths
-    const constructedPaths = paths.flatMap(({ path, isAppRouter }) =>
-      isAppRouter
-        ? [`${path}`, `${path}?_rsc=*`]
-        : [
-            `${path}`,
-            `/_next/data/${process.env.NEXT_BUILD_ID}${path === "/" ? "/index" : path}.json*`,
-          ],
+    const constructedPaths = paths.flatMap(
+      ({ initialPath, resolvedRoutes }) => {
+        const isAppRouter = resolvedRoutes.some(
+          (route) => route.type === "app",
+        );
+        // revalidateTag doesn't have any leading slash, remove it just to be sure
+        const path = initialPath.replace(/^\//, "");
+        return isAppRouter
+          ? [`/${path}`, `/${path}?_rsc=*`]
+          : [
+              `/${path}`,
+              `/_next/data/${process.env.NEXT_BUILD_ID}${path === "/" ? "/index" : `/${path}`}.json*`,
+            ];
+      },
     );
     await cloudfront.send(
       new CreateInvalidationCommand({
