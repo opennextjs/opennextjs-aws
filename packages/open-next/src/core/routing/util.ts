@@ -15,6 +15,7 @@ import type {
 
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
+import { localizePath } from "./i18n/index.js";
 
 /**
  *
@@ -196,11 +197,11 @@ enum CommonHeaders {
  * @__PURE__
  */
 export function fixCacheHeaderForHtmlPages(
-  rawPath: string,
+  internalEvent: InternalEvent,
   headers: OutgoingHttpHeaders,
 ) {
   // We don't want to cache error pages
-  if (rawPath === "/404" || rawPath === "/500") {
+  if (internalEvent.rawPath === "/404" || internalEvent.rawPath === "/500") {
     if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
       return;
     }
@@ -208,9 +209,10 @@ export function fixCacheHeaderForHtmlPages(
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
+  const localizedPath = localizePath(internalEvent);
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages
   // https://opennext.js.org/aws/v2/advanced/workaround#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (HtmlPages.includes(rawPath)) {
+  if (HtmlPages.includes(localizedPath)) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
@@ -407,7 +409,7 @@ export function createServerResponse(
 ) {
   return new OpenNextNodeResponse(
     (_headers) => {
-      fixCacheHeaderForHtmlPages(internalEvent.rawPath, _headers);
+      fixCacheHeaderForHtmlPages(internalEvent, _headers);
       fixSWRCacheHeader(_headers);
       addOpenNextHeader(_headers);
       fixISRHeaders(_headers);

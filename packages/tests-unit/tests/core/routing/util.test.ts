@@ -448,7 +448,12 @@ describe("fixCacheHeaderForHtmlPages", () => {
 
   it("should set cache-control header for /404 page", () => {
     const headers: Record<string, string> = {};
-    fixCacheHeaderForHtmlPages("/404", headers);
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/404",
+      },
+      headers,
+    );
 
     expect(headers["cache-control"]).toBe(
       "private, no-cache, no-store, max-age=0, must-revalidate",
@@ -457,7 +462,12 @@ describe("fixCacheHeaderForHtmlPages", () => {
 
   it("should set cache-control header for /500 page", () => {
     const headers: Record<string, string> = {};
-    fixCacheHeaderForHtmlPages("/500", headers);
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/500",
+      },
+      headers,
+    );
 
     expect(headers["cache-control"]).toBe(
       "private, no-cache, no-store, max-age=0, must-revalidate",
@@ -468,7 +478,12 @@ describe("fixCacheHeaderForHtmlPages", () => {
     const headers: Record<string, string> = {};
     config.HtmlPages.push("/my-html-page");
 
-    fixCacheHeaderForHtmlPages("/my-html-page", headers);
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/my-html-page",
+      },
+      headers,
+    );
 
     expect(headers["cache-control"]).toBe(
       "public, max-age=0, s-maxage=31536000, must-revalidate",
@@ -481,6 +496,51 @@ describe("fixCacheHeaderForHtmlPages", () => {
     fixCacheHeaderForHtmlPages("/not-html-page", headers);
 
     expect(headers).not.toHaveProperty("cache-control");
+  });
+
+  it("should add cache-control header for html page with default i18n", () => {
+    const headers: Record<string, string> = {};
+    config.HtmlPages.push("/en/my-html-page");
+    config.NextConfig.i18n = {
+      defaultLocale: "en",
+      locales: ["en", "fr"],
+    };
+
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/my-html-page",
+        cookies: {},
+        headers: {},
+      },
+      headers,
+    );
+
+    expect(headers["cache-control"]).toBe(
+      "public, max-age=0, s-maxage=31536000, must-revalidate",
+    );
+
+    config.NextConfig.i18n = undefined;
+  });
+
+  it("should add cache-control header for html page with locale", () => {
+    const headers: Record<string, string> = {};
+    config.HtmlPages.push("/en/my-html-page");
+    config.HtmlPages.push("/fr/my-html-page");
+
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/en/my-html-page",
+        cookies: {},
+        headers: {
+          "accept-language": "fr",
+        },
+      },
+      headers,
+    );
+
+    expect(headers["cache-control"]).toBe(
+      "public, max-age=0, s-maxage=31536000, must-revalidate",
+    );
   });
 });
 
