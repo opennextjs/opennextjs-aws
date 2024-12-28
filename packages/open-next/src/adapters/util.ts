@@ -1,7 +1,11 @@
 //TODO: We should probably move all the utils to a separate location
 
 export function setNodeEnv() {
-  process.env.NODE_ENV = process.env.NODE_ENV ?? "production";
+  // Note: we create a `processEnv` variable instead of just using `process.env` directly
+  //       because build tools can substitute `process.env.NODE_ENV` on build making
+  //       assignments such as `process.env.NODE_ENV = ...` problematic
+  const processEnv = process.env;
+  processEnv.NODE_ENV = process.env.NODE_ENV ?? "production";
 }
 
 export function generateUniqueId() {
