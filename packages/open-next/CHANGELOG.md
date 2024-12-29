@@ -1,5 +1,18 @@
 # open-next
 
+## 3.3.1
+
+### Patch Changes
+
+- [#684](https://github.com/opennextjs/opennextjs-aws/pull/684) [`9595714ac23e5f131b879d04d5cfb2a5d11bdbdd`](https://github.com/opennextjs/opennextjs-aws/commit/9595714ac23e5f131b879d04d5cfb2a5d11bdbdd) Thanks [@vicb](https://github.com/vicb)! - fix: fetch cache does not depend on tag cache being enabled
+
+- [#685](https://github.com/opennextjs/opennextjs-aws/pull/685) [`4e88b47935523de1d15da067b56105bd6be91e47`](https://github.com/opennextjs/opennextjs-aws/commit/4e88b47935523de1d15da067b56105bd6be91e47) Thanks [@conico974](https://github.com/conico974)! - fix html cache headers with i18n
+
+- [#673](https://github.com/opennextjs/opennextjs-aws/pull/673) [`7140ca56e1e88d7a7cae327eceb3ef8c2fde2a1e`](https://github.com/opennextjs/opennextjs-aws/commit/7140ca56e1e88d7a7cae327eceb3ef8c2fde2a1e) Thanks [@conico974](https://github.com/conico974)! - Add additional metadata to RoutingResult
+
+  For some future features [#658](https://github.com/opennextjs/opennextjs-aws/issues/658) (and bug fix [#677](https://github.com/opennextjs/opennextjs-aws/issues/677)) we need to add some additional metadata to the RoutingResult.
+  This PR adds 2 new fields to the RoutingResult: `initialPath` and `resolvedRoutes`
+
 ## 3.3.0
 
 ### Minor Changes
