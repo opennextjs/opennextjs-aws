@@ -10,6 +10,7 @@ import type { MiddlewareManifest } from "types/next-types";
 import type {
   InternalEvent,
   InternalResult,
+  RoutingResult,
   StreamCreator,
 } from "types/open-next.js";
 
@@ -403,10 +404,11 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
  * @__PURE__
  */
 export function createServerResponse(
-  internalEvent: InternalEvent,
+  routingResult: RoutingResult,
   headers: Record<string, string | string[] | undefined>,
   responseStream?: StreamCreator,
 ) {
+  const internalEvent = routingResult.internalEvent;
   return new OpenNextNodeResponse(
     (_headers) => {
       fixCacheHeaderForHtmlPages(internalEvent, _headers);
@@ -420,8 +422,30 @@ export function createServerResponse(
         internalEvent.rawPath,
         _headers,
       );
+      await invalidateCDNOnRequest(routingResult, _headers);
     },
     responseStream,
     headers,
   );
+}
+
+// This function is used only for `res.revalidate()`
+export async function invalidateCDNOnRequest(
+  params: RoutingResult,
+  headers: OutgoingHttpHeaders,
+) {
+  const { internalEvent, initialPath, resolvedRoutes } = params;
+  const isIsrRevalidation = internalEvent.headers["x-isr"] === "1";
+  if (
+    !isIsrRevalidation &&
+    headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED"
+  ) {
+    await globalThis.cdnInvalidationHandler.invalidatePaths([
+      {
+        initialPath,
+        rawPath: internalEvent.rawPath,
+        resolvedRoutes,
+      },
+    ]);
+  }
 }
