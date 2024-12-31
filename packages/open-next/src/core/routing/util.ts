@@ -8,8 +8,8 @@ import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
 import type {
-  InternalResult,
   InternalEvent,
+  InternalResult,
   RoutingResult,
   StreamCreator,
 } from "types/open-next.js";
