@@ -9,6 +9,7 @@ import { parseHeaders } from "http/util.js";
 import type { MiddlewareManifest } from "types/next-types";
 import type {
   InternalResult,
+  InternalEvent,
   RoutingResult,
   StreamCreator,
 } from "types/open-next.js";
