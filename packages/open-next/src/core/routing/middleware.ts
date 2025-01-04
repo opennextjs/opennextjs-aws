@@ -74,7 +74,9 @@ export async function handleMiddleware(
   const result: Response = await middleware.default({
     // `geo` is pre Next 15.
     geo: {
-      city: headers["x-open-next-city"],
+      // The city name is percent-encoded.
+      // See https://github.com/vercel/vercel/blob/4cb6143/packages/functions/src/headers.ts#L94C19-L94C37
+      city: decodeURIComponent(headers["x-open-next-city"]),
       country: headers["x-open-next-country"],
       region: headers["x-open-next-region"],
       latitude: headers["x-open-next-latitude"],
