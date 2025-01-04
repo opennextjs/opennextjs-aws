@@ -1,6 +1,6 @@
-import type { ImageLoader } from "types/overrides";
 import fs from "node:fs/promises";
 import { Readable } from "node:stream";
+import type { ImageLoader } from "types/overrides";
 
 export default {
   name: "fs-dev",
