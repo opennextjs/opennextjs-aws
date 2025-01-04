@@ -5,8 +5,13 @@ import type {
 } from "types/open-next";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
-const cfPropNameToHeaderName = {
-  city: "x-open-next-city",
+const cfPropNameMapping: Record<
+  string,
+  string | [(s: string) => string, string]
+> = {
+  // The city name is percent-encoded.
+  // See https://github.com/vercel/vercel/blob/4cb6143/packages/functions/src/headers.ts#L94C19-L94C37
+  city: [encodeURIComponent, "x-open-next-city"],
   country: "x-open-next-country",
   regionCode: "x-open-next-region",
   latitude: "x-open-next-latitude",
@@ -46,12 +51,15 @@ const handler: WrapperHandler<
     const cfProperties = (request as any).cf as
       | Record<string, string | null>
       | undefined;
-    for (const [propName, headerName] of Object.entries(
-      cfPropNameToHeaderName,
-    )) {
+    for (const [propName, mapping] of Object.entries(cfPropNameMapping)) {
       const propValue = cfProperties?.[propName];
       if (propValue != null) {
-        internalEvent.headers[headerName] = propValue;
+        const [encode, headerName] = Array.isArray(mapping)
+          ? mapping
+          : [null, mapping];
+        internalEvent.headers[headerName] = encode
+          ? encode(propValue)
+          : propValue;
       }
     }
 
