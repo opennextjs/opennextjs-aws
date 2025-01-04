@@ -96,6 +96,7 @@ export type IncludedWrapper =
   | "cloudflare"
   | "cloudflare-edge"
   | "cloudflare-node"
+  | "express-dev"
   | "dummy";
 
 export type IncludedConverter =
@@ -133,13 +134,17 @@ export interface MiddlewareResult
   extends RoutingResult,
     BaseEventOrResult<"middleware"> {}
 
-export type IncludedQueue = "sqs" | "sqs-lite" | "dummy";
+export type IncludedQueue = "sqs" | "sqs-lite" | "direct" | "dummy";
 
-export type IncludedIncrementalCache = "s3" | "s3-lite" | "dummy";
+export type IncludedIncrementalCache = "s3" | "s3-lite" | "fs-dev" | "dummy";
 
-export type IncludedTagCache = "dynamodb" | "dynamodb-lite" | "dummy";
+export type IncludedTagCache =
+  | "dynamodb"
+  | "dynamodb-lite"
+  | "fs-dev"
+  | "dummy";
 
-export type IncludedImageLoader = "s3" | "host" | "dummy";
+export type IncludedImageLoader = "s3" | "host" | "fs-dev" | "dummy";
 
 export type IncludedOriginResolver = "pattern-env" | "dummy";
 
