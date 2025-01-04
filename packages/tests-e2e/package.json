@@ -8,7 +8,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@playwright/test": "1.37.0",
+    "@playwright/test": "1.49.1",
     "start-server-and-test": "2.0.0",
     "ts-node": "10.9.1"
   },
