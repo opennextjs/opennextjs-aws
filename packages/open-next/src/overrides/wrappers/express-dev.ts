@@ -1,5 +1,3 @@
-// dev/wrapper.ts
-// You'll need to install express
 import express from "express";
 
 import type { StreamCreator } from "types/open-next.js";
@@ -20,7 +18,6 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         res.writeHead(prelude.statusCode, prelude.headers);
         return res;
       },
-      onFinish: () => {},
     };
     await imageHandler(internalEvent, _res);
   });

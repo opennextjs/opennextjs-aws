@@ -23,7 +23,10 @@ const cache: IncrementalCache = {
   },
   set: async (key, value, isFetch) => {
     const data = JSON.stringify(value);
-    await fs.writeFile(getCacheKey(key), data);
+    const cacheKey = getCacheKey(key);
+    // We need to create the directory before writing the file
+    await fs.mkdir(path.dirname(cacheKey), { recursive: true });
+    await fs.writeFile(cacheKey, data);
   },
   delete: async (key) => {
     await fs.rm(getCacheKey(key));
