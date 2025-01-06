@@ -33,13 +33,11 @@ const tagCache: TagCache = {
     return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
   },
   writeTags: async (newTags) => {
+    const newTagsSet = new Set(
+      newTags.map(({ tag, path }) => `${tag}-${path}`),
+    );
     const unchangedTags = tags.filter(
-      (tagPathMapping) =>
-        !newTags.some(
-          (tag) =>
-            tag.tag === tagPathMapping.tag.S &&
-            tag.path === tagPathMapping.path.S,
-        ),
+      ({ tag, path }) => !newTagsSet.has(`${tag.S}-${path.S}`),
     );
     tags = unchangedTags.concat(
       newTags.map((tag) => ({
