@@ -20,7 +20,8 @@ const compatibilityMatrix: Record<IncludedWrapper, IncludedConverter[]> = {
   "cloudflare-edge": ["edge"],
   "cloudflare-node": ["edge"],
   node: ["node"],
-  dummy: [],
+  "express-dev": ["node"],
+  dummy: ["dummy"],
 };
 
 function validateFunctionOptions(fnOptions: FunctionOptions) {
