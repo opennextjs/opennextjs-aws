@@ -1,4 +1,12 @@
+import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
+
+const OG_MD5 = "6e5e794ac0c27598a331690f96f05d00";
+const API_OG_MD5 = "cac95fc3e2d4d52870c0536bb18ba85b";
+
+function validateMd5(data: Buffer, expectedHash: string) {
+  return createHash("md5").update(data).digest("hex") === expectedHash;
+}
 
 test("Open-graph image to be in metatags and present", async ({
   page,
@@ -37,6 +45,7 @@ test("Open-graph image to be in metatags and present", async ({
   expect(response.headers()["cache-control"]).toBe(
     "public, immutable, no-transform, max-age=31536000",
   );
+  expect(validateMd5(await response.body(), OG_MD5)).toBe(true);
 });
 
 test("next/og (vercel/og) to work in API route", async ({ request }) => {
@@ -46,4 +55,5 @@ test("next/og (vercel/og) to work in API route", async ({ request }) => {
   expect(response.headers()["cache-control"]).toBe(
     "public, immutable, no-transform, max-age=31536000",
   );
+  expect(validateMd5(await response.body(), API_OG_MD5)).toBe(true);
 });
