@@ -196,8 +196,7 @@ async function generateBundle(
       target: /core(\/|\\)util\.js/g,
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
-        ...(disableRouting ? ["trustHostHeader"] : []),
-        ...(!isBefore13413 ? ["requestHandlerHost"] : []),
+        ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
         ...(isAfter141
           ? ["experimentalIncrementalCacheHandler"]
           : ["stableIncrementalCache"]),
