@@ -18,7 +18,7 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
 /**
  *
  * openNextPlugin({
- *   target: /plugins\/default\.js/g,
+ *   target: /plugins(\/|\\)default\.js/g,
  *   replacements: [require.resolve("./plugins/default.js")],
  *   deletes: ["id1"],
  * })

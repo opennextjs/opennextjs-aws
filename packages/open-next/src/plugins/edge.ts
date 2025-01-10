@@ -58,7 +58,7 @@ export function openNextEdgePlugins({
       logger.debug(chalk.blue("OpenNext Edge plugin"));
       if (edgeFunctionHandlerPath) {
         // If we bundle the routing, we need to resolve the middleware
-        build.onResolve({ filter: /\.\/middleware.mjs/g }, () => {
+        build.onResolve({ filter: /\.(\/|\\)middleware.mjs/g }, () => {
           return {
             path: edgeFunctionHandlerPath,
           };
@@ -93,7 +93,7 @@ export function openNextEdgePlugins({
       );
 
       // We inject the entry files into the edgeFunctionHandler
-      build.onLoad({ filter: /\/edgeFunctionHandler.js/g }, async (args) => {
+      build.onLoad({ filter: /(\/|\\)edgeFunctionHandler.js/g }, async (args) => {
         let contents = readFileSync(args.path, "utf-8");
         contents = `
 globalThis._ENTRIES = {};
@@ -160,7 +160,7 @@ ${contents}
         };
       });
 
-      build.onLoad({ filter: /adapters\/config\/index/g }, async () => {
+      build.onLoad({ filter: /adapters(\/|\\)config(\/|\\)index/g }, async () => {
         const NextConfig = loadConfig(nextDir);
         const BuildId = loadBuildId(nextDir);
         const HtmlPages = loadHtmlPages(nextDir);
