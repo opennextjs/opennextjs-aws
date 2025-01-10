@@ -93,9 +93,11 @@ export function openNextEdgePlugins({
       );
 
       // We inject the entry files into the edgeFunctionHandler
-      build.onLoad({ filter: /(\/|\\)edgeFunctionHandler.js/g }, async (args) => {
-        let contents = readFileSync(args.path, "utf-8");
-        contents = `
+      build.onLoad(
+        { filter: /(\/|\\)edgeFunctionHandler.js/g },
+        async (args) => {
+          let contents = readFileSync(args.path, "utf-8");
+          contents = `
 globalThis._ENTRIES = {};
 globalThis.self = globalThis;
 globalThis._ROUTES = ${JSON.stringify(routes)};
@@ -155,24 +157,27 @@ ${wasmFiles
 ${entryFiles.map((file) => `require("${file}");`).join("\n")}
 ${contents}
         `;
-        return {
-          contents,
-        };
-      });
+          return {
+            contents,
+          };
+        },
+      );
 
-      build.onLoad({ filter: /adapters(\/|\\)config(\/|\\)index/g }, async () => {
-        const NextConfig = loadConfig(nextDir);
-        const BuildId = loadBuildId(nextDir);
-        const HtmlPages = loadHtmlPages(nextDir);
-        const RoutesManifest = loadRoutesManifest(nextDir);
-        const ConfigHeaders = loadConfigHeaders(nextDir);
-        const PrerenderManifest = loadPrerenderManifest(nextDir);
-        const AppPathsManifestKeys = loadAppPathsManifestKeys(nextDir);
-        const MiddlewareManifest = loadMiddlewareManifest(nextDir);
-        const AppPathsManifest = loadAppPathsManifest(nextDir);
-        const AppPathRoutesManifest = loadAppPathRoutesManifest(nextDir);
+      build.onLoad(
+        { filter: /adapters(\/|\\)config(\/|\\)index/g },
+        async () => {
+          const NextConfig = loadConfig(nextDir);
+          const BuildId = loadBuildId(nextDir);
+          const HtmlPages = loadHtmlPages(nextDir);
+          const RoutesManifest = loadRoutesManifest(nextDir);
+          const ConfigHeaders = loadConfigHeaders(nextDir);
+          const PrerenderManifest = loadPrerenderManifest(nextDir);
+          const AppPathsManifestKeys = loadAppPathsManifestKeys(nextDir);
+          const MiddlewareManifest = loadMiddlewareManifest(nextDir);
+          const AppPathsManifest = loadAppPathsManifest(nextDir);
+          const AppPathRoutesManifest = loadAppPathRoutesManifest(nextDir);
 
-        const contents = `
+          const contents = `
   import path from "node:path";
 
   import { debug } from "../logger";
@@ -198,8 +203,9 @@ ${contents}
 
   process.env.NEXT_BUILD_ID = BuildId;
 `;
-        return { contents };
-      });
+          return { contents };
+        },
+      );
     },
   };
 }
