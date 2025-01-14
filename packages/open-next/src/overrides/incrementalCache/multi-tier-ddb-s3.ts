@@ -1,7 +1,7 @@
 import type { CacheValue, IncrementalCache } from "types/overrides";
-import S3Cache, { getAwsClient } from "./s3-lite";
 import { customFetchClient } from "utils/fetch";
 import { debug } from "../../adapters/logger";
+import S3Cache, { getAwsClient } from "./s3-lite";
 
 // TTL for the local cache in milliseconds
 const localCacheTTL = process.env.OPEN_NEXT_LOCAL_CACHE_TTL
