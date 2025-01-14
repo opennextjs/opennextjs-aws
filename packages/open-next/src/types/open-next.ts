@@ -136,7 +136,12 @@ export interface MiddlewareResult
 
 export type IncludedQueue = "sqs" | "sqs-lite" | "direct" | "dummy";
 
-export type IncludedIncrementalCache = "s3" | "s3-lite" | "fs-dev" | "dummy";
+export type IncludedIncrementalCache =
+  | "s3"
+  | "s3-lite"
+  | "multi-tier-ddb-s3"
+  | "fs-dev"
+  | "dummy";
 
 export type IncludedTagCache =
   | "dynamodb"
