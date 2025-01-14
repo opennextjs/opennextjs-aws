@@ -80,7 +80,7 @@ const multiTierCache: IncrementalCache = {
           // If the metadata is older than the local cache, we can use the local cache
           // If it's not found we assume that no write has been done yet and we can use the local cache
           const lastModified = data.Item?.revalidatedAt?.N
-            ? Number.parseInt(data.Item.revalidatedAt.N)
+            ? Number.parseInt(data.Item.revalidatedAt.N, 10)
             : 0;
           if (lastModified <= localCacheEntry.lastModified) {
             debug("Using local cache after checking ddb");
