@@ -38,6 +38,10 @@ const nextConfig: NextConfig = {
         },
       ],
     },
+    {
+      source: "/external-on-image",
+      destination: "https://opennext.js.org/share.png",
+    },
   ],
   redirects: async () => [
     {
