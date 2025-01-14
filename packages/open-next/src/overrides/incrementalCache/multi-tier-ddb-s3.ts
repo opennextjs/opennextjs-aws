@@ -1,55 +1,22 @@
 import type { CacheValue, IncrementalCache } from "types/overrides";
 import { customFetchClient } from "utils/fetch";
+import { LRUCache } from "utils/lru";
 import { debug } from "../../adapters/logger";
 import S3Cache, { getAwsClient } from "./s3-lite";
 
 // TTL for the local cache in milliseconds
-const localCacheTTL = process.env.OPEN_NEXT_LOCAL_CACHE_TTL
-  ? Number.parseInt(process.env.OPEN_NEXT_LOCAL_CACHE_TTL)
+const localCacheTTL = process.env.OPEN_NEXT_LOCAL_CACHE_TTL_MS
+  ? Number.parseInt(process.env.OPEN_NEXT_LOCAL_CACHE_TTL_MS, 10)
   : 0;
 // Maximum size of the local cache in nb of entries
 const maxCacheSize = process.env.OPEN_NEXT_LOCAL_CACHE_SIZE
-  ? Number.parseInt(process.env.OPEN_NEXT_LOCAL_CACHE_SIZE)
+  ? Number.parseInt(process.env.OPEN_NEXT_LOCAL_CACHE_SIZE, 10)
   : 1000;
 
-class LRUCache {
-  private cache: Map<
-    string,
-    {
-      value: CacheValue<boolean>;
-      lastModified: number;
-    }
-  > = new Map();
-  private maxSize: number;
-
-  constructor(maxSize: number) {
-    this.maxSize = maxSize;
-  }
-
-  // isFetch is not used here, only used for typing
-  get<T extends boolean = false>(key: string, isFetch?: T) {
-    return this.cache.get(key) as {
-      value: CacheValue<T>;
-      lastModified: number;
-    };
-  }
-
-  set(key: string, value: any) {
-    if (this.cache.size >= this.maxSize) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) {
-        this.cache.delete(firstKey);
-      }
-    }
-    this.cache.set(key, value);
-  }
-
-  delete(key: string) {
-    this.cache.delete(key);
-  }
-}
-
-const localCache = new LRUCache(maxCacheSize);
+const localCache = new LRUCache<{
+  value: CacheValue<false>;
+  lastModified: number;
+}>(maxCacheSize);
 
 const awsFetch = (body: RequestInit["body"], type: "get" | "set" = "get") => {
   const { CACHE_BUCKET_REGION } = process.env;
@@ -85,7 +52,7 @@ const multiTierCache: IncrementalCache = {
   name: "multi-tier-ddb-s3",
   async get(key, isFetch) {
     // First we check the local cache
-    const localCacheEntry = localCache.get(key, isFetch);
+    const localCacheEntry = localCache.get(key);
     if (localCacheEntry) {
       if (Date.now() - localCacheEntry.lastModified < localCacheTTL) {
         debug("Using local cache without checking ddb");
