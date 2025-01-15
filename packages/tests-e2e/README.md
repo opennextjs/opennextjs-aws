@@ -22,25 +22,29 @@ Their respective `packages/` are located at:
 
 The GitHub actions will trigger the [e2e test](/.github/workflows//e2e.yml), which deploys the app in the [Example](/example/) folder. The deploy command is:
 
-### Running the tests against the deployed app
+## Running the tests against the deployed app
 
 1. Deploy the app
+
 ```bash
 cd examples/sst
 npx sst deploy --stage e2e
 ```
+
 2. Export the URLS
+
 ```bash
 export APP_ROUTER_URL=$(jq -r '.["e2e-example-AppRouter"].url' .sst/outputs.json)
 export PAGES_ROUTER_URL=$(jq -r '.["e2e-example-PagesRouter"].url' .sst/outputs.json)
 export APP_PAGES_ROUTER_URL=$(jq -r '.["e2e-example-AppPagesRouter"].url' .sst/outputs.json)
 ```
+
 3. Run the test
+
 ```bash
 cd ../../packages/tests-e2e
 pnpm run e2e:dev
 ```
-
 
 ## Gotchas
 

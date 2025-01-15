@@ -3,8 +3,6 @@
 
 import { expect, test } from "@playwright/test";
 
-import { wait } from "../utils";
-
 // NOTE: We don't await page load b/c we want to see the Loading page
 test("Server Side Render and loading.tsx", async ({ page }) => {
   test.setTimeout(600000);
@@ -25,7 +23,7 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
     const time = await el.textContent();
     expect(time).not.toEqual(lastTime);
     lastTime = time!;
-    await wait(1000);
+    await page.waitForTimeout(1000);
   }
 
   // let loading = page.getByText("Loading...");
@@ -44,7 +42,7 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
   // await expect(el).toBeVisible();
   // await expect(time).not.toEqual(newTime);
 
-  // await wait(5000);
+  // await page.waitForTimeout(5000);
   // page.reload();
   // loading = page.getByText("Loading...");
   // await expect(loading).toBeVisible();
@@ -58,7 +56,7 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
 test("Fetch cache properly cached", async ({ page }) => {
   await page.goto("/ssr");
   const originalDate = await page.getByText("Cached fetch:").textContent();
-  await wait(2000);
+  await page.waitForTimeout(2000);
   await page.reload();
   const newDate = await page.getByText("Cached fetch:").textContent();
   expect(originalDate).toEqual(newDate);
