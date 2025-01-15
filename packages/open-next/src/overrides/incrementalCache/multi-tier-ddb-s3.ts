@@ -100,6 +100,10 @@ const multiTierCache: IncrementalCache = {
     }
     return result;
   },
+
+  // Both for set and delete we choose to do the write to S3 first and then to DynamoDB
+  // Which means that if it fails in DynamoDB, instance that don't have local cache will work as expected.
+  // But instance that have local cache will have a stale cache until the next working set or delete.
   async set(key, value, isFetch) {
     const revalidatedAt = Date.now();
     await S3Cache.set(key, value, isFetch);

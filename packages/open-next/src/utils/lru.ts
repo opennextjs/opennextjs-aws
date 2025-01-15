@@ -5,7 +5,9 @@ export class LRUCache<T> {
 
   get(key: string) {
     const result = this.cache.get(key);
+    // We could have used .has to allow for nullish value to be stored but we don't need that right now
     if (result) {
+      // By removing and setting the key again we ensure it's the most recently used
       this.cache.delete(key);
       this.cache.set(key, result);
     }
