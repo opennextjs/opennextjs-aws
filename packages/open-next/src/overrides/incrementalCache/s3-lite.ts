@@ -11,7 +11,7 @@ import { parseNumberFromEnv } from "../../adapters/util";
 
 let awsClient: AwsClient | null = null;
 
-const getAwsClient = () => {
+export const getAwsClient = () => {
   const { CACHE_BUCKET_REGION } = process.env;
   if (awsClient) {
     return awsClient;
