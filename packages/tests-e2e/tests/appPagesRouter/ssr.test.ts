@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { wait } from "../utils";
-
 test("Server Side Render", async ({ page }) => {
   await page.goto("/");
   await page.locator('[href="/ssr"]').click();
@@ -24,7 +22,7 @@ test("Server Side Render", async ({ page }) => {
     await expect(el).toBeVisible();
     expect(time).not.toEqual(newTime);
     time = newTime;
-    await wait(250);
+    await page.waitForTimeout(250);
   }
 });
 
