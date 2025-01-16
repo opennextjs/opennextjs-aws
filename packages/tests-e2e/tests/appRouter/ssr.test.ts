@@ -25,32 +25,6 @@ test("Server Side Render and loading.tsx", async ({ page }) => {
     lastTime = time!;
     await page.waitForTimeout(1000);
   }
-
-  // let loading = page.getByText("Loading...");
-  // await expect(loading).toBeVisible();
-
-  // let el = page.getByText("Time:");
-  // await expect(el).toBeVisible();
-  // const time = await el.textContent();
-
-  // page.reload();
-  // loading = page.getByText("Loading...");
-  // await expect(loading).toBeVisible();
-
-  // el = page.getByText("Time:");
-  // let newTime = await el.textContent();
-  // await expect(el).toBeVisible();
-  // await expect(time).not.toEqual(newTime);
-
-  // await page.waitForTimeout(5000);
-  // page.reload();
-  // loading = page.getByText("Loading...");
-  // await expect(loading).toBeVisible();
-
-  // el = page.getByText("Time:");
-  // newTime = await el.textContent();
-  // await expect(el).toBeVisible();
-  // await expect(time).not.toEqual(newTime);
 });
 
 test("Fetch cache properly cached", async ({ page }) => {
