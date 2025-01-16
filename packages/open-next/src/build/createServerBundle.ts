@@ -7,6 +7,7 @@ import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
+import { getCrossPlatformPathRegex } from "../utils/regex.js";
 import { bundleNextServer } from "./bundleNextServer.js";
 import { compileCache } from "./compileCache.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
@@ -185,7 +186,7 @@ async function generateBundle(
   const plugins = [
     openNextReplacementPlugin({
       name: `requestHandlerOverride ${name}`,
-      target: /core(\/|\\)requestHandler\.js/g,
+      target: getCrossPlatformPathRegex("core/requestHandler.js"),
       deletes: [
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
@@ -193,7 +194,7 @@ async function generateBundle(
     }),
     openNextReplacementPlugin({
       name: `utilOverride ${name}`,
-      target: /core(\/|\\)util\.js/g,
+      target: getCrossPlatformPathRegex("core/util.js"),
       deletes: [
         ...(disableNextPrebundledReact ? ["requireHooks"] : []),
         ...(isBefore13413 ? ["trustHostHeader"] : ["requestHandlerHost"]),
