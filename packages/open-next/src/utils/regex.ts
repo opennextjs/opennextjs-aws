@@ -6,7 +6,7 @@
  * @example
  * ```ts
  * getCrossPlatformPathRegex("./middleware.mjs")
- * getCrossPlatformPathRegex("\\./middleware\\.(mjs|cjs)", { escape: false })
+ * getCrossPlatformPathRegex(String.raw`\./middleware\.(mjs|cjs)`, { escape: false })
  * ```
  */
 export function getCrossPlatformPathRegex(
