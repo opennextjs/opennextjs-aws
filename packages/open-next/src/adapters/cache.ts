@@ -116,7 +116,7 @@ export default class Cache {
           kind?: "FETCH";
         },
   ) {
-    if (globalThis.disableIncrementalCache) {
+    if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return null;
     }
 
@@ -260,7 +260,7 @@ export default class Cache {
     data?: IncrementalCacheValue,
     ctx?: IncrementalCacheContext,
   ): Promise<void> {
-    if (globalThis.disableIncrementalCache) {
+    if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
     // This one might not even be necessary anymore
@@ -396,7 +396,8 @@ export default class Cache {
   }
 
   public async revalidateTag(tags: string | string[]) {
-    if (globalThis.disableDynamoDBCache || globalThis.disableIncrementalCache) {
+    const config = globalThis.openNextConfig.dangerous;
+    if (config?.disableTagCache || config?.disableIncrementalCache) {
       return;
     }
     try {

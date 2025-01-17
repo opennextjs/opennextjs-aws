@@ -68,7 +68,9 @@ function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
 const tagCache: TagCache = {
   async getByPath(path) {
     try {
-      if (globalThis.disableDynamoDBCache) return [];
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return [];
+      }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const result = await awsFetch(
         JSON.stringify({
@@ -101,7 +103,9 @@ const tagCache: TagCache = {
   },
   async getByTag(tag) {
     try {
-      if (globalThis.disableDynamoDBCache) return [];
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return [];
+      }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const result = await awsFetch(
         JSON.stringify({
@@ -133,7 +137,9 @@ const tagCache: TagCache = {
   },
   async getLastModified(key, lastModified) {
     try {
-      if (globalThis.disableDynamoDBCache) return lastModified ?? Date.now();
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return lastModified ?? Date.now();
+      }
       const { CACHE_DYNAMO_TABLE } = process.env;
       const result = await awsFetch(
         JSON.stringify({
@@ -168,7 +174,9 @@ const tagCache: TagCache = {
   async writeTags(tags) {
     try {
       const { CACHE_DYNAMO_TABLE } = process.env;
-      if (globalThis.disableDynamoDBCache) return;
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return;
+      }
       const dataChunks = chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map(
         (Items) => ({
           RequestItems: {
