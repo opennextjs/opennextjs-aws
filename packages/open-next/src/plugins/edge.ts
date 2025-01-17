@@ -18,6 +18,7 @@ import {
   loadRoutesManifest,
 } from "../adapters/config/util.js";
 import logger from "../logger.js";
+import { getCrossPlatformPathRegex } from "../utils/regex.js";
 
 export interface IPluginSettings {
   nextDir: string;
@@ -58,11 +59,14 @@ export function openNextEdgePlugins({
       logger.debug(chalk.blue("OpenNext Edge plugin"));
       if (edgeFunctionHandlerPath) {
         // If we bundle the routing, we need to resolve the middleware
-        build.onResolve({ filter: /\.(\/|\\)middleware.mjs/g }, () => {
-          return {
-            path: edgeFunctionHandlerPath,
-          };
-        });
+        build.onResolve(
+          { filter: getCrossPlatformPathRegex("./middleware.mjs") },
+          () => {
+            return {
+              path: edgeFunctionHandlerPath,
+            };
+          },
+        );
       }
 
       build.onResolve({ filter: /\.(mjs|wasm)$/g }, () => {
@@ -94,7 +98,7 @@ export function openNextEdgePlugins({
 
       // We inject the entry files into the edgeFunctionHandler
       build.onLoad(
-        { filter: /(\/|\\)edgeFunctionHandler.js/g },
+        { filter: getCrossPlatformPathRegex("/edgeFunctionHandler.js") },
         async (args) => {
           let contents = readFileSync(args.path, "utf-8");
           contents = `
@@ -164,7 +168,7 @@ ${contents}
       );
 
       build.onLoad(
-        { filter: /adapters(\/|\\)config(\/|\\)index/g },
+        { filter: getCrossPlatformPathRegex("adapters/config/index") },
         async () => {
           const NextConfig = loadConfig(nextDir);
           const BuildId = loadBuildId(nextDir);

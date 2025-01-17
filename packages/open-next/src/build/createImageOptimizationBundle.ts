@@ -5,6 +5,7 @@ import path from "node:path";
 import logger from "../logger.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
+import { getCrossPlatformPathRegex } from "../utils/regex.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 
@@ -39,8 +40,9 @@ export async function createImageOptimizationBundle(
     plugins.push(
       openNextReplacementPlugin({
         name: "opennext-14.1.1-image-optimization",
-        target:
-          /plugins(\/|\\)image-optimization(\/|\\)image-optimization\.js/g,
+        target: getCrossPlatformPathRegex(
+          "plugins/image-optimization/image-optimization.js",
+        ),
         replacements: [
           require.resolve(
             "../adapters/plugins/image-optimization/image-optimization.replacement.js",

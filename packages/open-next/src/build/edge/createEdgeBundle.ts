@@ -18,6 +18,7 @@ import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
+import { getCrossPlatformPathRegex } from "../../utils/regex.js";
 import { type BuildOptions, isEdgeRuntime } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
 
@@ -84,7 +85,7 @@ export async function buildEdgeBundle({
         }),
         openNextReplacementPlugin({
           name: "externalMiddlewareOverrides",
-          target: /adapters(\/|\\)middleware\.js/g,
+          target: getCrossPlatformPathRegex("adapters/middleware.js"),
           deletes: includeCache ? [] : ["includeCacheInMiddleware"],
         }),
         openNextEdgePlugins({

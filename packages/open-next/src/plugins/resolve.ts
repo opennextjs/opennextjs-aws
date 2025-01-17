@@ -13,6 +13,7 @@ import type {
 import type { ImageLoader, OriginResolver, Warmer } from "types/overrides";
 
 import logger from "../logger.js";
+import { getCrossPlatformPathRegex } from "../utils/regex.js";
 
 export interface IPluginSettings {
   overrides?: {
@@ -81,31 +82,34 @@ export function openNextResolvePlugin({
         chalk.blue("OpenNext Resolve plugin"),
         fnName ? `for ${fnName}` : "",
       );
-      build.onLoad({ filter: /core(\/|\\)resolve\.js/g }, async (args) => {
-        let contents = readFileSync(args.path, "utf-8");
-        const overridesEntries = Object.entries(overrides ?? {});
-        for (let [overrideName, overrideValue] of overridesEntries) {
-          if (!overrideValue) {
-            continue;
-          }
-          if (overrideName === "wrapper" && overrideValue === "cloudflare") {
-            // "cloudflare" is deprecated and replaced by "cloudflare-edge".
-            overrideValue = "cloudflare-edge";
-          }
-          const folder =
-            nameToFolder[overrideName as keyof typeof nameToFolder];
-          const defaultOverride =
-            defaultOverrides[overrideName as keyof typeof defaultOverrides];
+      build.onLoad(
+        { filter: getCrossPlatformPathRegex("core/resolve.js") },
+        async (args) => {
+          let contents = readFileSync(args.path, "utf-8");
+          const overridesEntries = Object.entries(overrides ?? {});
+          for (let [overrideName, overrideValue] of overridesEntries) {
+            if (!overrideValue) {
+              continue;
+            }
+            if (overrideName === "wrapper" && overrideValue === "cloudflare") {
+              // "cloudflare" is deprecated and replaced by "cloudflare-edge".
+              overrideValue = "cloudflare-edge";
+            }
+            const folder =
+              nameToFolder[overrideName as keyof typeof nameToFolder];
+            const defaultOverride =
+              defaultOverrides[overrideName as keyof typeof defaultOverrides];
 
-          contents = contents.replace(
-            `../overrides/${folder}/${defaultOverride}.js`,
-            `../overrides/${folder}/${getOverrideOrDummy(overrideValue)}.js`,
-          );
-        }
-        return {
-          contents,
-        };
-      });
+            contents = contents.replace(
+              `../overrides/${folder}/${defaultOverride}.js`,
+              `../overrides/${folder}/${getOverrideOrDummy(overrideValue)}.js`,
+            );
+          }
+          return {
+            contents,
+          };
+        },
+      );
     },
   };
 }
