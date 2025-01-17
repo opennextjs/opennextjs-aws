@@ -47,19 +47,19 @@ const nodeProxy: ProxyExternalRequest = {
           rejectUnauthorized: false,
         },
         (_res) => {
+          const resHeaders = _res.headers;
           const nodeReadableStream =
-            _res.headers["content-encoding"] === "br"
+            resHeaders["content-encoding"] === "br"
               ? _res.pipe(require("node:zlib").createBrotliDecompress())
-              : _res.headers["content-encoding"] === "gzip"
+              : resHeaders["content-encoding"] === "gzip"
                 ? _res.pipe(require("node:zlib").createGunzip())
                 : _res;
-
           const isBase64Encoded =
-            isBinaryContentType(headers["content-type"]) ||
-            !!headers["content-encoding"];
+            isBinaryContentType(resHeaders["content-type"]) ||
+            !!resHeaders["content-encoding"];
           const result: InternalResult = {
             type: "core",
-            headers: filterHeadersForProxy(_res.headers),
+            headers: filterHeadersForProxy(resHeaders),
             statusCode: _res.statusCode ?? 200,
             // TODO: check base64 encoding
             isBase64Encoded,
