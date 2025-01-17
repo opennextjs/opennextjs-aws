@@ -1,3 +1,8 @@
+type Options = {
+  escape?: boolean;
+  flags?: string;
+};
+
 /**
  * Constructs a regular expression for a path that supports separators for multiple platforms
  *  - Uses posix separators (`/`) as the input that should be made cross-platform.
@@ -12,11 +17,11 @@
  */
 export function getCrossPlatformPathRegex(
   regex: string,
-  opts: { escape: boolean } = { escape: true },
+  { escape: shouldEscape = true, flags = "g" }: Options = {},
 ) {
   const newExpr = (
-    opts.escape ? regex.replace(/([[\]().*+?^$|{}\\])/g, "\\$1") : regex
+    shouldEscape ? regex.replace(/([[\]().*+?^$|{}\\])/g, "\\$1") : regex
   ).replaceAll("/", String.raw`(?:\/|\\)`);
 
-  return new RegExp(newExpr, "g");
+  return new RegExp(newExpr, flags);
 }
