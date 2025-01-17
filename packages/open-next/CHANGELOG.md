@@ -1,5 +1,30 @@
 # open-next
 
+## 3.4.0
+
+### Minor Changes
+
+- [#689](https://github.com/opennextjs/opennextjs-aws/pull/689) [`e8f6dc8c7a421e316f5fbed03dcb82bb860c5249`](https://github.com/opennextjs/opennextjs-aws/commit/e8f6dc8c7a421e316f5fbed03dcb82bb860c5249) Thanks [@conico974](https://github.com/conico974)! - Added some override for debugging OpenNext locally
+
+- [#699](https://github.com/opennextjs/opennextjs-aws/pull/699) [`eaa9ef8daf2fc454139c77ce0e100cb48da15561`](https://github.com/opennextjs/opennextjs-aws/commit/eaa9ef8daf2fc454139c77ce0e100cb48da15561) Thanks [@conico974](https://github.com/conico974)! - Add a new multi-tiered incremental cache
+
+- [#665](https://github.com/opennextjs/opennextjs-aws/pull/665) [`ae7fb9c5d24ecf3eeb99682aa34bcbe0adb45675`](https://github.com/opennextjs/opennextjs-aws/commit/ae7fb9c5d24ecf3eeb99682aa34bcbe0adb45675) Thanks [@conico974](https://github.com/conico974)! - Add an override to automatically invalidate the CDN (not enabled by default)
+
+### Patch Changes
+
+- [#701](https://github.com/opennextjs/opennextjs-aws/pull/701) [`00ce837cb98e5902316f26163c9fb927058f956c`](https://github.com/opennextjs/opennextjs-aws/commit/00ce837cb98e5902316f26163c9fb927058f956c) Thanks [@james-elicx](https://github.com/james-elicx)! - refactor: use utility for cross-platform path regex construction
+
+- [#698](https://github.com/opennextjs/opennextjs-aws/pull/698) [`d1cea5601943afaa197d56f931593234f351c441`](https://github.com/opennextjs/opennextjs-aws/commit/d1cea5601943afaa197d56f931593234f351c441) Thanks [@conico974](https://github.com/conico974)! - Fix external rewrites for binary data
+
+- [#694](https://github.com/opennextjs/opennextjs-aws/pull/694) [`6884444cb929ab60c074c918954d24100f4e9668`](https://github.com/opennextjs/opennextjs-aws/commit/6884444cb929ab60c074c918954d24100f4e9668) Thanks [@james-elicx](https://github.com/james-elicx)! - Mark the host header as trusted when the OpenNext project has external middleware to align with normal behavior for the Next.js server.
+
+- [#688](https://github.com/opennextjs/opennextjs-aws/pull/688) [`86916bfd9246a63f321352bb11346eeb0ca3f6da`](https://github.com/opennextjs/opennextjs-aws/commit/86916bfd9246a63f321352bb11346eeb0ca3f6da) Thanks [@vicb](https://github.com/vicb)! - fix city name header encoding
+
+  - encode the header in cloudflare wrapper
+  - decode the header in the routing layer
+
+- [#695](https://github.com/opennextjs/opennextjs-aws/pull/695) [`e708ec4d9f4c87d3249a01382482347d295ed28a`](https://github.com/opennextjs/opennextjs-aws/commit/e708ec4d9f4c87d3249a01382482347d295ed28a) Thanks [@james-elicx](https://github.com/james-elicx)! - Fix esbuild edge plugins not matching Windows paths.
+
 ## 3.3.1
 
 ### Patch Changes

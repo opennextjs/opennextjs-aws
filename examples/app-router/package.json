@@ -1,6 +1,6 @@
 {
   "name": "app-router",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build --streaming --build-command \"npx turbo build\"",
