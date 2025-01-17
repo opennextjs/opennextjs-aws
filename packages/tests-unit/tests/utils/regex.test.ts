@@ -21,4 +21,20 @@ describe("getCrossPlatformPathRegex", () => {
       String.raw`\^\(\[123\]\+\|\[123\]\{1,3\}\)\*\\\?\$`,
     );
   });
+
+  it("should return cross-platform paths with escaped special characters", () => {
+    [
+      ["core/resolve.js", String.raw`core(?:\/|\\)resolve\.js`],
+      ["./middleware.mjs", String.raw`\.(?:\/|\\)middleware\.mjs`],
+    ].forEach(([input, output]) =>
+      expect(getCrossPlatformPathRegex(input).source).toEqual(output),
+    );
+  });
+
+  it("should return cross-platform paths without escaping special characters", () => {
+    const regex = getCrossPlatformPathRegex("\\./middleware\\.(mjs|cjs)", {
+      escape: false,
+    });
+    expect(regex.source).toEqual(String.raw`\.(?:\/|\\)middleware\.(mjs|cjs)`);
+  });
 });
