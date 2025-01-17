@@ -4,6 +4,7 @@ import { vi } from "vitest";
 
 declare global {
   var disableIncrementalCache: boolean;
+  var disableDynamoDBCache: boolean;
   var isNextAfter15: boolean;
 }
 
@@ -38,6 +39,12 @@ describe("CacheHandler", () => {
     writeTags: vi.fn(),
   };
   globalThis.tagCache = tagCache;
+
+  const invalidateCdnHandler = {
+    name: "mock",
+    invalidatePaths: vi.fn(),
+  };
+  globalThis.cdnInvalidationHandler = invalidateCdnHandler;
 
   globalThis.__openNextAls = {
     getStore: vi.fn().mockReturnValue({
@@ -468,6 +475,74 @@ describe("CacheHandler", () => {
       expect(
         async () => await cache.set("key", { kind: "REDIRECT", props: {} }),
       ).not.toThrow();
+    });
+  });
+
+  describe("revalidateTag", () => {
+    beforeEach(() => {
+      globalThis.disableDynamoDBCache = false;
+      globalThis.disableIncrementalCache = false;
+    });
+    it("Should do nothing if disableIncrementalCache is true", async () => {
+      globalThis.disableIncrementalCache = true;
+
+      await cache.revalidateTag("tag");
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+
+    it("Should do nothing if disableTagCache is true", async () => {
+      globalThis.disableDynamoDBCache = true;
+
+      await cache.revalidateTag("tag");
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+
+    it("Should call tagCache.writeTags", async () => {
+      globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+      await cache.revalidateTag("tag");
+
+      expect(globalThis.tagCache.getByTag).toHaveBeenCalledWith("tag");
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "/path",
+          tag: "tag",
+        },
+      ]);
+    });
+
+    it("Should call invalidateCdnHandler.invalidatePaths", async () => {
+      globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+      globalThis.tagCache.getByPath.mockResolvedValueOnce([]);
+      await cache.revalidateTag("_N_T_/path");
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "/path",
+          tag: "_N_T_/path",
+        },
+      ]);
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
+    });
+
+    it("Should not call invalidateCdnHandler.invalidatePaths for fetch cache key ", async () => {
+      globalThis.tagCache.getByTag.mockResolvedValueOnce(["123456"]);
+      await cache.revalidateTag("tag");
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "123456",
+          tag: "tag",
+        },
+      ]);
+
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
     });
   });
 });

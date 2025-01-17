@@ -8,6 +8,7 @@ import type {
   InternalEvent,
   InternalResult,
   Origin,
+  ResolvedRoute,
   StreamCreator,
 } from "./open-next";
 
@@ -138,4 +139,14 @@ export type OriginResolver = BaseOverride & {
 
 export type ProxyExternalRequest = BaseOverride & {
   proxy: (event: InternalEvent) => Promise<InternalResult>;
+};
+
+type CDNPath = {
+  initialPath: string;
+  rawPath: string;
+  resolvedRoutes: ResolvedRoute[];
+};
+
+export type CDNInvalidationHandler = BaseOverride & {
+  invalidatePaths: (paths: CDNPath[]) => Promise<void>;
 };

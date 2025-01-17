@@ -13,6 +13,7 @@ import {
   fixSWRCacheHeader,
   getMiddlewareMatch,
   getUrlParts,
+  invalidateCDNOnRequest,
   isExternal,
   revalidateIfRequired,
   unescapeRegex,
@@ -30,6 +31,7 @@ declare global {
   var lastModified: any;
   var openNextDebug: boolean;
   var openNextVersion: string;
+  var cdnInvalidationHandler: any;
 }
 
 type Res = {
@@ -731,5 +733,89 @@ describe("fixISRHeaders", () => {
     expect(headers["cache-control"]).toBe(
       "s-maxage=2, stale-while-revalidate=2592000",
     );
+  });
+});
+
+describe("invalidateCDNOnRequest", () => {
+  beforeEach(() => {
+    globalThis.cdnInvalidationHandler = {
+      invalidatePaths: vi.fn(),
+    };
+  });
+
+  it("should not call invalidatePaths when x-nextjs-cache is not REVALIDATED", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "HIT",
+    };
+    await invalidateCDNOnRequest(
+      {
+        internalEvent: {
+          headers: {},
+        },
+      },
+      headers,
+    );
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("should not call invalidatePaths when x-nextjs-cache is REVALIDATED but on ISR request", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "REVALIDATED",
+    };
+    await invalidateCDNOnRequest(
+      {
+        internalEvent: {
+          rawPath: "/path",
+          headers: {
+            "x-isr": "1",
+          },
+        },
+      },
+      headers,
+    );
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("should call invalidatePaths when x-nextjs-cache is REVALIDATED", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "REVALIDATED",
+    };
+    await invalidateCDNOnRequest(
+      {
+        initialPath: "/path",
+        internalEvent: {
+          rawPath: "/path",
+          headers: {},
+        },
+        resolvedRoutes: [
+          {
+            type: "app",
+            route: "/path",
+          },
+        ],
+      },
+      headers,
+    );
+
+    expect(
+      globalThis.cdnInvalidationHandler.invalidatePaths,
+    ).toHaveBeenCalledWith([
+      {
+        initialPath: "/path",
+        rawPath: "/path",
+        resolvedRoutes: [
+          {
+            type: "app",
+            route: "/path",
+          },
+        ],
+      },
+    ]);
   });
 });

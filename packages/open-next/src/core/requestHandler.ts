@@ -118,7 +118,14 @@ export async function openNextHandler(
         // response is used only in the streaming case
         if (responseStreaming) {
           const response = createServerResponse(
-            internalEvent,
+            {
+              internalEvent,
+              isExternalRewrite: false,
+              isISR: false,
+              resolvedRoutes: [],
+              origin: false,
+              initialPath: internalEvent.rawPath,
+            },
             headers,
             responseStreaming,
           );
@@ -162,7 +169,7 @@ export async function openNextHandler(
 
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
-        preprocessedEvent,
+        routingResult,
         overwrittenResponseHeaders,
         responseStreaming,
       );

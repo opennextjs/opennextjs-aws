@@ -3,6 +3,7 @@ import type { ReadableStream } from "node:stream/web";
 import type { Writable } from "node:stream";
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type {
+  CDNInvalidationHandler,
   Converter,
   ImageLoader,
   IncrementalCache,
@@ -157,6 +158,8 @@ export type IncludedWarmer = "aws-lambda" | "dummy";
 
 export type IncludedProxyExternalRequest = "node" | "fetch" | "dummy";
 
+export type IncludedCDNInvalidationHandler = "cloudfront" | "dummy";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -208,6 +211,14 @@ export interface OverrideOptions extends DefaultOverrideOptions {
   proxyExternalRequest?:
     | IncludedProxyExternalRequest
     | LazyLoadedOverride<ProxyExternalRequest>;
+
+  /**
+   * Add possibility to override the default cdn invalidation for On Demand Revalidation
+   * @default "dummy"
+   */
+  cdnInvalidation?:
+    | IncludedCDNInvalidationHandler
+    | LazyLoadedOverride<CDNInvalidationHandler>;
 }
 
 export interface InstallOptions {
