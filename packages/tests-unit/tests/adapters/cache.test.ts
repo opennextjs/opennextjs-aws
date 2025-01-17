@@ -505,7 +505,7 @@ describe("CacheHandler", () => {
 
       expect(globalThis.tagCache.getByTag).toHaveBeenCalledWith("tag");
 
-      expect(tagCache.writeTags).toHaveBeenCalled();
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           path: "/path",
@@ -519,7 +519,7 @@ describe("CacheHandler", () => {
       globalThis.tagCache.getByPath.mockResolvedValueOnce([]);
       await cache.revalidateTag("_N_T_/path");
 
-      expect(tagCache.writeTags).toHaveBeenCalled();
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           path: "/path",
@@ -534,7 +534,7 @@ describe("CacheHandler", () => {
       globalThis.tagCache.getByTag.mockResolvedValueOnce(["123456"]);
       await cache.revalidateTag("tag");
 
-      expect(tagCache.writeTags).toHaveBeenCalled();
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           path: "123456",
