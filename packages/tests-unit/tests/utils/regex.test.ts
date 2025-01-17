@@ -32,9 +32,10 @@ describe("getCrossPlatformPathRegex", () => {
   });
 
   it("should return cross-platform paths without escaping special characters", () => {
-    const regex = getCrossPlatformPathRegex("\\./middleware\\.(mjs|cjs)", {
-      escape: false,
-    });
+    const regex = getCrossPlatformPathRegex(
+      String.raw`\./middleware\.(mjs|cjs)`,
+      { escape: false },
+    );
     expect(regex.source).toEqual(String.raw`\.(?:\/|\\)middleware\.(mjs|cjs)`);
   });
 });
