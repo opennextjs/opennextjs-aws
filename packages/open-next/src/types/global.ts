@@ -75,13 +75,13 @@ declare global {
   var tagCache: TagCache;
   /**
    * A boolean that indicates if the DynamoDB cache is disabled.
-   * TODO: Remove this, we already have access to the config file
+   * @deprecated This will be removed, use `globalThis.openNextConfig.dangerous?.disableTagCache` instead.
    * Defined in esbuild banner for the cache adapter.
    */
   var disableDynamoDBCache: boolean;
   /**
    * A boolean that indicates if the incremental cache is disabled.
-   * TODO: Remove this, we already have access to the config file
+   * @deprecated This will be removed, use `globalThis.openNextConfig.dangerous?.disableIncrementalCache` instead.
    * Defined in esbuild banner for the cache adapter.
    */
   var disableIncrementalCache: boolean;

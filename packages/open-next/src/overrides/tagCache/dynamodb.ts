@@ -44,7 +44,9 @@ function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
 const tagCache: TagCache = {
   async getByPath(path) {
     try {
-      if (globalThis.disableDynamoDBCache) return [];
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return [];
+      }
       const result = await dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -69,7 +71,9 @@ const tagCache: TagCache = {
   },
   async getByTag(tag) {
     try {
-      if (globalThis.disableDynamoDBCache) return [];
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return [];
+      }
       const { Items } = await dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -95,7 +99,9 @@ const tagCache: TagCache = {
   },
   async getLastModified(key, lastModified) {
     try {
-      if (globalThis.disableDynamoDBCache) return lastModified ?? Date.now();
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return lastModified ?? Date.now();
+      }
       const result = await dynamoClient.send(
         new QueryCommand({
           TableName: CACHE_DYNAMO_TABLE,
@@ -123,7 +129,9 @@ const tagCache: TagCache = {
   },
   async writeTags(tags) {
     try {
-      if (globalThis.disableDynamoDBCache) return;
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return;
+      }
       const dataChunks = chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map(
         (Items) => ({
           RequestItems: {

@@ -3,8 +3,9 @@ import Cache from "@opennextjs/aws/adapters/cache.js";
 import { vi } from "vitest";
 
 declare global {
-  var disableIncrementalCache: boolean;
-  var disableDynamoDBCache: boolean;
+  var openNextConfig: {
+    dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
+  };
   var isNextAfter15: boolean;
 }
 
@@ -62,7 +63,11 @@ describe("CacheHandler", () => {
 
     cache = new Cache();
 
-    globalThis.disableIncrementalCache = false;
+    globalThis.openNextConfig = {
+      dangerous: {
+        disableIncrementalCache: false,
+      },
+    };
     globalThis.isNextAfter15 = false;
 
     globalThis.lastModified = {};
@@ -79,7 +84,7 @@ describe("CacheHandler", () => {
 
     describe("disableIncrementalCache", () => {
       beforeEach(() => {
-        globalThis.disableIncrementalCache = true;
+        globalThis.openNextConfig.dangerous.disableIncrementalCache = true;
       });
 
       it("Should return null when incremental cache is disabled", async () => {
@@ -89,7 +94,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should not set cache when incremental cache is disabled", async () => {
-        globalThis.disableIncrementalCache = true;
+        globalThis.openNextConfig.dangerous.disableIncrementalCache = true;
 
         await cache.set("key", { kind: "REDIRECT", props: {} });
 
@@ -97,7 +102,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should not delete cache when incremental cache is disabled", async () => {
-        globalThis.disableIncrementalCache = true;
+        globalThis.openNextConfig.dangerous.disableIncrementalCache = true;
 
         await cache.set("key", undefined);
 
@@ -480,11 +485,11 @@ describe("CacheHandler", () => {
 
   describe("revalidateTag", () => {
     beforeEach(() => {
-      globalThis.disableDynamoDBCache = false;
-      globalThis.disableIncrementalCache = false;
+      globalThis.openNextConfig.dangerous.disableTagCache = false;
+      globalThis.openNextConfig.dangerous.disableIncrementalCache = false;
     });
     it("Should do nothing if disableIncrementalCache is true", async () => {
-      globalThis.disableIncrementalCache = true;
+      globalThis.openNextConfig.dangerous.disableIncrementalCache = true;
 
       await cache.revalidateTag("tag");
 
@@ -492,7 +497,7 @@ describe("CacheHandler", () => {
     });
 
     it("Should do nothing if disableTagCache is true", async () => {
-      globalThis.disableDynamoDBCache = true;
+      globalThis.openNextConfig.dangerous.disableTagCache = true;
 
       await cache.revalidateTag("tag");
 
