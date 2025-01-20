@@ -1,6 +1,14 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+// Needed to test top-level await
+// @ts-expect-error - It will cause a warning at build time, but it should just work
+const topLevelAwait = await new Promise<string>((resolve) => {
+  setTimeout(() => {
+    resolve("top-level-await");
+  }, 150);
+});
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
@@ -19,6 +27,14 @@ export function middleware(request: NextRequest) {
   }
   if (path === "/api/middleware") {
     return new NextResponse(JSON.stringify({ hello: "middleware" }), {
+      status: 200,
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+  }
+  if (path === "/api/middlewareTopLevelAwait") {
+    return new NextResponse(JSON.stringify({ hello: topLevelAwait }), {
       status: 200,
       headers: {
         "content-type": "application/json",

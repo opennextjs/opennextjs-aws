@@ -27,3 +27,9 @@ test("API call from middleware", async ({ page }) => {
   el = page.getByText('API: { "hello": "middleware" }');
   await expect(el).toBeVisible();
 });
+
+test("API call from middleware with top-level await", async ({ request }) => {
+  const response = await request.get("/api/middlewareTopLevelAwait");
+  const data = await response.json();
+  expect(data).toEqual({ hello: "top-level-await" });
+});
