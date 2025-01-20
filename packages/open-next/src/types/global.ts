@@ -37,13 +37,15 @@ export interface RequestData {
   signal: AbortSignal;
 }
 
+interface Entry {
+  default: (props: { page: string; request: RequestData }) => Promise<{
+    response: Response;
+    waitUntil: Promise<void>;
+  }>;
+}
+
 interface Entries {
-  [k: string]: {
-    default: (props: { page: string; request: RequestData }) => Promise<{
-      response: Response;
-      waitUntil: Promise<void>;
-    }>;
-  };
+  [k: string]: Entry | Promise<Entry>;
 }
 
 export interface EdgeRoute {
