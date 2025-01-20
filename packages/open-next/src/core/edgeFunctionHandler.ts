@@ -17,9 +17,9 @@ export default async function edgeFunctionHandler(
     throw new Error(`No route found for ${request.url}`);
   }
 
-  const result = await self._ENTRIES[
-    `middleware_${correspondingRoute.name}`
-  ].default({
+  const entry = await self._ENTRIES[`middleware_${correspondingRoute.name}`];
+
+  const result = await entry.default({
     page: correspondingRoute.page,
     request: {
       ...request,
