@@ -2,11 +2,13 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 // Needed to test top-level await
+// We are using `setTimeout` to simulate a "long" running operation
+// we could have used `Promise.resolve` instead, but it would be running in a different way in the event loop
 // @ts-expect-error - It will cause a warning at build time, but it should just work
 const topLevelAwait = await new Promise<string>((resolve) => {
   setTimeout(() => {
     resolve("top-level-await");
-  }, 150);
+  }, 10);
 });
 
 export function middleware(request: NextRequest) {
