@@ -43,8 +43,9 @@ const isDownplayedErrorLog = (errorLog: AwsSdkClientCommandErrorLog) =>
 export function error(...args: any[]) {
   // we try to catch errors from the aws-sdk client and downplay some of them
   if (args.some((arg) => isDownplayedErrorLog(arg))) {
-    debug(...args);
-  } else if (args.some((arg) => isOpenNextError(arg))) {
+    return debug(...args);
+  }
+  if (args.some((arg) => isOpenNextError(arg))) {
     // In case of an internal error, we log it with the appropriate log level
     const error = args.find((arg) => isOpenNextError(arg))!;
     if (error.logLevel < getOpenNextErrorLogLevel()) {
