@@ -275,6 +275,15 @@ export function getNextVersion(appPath: string): string {
   return version.split("-")[0];
 }
 
+/**
+ * Compare two semver versions.
+ * @param v1 - First version. Can be "latest", otherwise it should be a valid semver version in the format of `major.minor.patch`. Usually is the next version from the package.json without canary suffix. If minor or patch are missing, they are considered 0.
+ * @param v2 - Second version. Should not be "latest", it should be a valid semver version in the format of `major.minor.patch`. If minor or patch are missing, they are considered 0.
+ * @see
+ * -
+ * @example
+ * compareSemver("1.0.0", "1.0.0") // 0
+ */
 export function compareSemver(v1: string, v2: string): number {
   if (v1 === "latest") return 1;
   if (/^[^\d]/.test(v1)) {
@@ -285,12 +294,15 @@ export function compareSemver(v1: string, v2: string): number {
     // biome-ignore lint/style/noParameterAssign:
     v2 = v2.substring(1);
   }
-  const [major1, minor1, patch1] = v1.split(".").map(Number);
-  const [major2, minor2, patch2] = v2.split(".").map(Number);
+  const [major1, minor1 = 0, patch1 = 0] = v1.split(".").map(Number);
+  const [major2, minor2 = 0, patch2 = 0] = v2.split(".").map(Number);
+  if (Number.isNaN(major1) || Number.isNaN(major2)) {
+    throw new Error("The major version is required.");
+  }
 
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
-  return (patch1 ?? 0) - (patch2 ?? 0);
+  return patch1 - patch2;
 }
 
 export function copyOpenNextConfig(
