@@ -290,7 +290,7 @@ export function compareSemver(v1: string, v2: string): number {
 
   if (major1 !== major2) return major1 - major2;
   if (minor1 !== minor2) return minor1 - minor2;
-  return patch1 - patch2;
+  return (patch1 ?? 0) - (patch2 ?? 0);
 }
 
 export function copyOpenNextConfig(

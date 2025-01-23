@@ -17,4 +17,9 @@ describe("compareSemver", () => {
   it("should work with latest", () => {
     expect(compareSemver("latest", "1.0.0")).toBe(1);
   });
+
+  it("should work with incomplete version", () => {
+    expect(compareSemver("14.1.0", "14.1")).toBe(0);
+    expect(compareSemver("14.1", "14.1.0")).toBe(0);
+  });
 });
