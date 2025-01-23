@@ -280,8 +280,6 @@ export function getNextVersion(appPath: string): string {
  *
  * @param v1 - First version. Can be "latest", otherwise it should be a valid semver version in the format of `major.minor.patch`. Usually is the next version from the package.json without canary suffix. If minor or patch are missing, they are considered 0.
  * @param v2 - Second version. Should not be "latest", it should be a valid semver version in the format of `major.minor.patch`. If minor or patch are missing, they are considered 0.
- * @see
- * -
  * @example
  * compareSemver("1.0.0", "1.0.0") // 0
  */
