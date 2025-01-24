@@ -69,10 +69,12 @@ function findMonorepoRoot(appPath: string) {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [
+      // bun can generate yaml lock files (`bun install --yarn`) so bun should be before yarn
+      { file: "bun.lockb", packager: "bun" as const },
+      { file: "bun.lock", packager: "bun" as const },
       { file: "package-lock.json", packager: "npm" as const },
       { file: "yarn.lock", packager: "yarn" as const },
       { file: "pnpm-lock.yaml", packager: "pnpm" as const },
-      { file: "bun.lockb", packager: "bun" as const },
     ].find((f) => fs.existsSync(path.join(currentPath, f.file)));
 
     if (found) {
