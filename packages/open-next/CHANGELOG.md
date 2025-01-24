@@ -1,5 +1,28 @@
 # open-next
 
+## 3.4.1
+
+### Patch Changes
+
+- [#708](https://github.com/opennextjs/opennextjs-aws/pull/708) [`7eda030388880d8ad25d3f4692e24bac31b7ec4f`](https://github.com/opennextjs/opennextjs-aws/commit/7eda030388880d8ad25d3f4692e24bac31b7ec4f) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: add early return for downplayed aws-sdk errors
+
+  In the logger adapter:
+
+  An issue was identified where downplayed errors from the aws-sdk client (f.ex NoSuchKey from S3) would not return from the function early. This caused unnecessary invocation of `console.error` outside the conditional.
+
+- [#704](https://github.com/opennextjs/opennextjs-aws/pull/704) [`e5678b39e0f3c21d3e30d08a89f5cb0acdd3d050`](https://github.com/opennextjs/opennextjs-aws/commit/e5678b39e0f3c21d3e30d08a89f5cb0acdd3d050) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix: make sure edge function entries are properly awaited
+
+- [#702](https://github.com/opennextjs/opennextjs-aws/pull/702) [`1981a47dd3dbc77066d2bf5cad5d5d406fecb010`](https://github.com/opennextjs/opennextjs-aws/commit/1981a47dd3dbc77066d2bf5cad5d5d406fecb010) Thanks [@vicb](https://github.com/vicb)! - refactor(cache): deprecate global disableDynamoDBCache and disableIncrementalCache
+
+  In the cache adapter:
+
+  - `globalThis.disableDynamoDBCache` is deprecated and will be removed.
+    use `globalThis.openNextConfig.dangerous?.disableTagCache` instead.
+  - `globalThis.disableIncrementalCache` is deprecated and will be removed.
+    use `globalThis.openNextConfig.dangerous?.disableIncrementalCache` instead.
+
+- [#709](https://github.com/opennextjs/opennextjs-aws/pull/709) [`b4ad0f0e0f6069ca87f3b72c23d655cedebc86e5`](https://github.com/opennextjs/opennextjs-aws/commit/b4ad0f0e0f6069ca87f3b72c23d655cedebc86e5) Thanks [@conico974](https://github.com/conico974)! - fix: stableIncrementalCache is only used for Next.js >= 14.1
+
 ## 3.4.0
 
 ### Minor Changes
