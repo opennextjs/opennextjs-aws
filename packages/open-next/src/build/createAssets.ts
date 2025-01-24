@@ -61,7 +61,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   logger.info("Bundling cache assets...");
 
   const { appBuildOutputPath, outputDir } = options;
-  const packagePath = path.relative(options.monorepoRoot, appBuildOutputPath);
+  const packagePath = buildHelper.getPackagePath(options);
   const buildId = buildHelper.getBuildId(appBuildOutputPath);
   let useTagCache = false;
 

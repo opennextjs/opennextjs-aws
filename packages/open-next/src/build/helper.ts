@@ -389,3 +389,7 @@ export async function isEdgeRuntime(
   }
   return (await overrides?.wrapper?.())?.edgeRuntime;
 }
+
+export function getPackagePath(options: BuildOptions) {
+  return path.relative(options.monorepoRoot, options.appBuildOutputPath);
+}
