@@ -252,9 +252,12 @@ export function getHtmlPages(dotNextPath: string) {
     .reduce((acc, page) => acc.add(page), new Set<string>());
 }
 
-export function getBuildId(dotNextPath: string) {
+export function getBuildId(options: BuildOptions) {
   return fs
-    .readFileSync(path.join(dotNextPath, ".next/BUILD_ID"), "utf-8")
+    .readFileSync(
+      path.join(options.appBuildOutputPath, ".next/BUILD_ID"),
+      "utf-8",
+    )
     .trim();
 }
 

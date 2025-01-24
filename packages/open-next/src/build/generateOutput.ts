@@ -292,9 +292,7 @@ export async function generateOutput(options: BuildOptions) {
     const patterns = "patterns" in value ? value.patterns : ["*"];
     patterns.forEach((pattern) => {
       behaviors.push({
-        pattern: prefixer(
-          pattern.replace(/BUILD_ID/, getBuildId(appBuildOutputPath)),
-        ),
+        pattern: prefixer(pattern.replace(/BUILD_ID/, getBuildId(options))),
         origin: value.placement === "global" ? undefined : key,
         edgeFunction:
           value.placement === "global"

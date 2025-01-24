@@ -62,7 +62,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = buildHelper.getPackagePath(options);
-  const buildId = buildHelper.getBuildId(appBuildOutputPath);
+  const buildId = buildHelper.getBuildId(options);
   let useTagCache = false;
 
   // Copy pages to cache folder
