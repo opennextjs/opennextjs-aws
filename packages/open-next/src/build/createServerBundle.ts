@@ -47,18 +47,14 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
 
   const remainingRoutes = new Set<string>();
 
-  const { appBuildOutputPath, monorepoRoot } = options;
-
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const { appBuildOutputPath } = options;
 
   // Find remaining routes
   const serverPath = path.join(
     appBuildOutputPath,
-    ".next",
-    "standalone",
-    packagePath,
-    ".next",
-    "server",
+    ".next/standalone",
+    buildHelper.getPackagePath(options),
+    ".next/server",
   );
 
   // Find app dir routes
@@ -118,7 +114,7 @@ async function generateBundle(
   //       `node_modules` inside `.next/standalone`, and others inside
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
-  const packagePath = path.relative(monorepoRoot, appBuildOutputPath);
+  const packagePath = buildHelper.getPackagePath(options);
   fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
