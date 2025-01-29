@@ -1,5 +1,11 @@
 # open-next
 
+## 3.4.2
+
+### Patch Changes
+
+- [#715](https://github.com/opennextjs/opennextjs-aws/pull/715) [`843497bac327206aeac4db585ac1663fc6c14ced`](https://github.com/opennextjs/opennextjs-aws/commit/843497bac327206aeac4db585ac1663fc6c14ced) Thanks [@vicb](https://github.com/vicb)! - Dump ESBuild build metadata to `<bundle>.meta.json` in debug mode
+
 ## 3.4.1
 
 ### Patch Changes
