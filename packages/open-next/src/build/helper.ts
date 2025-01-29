@@ -141,12 +141,15 @@ export async function esbuildAsync(
   options: BuildOptions,
 ) {
   const { openNextVersion, debug, minify } = options;
+  // Dump ESBuild build metadata to file in debug mode
+  const metafile = debug && esbuildOptions.outfile !== undefined;
   const result = await buildAsync({
     target: "esnext",
     format: "esm",
     platform: "node",
     bundle: true,
     minify,
+    metafile,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
@@ -173,6 +176,11 @@ export async function esbuildAsync(
         (esbuildOptions.entryPoints as string[])[0]
       }.`,
     );
+  }
+
+  if (result.metafile) {
+    const metaFile = `${esbuildOptions.outfile}.meta.json`;
+    fs.writeFileSync(metaFile, JSON.stringify(result.metafile, null, 2));
   }
 }
 
