@@ -5,6 +5,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
+import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./util";
@@ -158,13 +159,13 @@ export async function cacheInterceptor(
       const cachedData = await globalThis.incrementalCache.get(localizedPath);
       debug("cached data in interceptor", cachedData);
       if (cachedData.value?.type === "app") {
-        // We need to check the tag cache now
-        const _lastModified = await globalThis.tagCache.getLastModified(
+        const tags = getTagFromValue(cachedData.value);
+        const _hasBeenRevalidated = await hasBeenRevalidated(
           localizedPath,
+          tags,
           cachedData.lastModified,
         );
-        if (_lastModified === -1) {
-          // If some tags are stale we need to force revalidation
+        if (_hasBeenRevalidated) {
           return event;
         }
       }

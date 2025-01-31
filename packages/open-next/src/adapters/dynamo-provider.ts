@@ -47,6 +47,14 @@ async function defaultHandler(
 async function insert(
   requestType: InitializationFunctionEvent["requestType"],
 ): Promise<InitializationFunctionEvent> {
+  // If it is in nextMode, we don't need to do anything
+  if (tagCache.mode === "nextMode") {
+    return {
+      type: "initializationFunction",
+      requestType,
+      resourceId: PHYSICAL_RESOURCE_ID,
+    };
+  }
   const file = readFileSync("dynamodb-cache.json", "utf8");
 
   const data: DataType[] = JSON.parse(file);
