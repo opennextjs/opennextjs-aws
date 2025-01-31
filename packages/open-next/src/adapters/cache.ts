@@ -322,7 +322,27 @@ export default class Cache {
     try {
       const _tags = Array.isArray(tags) ? tags : [tags];
       if (globalThis.tagCache.mode === "nextMode") {
-        return globalThis.tagCache.writeTags(_tags);
+        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+
+        await globalThis.tagCache.writeTags(_tags);
+        if (paths.length > 0) {
+          // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
+          // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
+          await globalThis.cdnInvalidationHandler.invalidatePaths(
+            paths.map((path) => ({
+              initialPath: path,
+              rawPath: path,
+              resolvedRoutes: [
+                {
+                  route: path,
+                  // TODO: ideally here we should check if it's an app router page or route
+                  type: "app",
+                },
+              ],
+            })),
+          );
+        }
+        return;
       }
       for (const tag of _tags) {
         debug("revalidateTag", tag);

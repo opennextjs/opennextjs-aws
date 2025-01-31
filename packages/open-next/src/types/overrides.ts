@@ -104,6 +104,9 @@ export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
   writeTags(tags: string[]): Promise<void>;
+  // Optional method to get paths by tags
+  // It is used to automatically invalidate paths in the CDN
+  getPathsByTags?: (tags: string[]) => Promise<string[]>;
 };
 
 export type OriginalTagCache = BaseTagCache & {
