@@ -3,9 +3,9 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
+import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
-import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
 
 function isFetchCache(
   options?:

@@ -4,13 +4,13 @@ import { AwsClient } from "aws4fetch";
 import { RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
+import path from "node:path";
 import { debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
 import {
   MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT,
   getDynamoBatchWriteCommandConcurrency,
 } from "./constants";
-import path from "node:path";
 
 let awsClient: AwsClient | null = null;
 
