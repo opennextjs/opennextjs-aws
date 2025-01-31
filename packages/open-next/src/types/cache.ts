@@ -16,7 +16,7 @@ interface CachedRedirectValue {
 }
 
 interface CachedRouteValue {
-  kind: "ROUTE";
+  kind: "ROUTE" | "APP_ROUTE";
   // this needs to be a RenderResult so since renderResponse
   // expects that type instead of a string
   body: Buffer;
@@ -34,7 +34,7 @@ interface CachedImageValue {
 }
 
 interface IncrementalCachedPageValue {
-  kind: "PAGE";
+  kind: "PAGE" | "PAGES";
   // this needs to be a string since the cache expects to store
   // the string value
   html: string;
@@ -43,9 +43,21 @@ interface IncrementalCachedPageValue {
   headers?: Record<string, undefined | string>;
 }
 
-type IncrementalCacheValue =
+interface IncrementalCachedAppPageValue {
+  kind: "APP_PAGE";
+  // this needs to be a string since the cache expects to store
+  // the string value
+  html: string;
+  rscData: Buffer;
+  headers?: Record<string, undefined | string | string[]>;
+  postponed?: string;
+  status?: number;
+}
+
+export type IncrementalCacheValue =
   | CachedRedirectValue
   | IncrementalCachedPageValue
+  | IncrementalCachedAppPageValue
   | CachedImageValue
   | CachedFetchValue
   | CachedRouteValue;
@@ -60,7 +72,6 @@ export interface CacheHandlerContext {
   _requestHeaders: never;
   fetchCacheKeyPrefix?: string;
 }
-
 export interface CacheHandlerValue {
   lastModified?: number;
   age?: number;
@@ -85,4 +96,11 @@ export type TagCacheMetaFile = {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+};
+export type IncrementalCacheContext = {
+  revalidate?: number | false | undefined;
+  fetchCache?: boolean | undefined;
+  fetchUrl?: string | undefined;
+  fetchIdx?: number | undefined;
+  tags?: string[] | undefined;
 };
