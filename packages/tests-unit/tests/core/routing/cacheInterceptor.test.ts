@@ -81,6 +81,12 @@ globalThis.queue = queue;
 beforeEach(() => {
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
   vi.clearAllMocks();
+  globalThis.openNextConfig = {
+    dangerous: {
+      disableTagCache: false,
+      disableIncrementalCache: false,
+    },
+  };
 });
 
 describe("cacheInterceptor", () => {
