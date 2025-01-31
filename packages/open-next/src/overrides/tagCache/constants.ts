@@ -1,4 +1,5 @@
 export const MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT = 25;
+export const MAX_DYNAMO_BATCH_GET_ITEM_COUNT = 100;
 
 /**
  * Sending to dynamo X commands at a time, using about X * 25 write units per batch to not overwhelm DDB

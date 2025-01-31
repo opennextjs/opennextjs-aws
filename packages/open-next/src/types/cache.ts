@@ -70,9 +70,14 @@ export interface CacheHandlerValue {
 
 export type Extension = "cache" | "fetch";
 
+type MetaHeaders = {
+  "x-next-cache-tags"?: string;
+  [k: string]: string | string[] | undefined;
+};
+
 export interface Meta {
   status?: number;
-  headers?: Record<string, undefined | string | string[]>;
+  headers?: MetaHeaders;
   postponed?: string;
 }
 

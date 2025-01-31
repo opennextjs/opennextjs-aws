@@ -5,9 +5,10 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
-import { debug } from "../../adapters/logger.js";
-import { localizePath } from "./i18n/index.js";
-import { generateMessageGroupId } from "./queue.js";
+import { debug } from "../../adapters/logger";
+import { localizePath } from "./i18n";
+import { generateMessageGroupId } from "./queue";
+import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
@@ -161,15 +162,15 @@ export async function cacheInterceptor(
       if (!cachedData?.value) {
         return event;
       }
-
-      if (cachedData?.value?.type === "app") {
-        // We need to check the tag cache now
-        const _lastModified = await globalThis.tagCache.getLastModified(
+      // We need to check the tag cache now
+      if (cachedData.value?.type === "app") {
+        const tags = getTagFromValue(cachedData.value);
+        const _hasBeenRevalidated = await hasBeenRevalidated(
           localizedPath,
+          tags,
           cachedData.lastModified,
         );
-        if (_lastModified === -1) {
-          // If some tags are stale we need to force revalidation
+        if (_hasBeenRevalidated) {
           return event;
         }
       }
