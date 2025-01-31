@@ -67,6 +67,7 @@ function buildDynamoObject(tag: string, revalidatedAt?: number) {
   };
 }
 
+// This implementation does not support automatic invalidation of paths by the cdn
 export default {
   name: "ddb-nextMode",
   mode: "nextMode",
