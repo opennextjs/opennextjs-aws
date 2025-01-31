@@ -1,5 +1,6 @@
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
+import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
 
 interface CachedFetchValue {
   kind: "FETCH";
@@ -135,16 +136,15 @@ export default class Cache {
         true,
       );
 
-      const _lastModified = await globalThis.tagCache.getLastModified(
+      const _tags = [...(tags ?? []), ...(softTags ?? [])];
+      const _lastModified = lastModified ?? Date.now();
+      const _hasBeenRevalidated = await hasBeenRevalidated(
         key,
+        _tags,
         lastModified,
       );
-      if (_lastModified === -1) {
-        // If some tags are stale we need to force revalidation
-        return null;
-      }
 
-      if (value === undefined) return null;
+      if (value === undefined || _hasBeenRevalidated) return null;
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
       // We only need to check for the path as it should already contain all the tags
@@ -157,11 +157,12 @@ export default class Cache {
             !tag.endsWith("page"),
         );
         if (path) {
-          const pathLastModified = await globalThis.tagCache.getLastModified(
+          const hasPathBeenUpdated = await hasBeenRevalidated(
             path.replace("_N_T_/", ""),
+            [],
             lastModified,
           );
-          if (pathLastModified === -1) {
+          if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
             return null;
           }
@@ -185,14 +186,15 @@ export default class Cache {
         await globalThis.incrementalCache.get(key, false);
 
       const meta = cacheData?.meta;
-      const _lastModified = await globalThis.tagCache.getLastModified(
+      const tags = getTagFromValue(cacheData);
+      const _lastModified = lastModified ?? Date.now();
+      const _hasBeenRevalidated = await hasBeenRevalidated(
         key,
+        tags,
         lastModified,
       );
-      if (_lastModified === -1) {
-        // If some tags are stale we need to force revalidation
-        return null;
-      }
+      if (cacheData === undefined || _hasBeenRevalidated) return null;
+
       const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
       globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
@@ -369,23 +371,7 @@ export default class Cache {
             ? (data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
             : [];
       debug("derivedTags", derivedTags);
-      // Get all tags stored in dynamodb for the given key
-      // If any of the derived tags are not stored in dynamodb for the given key, write them
-      const storedTags = await globalThis.tagCache.getByPath(key);
-      const tagsToWrite = derivedTags.filter(
-        (tag) => !storedTags.includes(tag),
-      );
-      if (tagsToWrite.length > 0) {
-        await globalThis.tagCache.writeTags(
-          tagsToWrite.map((tag) => ({
-            path: key,
-            tag: tag,
-            // In case the tags are not there we just need to create them
-            // but we don't want them to return from `getLastModified` as they are not stale
-            revalidatedAt: 1,
-          })),
-        );
-      }
+      await this.updateTagsOnSet(key, derivedTags);
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
@@ -402,6 +388,9 @@ export default class Cache {
     }
     try {
       const _tags = Array.isArray(tags) ? tags : [tags];
+      if (globalThis.tagCache.mode === "nextMode") {
+        return globalThis.tagCache.writeTags(_tags);
+      }
       for (const tag of _tags) {
         debug("revalidateTag", tag);
         // Find all keys with the given tag
@@ -463,6 +452,30 @@ export default class Cache {
       }
     } catch (e) {
       error("Failed to revalidate tag", e);
+    }
+  }
+
+  private async updateTagsOnSet(key: string, derivedTags: string[]) {
+    if (
+      globalThis.openNextConfig.dangerous?.disableTagCache ||
+      globalThis.tagCache.mode === "nextMode"
+    ) {
+      return;
+    }
+    // Get all tags stored in dynamodb for the given key
+    // If any of the derived tags are not stored in dynamodb for the given key, write them
+    const storedTags = await globalThis.tagCache.getByPath(key);
+    const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
+    if (tagsToWrite.length > 0) {
+      await globalThis.tagCache.writeTags(
+        tagsToWrite.map((tag) => ({
+          path: key,
+          tag: tag,
+          // In case the tags are not there we just need to create them
+          // but we don't want them to return from `getLastModified` as they are not stale
+          revalidatedAt: 1,
+        })),
+      );
     }
   }
 }
