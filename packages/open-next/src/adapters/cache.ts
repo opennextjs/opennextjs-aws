@@ -1,85 +1,11 @@
+import type {
+  CacheHandlerValue,
+  IncrementalCacheContext,
+  IncrementalCacheValue,
+} from "types/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
-
-interface CachedFetchValue {
-  kind: "FETCH";
-  data: {
-    headers: { [k: string]: string };
-    body: string;
-    url: string;
-    status?: number;
-    tags?: string[];
-  };
-  revalidate: number;
-}
-
-interface CachedRedirectValue {
-  kind: "REDIRECT";
-  props: Object;
-}
-
-interface CachedRouteValue {
-  kind: "ROUTE" | "APP_ROUTE";
-  // this needs to be a RenderResult so since renderResponse
-  // expects that type instead of a string
-  body: Buffer;
-  status: number;
-  headers: Record<string, undefined | string | string[]>;
-}
-
-interface CachedImageValue {
-  kind: "IMAGE";
-  etag: string;
-  buffer: Buffer;
-  extension: string;
-  isMiss?: boolean;
-  isStale?: boolean;
-}
-
-interface IncrementalCachedPageValue {
-  kind: "PAGE" | "PAGES";
-  // this needs to be a string since the cache expects to store
-  // the string value
-  html: string;
-  pageData: Object;
-  status?: number;
-  headers?: Record<string, undefined | string>;
-}
-
-interface IncrementalCachedAppPageValue {
-  kind: "APP_PAGE";
-  // this needs to be a string since the cache expects to store
-  // the string value
-  html: string;
-  rscData: Buffer;
-  headers?: Record<string, undefined | string | string[]>;
-  postponed?: string;
-  status?: number;
-}
-
-type IncrementalCacheValue =
-  | CachedRedirectValue
-  | IncrementalCachedPageValue
-  | IncrementalCachedAppPageValue
-  | CachedImageValue
-  | CachedFetchValue
-  | CachedRouteValue;
-
-type IncrementalCacheContext = {
-  revalidate?: number | false | undefined;
-  fetchCache?: boolean | undefined;
-  fetchUrl?: string | undefined;
-  fetchIdx?: number | undefined;
-  tags?: string[] | undefined;
-};
-
-interface CacheHandlerValue {
-  lastModified?: number;
-  age?: number;
-  cacheState?: string;
-  value: IncrementalCacheValue | null;
-}
 
 function isFetchCache(
   options?:
