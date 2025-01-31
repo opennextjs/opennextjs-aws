@@ -14,7 +14,7 @@ const maxCacheSize = process.env.OPEN_NEXT_LOCAL_CACHE_SIZE
   : 1000;
 
 const localCache = new LRUCache<{
-  value: CacheValue<false>;
+  value: CacheValue<any>;
   lastModified: number;
 }>(maxCacheSize);
 
@@ -50,9 +50,14 @@ const buildDynamoKey = (key: string) => {
  */
 const multiTierCache: IncrementalCache = {
   name: "multi-tier-ddb-s3",
-  async get(key, isFetch) {
+  async get<isFetch extends boolean = false>(key: string, isFetch?: isFetch) {
     // First we check the local cache
-    const localCacheEntry = localCache.get(key);
+    const localCacheEntry = localCache.get(key) as
+      | {
+          value: CacheValue<isFetch>;
+          lastModified: number;
+        }
+      | undefined;
     if (localCacheEntry) {
       if (Date.now() - localCacheEntry.lastModified < localCacheTTL) {
         debug("Using local cache without checking ddb");

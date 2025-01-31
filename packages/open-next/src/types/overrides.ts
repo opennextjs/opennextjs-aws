@@ -54,7 +54,12 @@ export type CachedFile =
       meta?: Meta;
     };
 
-export type FetchCache = Object;
+export type FetchCache = {
+  kind: "FETCH";
+  data: Object;
+  revalidate: number;
+  tags?: string[];
+};
 
 export type WithLastModified<T> = {
   lastModified?: number;
@@ -81,15 +86,27 @@ export type IncrementalCache = {
 
 // Tag cache
 
-export type TagCache = {
+type BaseTagCache = {
+  name: string;
+};
+
+export type NextModeTagCache = BaseTagCache & {
+  mode: "nextMode";
+  hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
+  writeTags(tags: string[]): Promise<void>;
+};
+
+export type OriginalTagCache = BaseTagCache & {
+  mode?: "original";
   getByTag(tag: string): Promise<string[]>;
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(
     tags: { tag: string; path: string; revalidatedAt?: number }[],
   ): Promise<void>;
-  name: string;
 };
+
+export type TagCache = NextModeTagCache | OriginalTagCache;
 
 export type WrapperHandler<
   E extends BaseEventOrResult = InternalEvent,

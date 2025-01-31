@@ -148,6 +148,7 @@ export type IncludedTagCache =
   | "dynamodb"
   | "dynamodb-lite"
   | "fs-dev"
+  | "ddb-nextMode"
   | "dummy";
 
 export type IncludedImageLoader = "s3" | "host" | "fs-dev" | "dummy";
@@ -403,7 +404,7 @@ export interface OpenNextConfig {
    * Supports only node runtime
    */
   initializationFunction?: DefaultFunctionOptions & {
-    tagCache?: "dynamodb" | LazyLoadedOverride<TagCache>;
+    tagCache?: IncludedTagCache | LazyLoadedOverride<TagCache>;
   };
 
   /**
