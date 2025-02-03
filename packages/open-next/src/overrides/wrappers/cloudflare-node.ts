@@ -53,6 +53,12 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           responseHeaders.append("Set-Cookie", cookie);
         }
 
+        // TODO(vicb): this is a workaround to make PPR work with `wrangler dev`
+        // See https://github.com/cloudflare/workers-sdk/issues/8004
+        if (url.hostname === "localhost") {
+          responseHeaders.set("Content-Encoding", "identity");
+        }
+
         const { readable, writable } = new TransformStream({
           transform(chunk, controller) {
             controller.enqueue(Uint8Array.from(chunk.chunk ?? chunk));
