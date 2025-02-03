@@ -40,7 +40,8 @@ const nextConfig: NextConfig = {
     },
     {
       source: "/external-on-image",
-      destination: "https://opennext.js.org/share.png",
+      destination:
+        "https://raw.githubusercontent.com/opennextjs/docs/refs/heads/main/public/share.png",
     },
   ],
   redirects: async () => [
