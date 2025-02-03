@@ -255,8 +255,8 @@ export function handleRewrites<T extends RewriteDefinition>(
 function handleTrailingSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
-  const url = new URL(event.url, "http://localhost");
-  const emptyBody = emptyReadableStream();
+  // When rawPath is `//domain`, `url.host` would be `domain`.
+  const url = new URL(event.rawPath, "http://localhost");
 
   if (
     // Someone is trying to redirect to a different origin, let's not do that
@@ -267,6 +267,9 @@ function handleTrailingSlashRedirect(
   ) {
     return false;
   }
+
+  const emptyBody = emptyReadableStream();
+
   if (
     NextConfig.trailingSlash &&
     !event.headers["x-nextjs-data"] &&
