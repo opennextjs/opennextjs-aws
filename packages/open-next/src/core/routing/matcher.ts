@@ -256,6 +256,7 @@ function handleTrailingSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
   // When rawPath is `//domain`, `url.host` would be `domain`.
+  // https://github.com/opennextjs/opennextjs-aws/issues/355
   const url = new URL(event.rawPath, "http://localhost");
 
   if (
