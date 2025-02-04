@@ -5,7 +5,14 @@ const fetchProxy: ProxyExternalRequest = {
   name: "fetch-proxy",
   // @ts-ignore
   proxy: async (internalEvent) => {
-    const { url, headers, method, body } = internalEvent;
+    const { url, headers: eventHeaders, method, body } = internalEvent;
+
+    const headers = Object.fromEntries(
+      Object.entries(eventHeaders).filter(
+        ([key]) => key.toLowerCase() !== "cf-connecting-ip",
+      ),
+    );
+
     const response = await fetch(url, {
       method,
       headers,
