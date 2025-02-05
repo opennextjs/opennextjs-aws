@@ -69,7 +69,7 @@ export type IncrementalCache = {
   get<IsFetch extends boolean = false>(
     key: string,
     isFetch?: IsFetch,
-  ): Promise<WithLastModified<CacheValue<IsFetch>>>;
+  ): Promise<WithLastModified<CacheValue<IsFetch>> | null>;
   set<IsFetch extends boolean = false>(
     key: string,
     value: CacheValue<IsFetch>,

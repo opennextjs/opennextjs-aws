@@ -92,7 +92,7 @@ const multiTierCache: IncrementalCache = {
       }
     }
     const result = await S3Cache.get(key, isFetch);
-    if (result.value) {
+    if (result?.value) {
       localCache.set(key, {
         value: result.value,
         lastModified: result.lastModified ?? Date.now(),
