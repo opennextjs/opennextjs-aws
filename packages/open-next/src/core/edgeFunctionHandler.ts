@@ -28,6 +28,7 @@ export default async function edgeFunctionHandler(
       },
     },
   });
+  // TODO: use the global waitUntil
   await result.waitUntil;
   const response = result.response;
   return response;

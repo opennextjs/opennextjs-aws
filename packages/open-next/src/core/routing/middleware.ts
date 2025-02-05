@@ -1,6 +1,10 @@
 import type { ReadableStream } from "node:stream/web";
 
-import { MiddlewareManifest, NextConfig } from "config/index.js";
+import {
+  FunctionsConfigManifest,
+  MiddlewareManifest,
+  NextConfig,
+} from "config/index.js";
 import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
@@ -20,8 +24,12 @@ import {
 } from "./util.js";
 
 const middlewareManifest = MiddlewareManifest;
+const functionsConfigManifest = FunctionsConfigManifest;
 
-const middleMatch = getMiddlewareMatch(middlewareManifest);
+const middleMatch = getMiddlewareMatch(
+  middlewareManifest,
+  functionsConfigManifest,
+);
 
 type MiddlewareEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;

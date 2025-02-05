@@ -6,7 +6,10 @@ import { BuildId, HtmlPages, NextConfig } from "config/index.js";
 import type { IncomingMessage } from "http/index.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
 import { parseHeaders } from "http/util.js";
-import type { MiddlewareManifest } from "types/next-types";
+import type {
+  FunctionsConfigManifest,
+  MiddlewareManifest,
+} from "types/next-types";
 import type {
   InternalEvent,
   InternalResult,
@@ -158,7 +161,17 @@ export function convertToQuery(querystring: string) {
  *
  * @__PURE__
  */
-export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
+export function getMiddlewareMatch(
+  middlewareManifest: MiddlewareManifest,
+  functionsManifest?: FunctionsConfigManifest,
+) {
+  if (functionsManifest) {
+    return (
+      functionsManifest.functions["/_middleware"].matchers?.map(
+        ({ regexp }) => new RegExp(regexp),
+      ) ?? [/.*/]
+    );
+  }
   const rootMiddleware = middlewareManifest.middleware["/"];
   if (!rootMiddleware?.matchers) return [];
   return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
