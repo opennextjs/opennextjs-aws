@@ -141,6 +141,15 @@ File ${fullFilePath} does not exist
     }
   };
 
+  if (existsSync(path.join(dotNextDir, "server/middleware.js.nft.json"))) {
+    //TODO: For now we copy the middleware.js file not from the standalone dir, this will probably be removed in the future
+    filesToCopy.set(
+      path.join(dotNextDir, "server/middleware.js"),
+      path.join(outputNextDir, "server/middleware.js"),
+    );
+    safeComputeCopyFilesForPage("middleware");
+  }
+
   const hasPageDir = routes.some((route) => route.startsWith("pages/"));
   const hasAppDir = routes.some((route) => route.startsWith("app/"));
 
