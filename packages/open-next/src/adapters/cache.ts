@@ -132,6 +132,8 @@ export default class Cache {
     try {
       const cachedEntry = await globalThis.incrementalCache.get(key, true);
 
+      if (cachedEntry?.value === undefined) return null;
+
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,
         cachedEntry?.lastModified,
@@ -140,8 +142,6 @@ export default class Cache {
         // If some tags are stale we need to force revalidation
         return null;
       }
-
-      if (cachedEntry?.value === undefined) return null;
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
       // We only need to check for the path as it should already contain all the tags
@@ -180,7 +180,11 @@ export default class Cache {
     try {
       const cachedEntry = await globalThis.incrementalCache.get(key, false);
 
-      const meta = cachedEntry?.value?.meta;
+      if (!cachedEntry?.value) {
+        return null;
+      }
+
+      const meta = cachedEntry.value.meta;
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,
         cachedEntry?.lastModified,

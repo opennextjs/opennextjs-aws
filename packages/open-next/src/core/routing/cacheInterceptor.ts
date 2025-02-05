@@ -157,6 +157,11 @@ export async function cacheInterceptor(
     try {
       const cachedData = await globalThis.incrementalCache.get(localizedPath);
       debug("cached data in interceptor", cachedData);
+
+      if (!cachedData?.value) {
+        return event;
+      }
+
       if (cachedData?.value?.type === "app") {
         // We need to check the tag cache now
         const _lastModified = await globalThis.tagCache.getLastModified(
