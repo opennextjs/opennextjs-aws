@@ -8,11 +8,11 @@ import {
   loadBuildId,
   loadConfig,
   loadConfigHeaders,
+  loadFunctionsConfigManifest,
   loadHtmlPages,
   loadMiddlewareManifest,
   loadPrerenderManifest,
   loadRoutesManifest,
-  loadFunctionsConfigManifest,
 } from "./util.js";
 
 export const NEXT_DIR = path.join(__dirname, ".next");
