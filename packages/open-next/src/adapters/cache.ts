@@ -130,21 +130,18 @@ export default class Cache {
   async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
     debug("get fetch cache", { key, softTags, tags });
     try {
-      const { value, lastModified } = await globalThis.incrementalCache.get(
-        key,
-        true,
-      );
+      const cachedEntry = await globalThis.incrementalCache.get(key, true);
+
+      if (cachedEntry?.value === undefined) return null;
 
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,
-        lastModified,
+        cachedEntry?.lastModified,
       );
       if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
       }
-
-      if (value === undefined) return null;
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
       // We only need to check for the path as it should already contain all the tags
@@ -159,7 +156,7 @@ export default class Cache {
         if (path) {
           const pathLastModified = await globalThis.tagCache.getLastModified(
             path.replace("_N_T_/", ""),
-            lastModified,
+            cachedEntry.lastModified,
           );
           if (pathLastModified === -1) {
             // In case the path has been revalidated, we don't want to use the fetch cache
@@ -170,7 +167,7 @@ export default class Cache {
 
       return {
         lastModified: _lastModified,
-        value: value,
+        value: cachedEntry.value,
       } as CacheHandlerValue;
     } catch (e) {
       // We can usually ignore errors here as they are usually due to cache not being found
@@ -181,18 +178,22 @@ export default class Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     try {
-      const { value: cacheData, lastModified } =
-        await globalThis.incrementalCache.get(key, false);
+      const cachedEntry = await globalThis.incrementalCache.get(key, false);
 
-      const meta = cacheData?.meta;
+      if (!cachedEntry?.value) {
+        return null;
+      }
+
+      const meta = cachedEntry.value.meta;
       const _lastModified = await globalThis.tagCache.getLastModified(
         key,
-        lastModified,
+        cachedEntry?.lastModified,
       );
       if (_lastModified === -1) {
         // If some tags are stale we need to force revalidation
         return null;
       }
+      const cacheData = cachedEntry?.value;
       const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
       globalThis.lastModified[requestId] = _lastModified;
       if (cacheData?.type === "route") {
