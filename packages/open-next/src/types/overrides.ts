@@ -54,7 +54,21 @@ export type CachedFile =
       meta?: Meta;
     };
 
-export type FetchCache = Object;
+// type taken from: https://github.com/vercel/next.js/blob/9a1cd356/packages/next/src/server/response-cache/types.ts#L26-L38
+export type CachedFetchValue = {
+  kind: "FETCH";
+  data: {
+    headers: { [k: string]: string };
+    body: string;
+    url: string;
+    status?: number;
+    // field used by older versions of Next.js (see: https://github.com/vercel/next.js/blob/fda1ecc/packages/next/src/server/response-cache/types.ts#L23)
+    tags?: string[];
+  };
+  // tags are only present with file-system-cache
+  // fetch cache stores tags outside of cache entry
+  tags?: string[];
+};
 
 export type WithLastModified<T> = {
   lastModified?: number;
@@ -62,7 +76,7 @@ export type WithLastModified<T> = {
 };
 
 export type CacheValue<IsFetch extends boolean> = (IsFetch extends true
-  ? FetchCache
+  ? Partial<CachedFetchValue>
   : CachedFile) & { revalidate?: number | false };
 
 export type IncrementalCache = {
