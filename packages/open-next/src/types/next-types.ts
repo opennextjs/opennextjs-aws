@@ -178,3 +178,20 @@ export type PluginHandler = (
   res: OpenNextNodeResponse,
   options: Options,
 ) => Promise<OpenNextNodeResponse | undefined>;
+
+export interface FunctionsConfigManifest {
+  version: number;
+  functions: Record<
+    string,
+    {
+      maxDuration?: number | undefined;
+      runtime?: "nodejs";
+      matchers?: Array<{
+        regexp: string;
+        originalSource: string;
+        has?: Rewrite["has"];
+        missing?: Rewrite["has"];
+      }>;
+    }
+  >;
+}
