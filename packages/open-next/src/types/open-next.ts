@@ -147,6 +147,7 @@ export type IncludedIncrementalCache =
 export type IncludedTagCache =
   | "dynamodb"
   | "dynamodb-lite"
+  | "dynamodb-nextMode"
   | "fs-dev"
   | "dummy";
 
@@ -403,7 +404,7 @@ export interface OpenNextConfig {
    * Supports only node runtime
    */
   initializationFunction?: DefaultFunctionOptions & {
-    tagCache?: "dynamodb" | LazyLoadedOverride<TagCache>;
+    tagCache?: IncludedTagCache | LazyLoadedOverride<TagCache>;
   };
 
   /**
