@@ -75,6 +75,11 @@ export default {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
       return false;
     }
+    if (tags.length > 100) {
+      throw new RecoverableError(
+        "Cannot query more than 100 tags at once. You should not be using this tagCache implementation for this amount of tags",
+      );
+    }
     const { CACHE_DYNAMO_TABLE } = process.env;
     // It's unlikely that we will have more than 100 items to query
     // If that's the case, you should not use this tagCache implementation

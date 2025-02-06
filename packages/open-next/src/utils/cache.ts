@@ -9,11 +9,7 @@ export async function hasBeenRevalidated(
     return false;
   }
   if (globalThis.tagCache.mode === "nextMode") {
-    const hasBeenRevalidated = await globalThis.tagCache.hasBeenRevalidated(
-      tags,
-      lastModified,
-    );
-    return hasBeenRevalidated;
+    return await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
   }
   // TODO: refactor this, we should introduce a new method in the tagCache interface so that both implementations use hasBeenRevalidated
   const _lastModified = await globalThis.tagCache.getLastModified(
@@ -23,7 +19,7 @@ export async function hasBeenRevalidated(
   return _lastModified === -1;
 }
 
-export function getTagFromValue(value?: CacheValue<false>) {
+export function getTagsFromValue(value?: CacheValue<false>) {
   if (!value) {
     return [];
   }
