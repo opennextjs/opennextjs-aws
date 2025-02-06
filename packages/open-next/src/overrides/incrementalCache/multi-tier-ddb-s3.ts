@@ -50,9 +50,15 @@ const buildDynamoKey = (key: string) => {
  */
 const multiTierCache: IncrementalCache = {
   name: "multi-tier-ddb-s3",
-  async get(key, isFetch) {
+  async get<IsFetch extends boolean = false>(key: string, isFetch?: IsFetch) {
     // First we check the local cache
-    const localCacheEntry = localCache.get(key);
+    const localCacheEntry = localCache.get(key) as
+      | {
+          value: CacheValue<IsFetch>;
+          lastModified: number;
+        }
+      | undefined;
+
     if (localCacheEntry) {
       if (Date.now() - localCacheEntry.lastModified < localCacheTTL) {
         debug("Using local cache without checking ddb");
