@@ -1,5 +1,24 @@
 # open-next
 
+## 3.4.2
+
+### Patch Changes
+
+- [#722](https://github.com/opennextjs/opennextjs-aws/pull/722) [`dd9face0d31d994890b5668b1f117775adccf274`](https://github.com/opennextjs/opennextjs-aws/commit/dd9face0d31d994890b5668b1f117775adccf274) Thanks [@vicb](https://github.com/vicb)! - fix(cloudflare): enable trailiing slash redirect
+
+- [#718](https://github.com/opennextjs/opennextjs-aws/pull/718) [`14b81827f9078b98e32115fb5cfe706d03d64537`](https://github.com/opennextjs/opennextjs-aws/commit/14b81827f9078b98e32115fb5cfe706d03d64537) Thanks [@vicb](https://github.com/vicb)! - fix(cloudflare): PPR in wrangler dev
+
+  PPR works fine when deployed but not in dev because of bug in miniflare.
+  Adding a workaround until the bug is fixed upstream.
+
+- [#724](https://github.com/opennextjs/opennextjs-aws/pull/724) [`94d6eca5e8baa6f93734a2ba1dbfbf0083252c75`](https://github.com/opennextjs/opennextjs-aws/commit/94d6eca5e8baa6f93734a2ba1dbfbf0083252c75) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - fix: remove `cf-connecting-ip` headers from external override requests
+
+  this change removes `cf-connecting-ip` headers from requests being sent to
+  external urls during rewrites, this allows such overrides, when run inside a
+  Cloudflare worker to rewrite to urls also hosted on Cloudflare
+
+- [#715](https://github.com/opennextjs/opennextjs-aws/pull/715) [`843497bac327206aeac4db585ac1663fc6c14ced`](https://github.com/opennextjs/opennextjs-aws/commit/843497bac327206aeac4db585ac1663fc6c14ced) Thanks [@vicb](https://github.com/vicb)! - Dump ESBuild build metadata to `<bundle>.meta.json` in debug mode
+
 ## 3.4.1
 
 ### Patch Changes
