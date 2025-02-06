@@ -148,8 +148,8 @@ export type IncludedIncrementalCache =
 export type IncludedTagCache =
   | "dynamodb"
   | "dynamodb-lite"
+  | "dynamodb-nextMode"
   | "fs-dev"
-  | "ddb-nextMode"
   | "dummy";
 
 export type IncludedImageLoader = "s3" | "host" | "fs-dev" | "dummy";

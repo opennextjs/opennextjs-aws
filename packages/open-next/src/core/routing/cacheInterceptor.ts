@@ -5,7 +5,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
-import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
+import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
@@ -164,7 +164,7 @@ export async function cacheInterceptor(
       }
       // We need to check the tag cache now
       if (cachedData.value?.type === "app") {
-        const tags = getTagFromValue(cachedData.value);
+        const tags = getTagsFromValue(cachedData.value);
         const _hasBeenRevalidated = await hasBeenRevalidated(
           localizedPath,
           tags,

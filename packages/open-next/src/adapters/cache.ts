@@ -3,7 +3,7 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import { getTagFromValue, hasBeenRevalidated } from "utils/cache";
+import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
@@ -116,7 +116,7 @@ export default class Cache {
       const cacheData = cachedEntry?.value;
 
       const meta = cacheData?.meta;
-      const tags = getTagFromValue(cacheData);
+      const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
         key,
@@ -294,6 +294,12 @@ export default class Cache {
             // Not implemented
             break;
         }
+      }
+      if (
+        globalThis.openNextConfig.dangerous?.disableTagCache ||
+        globalThis.tagCache.mode === "nextMode"
+      ) {
+        return;
       }
       // Write derivedTags to dynamodb
       // If we use an in house version of getDerivedTags in build we should use it here instead of next's one

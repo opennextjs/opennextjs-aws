@@ -100,6 +100,27 @@ type BaseTagCache = {
   name: string;
 };
 
+/**
+ * On get :
+We have to check for every tag (after reading the incremental cache) that they have not been revalidated.
+
+In DynamoDB, this would require 1 GetItem per tag (including internal one), more realistically 1 BatchGetItem per get (In terms of pricing, it would be billed as multiple single GetItem)
+
+On set :
+We don't have to do anything here
+
+On revalidateTag for each tag :
+We have to update a single entry for this tag
+
+Pros :
+- No need to prepopulate DDB
+- Very little write
+
+Cons :
+- Might be slower on read
+- One page request (i.e. GET request) could require to check a lot of tags (And some of them multiple time when used with the fetch cache)
+- Almost impossible to do automatic cdn revalidation by itself
+*/
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
@@ -109,6 +130,25 @@ export type NextModeTagCache = BaseTagCache & {
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
 };
 
+/**
+ * On get :
+We just check for the cache key in the tag cache. If it has been revalidated we just return null, otherwise we continue
+
+On set :
+We have to write both the incremental cache and check the tag cache for non existing tag/key combination. For non existing tag/key combination, we have to add them
+
+On revalidateTag for each tag :
+We have to update every possible combination for the requested tag
+
+Pros :
+- Very fast on read
+- Only one query per get (On DynamoDB it's a lot cheaper)
+- Can allow for automatic cdn invalidation on revalidateTag
+
+Cons :
+- Lots of write on set and revalidateTag
+- Needs to be prepopulated at build time to work properly
+ */
 export type OriginalTagCache = BaseTagCache & {
   mode?: "original";
   getByTag(tag: string): Promise<string[]>;
