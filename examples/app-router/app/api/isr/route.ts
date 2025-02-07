@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const prerenderManifest = await import(
       // @ts-expect-error
       /* webpackIgnore: true */ "../../../../prerender-manifest.json",
-      { assert: { type: "json" } }
+      { with: { type: "json" } }
     );
     manifest = prerenderManifest.default;
   } catch (e) {
