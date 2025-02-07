@@ -1,9 +1,9 @@
-const mod = require("node:module");
+let mod = require("node:module");
 
 const resolveFilename = mod._resolveFilename;
 
 export function patchAsyncStorage() {
-  mod._resolveFilename = ((
+  const _resolveFilename = ((
     originalResolveFilename: typeof resolveFilename,
     request: string,
     parent: any,
@@ -29,4 +29,8 @@ export function patchAsyncStorage() {
 
     // We use `bind` here to avoid referencing outside variables to create potential memory leaks.
   }).bind(null, resolveFilename);
+  mod = {
+    ...mod,
+    _resolveFilename,
+  };
 }
