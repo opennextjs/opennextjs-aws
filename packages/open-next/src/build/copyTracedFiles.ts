@@ -142,38 +142,12 @@ File ${fullFilePath} does not exist
   };
 
   if (existsSync(path.join(dotNextDir, "server/middleware.js.nft.json"))) {
-    //FIXME: This is a hack to make sure we include the middleware files
-    // Next should copy everything necessary into the standalone dir
-    // Once they've done that we can replace all these shenanigans with a single computeCopyFilesForPage
-    copyFileSync(
-      path.join(dotNextDir, "server/middleware.js"),
-      path.join(standaloneNextDir, "server/middleware.js"),
-    );
+    // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
     copyFileSync(
       path.join(dotNextDir, "server/middleware.js.nft.json"),
       path.join(standaloneNextDir, "server/middleware.js.nft.json"),
     );
-    const requiredMiddlewareFiles = JSON.parse(
-      readFileSync(
-        path.join(dotNextDir, "server/middleware.js.nft.json"),
-        "utf8",
-      ),
-    );
-    extractFiles(
-      requiredMiddlewareFiles.files.map((f: string) =>
-        f.startsWith("../") ? `../${f}` : `server/${f}`,
-      ),
-    ).forEach((f) => {
-      filesToCopy.set(
-        f,
-        f
-          .replace(standaloneDir, outputDir)
-          .replace(
-            path.join(buildOutputPath, "node_modules"),
-            path.join(outputDir, "node_modules"),
-          ),
-      );
-    });
+    computeCopyFilesForPage("middleware");
   }
 
   const hasPageDir = routes.some((route) => route.startsWith("pages/"));
