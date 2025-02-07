@@ -10,16 +10,18 @@ export async function GET(request: NextRequest) {
   try {
     const prerenderManifest = await import(
       // @ts-expect-error
-      /* webpackIgnore: true */ "../../../../prerender-manifest.json"
+      /* webpackIgnore: true */ "../../../../prerender-manifest.json",
+      { assert: { type: "json" } }
     );
     manifest = prerenderManifest.default;
-  } catch {
+  } catch (e) {
+    console.error(e);
     return new Response(null, { status: 500 });
   }
 
   const previewId = manifest.preview.previewModeId;
 
-  const host = request.headers.get("host");
+  const host = request.headers.get("host") ?? "localhost:3001";
   const result = await fetch(
     `http${host?.includes("localhost") ? "" : "s"}://${host}/isr`,
     {
