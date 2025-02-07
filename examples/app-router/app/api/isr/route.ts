@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const prerenderManifest = await import(
       // @ts-expect-error
-      /* webpackIgnore: true */ "./.next/prerender-manifest.json"
+      /* webpackIgnore: true */ "../../../../prerender-manifest.json"
     );
     manifest = prerenderManifest.default;
   } catch {
