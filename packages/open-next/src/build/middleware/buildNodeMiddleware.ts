@@ -1,19 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import * as buildHelper from "../helper.js";
 import type {
   IncludedOriginResolver,
   LazyLoadedOverride,
   OverrideOptions,
 } from "types/open-next.js";
 import type { OriginResolver } from "types/overrides.js";
-import { openNextResolvePlugin } from "../../plugins/resolve.js";
-import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { getCrossPlatformPathRegex } from "utils/regex.js";
 import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
-import { installDependencies } from "../installDeps.js";
+import { openNextReplacementPlugin } from "../../plugins/replacement.js";
+import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { copyTracedFiles } from "../copyTracedFiles.js";
+import * as buildHelper from "../helper.js";
+import { installDependencies } from "../installDeps.js";
 
 type Override = OverrideOptions & {
   originResolver?: LazyLoadedOverride<OriginResolver> | IncludedOriginResolver;

@@ -16,12 +16,12 @@ import type {
 import type { OriginResolver } from "types/overrides.js";
 import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
+import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../../utils/regex.js";
 import { type BuildOptions, isEdgeRuntime } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
-import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 
 type Override = OverrideOptions & {
   originResolver?: LazyLoadedOverride<OriginResolver> | IncludedOriginResolver;
