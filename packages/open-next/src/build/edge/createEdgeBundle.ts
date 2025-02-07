@@ -21,6 +21,7 @@ import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../../utils/regex.js";
 import { type BuildOptions, isEdgeRuntime } from "../helper.js";
 import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
+import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 
 type Override = OverrideOptions & {
   originResolver?: LazyLoadedOverride<OriginResolver> | IncludedOriginResolver;
@@ -88,14 +89,12 @@ export async function buildEdgeBundle({
           target: getCrossPlatformPathRegex("adapters/middleware.js"),
           deletes: includeCache ? [] : ["includeCacheInMiddleware"],
         }),
+        openNextExternalMiddlewarePlugin(
+          path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js"),
+        ),
         openNextEdgePlugins({
           middlewareInfo,
           nextDir: path.join(options.appBuildOutputPath, ".next"),
-          edgeFunctionHandlerPath: path.join(
-            options.openNextDistDir,
-            "core",
-            "edgeFunctionHandler.js",
-          ),
           isInCloudfare,
         }),
       ],

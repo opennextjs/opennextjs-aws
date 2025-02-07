@@ -11,6 +11,10 @@ import type {
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
+import {
+  buildBundledNodeMiddleware,
+  buildExternalNodeMiddleware,
+} from "./middleware/buildNodeMiddleware.js";
 
 /**
  * Compiles the middleware bundle.
@@ -52,24 +56,15 @@ export async function createMiddleware(
 
     // TODO: Handle external node middleware in the future
     if (functionsConfigManifest?.functions["/_middleware"]) {
-      // If we are here, it means that we are using a node middleware
-      await buildHelper.esbuildAsync(
-        {
-          entryPoints: [
-            path.join(
-              options.openNextDistDir,
-              "core",
-              "nodeMiddlewareHandler.js",
-            ),
-          ],
-          external: ["./.next/*"],
-          outfile: path.join(options.buildDir, "middleware.mjs"),
-          bundle: true,
-          platform: "node",
-        },
-        options,
-      );
-      // We return early to not build the edge middleware
+      if (!config.middleware?.external) {
+        // If we are here, it means that we are using a node middleware
+        await buildBundledNodeMiddleware(options);
+        // We return early to not build the edge middleware
+        return;
+      }
+
+      // Here it means that we are using a node external middleware
+      await buildExternalNodeMiddleware(options);
       return;
     }
   }

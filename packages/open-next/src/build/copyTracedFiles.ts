@@ -31,6 +31,7 @@ export async function copyTracedFiles(
   outputDir: string,
   routes: string[],
   bundledNextServer: boolean,
+  skipServerFiles = false,
 ) {
   const tsStart = Date.now();
   const dotNextDir = path.join(buildOutputPath, ".next");
@@ -58,10 +59,11 @@ export async function copyTracedFiles(
   const filesToCopy = new Map<string, string>();
 
   // Files necessary by the server
-  extractFiles(requiredServerFiles.files).forEach((f) => {
-    filesToCopy.set(f, f.replace(standaloneDir, outputDir));
-  });
-
+  if (!skipServerFiles) {
+    extractFiles(requiredServerFiles.files).forEach((f) => {
+      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
+    });
+  }
   // create directory for pages
   if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
     mkdirSync(path.join(outputNextDir, "server/pages"), {
