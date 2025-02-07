@@ -22,21 +22,18 @@ import { getCrossPlatformPathRegex } from "../utils/regex.js";
 
 export interface IPluginSettings {
   nextDir: string;
-  edgeFunctionHandlerPath?: string;
   middlewareInfo?: MiddlewareInfo;
   isInCloudfare?: boolean;
 }
 
 /**
  * @param opts.nextDir - The path to the .next directory
- * @param opts.edgeFunctionHandlerPath - The path to the edgeFunctionHandler.js file that we'll use to bundle the routing
  * @param opts.middlewareInfo - Information about the middleware
  * @param opts.isInCloudfare - Whether the code runs on the cloudflare runtime
  * @returns
  */
 export function openNextEdgePlugins({
   nextDir,
-  edgeFunctionHandlerPath,
   middlewareInfo,
   isInCloudfare,
 }: IPluginSettings): Plugin {
@@ -57,17 +54,6 @@ export function openNextEdgePlugins({
     name: "opennext-edge",
     setup(build) {
       logger.debug(chalk.blue("OpenNext Edge plugin"));
-      if (edgeFunctionHandlerPath) {
-        // If we bundle the routing, we need to resolve the middleware
-        build.onResolve(
-          { filter: getCrossPlatformPathRegex("./middleware.mjs") },
-          () => {
-            return {
-              path: edgeFunctionHandlerPath,
-            };
-          },
-        );
-      }
 
       build.onResolve({ filter: /\.(mjs|wasm)$/g }, () => {
         return {
