@@ -5,9 +5,9 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
-import { debug } from "../../adapters/logger";
-import { localizePath } from "./i18n";
-import { generateMessageGroupId } from "./util";
+import { debug } from "../../adapters/logger.js";
+import { localizePath } from "./i18n/index.js";
+import { generateMessageGroupId } from "./queue.js";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
