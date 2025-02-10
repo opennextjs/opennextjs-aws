@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 
 import chalk from "chalk";
 import type { Plugin } from "esbuild";
@@ -88,7 +88,7 @@ export function openNextResolvePlugin({
       build.onLoad(
         { filter: getCrossPlatformPathRegex("core/resolve.js") },
         async (args) => {
-          let contents = readFileSync(args.path, "utf-8");
+          let contents = await readFile(args.path, "utf-8");
           const overridesEntries = Object.entries(overrides ?? {});
           for (let [overrideName, overrideValue] of overridesEntries) {
             if (!overrideValue) {
