@@ -61,7 +61,9 @@ const handler: WrapperHandler =
       },
     };
 
-    const response = await handler(internalEvent, fakeStream);
+    const response = await handler(internalEvent, {
+      streamCreator: fakeStream,
+    });
 
     return converter.convertTo(response, event);
   };

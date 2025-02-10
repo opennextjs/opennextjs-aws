@@ -8,6 +8,7 @@ import type {
   ResolvedRoute,
   RoutingResult,
   StreamCreator,
+  WaitUntil,
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
@@ -29,12 +30,18 @@ patchAsyncStorage();
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
-  responseStreaming?: StreamCreator,
+  options?: {
+    streamCreator?: StreamCreator;
+    waitUntil?: WaitUntil;
+  },
 ): Promise<InternalResult> {
   const initialHeaders = internalEvent.headers;
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: initialHeaders["x-isr"] === "1" },
+    {
+      isISRRevalidation: initialHeaders["x-isr"] === "1",
+      waitUntil: options?.waitUntil,
+    },
     async () => {
       if (initialHeaders["x-forwarded-host"]) {
         initialHeaders.host = initialHeaders["x-forwarded-host"];
@@ -116,7 +123,7 @@ export async function openNextHandler(
 
       if ("type" in routingResult) {
         // response is used only in the streaming case
-        if (responseStreaming) {
+        if (options?.streamCreator) {
           const response = createServerResponse(
             {
               internalEvent,
@@ -127,7 +134,7 @@ export async function openNextHandler(
               initialPath: internalEvent.rawPath,
             },
             headers,
-            responseStreaming,
+            options.streamCreator,
           );
           response.statusCode = routingResult.statusCode;
           response.flushHeaders();
@@ -171,7 +178,7 @@ export async function openNextHandler(
       const res = createServerResponse(
         routingResult,
         overwrittenResponseHeaders,
-        responseStreaming,
+        options?.streamCreator,
       );
 
       await processRequest(req, res, preprocessedEvent);

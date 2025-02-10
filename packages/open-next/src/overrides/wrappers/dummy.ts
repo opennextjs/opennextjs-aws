@@ -1,9 +1,12 @@
-import type { InternalEvent, StreamCreator } from "types/open-next";
+import type { InternalEvent, StreamCreator, WaitUntil } from "types/open-next";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
 const dummyWrapper: WrapperHandler = async (handler, converter) => {
-  return async (event: InternalEvent, responseStream?: StreamCreator) => {
-    return await handler(event, responseStream);
+  return async (
+    event: InternalEvent,
+    options?: { streamCreator?: StreamCreator; waitUntil?: WaitUntil },
+  ) => {
+    return await handler(event, options);
   };
 };
 

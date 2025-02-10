@@ -1,6 +1,6 @@
 import type { ReadableStream } from "node:stream/web";
 
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type { InternalEvent, InternalResult, WaitUntil } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
 
@@ -16,12 +16,13 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 
 const defaultHandler = async (
   internalEvent: InternalEvent,
+  options?: { waitUntil?: WaitUntil },
 ): Promise<InternalResult> => {
   globalThis.isEdgeRuntime = true;
 
   // We run everything in the async local storage context so that it is available in edge runtime functions
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: false },
+    { isISRRevalidation: false, waitUntil: options?.waitUntil },
     async () => {
       const host = internalEvent.headers.host
         ? `https://${internalEvent.headers.host}`

@@ -10,6 +10,7 @@ import type {
   Origin,
   ResolvedRoute,
   StreamCreator,
+  WaitUntil,
 } from "./open-next";
 
 // Queue
@@ -125,7 +126,10 @@ export type Wrapper<
 export type OpenNextHandler<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
-> = (event: E, responseStream?: StreamCreator) => Promise<R>;
+> = (
+  event: E,
+  options?: { streamCreator?: StreamCreator; waitUntil?: WaitUntil },
+) => Promise<R>;
 
 export type Converter<
   E extends BaseEventOrResult = InternalEvent,

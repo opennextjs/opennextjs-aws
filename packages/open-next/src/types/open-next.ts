@@ -48,6 +48,7 @@ export interface StreamCreator {
   onFinish?: (length: number) => void;
 }
 
+export type WaitUntil = (promise: Promise<void>) => void;
 export interface DangerousOptions {
   /**
    * The tag cache is used for revalidateTags and revalidatePath.

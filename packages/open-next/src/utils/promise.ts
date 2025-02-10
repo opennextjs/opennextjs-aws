@@ -1,3 +1,4 @@
+import type { WaitUntil } from "types/open-next";
 import { debug, error } from "../adapters/logger";
 
 /**
@@ -60,30 +61,30 @@ export class DetachedPromiseRunner {
 }
 
 async function awaitAllDetachedPromise() {
+  const store = globalThis.__openNextAls.getStore();
+
   const promisesToAwait =
-    globalThis.__openNextAls.getStore()?.pendingPromiseRunner.await() ??
-    Promise.resolve();
-  if (globalThis.openNextWaitUntil) {
-    globalThis.openNextWaitUntil(promisesToAwait);
+    store?.pendingPromiseRunner.await() ?? Promise.resolve();
+  if (store?.waitUntil) {
+    store.waitUntil(promisesToAwait);
     return;
   }
   await promisesToAwait;
 }
 
 function provideNextAfterProvider() {
-  /** This should be considered unstable until `unstable_after` is stablized. */
+  /** This should be considered unstable until `unstable_after` is stabilized. */
   const NEXT_REQUEST_CONTEXT_SYMBOL = Symbol.for("@next/request-context");
 
   // This is needed by some lib that relies on the vercel request context to properly await stuff.
   // Remove this when vercel builder is updated to provide '@next/request-context'.
   const VERCEL_REQUEST_CONTEXT_SYMBOL = Symbol.for("@vercel/request-context");
 
-  const openNextStoreContext = globalThis.__openNextAls.getStore();
+  const store = globalThis.__openNextAls.getStore();
 
   const waitUntil =
-    globalThis.openNextWaitUntil ??
-    ((promise: Promise<unknown>) =>
-      openNextStoreContext?.pendingPromiseRunner.add(promise));
+    store?.waitUntil ??
+    ((promise: Promise<unknown>) => store?.pendingPromiseRunner.add(promise));
 
   const nextAfterContext = {
     get: () => ({
@@ -102,7 +103,10 @@ function provideNextAfterProvider() {
 }
 
 export function runWithOpenNextRequestContext<T>(
-  { isISRRevalidation }: { isISRRevalidation: boolean },
+  {
+    isISRRevalidation,
+    waitUntil,
+  }: { isISRRevalidation: boolean; waitUntil?: WaitUntil },
   fn: () => Promise<T>,
 ): Promise<T> {
   return globalThis.__openNextAls.run(
@@ -110,6 +114,7 @@ export function runWithOpenNextRequestContext<T>(
       requestId: Math.random().toString(36),
       pendingPromiseRunner: new DetachedPromiseRunner(),
       isISRRevalidation,
+      waitUntil,
     },
     async () => {
       provideNextAfterProvider();
