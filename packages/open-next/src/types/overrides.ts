@@ -24,8 +24,9 @@ export interface QueueMessage {
 }
 
 export interface Queue {
-  send(message: QueueMessage): Promise<void>;
   name: string;
+  send(message: QueueMessage): Promise<void>;
+  remove?(path: string): void;
 }
 
 // Incremental cache

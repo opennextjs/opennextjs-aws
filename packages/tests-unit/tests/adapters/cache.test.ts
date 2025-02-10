@@ -41,6 +41,13 @@ describe("CacheHandler", () => {
   };
   globalThis.tagCache = tagCache;
 
+  const queue = {
+    name: "mock",
+    send: vi.fn(),
+    remove: vi.fn(),
+  };
+  globalThis.queue = queue;
+
   const invalidateCdnHandler = {
     name: "mock",
     invalidatePaths: vi.fn(),
@@ -335,6 +342,7 @@ describe("CacheHandler", () => {
         { type: "route", body: "{}", meta: { status: 200, headers: {} } },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should set cache when for APP_ROUTE", async () => {
@@ -356,6 +364,7 @@ describe("CacheHandler", () => {
         },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should set cache when for PAGE", async () => {
@@ -376,6 +385,7 @@ describe("CacheHandler", () => {
         },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should set cache when for PAGES", async () => {
@@ -397,6 +407,7 @@ describe("CacheHandler", () => {
         },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should set cache when for APP_PAGE", async () => {
@@ -418,6 +429,7 @@ describe("CacheHandler", () => {
         },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should set cache when for FETCH", async () => {
@@ -448,6 +460,7 @@ describe("CacheHandler", () => {
         },
         true,
       );
+      expect(globalThis.queue.remove).not.toHaveBeenCalled();
     });
 
     it("Should set cache when for REDIRECT", async () => {
@@ -461,6 +474,7 @@ describe("CacheHandler", () => {
         },
         false,
       );
+      expect(globalThis.queue.remove).toHaveBeenCalledWith("key");
     });
 
     it("Should not set cache when for IMAGE (not implemented)", async () => {
@@ -472,6 +486,7 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).not.toHaveBeenCalled();
+      expect(globalThis.queue.remove).not.toHaveBeenCalled();
     });
 
     it("Should not throw when set cache throws", async () => {

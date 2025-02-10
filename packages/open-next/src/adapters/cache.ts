@@ -393,6 +393,19 @@ export default class Cache {
     } finally {
       // We need to resolve the promise even if there was an error
       detachedPromise?.resolve();
+
+      switch (data?.kind) {
+        case "ROUTE":
+        case "APP_ROUTE":
+        case "PAGE":
+        case "PAGES":
+        case "APP_PAGE":
+        case "REDIRECT":
+          globalThis.queue.remove?.(key);
+          break;
+        default:
+        // Fetch cache entries and images do not use the queue
+      }
     }
   }
 
