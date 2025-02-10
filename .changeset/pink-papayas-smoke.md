@@ -2,7 +2,7 @@
 "@opennextjs/aws": minor
 ---
 
-refactor: `waitUntil` passed around via ALS  and `OpenNextHandler` signature has changed
+refactor: `waitUntil` passed around via ALS and `OpenNextHandler` signature has changed
 
 BREAKING CHANGE: `waitUntil` is passed around via ALS to fix #713.
 

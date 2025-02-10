@@ -73,7 +73,6 @@ async function awaitAllDetachedPromise() {
 }
 
 function provideNextAfterProvider() {
-  /** This should be considered unstable until `unstable_after` is stabilized. */
   const NEXT_REQUEST_CONTEXT_SYMBOL = Symbol.for("@next/request-context");
 
   // This is needed by some lib that relies on the vercel request context to properly await stuff.

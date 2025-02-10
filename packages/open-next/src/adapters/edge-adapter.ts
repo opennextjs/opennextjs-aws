@@ -1,9 +1,10 @@
 import type { ReadableStream } from "node:stream/web";
 
-import type { InternalEvent, InternalResult, WaitUntil } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
 
+import type { OpenNextHandlerOptions } from "types/overrides";
 // We import it like that so that the edge plugin can replace it
 import { NextConfig } from "../adapters/config";
 import { createGenericHandler } from "../core/createGenericHandler";
@@ -11,7 +12,6 @@ import {
   convertBodyToReadableStream,
   convertToQueryString,
 } from "../core/routing/util";
-import type { OpenNextHandlerOptions } from "types/overrides";
 
 globalThis.__openNextAls = new AsyncLocalStorage();
 
