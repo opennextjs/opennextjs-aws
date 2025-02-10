@@ -13,25 +13,25 @@ const wrapper: WrapperHandler = async (handler, converter) => {
 
   app.all("/_next/image", async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
-    const _res: StreamCreator = {
+    const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.writeHead(prelude.statusCode, prelude.headers);
         return res;
       },
     };
-    await imageHandler(internalEvent, _res);
+    await imageHandler(internalEvent, { streamCreator });
   });
 
   app.all("*paths", async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
-    const _res: StreamCreator = {
+    const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.writeHead(prelude.statusCode, prelude.headers);
         return res;
       },
       onFinish: () => {},
     };
-    await handler(internalEvent, _res);
+    await handler(internalEvent, { streamCreator });
   });
 
   const server = app.listen(

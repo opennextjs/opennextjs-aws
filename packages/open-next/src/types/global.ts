@@ -10,7 +10,7 @@ import type {
 } from "types/overrides";
 
 import type { DetachedPromiseRunner } from "../utils/promise";
-import type { OpenNextConfig } from "./open-next";
+import type { OpenNextConfig, WaitUntil } from "./open-next";
 
 export interface RequestData {
   geo?: {
@@ -59,6 +59,7 @@ interface OpenNextRequestContext {
   pendingPromiseRunner: DetachedPromiseRunner;
   isISRRevalidation?: boolean;
   mergeHeadersPriority?: "middleware" | "handler";
+  waitUntil?: WaitUntil;
 }
 
 declare global {
@@ -151,13 +152,6 @@ declare global {
    * Defined in `requestHandler.ts`, `middleware.ts` and `edge-adapter.ts`.
    */
   var __openNextAls: AsyncLocalStorage<OpenNextRequestContext>;
-
-  /**
-   * The function that is used to run background tasks even after the response has been sent.
-   * This one is defined by the wrapper function as most of them don't need or support this feature.
-   * If not present, all the awaiting promises will be resolved before sending the response.
-   */
-  var openNextWaitUntil: ((promise: Promise<void>) => void) | undefined;
 
   /**
    * The entries object that contains the functions that are available in the function.

@@ -5,6 +5,7 @@ import type {
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
+import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
 import {
@@ -24,6 +25,7 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 
 const defaultHandler = async (
   internalEvent: InternalEvent,
+  options?: OpenNextHandlerOptions,
 ): Promise<InternalResult | MiddlewareResult> => {
   const originResolver = await resolveOriginResolver(
     globalThis.openNextConfig.middleware?.originResolver,
@@ -49,7 +51,10 @@ const defaultHandler = async (
 
   // We run everything in the async local storage context so that it is available in the external middleware
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: internalEvent.headers["x-isr"] === "1" },
+    {
+      isISRRevalidation: internalEvent.headers["x-isr"] === "1",
+      waitUntil: options?.waitUntil,
+    },
     async () => {
       const result = await routingHandler(internalEvent);
       if ("internalEvent" in result) {

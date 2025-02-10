@@ -4,6 +4,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
 
+import type { OpenNextHandlerOptions } from "types/overrides";
 // We import it like that so that the edge plugin can replace it
 import { NextConfig } from "../adapters/config";
 import { createGenericHandler } from "../core/createGenericHandler";
@@ -16,12 +17,13 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 
 const defaultHandler = async (
   internalEvent: InternalEvent,
+  options?: OpenNextHandlerOptions,
 ): Promise<InternalResult> => {
   globalThis.isEdgeRuntime = true;
 
   // We run everything in the async local storage context so that it is available in edge runtime functions
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: false },
+    { isISRRevalidation: false, waitUntil: options?.waitUntil },
     async () => {
       const host = internalEvent.headers.host
         ? `https://${internalEvent.headers.host}`

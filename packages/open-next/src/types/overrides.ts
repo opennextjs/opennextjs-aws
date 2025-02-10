@@ -10,6 +10,7 @@ import type {
   Origin,
   ResolvedRoute,
   StreamCreator,
+  WaitUntil,
 } from "./open-next";
 
 // Queue
@@ -122,10 +123,17 @@ export type Wrapper<
   edgeRuntime?: boolean;
 };
 
+export type OpenNextHandlerOptions = {
+  // Create a `Writeable` for streaming responses.
+  streamCreator?: StreamCreator;
+  // Extends the liftetime of the runtime after the response is returned.
+  waitUntil?: WaitUntil;
+};
+
 export type OpenNextHandler<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
-> = (event: E, responseStream?: StreamCreator) => Promise<R>;
+> = (event: E, options?: OpenNextHandlerOptions) => Promise<R>;
 
 export type Converter<
   E extends BaseEventOrResult = InternalEvent,

@@ -33,7 +33,6 @@ const handler: WrapperHandler<
     ctx: WorkerContext,
   ): Promise<Response> => {
     globalThis.process = process;
-    globalThis.openNextWaitUntil = ctx.waitUntil.bind(ctx);
 
     // Set the environment variables
     // Cloudflare suggests to not override the process.env object but instead apply the values to it
@@ -63,7 +62,9 @@ const handler: WrapperHandler<
       }
     }
 
-    const response = await handler(internalEvent);
+    const response = await handler(internalEvent, {
+      waitUntil: ctx.waitUntil.bind(ctx),
+    });
 
     const result: Response = await converter.convertTo(response);
 

@@ -18,7 +18,6 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     ctx: any,
   ): Promise<Response> => {
     globalThis.process = process;
-    globalThis.openNextWaitUntil = ctx.waitUntil.bind(ctx);
 
     // Set the environment variables
     // Cloudflare suggests to not override the process.env object but instead apply the values to it
@@ -75,7 +74,12 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
       },
     };
 
-    ctx.waitUntil(handler(internalEvent, streamCreator));
+    ctx.waitUntil(
+      handler(internalEvent, {
+        streamCreator,
+        waitUntil: ctx.waitUntil.bind(ctx),
+      }),
+    );
 
     return promiseResponse;
   };

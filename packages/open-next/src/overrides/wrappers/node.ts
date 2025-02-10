@@ -8,7 +8,7 @@ import { debug, error } from "../../adapters/logger";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
-    const _res: StreamCreator = {
+    const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
         res.writeHead(prelude.statusCode, prelude.headers);
@@ -23,7 +23,7 @@ const wrapper: WrapperHandler = async (handler, converter) => {
       });
       res.end("OK");
     } else {
-      await handler(internalEvent, _res);
+      await handler(internalEvent, { streamCreator });
     }
   });
 

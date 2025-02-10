@@ -94,7 +94,7 @@ const handler: WrapperHandler = async (handler, converter) =>
         },
       };
 
-      const response = await handler(internalEvent, streamCreator);
+      const response = await handler(internalEvent, { streamCreator });
 
       const isUsingEdge = globalThis.isEdgeRuntime ?? false;
       if (isUsingEdge) {

@@ -25,6 +25,7 @@ import type {
 } from "types/open-next.js";
 import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 
+import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
 import { debug, error } from "./logger.js";
@@ -58,7 +59,7 @@ export const handler = await createGenericHandler({
 
 export async function defaultHandler(
   event: InternalEvent,
-  streamCreator?: StreamCreator,
+  options?: OpenNextHandlerOptions,
 ): Promise<InternalResult> {
   // Images are handled via header and query param information.
   debug("handler event", event);
@@ -99,9 +100,9 @@ export async function defaultHandler(
       downloadHandler,
     );
 
-    return buildSuccessResponse(result, streamCreator, etag);
+    return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    return buildFailureResponse(e, streamCreator);
+    return buildFailureResponse(e, options?.streamCreator);
   }
 }
 
