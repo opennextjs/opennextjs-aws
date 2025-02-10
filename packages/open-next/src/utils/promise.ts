@@ -106,7 +106,12 @@ export function runWithOpenNextRequestContext<T>(
   {
     isISRRevalidation,
     waitUntil,
-  }: { isISRRevalidation: boolean; waitUntil?: WaitUntil },
+  }: {
+    // Whether we are in ISR revalidation
+    isISRRevalidation: boolean;
+    // Extends the liftetime of the runtime after the response is returned.
+    waitUntil?: WaitUntil;
+  },
   fn: () => Promise<T>,
 ): Promise<T> {
   return globalThis.__openNextAls.run(

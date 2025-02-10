@@ -7,11 +7,10 @@ import type {
   InternalResult,
   ResolvedRoute,
   RoutingResult,
-  StreamCreator,
-  WaitUntil,
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
+import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import { convertRes, createServerResponse } from "./routing/util";
@@ -30,10 +29,7 @@ patchAsyncStorage();
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
-  options?: {
-    streamCreator?: StreamCreator;
-    waitUntil?: WaitUntil;
-  },
+  options?: OpenNextHandlerOptions,
 ): Promise<InternalResult> {
   const initialHeaders = internalEvent.headers;
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer

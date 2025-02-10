@@ -11,12 +11,13 @@ import {
   convertBodyToReadableStream,
   convertToQueryString,
 } from "../core/routing/util";
+import type { OpenNextHandlerOptions } from "types/overrides";
 
 globalThis.__openNextAls = new AsyncLocalStorage();
 
 const defaultHandler = async (
   internalEvent: InternalEvent,
-  options?: { waitUntil?: WaitUntil },
+  options?: OpenNextHandlerOptions,
 ): Promise<InternalResult> => {
   globalThis.isEdgeRuntime = true;
 
