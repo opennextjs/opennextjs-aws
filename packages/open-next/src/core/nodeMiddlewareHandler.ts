@@ -29,9 +29,9 @@ export default async function middlewareHandler(
 ): Promise<Response> {
   if (!_module) {
     // We use await import here so that we are sure that it is loaded after AsyncLocalStorage is defined on globalThis
-    // TODO: We will probably need to change this at build time when used in a monorepo (or if the location changes)
+    // We need both await here, same way as in
     //@ts-expect-error - This file should be bundled with esbuild
-    _module = (await import("./.next/server/middleware.js")).default;
+    _module = await (await import("./.next/server/middleware.js")).default;
   }
   const adapterFn = _module!.default || _module;
   const result = await adapterFn({
