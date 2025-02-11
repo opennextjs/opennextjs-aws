@@ -29,7 +29,7 @@ export default async function middlewareHandler(
 ): Promise<Response> {
   if (!_module) {
     // We use await import here so that we are sure that it is loaded after AsyncLocalStorage is defined on globalThis
-    // We need both await here, same way as in
+    // We need both await here, same way as in https://github.com/opennextjs/opennextjs-aws/pull/704
     //@ts-expect-error - This file should be bundled with esbuild
     _module = await (await import("./.next/server/middleware.js")).default;
   }
