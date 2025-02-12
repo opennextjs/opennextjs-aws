@@ -66,14 +66,12 @@ declare global {
   // Needed in the cache adapter
   /**
    * The cache adapter for incremental static regeneration.
-   * Only available in main functions or in the external middleware with `enableCacheInterception` set to `true`.
-   * Defined in `createMainHandler` or in `adapter/middleware.ts`.
+   * Defined in `createMainHandler` and in `adapters/middleware.ts`.
    */
   var incrementalCache: IncrementalCache;
   /**
    * The cache adapter for the tag cache.
-   * Only available in main functions, the initializationFunction or in the external middleware with `enableCacheInterception` set to `true`.
-   * Defined in `createMainHandler` or in `adapter/middleware.ts`.
+   * Defined in `createMainHandler` and in `adapters/middleware.ts`.
    */
   var tagCache: TagCache;
   /**
@@ -107,7 +105,7 @@ declare global {
   /**
    * A boolean that indicates if the runtime is Edge.
    * Only available in `edge` runtime functions (i.e. external middleware or function with edge runtime).
-   * Defined in the `edge-adapter.ts`.
+   * Defined in `adapters/edge-adapter.ts`.
    */
   var isEdgeRuntime: true;
 
@@ -121,27 +119,27 @@ declare global {
   /**
    * The fetch function that should be used to make requests during the execution of the function.
    * Used to bypass Next intercepting and caching the fetch calls. Only available in main functions.
-   * Defined in the `server-adapter.ts` and in `adapters/middleware.ts`.
+   * Defined in `adapters/server-adapter.ts` and in `adapters/middleware.ts`.
    */
   var internalFetch: typeof fetch;
 
   /**
    * The Open Next configuration object.
    * Available in all functions.
-   * Defined in the `createMainHandler` or in the `createGenericHandler`.
+   * Defined in `createMainHandler` and in the `createGenericHandler`.
    */
   var openNextConfig: Partial<OpenNextConfig>;
 
   /**
    * The name of the function that is currently being executed.
    * Only available in main functions.
-   * Defined in the `createMainHandler`.
+   * Defined in `createMainHandler`.
    */
   var fnName: string | undefined;
   /**
    * The unique identifier of the server.
    * Only available in main functions.
-   * Defined in the `createMainHandler`.
+   * Defined in `createMainHandler`.
    */
   var serverId: string;
 
@@ -149,7 +147,7 @@ declare global {
    * The AsyncLocalStorage instance that is used to store the request context.
    * Only available in main, middleware and edge functions.
    * TODO: should be available everywhere in the future.
-   * Defined in `requestHandler.ts`, `middleware.ts` and `edge-adapter.ts`.
+   * Defined in `requestHandler.ts`, `adapters/middleware.ts` and `adapters/edge-adapter.ts`.
    */
   var __openNextAls: AsyncLocalStorage<OpenNextRequestContext>;
 
@@ -159,22 +157,26 @@ declare global {
    * Defined in the esbuild edge plugin.
    */
   var _ENTRIES: Entries;
+
   /**
    * The routes object that contains the routes that are available in the function.
    * Only available in edge runtime functions.
    * Defined in the esbuild edge plugin.
    */
   var _ROUTES: EdgeRoute[];
+
   /**
    * A map that is used in the edge runtime.
    * Only available in edge runtime functions.
    */
   var __storage__: Map<unknown, unknown>;
+
   /**
    * AsyncContext available globally in the edge runtime.
    * Only available in edge runtime functions.
    */
   var AsyncContext: any;
+
   /**
    * AsyncLocalStorage available globally in the edge runtime.
    * Only available in edge runtime functions.
@@ -192,8 +194,7 @@ declare global {
 
   /**
    * The queue that is used to handle ISR revalidation requests.
-   * Only available in main functions and in the external middleware with `enableCacheInterception` set to `true`.
-   * Defined in `createMainHandler` or in `adapter/middleware.ts`.
+   * Defined in `createMainHandler` and in `adapters/middleware.ts`.
    */
   var queue: Queue;
 
