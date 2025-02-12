@@ -66,20 +66,32 @@ declare global {
   // Needed in the cache adapter
   /**
    * The cache adapter for incremental static regeneration.
+   * Only available in main functions and in the external middleware when `enableCacheInterception` is `true`.
    * Defined in `createMainHandler` and in `adapters/middleware.ts`.
    */
   var incrementalCache: IncrementalCache;
+
   /**
    * The cache adapter for the tag cache.
+   * Only available in main functions and in the external middleware when `enableCacheInterception` is `true`.
    * Defined in `createMainHandler` and in `adapters/middleware.ts`.
    */
   var tagCache: TagCache;
+
+  /**
+   * The queue that is used to handle ISR revalidation requests.
+   * Only available in main functions and in the external middleware when `enableCacheInterception` is `true`.
+   * Defined in `createMainHandler` and in `adapters/middleware.ts`.
+   */
+  var queue: Queue;
+
   /**
    * A boolean that indicates if the DynamoDB cache is disabled.
    * @deprecated This will be removed, use `globalThis.openNextConfig.dangerous?.disableTagCache` instead.
    * Defined in esbuild banner for the cache adapter.
    */
   var disableDynamoDBCache: boolean;
+
   /**
    * A boolean that indicates if the incremental cache is disabled.
    * @deprecated This will be removed, use `globalThis.openNextConfig.dangerous?.disableIncrementalCache` instead.
@@ -190,12 +202,6 @@ declare global {
    * Defined in the esbuild banner.
    */
   var openNextVersion: string;
-
-  /**
-   * The queue that is used to handle ISR revalidation requests.
-   * Defined in `createMainHandler` and in `adapters/middleware.ts`.
-   */
-  var queue: Queue;
 
   /**
    * The function that is used when resolving external rewrite requests.
