@@ -17,7 +17,7 @@ type Options = {
  */
 export function getCrossPlatformPathRegex(
   regex: string,
-  { escape: shouldEscape = true, flags = "g" }: Options = {},
+  { escape: shouldEscape = true, flags = "" }: Options = {},
 ) {
   const newExpr = (
     shouldEscape ? regex.replace(/([[\]().*+?^$|{}\\])/g, "\\$1") : regex
