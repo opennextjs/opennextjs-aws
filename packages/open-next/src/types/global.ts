@@ -60,7 +60,7 @@ interface OpenNextRequestContext {
   pendingPromiseRunner: DetachedPromiseRunner;
   isISRRevalidation?: boolean;
   mergeHeadersPriority?: "middleware" | "handler";
-  // Last modified time of the page (used in main functions).
+  // Last modified time of the page (used in main functions, only available for ISR/SSG).
   lastModified?: number;
   waitUntil?: WaitUntil;
 }
