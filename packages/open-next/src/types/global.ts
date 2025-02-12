@@ -146,7 +146,6 @@ declare global {
   /**
    * The AsyncLocalStorage instance that is used to store the request context.
    * Only available in main, middleware and edge functions.
-   * TODO: should be available everywhere in the future.
    * Defined in `requestHandler.ts`, `adapters/middleware.ts` and `adapters/edge-adapter.ts`.
    */
   var __openNextAls: AsyncLocalStorage<OpenNextRequestContext>;
