@@ -55,10 +55,13 @@ export interface EdgeRoute {
 }
 
 interface OpenNextRequestContext {
+  // Unique ID for the request.
   requestId: string;
   pendingPromiseRunner: DetachedPromiseRunner;
   isISRRevalidation?: boolean;
   mergeHeadersPriority?: "middleware" | "handler";
+  // Last modified time of the page (used in main functions, only available for ISR/SSG).
+  lastModified?: number;
   waitUntil?: WaitUntil;
 }
 
@@ -98,14 +101,6 @@ declare global {
    * Defined in esbuild banner for the cache adapter.
    */
   var disableIncrementalCache: boolean;
-
-  /**
-   * An object that contains the last modified time of the pages.
-   * Only available in main functions.
-   * TODO: Integrate this directly in the AsyncLocalStorage context
-   * Defined in `createMainHandler`.
-   */
-  var lastModified: Record<string, number>;
 
   /**
    * A boolean that indicates if Next is V15 or higher.

@@ -49,7 +49,6 @@ describe("CacheHandler", () => {
 
   globalThis.__openNextAls = {
     getStore: vi.fn().mockReturnValue({
-      requestId: "123",
       pendingPromiseRunner: {
         withResolvers: vi.fn().mockReturnValue({
           resolve: vi.fn(),
@@ -69,8 +68,6 @@ describe("CacheHandler", () => {
       },
     };
     globalThis.isNextAfter15 = false;
-
-    globalThis.lastModified = {};
   });
 
   describe("get", () => {

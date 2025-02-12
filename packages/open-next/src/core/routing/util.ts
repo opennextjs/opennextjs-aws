@@ -289,12 +289,9 @@ export async function revalidateIfRequired(
     try {
       const hash = (str: string) =>
         crypto.createHash("md5").update(str).digest("hex");
-      const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
 
       const lastModified =
-        globalThis.lastModified[requestId] > 0
-          ? globalThis.lastModified[requestId]
-          : "";
+        globalThis.__openNextAls.getStore()?.lastModified ?? 0;
 
       // For some weird cases, lastModified is not set, haven't been able to figure out yet why
       // For those cases we add the etag to the deduplication id, it might help
@@ -321,15 +318,14 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       "private, no-cache, no-store, max-age=0, must-revalidate";
     return;
   }
-  const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
-  const _lastModified = globalThis.lastModified[requestId] ?? 0;
+  const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
   if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
     // calculate age
     const age = Math.round((Date.now() - _lastModified) / 1000);
     // extract s-maxage from cache-control
     const regex = /s-maxage=(\d+)/;
     const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
-    debug("cache-control", cacheControl, globalThis.lastModified, Date.now());
+    debug("cache-control", cacheControl, _lastModified, Date.now());
     if (typeof cacheControl !== "string") return;
     const match = cacheControl.match(regex);
     const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
