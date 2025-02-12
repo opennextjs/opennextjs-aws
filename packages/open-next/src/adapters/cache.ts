@@ -194,8 +194,10 @@ export default class Cache {
         return null;
       }
       const cacheData = cachedEntry?.value;
-      const requestId = globalThis.__openNextAls.getStore()?.requestId ?? "";
-      globalThis.lastModified[requestId] = _lastModified;
+      const store = globalThis.__openNextAls.getStore();
+      if (store) {
+        store.lastModified = _lastModified;
+      }
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,

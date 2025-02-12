@@ -648,8 +648,6 @@ describe("revalidateIfRequired", () => {
     globalThis.__openNextAls = {
       getStore: vi.fn(),
     };
-
-    globalThis.lastModified = {};
   });
 
   it("should not send to queue when x-nextjs-cache is not present", async () => {
@@ -692,12 +690,8 @@ describe("fixISRHeaders", () => {
     vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
     globalThis.__openNextAls = {
       getStore: () => ({
-        requestId: "123",
+        lastModified: new Date("2024-01-01T12:00:00Z").getTime(),
       }),
-    };
-
-    globalThis.lastModified = {
-      "123": new Date("2024-01-01T12:00:00Z").getTime(),
     };
   });
 

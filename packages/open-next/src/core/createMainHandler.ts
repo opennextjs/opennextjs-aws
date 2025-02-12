@@ -43,8 +43,6 @@ export async function createMainHandler() {
     thisFunction.override?.cdnInvalidation,
   );
 
-  globalThis.lastModified = {};
-
   // From the config, we create the converter
   const converter = await resolveConverter(thisFunction.override?.converter);
 

@@ -193,12 +193,6 @@ export async function openNextHandler(
         body,
         isBase64Encoded,
       };
-      const requestId = store?.requestId;
-
-      if (requestId) {
-        // reset lastModified. We need to do this to avoid memory leaks
-        delete globalThis.lastModified[requestId];
-      }
 
       return internalResult;
     },
