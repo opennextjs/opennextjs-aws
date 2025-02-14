@@ -14,8 +14,12 @@ import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
+import { applyCodePatches, type CodePatcher } from "./patch/codePatcher.js";
 
-export async function createServerBundle(options: buildHelper.BuildOptions) {
+export async function createServerBundle(
+  options: buildHelper.BuildOptions,
+  additionalCodePatches: CodePatcher[] = [],
+) {
   const { config } = options;
   const foundRoutes = new Set<string>();
   // Get all functions to build
@@ -36,7 +40,7 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     if (fnOptions.runtime === "edge") {
       await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, options, fnOptions);
+      await generateBundle(name, options, fnOptions, additionalCodePatches);
     }
   });
 
@@ -101,6 +105,7 @@ async function generateBundle(
   name: string,
   options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
+  additionalCodePatches: CodePatcher[] = [],
 ) {
   const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } =
     options;
@@ -152,14 +157,26 @@ async function generateBundle(
   // Copy env files
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
-  // Copy all necessary traced files
-  await copyTracedFiles({
+  // Copy all necessary traced files{
+  const { tracedFiles, manifests } = await copyTracedFiles({
     buildOutputPath: appBuildOutputPath,
     packagePath,
     outputDir: outputPath,
     routes: fnOptions.routes ?? ["app/page.tsx"],
     bundledNextServer: isBundled,
   });
+
+  await applyCodePatches(options, Array.from(tracedFiles), manifests, [
+    // TODO: create real code patchers here
+    {
+      name: "fakePatchChunks",
+      filter: /chunks\/\d*\.js/,
+      patchCode: async ({ code }) => {
+        return `console.log("patched chunk");\n${code}`;
+      },
+    },
+    ...additionalCodePatches,
+  ]);
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
