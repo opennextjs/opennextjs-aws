@@ -39,7 +39,6 @@
     "@aws-sdk/client-lambda": "^3.398.0",
     "@aws-sdk/client-s3": "^3.398.0",
     "@aws-sdk/client-sqs": "^3.398.0",
-    "@esbuild-plugins/node-resolve": "0.2.2",
     "@node-minify/core": "^8.0.6",
     "@node-minify/terser": "^8.0.6",
     "@tsconfig/node18": "^1.0.1",
@@ -48,7 +47,6 @@
     "esbuild": "0.19.2",
     "express": "5.0.1",
     "path-to-regexp": "^6.3.0",
-    "promise.series": "^0.2.0",
     "urlpattern-polyfill": "^10.0.0"
   },
   "devDependencies": {

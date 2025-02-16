@@ -9,30 +9,6 @@ catalogs:
     '@types/node':
       specifier: 20.17.6
       version: 20.17.6
-    '@types/react':
-      specifier: 19.0.0
-      version: 19.0.0
-    '@types/react-dom':
-      specifier: 19.0.0
-      version: 19.0.0
-    autoprefixer:
-      specifier: 10.4.15
-      version: 10.4.15
-    next:
-      specifier: 15.1.0
-      version: 15.1.0
-    postcss:
-      specifier: 8.4.27
-      version: 8.4.27
-    react:
-      specifier: 19.0.0
-      version: 19.0.0
-    react-dom:
-      specifier: 19.0.0
-      version: 19.0.0
-    tailwindcss:
-      specifier: 3.3.3
-      version: 3.3.3
     typescript:
       specifier: 5.6.3
       version: 5.6.3
@@ -219,9 +195,6 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.398.0
         version: 3.678.0(aws-crt@1.23.0)
-      '@esbuild-plugins/node-resolve':
-        specifier: 0.2.2
-        version: 0.2.2(esbuild@0.19.2)
       '@node-minify/core':
         specifier: ^8.0.6
         version: 8.0.6
@@ -246,9 +219,6 @@ importers:
       path-to-regexp:
         specifier: ^6.3.0
         version: 6.3.0
-      promise.series:
-        specifier: ^0.2.0
-        version: 0.2.0
       urlpattern-polyfill:
         specifier: ^10.0.0
         version: 10.0.0
@@ -962,11 +932,6 @@ packages:
     peerDependencies:
       '@envelop/core': ^3.0.6
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0
-
-  '@esbuild-plugins/node-resolve@0.2.2':
-    resolution: {integrity: sha512-+t5FdX3ATQlb53UFDBRb4nqjYBz492bIrnVWvpQHpzZlu9BQL5HasMZhqc409ygUwOWCXZhrWr6NyZ6T6Y+cxw==}
-    peerDependencies:
-      esbuild: '*'
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -2475,9 +2440,6 @@ packages:
   '@types/readable-stream@4.0.16':
     resolution: {integrity: sha512-Fvp+8OcU8PyV90KTk5tR/rI8OjD3MP5NUow5rjOsZo+9zxf4p4soJtK9j4V6yeG30TH6rZxqRaP4JLa8lNNTNQ==}
 
-  '@types/resolve@1.20.6':
-    resolution: {integrity: sha512-A4STmOXPhMUtHH+S6ymgE2GiBSMqf4oTvcQZMcHzokuTLVYzXTB8ttjcgxOVaAp2lGwEdzZ0J+cRbbeevQj1UQ==}
-
   '@types/send@0.17.4':
     resolution: {integrity: sha512-x2EM6TJOybec7c52BX0ZspPodMsQUd5L6PRwOunVyVUhXiBSKf3AezDL8Dgvgt5o0UfKNfuA0eMLr2wLT4AiBA==}
 
@@ -3303,10 +3265,6 @@ packages:
   escape-string-regexp@2.0.0:
     resolution: {integrity: sha512-UpzcLCXolUWcNu5HtVMHYdXJjArjsF9C0aNnquZYY4uW/Vu0miy5YoWvbV345HauVvcAUnpRuhMMcqTcGOY2+w==}
     engines: {node: '>=8'}
-
-  escape-string-regexp@4.0.0:
-    resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
-    engines: {node: '>=10'}
 
   esprima@4.0.1:
     resolution: {integrity: sha512-eGuFFw7Upda+g4p+QHvnW0RyTX/SVeJBDM/gCtMARO0cLuT2HcEKnTPvhjV6aGeqrCB/sbNop0Kszm0jsaWU4A==}
@@ -4496,10 +4454,6 @@ packages:
   process@0.11.10:
     resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
     engines: {node: '>= 0.6.0'}
-
-  promise.series@0.2.0:
-    resolution: {integrity: sha512-VWQJyU2bcDTgZw8kpfBpB/ejZASlCrzwz5f2hjb/zlujOEB4oeiAhHygAWq8ubsX2GVkD4kCU5V2dwOTaCY5EQ==}
-    engines: {node: '>=0.12'}
 
   promptly@3.2.0:
     resolution: {integrity: sha512-WnR9obtgW+rG4oUV3hSnNGl1pHm3V1H/qD9iJBumGSmVsSC5HpZOLuu8qdMb6yCItGfT7dcRszejr/5P3i9Pug==}
@@ -7433,16 +7387,6 @@ snapshots:
       lru-cache: 6.0.0
       tslib: 2.8.0
 
-  '@esbuild-plugins/node-resolve@0.2.2(esbuild@0.19.2)':
-    dependencies:
-      '@types/resolve': 1.20.6
-      debug: 4.3.7
-      esbuild: 0.19.2
-      escape-string-regexp: 4.0.0
-      resolve: 1.22.8
-    transitivePeerDependencies:
-      - supports-color
-
   '@esbuild/aix-ppc64@0.21.5':
     optional: true
 
@@ -8925,8 +8869,6 @@ snapshots:
       '@types/node': 20.17.6
       safe-buffer: 5.1.2
 
-  '@types/resolve@1.20.6': {}
-
   '@types/send@0.17.4':
     dependencies:
       '@types/mime': 1.3.5
@@ -9256,7 +9198,7 @@ snapshots:
 
   axios@1.7.7:
     dependencies:
-      follow-redirects: 1.15.9(debug@4.3.4)
+      follow-redirects: 1.15.9
       form-data: 4.0.1
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -9868,8 +9810,6 @@ snapshots:
 
   escape-string-regexp@2.0.0: {}
 
-  escape-string-regexp@4.0.0: {}
-
   esprima@4.0.1: {}
 
   estree-walker@3.0.3:
@@ -10083,6 +10023,8 @@ snapshots:
     dependencies:
       locate-path: 5.0.0
       path-exists: 4.0.0
+
+  follow-redirects@1.15.9: {}
 
   follow-redirects@1.15.9(debug@4.3.4):
     optionalDependencies:
@@ -11127,8 +11069,6 @@ snapshots:
   process-nextick-args@2.0.1: {}
 
   process@0.11.10: {}
-
-  promise.series@0.2.0: {}
 
   promptly@3.2.0:
     dependencies:
