@@ -1,10 +1,13 @@
-import * as buildHelper from "../helper.js";
 import * as fs from "node:fs/promises";
+import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 interface VersionedField<T> {
-  before?: `${number}.${number}.${number}`;
-  after?: `${number}.${number}.${number}`;
+  before?:
+    | `${number}`
+    | `${number}.${number}`
+    | `${number}.${number}.${number}`;
+  after?: `${number}` | `${number}.${number}` | `${number}.${number}.${number}`;
   field: T;
 }
 
@@ -22,7 +25,7 @@ type PatchCodeFn = (args: {
 
 export interface CodePatcher {
   name: string;
-  filter: RegExp | VersionedField<RegExp>[];
+  pathFilter: RegExp | VersionedField<RegExp>[];
   contentFilter?: RegExp | VersionedField<RegExp>[];
   patchCode: PatchCodeFn | VersionedField<PatchCodeFn>[];
 }
@@ -61,22 +64,22 @@ export async function applyCodePatches(
   manifests: Record<string, any>,
   codePatcher: CodePatcher[],
 ) {
+  const nextVersion = buildOptions.nextVersion;
   await Promise.all(
     tracedFiles.map(async (filePath) => {
-      const nextVersion = buildOptions.nextVersion;
       // We check the filename against the filter to see if we should apply the patch
-      const patchToPotentiallyApply = codePatcher.filter((patch) => {
-        const filters = Array.isArray(patch.filter)
-          ? extractVersionedField(patch.filter, nextVersion)
-          : [patch.filter];
+      const patchMatchingPath = codePatcher.filter((patch) => {
+        const filters = Array.isArray(patch.pathFilter)
+          ? extractVersionedField(patch.pathFilter, nextVersion)
+          : [patch.pathFilter];
         return filters.some((filter) => filePath.match(filter));
       });
-      if (patchToPotentiallyApply.length === 0) {
+      if (patchMatchingPath.length === 0) {
         return;
       }
       const content = await fs.readFile(filePath, "utf-8");
       // We filter a last time against the content this time
-      const patchToApply = patchToPotentiallyApply.filter((patch) => {
+      const patchToApply = patchMatchingPath.filter((patch) => {
         if (!patch.contentFilter) {
           return true;
         }
