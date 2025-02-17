@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 
 import fs from "node:fs";
 import path from "node:path";
-import { build } from "esbuild";
+import { type Plugin, build } from "esbuild";
 import type { MiddlewareInfo, MiddlewareManifest } from "types/next-types";
 import type {
   IncludedConverter,
@@ -37,6 +37,7 @@ interface BuildEdgeBundleOptions {
   additionalExternals?: string[];
   onlyBuildOnce?: boolean;
   name: string;
+  additionalPlugins: Plugin[];
 }
 
 export async function buildEdgeBundle({
@@ -51,6 +52,7 @@ export async function buildEdgeBundle({
   additionalExternals,
   onlyBuildOnce,
   name,
+  additionalPlugins,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
@@ -98,6 +100,7 @@ export async function buildEdgeBundle({
           ),
           isInCloudfare,
         }),
+        ...additionalPlugins,
       ],
       treeShaking: true,
       alias: {
@@ -173,6 +176,7 @@ export async function generateEdgeBundle(
   name: string,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
+  additionalPlugins: Plugin[] = [],
 ) {
   const { appBuildOutputPath, outputDir } = options;
   logger.info(`Generating edge bundle for: ${name}`);
@@ -234,5 +238,6 @@ export async function generateEdgeBundle(
     overrides: fnOptions.override,
     additionalExternals: options.config.edgeExternals,
     name,
+    additionalPlugins,
   });
 }
