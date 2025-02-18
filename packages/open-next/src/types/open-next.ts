@@ -404,7 +404,7 @@ export interface OpenNextConfig {
    * Supports only node runtime
    */
   initializationFunction?: DefaultFunctionOptions & {
-    tagCache?: "dynamodb" | LazyLoadedOverride<TagCache>;
+    tagCache?: IncludedTagCache | LazyLoadedOverride<TagCache>;
   };
 
   /**
