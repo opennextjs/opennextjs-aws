@@ -25,6 +25,7 @@ export async function compileTagCacheProvider(
           overrides: {
             converter: overrides?.converter ?? "dummy",
             wrapper: overrides?.wrapper,
+            tagCache: options.config.initializationFunction?.tagCache,
           },
         }),
       ],
