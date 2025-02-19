@@ -244,5 +244,5 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     ({ relativePath }) => !relativePath.endsWith(".cache"),
   );
 
-  return { useTagCache };
+  return { useTagCache, metaFiles };
 }
