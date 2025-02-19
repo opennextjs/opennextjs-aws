@@ -17,8 +17,10 @@
     "dev": "tsc -w"
   },
   "exports": {
-    "default": "./dist/*",
-    "types": "./dist/*.d.ts"
+    "./*": {
+      "default": "./dist/*",
+      "types": "./dist/*.d.ts"
+    }
   },
   "typesVersions": {
     "*": {
