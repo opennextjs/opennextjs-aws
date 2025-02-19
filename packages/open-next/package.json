@@ -22,13 +22,6 @@
       "types": "./dist/*.d.ts"
     }
   },
-  "typesVersions": {
-    "*": {
-      "*": [
-        "dist/*"
-      ]
-    }
-  },
   "keywords": [],
   "author": "",
   "files": [
