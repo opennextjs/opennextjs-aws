@@ -447,3 +447,9 @@ export interface OpenNextConfig {
    */
   edgeExternals?: string[];
 }
+
+export type TagCacheMetaFile = {
+  tag: { S: string };
+  path: { S: string };
+  revalidatedAt: { N: string };
+};
