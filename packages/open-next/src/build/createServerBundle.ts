@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 
+import type { Plugin } from "esbuild";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
@@ -14,8 +15,20 @@ import { copyTracedFiles } from "./copyTracedFiles.js";
 import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
+import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 
-export async function createServerBundle(options: buildHelper.BuildOptions) {
+interface CodeCustomization {
+  // These patches are meant to apply on user and next generated code
+  additionalCodePatches: CodePatcher[];
+  // These plugins are meant to apply during the esbuild bundling process.
+  // This will only apply to OpenNext code.
+  additionalPlugins: Plugin[];
+}
+
+export async function createServerBundle(
+  options: buildHelper.BuildOptions,
+  codeCustomization?: CodeCustomization,
+) {
   const { config } = options;
   const foundRoutes = new Set<string>();
   // Get all functions to build
@@ -36,7 +49,7 @@ export async function createServerBundle(options: buildHelper.BuildOptions) {
     if (fnOptions.runtime === "edge") {
       await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, options, fnOptions);
+      await generateBundle(name, options, fnOptions, codeCustomization);
     }
   });
 
@@ -101,6 +114,7 @@ async function generateBundle(
   name: string,
   options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
+  codeCustomization?: CodeCustomization,
 ) {
   const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } =
     options;
@@ -153,13 +167,27 @@ async function generateBundle(
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
-  await copyTracedFiles(
+  const { tracedFiles, manifests } = await copyTracedFiles(
     appBuildOutputPath,
     packagePath,
     outputPath,
     fnOptions.routes ?? ["app/page.tsx"],
     isBundled,
   );
+
+  const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
+
+  await applyCodePatches(options, Array.from(tracedFiles), manifests, [
+    // TODO: create real code patchers here
+    {
+      name: "fakePatchChunks",
+      pathFilter: /chunks\/\d+\.js/,
+      patchCode: async ({ code }) => {
+        return `console.log("patched chunk");\n${code}`;
+      },
+    },
+    ...additionalCodePatches,
+  ]);
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
@@ -178,6 +206,8 @@ async function generateBundle(
     buildHelper.compareSemver(options.nextVersion, "14.1") >= 0;
 
   const disableRouting = isBefore13413 || config.middleware?.external;
+
+  const additionalPlugins = codeCustomization?.additionalPlugins ?? [];
 
   const plugins = [
     openNextReplacementPlugin({
@@ -204,6 +234,7 @@ async function generateBundle(
       fnName: name,
       overrides,
     }),
+    ...additionalPlugins,
   ];
 
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
