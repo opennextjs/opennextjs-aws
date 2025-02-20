@@ -1,5 +1,46 @@
 # open-next
 
+## 3.5.0
+
+### Minor Changes
+
+- [#740](https://github.com/opennextjs/opennextjs-aws/pull/740) [`6ff03ec8d50ada5eb04de11b14ae670382707f30`](https://github.com/opennextjs/opennextjs-aws/commit/6ff03ec8d50ada5eb04de11b14ae670382707f30) Thanks [@vicb](https://github.com/vicb)! - refactor: lastModified moved to ALS
+
+  BREAKING CHANGE: `lastModified` is moved to ALS as a number from a global map indexed by `requestId`
+
+- [#733](https://github.com/opennextjs/opennextjs-aws/pull/733) [`b59027a5899d25dd5263d1a272b33ec23fb683d3`](https://github.com/opennextjs/opennextjs-aws/commit/b59027a5899d25dd5263d1a272b33ec23fb683d3) Thanks [@vicb](https://github.com/vicb)! - refactor: `waitUntil` passed around via ALS and `OpenNextHandler` signature has changed
+
+  BREAKING CHANGE: `waitUntil` is passed around via ALS to fix #713.
+
+  `globalThis.openNextWaitUntil` is no more available, you can access `waitUntil`
+  on the ALS context: `globalThis.__openNextAls.getStore()`
+
+  The `OpenNextHandler` signature has changed: the second parameter was a `StreamCreator`.
+  It was changed to be of type `OpenNextHandlerOptions` which has both a `streamCreator` key
+  and a `waitUntil` key.
+
+  If you use a custom wrapper, you need to update the call to the handler as follow:
+
+  ```ts
+  // before
+  globalThis.openNextWaitUntil = myWaitUntil;
+  handler(internalEvent, myStreamCreator);
+
+  // after
+  handler(internalEvent, {
+    streamCreator: myStreamCreator,
+    waitUntil: myWaitUntil,
+  });
+  ```
+
+### Patch Changes
+
+- [#727](https://github.com/opennextjs/opennextjs-aws/pull/727) [`867defe3ceacdd1079594202eae1f82391bdcd89`](https://github.com/opennextjs/opennextjs-aws/commit/867defe3ceacdd1079594202eae1f82391bdcd89) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - add and expose new `CachedFetchValue` type
+
+- [#745](https://github.com/opennextjs/opennextjs-aws/pull/745) [`ab7466f443178f3e6e0df512fd990e526ea516e7`](https://github.com/opennextjs/opennextjs-aws/commit/ab7466f443178f3e6e0df512fd990e526ea516e7) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: tagCache in initializationFunction
+
+  Add correct typing to tagCache in initializationFunction and also adds it to the `overrides` in `compileTagCacheProvider` function.
+
 ## 3.4.2
 
 ### Patch Changes
