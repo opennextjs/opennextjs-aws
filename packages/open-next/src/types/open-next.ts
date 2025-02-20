@@ -343,8 +343,8 @@ export interface OpenNextConfig {
    * @default undefined
    */
   middleware?: DefaultFunctionOptions & {
-    //We force the middleware to be a function
-    external: true;
+    // Force the middleware to be a function when `true` (default to `false`)
+    external?: boolean;
 
     /**
      * The override options for the middleware.
