@@ -148,6 +148,7 @@ export type IncludedIncrementalCache =
 export type IncludedTagCache =
   | "dynamodb"
   | "dynamodb-lite"
+  | "dynamodb-nextMode"
   | "fs-dev"
   | "dummy";
 

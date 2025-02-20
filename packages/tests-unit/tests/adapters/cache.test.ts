@@ -32,6 +32,8 @@ describe("CacheHandler", () => {
 
   const tagCache = {
     name: "mock",
+    mode: "original",
+    hasBeenRevalidated: vi.fn(),
     getByTag: vi.fn(),
     getByPath: vi.fn(),
     getLastModified: vi
@@ -140,6 +142,17 @@ describe("CacheHandler", () => {
           expect(result).toBeNull();
         });
 
+        it("Should return null with nextMode tag cache that has been revalidated", async () => {
+          tagCache.mode = "nextMode";
+          tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
+
+          const result = await cache.get("key", { kind: "FETCH" });
+          expect(getFetchCacheSpy).toHaveBeenCalled();
+          expect(result).toBeNull();
+          // Reset the tagCache mode
+          tagCache.mode = "original";
+        });
+
         it("Should return null when incremental cache throws", async () => {
           incrementalCache.get.mockRejectedValueOnce(
             new Error("Error retrieving cache"),
@@ -176,6 +189,24 @@ describe("CacheHandler", () => {
 
         expect(getIncrementalCache).toHaveBeenCalled();
         expect(result).toBeNull();
+      });
+
+      it("Should return null with nextMode tag cache that has been revalidated", async () => {
+        tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "route",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(result).toBeNull();
+        // Reset the tagCache mode
+        tagCache.mode = "original";
       });
 
       it("Should return value when cache data type is route", async () => {
@@ -545,6 +576,40 @@ describe("CacheHandler", () => {
       ]);
 
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
+    it("Should only call writeTags for nextMode", async () => {
+      globalThis.tagCache.mode = "nextMode";
+      await cache.revalidateTag(["tag1", "tag2"]);
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
+    it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {
+      globalThis.tagCache.mode = "nextMode";
+      globalThis.tagCache.getPathsByTags = vi
+        .fn()
+        .mockResolvedValueOnce(["/path"]);
+      await cache.revalidateTag("tag");
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith(["tag"]);
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/path",
+          rawPath: "/path",
+          resolvedRoutes: [
+            {
+              type: "app",
+              route: "/path",
+            },
+          ],
+        },
+      ]);
+      // Reset the getPathsByTags
+      globalThis.tagCache.getPathsByTags = undefined;
     });
   });
 });
