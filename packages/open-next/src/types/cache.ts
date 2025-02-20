@@ -75,3 +75,9 @@ export interface Meta {
   headers?: Record<string, undefined | string | string[]>;
   postponed?: string;
 }
+
+export type TagCacheMetaFile = {
+  tag: { S: string };
+  path: { S: string };
+  revalidatedAt: { N: string };
+};
