@@ -168,7 +168,7 @@ export async function cacheInterceptor(
         const _hasBeenRevalidated = await hasBeenRevalidated(
           localizedPath,
           tags,
-          cachedData.lastModified,
+          cachedData,
         );
         if (_hasBeenRevalidated) {
           return event;

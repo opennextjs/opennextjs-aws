@@ -1,13 +1,22 @@
-import type { CacheValue } from "types/overrides";
+import type { CacheValue, WithLastModified } from "types/overrides";
 
 export async function hasBeenRevalidated(
   key: string,
   tags: string[],
-  lastModified?: number,
+  cacheEntry: WithLastModified<CacheValue<any>>,
 ): Promise<boolean> {
   if (globalThis.openNextConfig.dangerous?.disableTagCache) {
     return false;
   }
+  const value = cacheEntry.value;
+  if (!value) {
+    // We should never reach this point
+    return true;
+  }
+  if ("type" in cacheEntry && cacheEntry.type === "page") {
+    return false;
+  }
+  const lastModified = cacheEntry.lastModified ?? Date.now();
   if (globalThis.tagCache.mode === "nextMode") {
     return await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
   }

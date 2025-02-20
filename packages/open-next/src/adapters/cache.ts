@@ -66,7 +66,7 @@ export default class Cache {
       const _hasBeenRevalidated = await hasBeenRevalidated(
         key,
         _tags,
-        cachedEntry?.lastModified,
+        cachedEntry,
       );
 
       if (_hasBeenRevalidated) return null;
@@ -85,7 +85,7 @@ export default class Cache {
           const hasPathBeenUpdated = await hasBeenRevalidated(
             path.replace("_N_T_/", ""),
             [],
-            cachedEntry.lastModified,
+            cachedEntry,
           );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
@@ -121,7 +121,7 @@ export default class Cache {
       const _hasBeenRevalidated = await hasBeenRevalidated(
         key,
         tags,
-        _lastModified,
+        cachedEntry,
       );
       if (cacheData === undefined || _hasBeenRevalidated) return null;
 

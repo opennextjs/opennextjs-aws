@@ -97,6 +97,7 @@ export type TagCacheMetaFile = {
   path: { S: string };
   revalidatedAt: { N: string };
 };
+
 export type IncrementalCacheContext = {
   revalidate?: number | false | undefined;
   fetchCache?: boolean | undefined;
