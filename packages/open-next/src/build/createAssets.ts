@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import logger from "../logger.js";
+import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
 import * as buildHelper from "./helper.js";
 
@@ -55,7 +56,7 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
  * Create the cache assets.
  *
  * @param options Build options.
- * @returns Whether tag cache is used.
+ * @returns Whether the tag cache is used, and the meta files collected.
  */
 export function createCacheAssets(options: buildHelper.BuildOptions) {
   logger.info("Bundling cache assets...");
@@ -157,11 +158,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   });
 
   // We need to traverse the cache to find every .meta file
-  const metaFiles: {
-    tag: { S: string };
-    path: { S: string };
-    revalidatedAt: { N: string };
-  }[] = [];
+  const metaFiles: TagCacheMetaFile[] = [];
 
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
@@ -244,5 +241,5 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     ({ relativePath }) => !relativePath.endsWith(".cache"),
   );
 
-  return { useTagCache };
+  return { useTagCache, metaFiles };
 }
