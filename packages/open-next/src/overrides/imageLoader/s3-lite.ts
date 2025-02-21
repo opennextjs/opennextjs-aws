@@ -3,7 +3,7 @@ import type { ReadableStream } from "node:stream/web";
 import { AwsClient } from "aws4fetch";
 
 import type { ImageLoader } from "types/overrides";
-import { FatalError, IgnorableError, RecoverableError } from "utils/error";
+import { FatalError } from "utils/error";
 
 let awsClient: AwsClient | null = null;
 
@@ -55,10 +55,10 @@ const s3Loader: ImageLoader = {
     );
 
     if (response.status === 404) {
-      throw new IgnorableError("The specified key does not exist.");
+      throw new FatalError("The specified key does not exist.");
     }
     if (response.status !== 200) {
-      throw new RecoverableError(
+      throw new FatalError(
         `Failed to get image. Status code: ${response.status}`,
       );
     }
