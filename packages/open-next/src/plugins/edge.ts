@@ -12,6 +12,7 @@ import {
   loadBuildId,
   loadConfig,
   loadConfigHeaders,
+  loadFunctionsConfigManifest,
   loadHtmlPages,
   loadMiddlewareManifest,
   loadPrerenderManifest,
@@ -166,6 +167,7 @@ ${contents}
           const MiddlewareManifest = loadMiddlewareManifest(nextDir);
           const AppPathsManifest = loadAppPathsManifest(nextDir);
           const AppPathRoutesManifest = loadAppPathRoutesManifest(nextDir);
+          const FunctionsConfigManifest = loadFunctionsConfigManifest(nextDir);
 
           const contents = `
   import path from "node:path";
@@ -189,6 +191,7 @@ ${contents}
   export const MiddlewareManifest = ${JSON.stringify(MiddlewareManifest)};
   export const AppPathsManifest = ${JSON.stringify(AppPathsManifest)};
   export const AppPathRoutesManifest = ${JSON.stringify(AppPathRoutesManifest)};
+  export const FunctionsConfigManifest = ${JSON.stringify(FunctionsConfigManifest)};
 
 
   process.env.NEXT_BUILD_ID = BuildId;
