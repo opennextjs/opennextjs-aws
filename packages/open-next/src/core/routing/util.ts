@@ -165,7 +165,7 @@ export function getMiddlewareMatch(
   middlewareManifest: MiddlewareManifest,
   functionsManifest?: FunctionsConfigManifest,
 ) {
-  if (functionsManifest) {
+  if (functionsManifest?.functions?.["/_middleware"]) {
     return (
       functionsManifest.functions["/_middleware"].matchers?.map(
         ({ regexp }) => new RegExp(regexp),
