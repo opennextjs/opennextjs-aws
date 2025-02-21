@@ -66,6 +66,7 @@ function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
 }
 
 const tagCache: TagCache = {
+  mode: "original",
   async getByPath(path) {
     try {
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {

@@ -14,6 +14,7 @@ let tags = JSON.parse(tagContent) as {
 
 const tagCache: TagCache = {
   name: "fs-dev",
+  mode: "original",
   getByPath: async (path: string) => {
     return tags
       .filter((tagPathMapping) => tagPathMapping.path.S === path)
