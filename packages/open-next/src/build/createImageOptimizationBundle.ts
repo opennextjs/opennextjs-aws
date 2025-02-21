@@ -89,6 +89,7 @@ export async function createImageOptimizationBundle(
           "const require = topLevelCreateRequire(import.meta.url);",
           "import bannerUrl from 'url';",
           "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+          "globalThis.internalFetch = fetch;",
         ].join("\n"),
       },
     },
