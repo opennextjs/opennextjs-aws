@@ -113,9 +113,9 @@ export default class Cache {
         return null;
       }
 
-      const cacheData = cachedEntry?.value;
+      const cacheData = cachedEntry.value;
 
-      const meta = cacheData?.meta;
+      const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
@@ -123,7 +123,7 @@ export default class Cache {
         tags,
         cachedEntry,
       );
-      if (cacheData === undefined || _hasBeenRevalidated) return null;
+      if (_hasBeenRevalidated) return null;
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
@@ -400,6 +400,8 @@ export default class Cache {
     }
   }
 
+  // TODO: We should delete/update tags in this method
+  // This will require an update to the tag cache interface
   private async updateTagsOnSet(
     key: string,
     data?: IncrementalCacheValue,
@@ -407,11 +409,12 @@ export default class Cache {
   ) {
     if (
       globalThis.openNextConfig.dangerous?.disableTagCache ||
-      globalThis.tagCache.mode === "nextMode"
+      globalThis.tagCache.mode === "nextMode" ||
+      // Here it means it's a delete
+      !data
     ) {
       return;
     }
-
     // Write derivedTags to the tag cache
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
     const derivedTags: string[] =
