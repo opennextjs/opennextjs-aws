@@ -3,10 +3,13 @@ import type { ReadableStream } from "node:stream/web";
 import { AwsClient } from "aws4fetch";
 
 import type { ImageLoader } from "types/overrides";
-import { FatalError } from "utils/error";
-import { customFetchClient } from "utils/fetch";
+import { FatalError, IgnorableError, RecoverableError } from "utils/error";
 
 let awsClient: AwsClient | null = null;
+
+const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
+const BUCKET_REGION =
+  process.env.BUCKET_REGION ?? process.env.AWS_DEFAULT_REGION;
 
 const getAwsClient = () => {
   if (awsClient) {
@@ -16,27 +19,25 @@ const getAwsClient = () => {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
     sessionToken: process.env.AWS_SESSION_TOKEN,
-    region: process.env.BUCKET_REGION,
+    region: BUCKET_REGION,
   });
   return awsClient;
 };
 
-const { BUCKET_NAME, BUCKET_KEY_PREFIX, BUCKET_REGION } = process.env;
-
 function ensureEnvExists() {
-  if (!(BUCKET_NAME || BUCKET_REGION || BUCKET_KEY_PREFIX)) {
-    throw new Error("Bucket name, region and key prefix must be defined!");
+  if (!(BUCKET_NAME || BUCKET_KEY_PREFIX || BUCKET_REGION)) {
+    throw new FatalError("Bucket name, region and key prefix must be defined!");
   }
 }
 
 const awsFetch = async (key: string, options: RequestInit) => {
   const client = getAwsClient();
   const url = `https://${BUCKET_NAME}.s3.${BUCKET_REGION}.amazonaws.com/${key}`;
-  return customFetchClient(client)(url, options);
+  return client.fetch(url, options);
 };
 
 const s3Loader: ImageLoader = {
-  name: "s3",
+  name: "s3-lite",
   load: async (key: string) => {
     ensureEnvExists();
     const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
@@ -48,6 +49,15 @@ const s3Loader: ImageLoader = {
         method: "GET",
       },
     );
+
+    if (response.status === 404) {
+      throw new IgnorableError("The specified key does not exist.");
+    }
+    if (response.status !== 200) {
+      throw new RecoverableError(
+        `Failed to get image. Status code: ${response.status}`,
+      );
+    }
 
     if (!response.body) {
       throw new FatalError("No body in aws4fetch s3 response");
