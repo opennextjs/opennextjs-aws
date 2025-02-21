@@ -151,7 +151,12 @@ export type IncludedTagCache =
   | "fs-dev"
   | "dummy";
 
-export type IncludedImageLoader = "s3" | "host" | "fs-dev" | "dummy";
+export type IncludedImageLoader =
+  | "s3"
+  | "s3-lite"
+  | "host"
+  | "fs-dev"
+  | "dummy";
 
 export type IncludedOriginResolver = "pattern-env" | "dummy";
 
