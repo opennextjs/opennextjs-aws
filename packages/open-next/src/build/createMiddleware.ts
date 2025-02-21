@@ -54,7 +54,6 @@ export async function createMiddleware(
         .catch(() => '{"functions":{}}'),
     ) as FunctionsConfigManifest;
 
-    // TODO: Handle external node middleware in the future
     if (functionsConfigManifest?.functions["/_middleware"]) {
       if (!config.middleware?.external) {
         // If we are here, it means that we are using a node middleware
