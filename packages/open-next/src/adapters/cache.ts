@@ -295,22 +295,8 @@ export default class Cache {
             break;
         }
       }
-      if (
-        globalThis.openNextConfig.dangerous?.disableTagCache ||
-        globalThis.tagCache.mode === "nextMode"
-      ) {
-        return;
-      }
-      // Write derivedTags to dynamodb
-      // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
-      const derivedTags: string[] =
-        data?.kind === "FETCH"
-          ? (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
-          : data?.kind === "PAGE"
-            ? (data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
-            : [];
-      debug("derivedTags", derivedTags);
-      await this.updateTagsOnSet(key, derivedTags);
+
+      await this.updateTagsOnSet(key, data, ctx);
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
@@ -414,13 +400,28 @@ export default class Cache {
     }
   }
 
-  private async updateTagsOnSet(key: string, derivedTags: string[]) {
+  private async updateTagsOnSet(
+    key: string,
+    data?: IncrementalCacheValue,
+    ctx?: IncrementalCacheContext,
+  ) {
     if (
       globalThis.openNextConfig.dangerous?.disableTagCache ||
       globalThis.tagCache.mode === "nextMode"
     ) {
       return;
     }
+
+    // Write derivedTags to the tag cache
+    // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
+    const derivedTags: string[] =
+      data?.kind === "FETCH"
+        ? (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
+        : data?.kind === "PAGE"
+          ? (data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
+          : [];
+    debug("derivedTags", derivedTags);
+
     // Get all tags stored in dynamodb for the given key
     // If any of the derived tags are not stored in dynamodb for the given key, write them
     const storedTags = await globalThis.tagCache.getByPath(key);
