@@ -8,8 +8,12 @@ import { FatalError, IgnorableError, RecoverableError } from "utils/error";
 let awsClient: AwsClient | null = null;
 
 const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
+// https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime
+// If AWS_REGION is defined it will override AWS_DEFAULT_REGION
 const BUCKET_REGION =
-  process.env.BUCKET_REGION ?? process.env.AWS_DEFAULT_REGION;
+  process.env.BUCKET_REGION ??
+  process.env.AWS_REGION ??
+  process.env.AWS_DEFAULT_REGION;
 
 const getAwsClient = () => {
   if (awsClient) {
