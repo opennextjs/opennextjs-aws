@@ -51,7 +51,7 @@ export async function createMiddleware(
     const functionsConfigManifest = JSON.parse(
       await fsAsync
         .readFile(functionsConfigManifestPath, "utf8")
-        .catch(() => "{}"),
+        .catch(() => '{"functions":{}}'),
     ) as FunctionsConfigManifest;
 
     // TODO: Handle external node middleware in the future
