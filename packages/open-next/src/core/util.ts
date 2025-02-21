@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import {
   AppPathsManifestKeys,
   NextConfig,
@@ -8,7 +5,6 @@ import {
 } from "config/index.js";
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
-import type { MiddlewareManifest } from "types/next-types.js";
 
 import { debug } from "../adapters/logger.js";
 import {
@@ -62,18 +58,6 @@ export const requestHandler = new NextServer.default({
   dev: false,
   dir: __dirname,
 }).getRequestHandler();
-
-export function getMiddlewareMatch(middlewareManifest: MiddlewareManifest) {
-  const rootMiddleware = middlewareManifest.middleware["/"];
-  if (!rootMiddleware?.matchers) return [];
-  return rootMiddleware.matchers.map(({ regexp }) => new RegExp(regexp));
-}
-
-export function loadMiddlewareManifest(nextDir: string) {
-  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
-  const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as MiddlewareManifest;
-}
 
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {
