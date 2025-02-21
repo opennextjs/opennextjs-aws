@@ -1,11 +1,10 @@
-import { AwsClient } from "aws4fetch";
 import { Readable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
+import { AwsClient } from "aws4fetch";
 
 import type { ImageLoader } from "types/overrides";
 import { FatalError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
-
 
 let awsClient: AwsClient | null = null;
 
@@ -36,16 +35,15 @@ const awsFetch = async (key: string, options: RequestInit) => {
   return customFetchClient(client)(url, options);
 };
 
-
 const s3Loader: ImageLoader = {
   name: "s3",
   load: async (key: string) => {
     ensureEnvExists();
     const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
     const response = await awsFetch(
-     keyPrefix
-          ? `${keyPrefix}/${key.replace(/^\//, "")}`
-          : key.replace(/^\//, ""),
+      keyPrefix
+        ? `${keyPrefix}/${key.replace(/^\//, "")}`
+        : key.replace(/^\//, ""),
       {
         method: "GET",
       },
