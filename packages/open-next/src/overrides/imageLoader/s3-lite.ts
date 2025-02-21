@@ -24,7 +24,7 @@ const getAwsClient = () => {
 const { BUCKET_NAME, BUCKET_KEY_PREFIX, BUCKET_REGION } = process.env;
 
 function ensureEnvExists() {
-  if (!BUCKET_NAME || !BUCKET_REGION || BUCKET_KEY_PREFIX) {
+  if (!(BUCKET_NAME || BUCKET_REGION || BUCKET_KEY_PREFIX)) {
     throw new Error("Bucket name, region and key prefix must be defined!");
   }
 }
