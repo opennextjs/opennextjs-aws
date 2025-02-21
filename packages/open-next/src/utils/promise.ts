@@ -122,8 +122,14 @@ export function runWithOpenNextRequestContext<T>(
     },
     async () => {
       provideNextAfterProvider();
-      const result = await fn();
-      await awaitAllDetachedPromise();
+      let result: T;
+      try {
+        result = await fn();
+        // We always await all detached promises before returning the result
+        // However we don't want to catch errors here, we want to let the parent handle it
+      } finally {
+        await awaitAllDetachedPromise();
+      }
       return result;
     },
   );

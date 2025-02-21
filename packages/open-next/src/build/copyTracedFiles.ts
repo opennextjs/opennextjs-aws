@@ -15,6 +15,7 @@ import path from "node:path";
 import type { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";
+import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -143,11 +144,11 @@ File ${fullFilePath} does not exist
     }
   };
 
-  if (existsSync(path.join(dotNextDir, "server/middleware.js.nft.json"))) {
+  if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
     copyFileSync(
-      path.join(dotNextDir, "server/middleware.js.nft.json"),
-      path.join(standaloneNextDir, "server/middleware.js.nft.json"),
+      path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
+      path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
     );
     computeCopyFilesForPage("middleware");
   }

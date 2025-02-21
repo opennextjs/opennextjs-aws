@@ -101,10 +101,10 @@ export async function buildExternalNodeMiddleware(
       ],
       banner: {
         js: [
-          `globalThis.monorepoPackagePath = "${packagePath}";`,
+          `globalThis.monorepoPackagePath = '${packagePath}';`,
           "import process from 'node:process';",
           "import { Buffer } from 'node:buffer';",
-          "import {AsyncLocalStorage} from 'node:async_hooks';",
+          "import { AsyncLocalStorage } from 'node:async_hooks';",
           "import { createRequire as topLevelCreateRequire } from 'module';",
           "const require = topLevelCreateRequire(import.meta.url);",
           "import bannerUrl from 'url';",

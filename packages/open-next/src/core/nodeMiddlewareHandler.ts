@@ -39,7 +39,6 @@ export default async function middlewareHandler(
     request: request,
     page: "middleware",
   });
-  // Not sure if we should await it here or defer to the global als
   globalThis.__openNextAls
     .getStore()
     ?.pendingPromiseRunner.add(result.waitUntil);

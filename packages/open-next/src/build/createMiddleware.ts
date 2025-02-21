@@ -51,7 +51,7 @@ export async function createMiddleware(
     const functionsConfigManifest = JSON.parse(
       await fsAsync
         .readFile(functionsConfigManifestPath, "utf8")
-        .catch(() => '{"functions":{}}'),
+        .catch(() => '{"functions":{}, "version": 1}'),
     ) as FunctionsConfigManifest;
 
     if (functionsConfigManifest?.functions["/_middleware"]) {
