@@ -135,6 +135,6 @@ export function loadFunctionsConfigManifest(nextDir: string) {
     const json = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(json) as FunctionsConfigManifest;
   } catch (e) {
-    return;
+    return { functions: {}, version: 1 };
   }
 }
