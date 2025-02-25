@@ -174,7 +174,7 @@ export default async function routingHandler(
     internalEvent = {
       ...internalEvent,
       rawPath: "/404",
-      url: "/404",
+      url: new URL("/404", new URL(internalEvent.url)).href,
       headers: {
         ...internalEvent.headers,
         "x-middleware-response-cache-control":

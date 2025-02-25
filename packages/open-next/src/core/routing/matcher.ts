@@ -245,7 +245,10 @@ export function handleRewrites<T extends RewriteDefinition>(
     internalEvent: {
       ...event,
       rawPath: rewrittenUrl,
-      url: `${rewrittenUrl}${convertToQueryString(finalQuery)}`,
+      url: new URL(
+        `${rewrittenUrl}${convertToQueryString(finalQuery)}`,
+        new URL(event.url),
+      ).href,
     },
     __rewrite: rewrite,
     isExternalRewrite,
@@ -365,7 +368,10 @@ export function fixDataPage(
       ...internalEvent,
       rawPath: newPath,
       query,
-      url: `${newPath}${convertToQueryString(query)}`,
+      url: new URL(
+        `${newPath}${convertToQueryString(query)}`,
+        new URL(internalEvent.url),
+      ).href,
     };
   }
   return internalEvent;
@@ -397,7 +403,7 @@ export function handleFallbackFalse(
       event: {
         ...internalEvent,
         rawPath: "/404",
-        url: "/404",
+        url: new URL("/404", new URL(internalEvent.url)).href,
         headers: {
           ...internalEvent.headers,
           "x-invoke-status": "404",

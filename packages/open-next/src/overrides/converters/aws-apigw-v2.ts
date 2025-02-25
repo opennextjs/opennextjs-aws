@@ -75,13 +75,14 @@ async function convertFromAPIGatewayProxyEventV2(
   event: APIGatewayProxyEventV2,
 ): Promise<InternalEvent> {
   const { rawPath, rawQueryString, requestContext } = event;
+  const headers = normalizeAPIGatewayProxyEventV2Headers(event);
   return {
     type: "core",
     method: requestContext.http.method,
     rawPath,
-    url: rawPath + (rawQueryString ? `?${rawQueryString}` : ""),
+    url: `https://${headers.host ?? "on"}${rawPath}${rawQueryString ? `?${rawQueryString}` : ""}`,
     body: normalizeAPIGatewayProxyEventV2Body(event),
-    headers: normalizeAPIGatewayProxyEventV2Headers(event),
+    headers,
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
     cookies:

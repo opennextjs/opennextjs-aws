@@ -16,7 +16,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/",
+      url: "http://on/",
       rawPath: "/",
       method: "GET",
       headers: {
@@ -44,7 +44,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path",
+      url: "http://localhost/path",
       rawPath: "/path",
       method: "GET",
       headers: {
@@ -71,7 +71,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path",
+      url: "http://on/path",
       rawPath: "/path",
       method: "GET",
       headers: {
@@ -99,7 +99,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path",
+      url: "http://on/path",
       rawPath: "/path",
       method: "GET",
       headers: {
@@ -128,7 +128,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path?search=1",
+      url: "http://localhost/path?search=1",
       rawPath: "/path",
       method: "GET",
       headers: {
@@ -161,7 +161,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path",
+      url: "http://on/path",
       rawPath: "/path",
       method: "POST",
       headers: {
@@ -195,7 +195,7 @@ describe("convertFrom", () => {
 
     expect(result).toEqual({
       type: "core",
-      url: "/path",
+      url: "http://on/path",
       rawPath: "/path",
       method: "PUT",
       headers: {

@@ -16,13 +16,13 @@ const converter: Converter = {
       });
     });
 
-    const url = new URL(req.url!, `http://${req.headers.host}`);
+    const url = new URL(req.url!, `http://${req.headers.host ?? "on"}`);
     const query = Object.fromEntries(url.searchParams.entries());
     return {
       type: "core",
       method: req.method ?? "GET",
       rawPath: url.pathname,
-      url: url.pathname + url.search,
+      url: url.href,
       body,
       headers: Object.fromEntries(
         Object.entries(req.headers ?? {})

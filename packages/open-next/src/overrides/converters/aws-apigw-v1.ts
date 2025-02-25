@@ -57,13 +57,14 @@ async function convertFromAPIGatewayProxyEvent(
   event: APIGatewayProxyEvent,
 ): Promise<InternalEvent> {
   const { path, body, httpMethod, requestContext, isBase64Encoded } = event;
+  const headers = normalizeAPIGatewayProxyEventHeaders(event);
   return {
     type: "core",
     method: httpMethod,
     rawPath: path,
-    url: path + normalizeAPIGatewayProxyEventQueryParams(event),
+    url: `https://${headers.host ?? "on"}${path}${normalizeAPIGatewayProxyEventQueryParams(event)}`,
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
-    headers: normalizeAPIGatewayProxyEventHeaders(event),
+    headers,
     remoteAddress: requestContext.identity.sourceIp,
     query: removeUndefinedFromQuery(
       event.multiValueQueryStringParameters ?? {},

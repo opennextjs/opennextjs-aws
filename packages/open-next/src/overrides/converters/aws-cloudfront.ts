@@ -82,23 +82,29 @@ function normalizeCloudFrontRequestEventHeaders(
 async function convertFromCloudFrontRequestEvent(
   event: CloudFrontRequestEvent,
 ): Promise<InternalEvent> {
-  const { method, uri, querystring, body, headers, clientIp } =
-    event.Records[0].cf.request;
-
+  const {
+    method,
+    uri,
+    querystring,
+    body,
+    headers: cfHeaders,
+    clientIp,
+  } = event.Records[0].cf.request;
+  const headers = normalizeCloudFrontRequestEventHeaders(cfHeaders);
   return {
     type: "core",
     method,
     rawPath: uri,
-    url: uri + (querystring ? `?${querystring}` : ""),
+    url: `https://${headers.host ?? "on"}${uri}${querystring ? `?${querystring}` : ""}`,
     body: Buffer.from(
       body?.data ?? "",
       body?.encoding === "base64" ? "base64" : "utf8",
     ),
-    headers: normalizeCloudFrontRequestEventHeaders(headers),
+    headers,
     remoteAddress: clientIp,
     query: convertToQuery(querystring),
     cookies:
-      headers.cookie?.reduce(
+      cfHeaders.cookie?.reduce(
         (acc, cur) => {
           const { key = "", value } = cur;
           acc[key] = value;

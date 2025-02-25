@@ -90,7 +90,7 @@ const defaultHandler = async (
             internalEvent: {
               ...result.internalEvent,
               rawPath: "/500",
-              url: "/500",
+              url: new URL("/500", new URL(result.internalEvent.url)).href,
               method: "GET",
             },
             // On error we need to rewrite to the 500 page which is an internal rewrite
