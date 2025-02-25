@@ -92,7 +92,7 @@ export function constructNextUrl(baseUrl: string, path: string) {
 export function extractHostFromHeaders(
   headers: Record<string, string>,
 ): string {
-  return headers["x-forwarded-host"] ?? headers.on ?? "on";
+  return headers["x-forwarded-host"] ?? headers.host ?? "on";
 }
 
 /**
