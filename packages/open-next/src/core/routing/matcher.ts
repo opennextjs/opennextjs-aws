@@ -14,6 +14,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import {
+  constructNextUrl,
   convertFromQueryString,
   convertToQueryString,
   escapeRegex,
@@ -171,7 +172,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
 ) {
-  const { rawPath, headers, query, cookies } = event;
+  const { rawPath, headers, query, cookies, url } = event;
   const localizedRawPath = localizePath(event);
   const matcher = routeHasMatcher(headers, cookies, query);
   const computeHas = computeParamHas(headers, cookies, query);
@@ -185,7 +186,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   });
   let finalQuery = query;
 
-  let rewrittenUrl = rawPath;
+  let rewrittenUrl = url;
   const isExternalRewrite = isExternal(rewrite?.destination);
   debug("isExternalRewrite", isExternalRewrite);
   if (rewrite) {
@@ -202,16 +203,12 @@ export function handleRewrites<T extends RewriteDefinition>(
     // %2B does not get interpreted as a space in the URL thus breaking the query string.
     const encodePlusQueryString = queryString.replaceAll("+", "%20");
     debug("urlParts", { pathname, protocol, hostname, queryString });
-    const toDestinationPath = compile(escapeRegex(pathname ?? "") ?? "");
-    const toDestinationHost = compile(escapeRegex(hostname ?? "") ?? "");
-    const toDestinationQuery = compile(
-      escapeRegex(encodePlusQueryString ?? "") ?? "",
-    );
+    const toDestinationPath = compile(escapeRegex(pathname));
+    const toDestinationHost = compile(escapeRegex(hostname));
+    const toDestinationQuery = compile(escapeRegex(encodePlusQueryString));
     const params = {
       // params for the source
-      ...getParamsFromSource(match(escapeRegex(rewrite?.source) ?? ""))(
-        pathToUse,
-      ),
+      ...getParamsFromSource(match(escapeRegex(rewrite.source)))(pathToUse),
       // params for the has
       ...rewrite.has?.reduce((acc, cur) => {
         return Object.assign(acc, computeHas(cur));
@@ -232,23 +229,22 @@ export function handleRewrites<T extends RewriteDefinition>(
     }
     rewrittenUrl = isExternalRewrite
       ? `${protocol}//${rewrittenHost}${rewrittenPath}`
-      : `${rewrittenPath}`;
+      : new URL(rewrittenPath, event.url).href;
+
     // Should we merge the query params or use only the ones from the rewrite?
     finalQuery = {
       ...query,
       ...convertFromQueryString(rewrittenQuery),
     };
+    rewrittenUrl += convertToQueryString(finalQuery);
     debug("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
   }
 
   return {
     internalEvent: {
       ...event,
-      rawPath: rewrittenUrl,
-      url: new URL(
-        `${rewrittenUrl}${convertToQueryString(finalQuery)}`,
-        new URL(event.url),
-      ).href,
+      rawPath: new URL(rewrittenUrl).pathname,
+      url: rewrittenUrl,
     },
     __rewrite: rewrite,
     isExternalRewrite,
@@ -370,7 +366,7 @@ export function fixDataPage(
       query,
       url: new URL(
         `${newPath}${convertToQueryString(query)}`,
-        new URL(internalEvent.url),
+        internalEvent.url,
       ).href,
     };
   }
@@ -403,7 +399,7 @@ export function handleFallbackFalse(
       event: {
         ...internalEvent,
         rawPath: "/404",
-        url: new URL("/404", new URL(internalEvent.url)).href,
+        url: constructNextUrl(internalEvent.url, "/404"),
         headers: {
           ...internalEvent.headers,
           "x-invoke-status": "404",

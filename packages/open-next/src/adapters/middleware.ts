@@ -15,6 +15,7 @@ import {
   resolveQueue,
   resolveTagCache,
 } from "../core/resolve";
+import { constructNextUrl } from "../core/routing/util";
 import routingHandler, {
   INTERNAL_HEADER_INITIAL_PATH,
   INTERNAL_HEADER_RESOLVED_ROUTES,
@@ -90,7 +91,7 @@ const defaultHandler = async (
             internalEvent: {
               ...result.internalEvent,
               rawPath: "/500",
-              url: new URL("/500", new URL(result.internalEvent.url)).href,
+              url: constructNextUrl(result.internalEvent.url, "/500"),
               method: "GET",
             },
             // On error we need to rewrite to the 500 page which is an internal rewrite

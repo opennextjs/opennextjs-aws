@@ -394,7 +394,7 @@ describe("handleRewrites", () => {
     expect(result).toEqual({
       internalEvent: {
         ...event,
-        rawPath: "https://external.com/search",
+        rawPath: "/search",
         url: "https://external.com/search?album=foo&song=bar",
       },
       __rewrite: rewrites[0],

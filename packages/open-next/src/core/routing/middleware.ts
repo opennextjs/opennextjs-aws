@@ -56,7 +56,7 @@ export async function handleMiddleware(
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
 
-  const initialUrl = new URL(normalizedPath, new URL(internalEvent.url));
+  const initialUrl = new URL(normalizedPath, internalEvent.url);
   initialUrl.search = convertToQueryString(internalEvent.query);
   const url = initialUrl.href;
 
@@ -141,28 +141,24 @@ export async function handleMiddleware(
   let middlewareQueryString = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
+    newUrl = rewriteUrl;
+    rewritten = true;
     // If not a string, it should probably throw
-    if (isExternal(rewriteUrl, internalEvent.headers.host as string)) {
-      newUrl = rewriteUrl;
-      rewritten = true;
+    if (isExternal(newUrl, internalEvent.headers.host as string)) {
       isExternalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
-      newUrl = rewriteUrlObject.href;
 
       // Reset the query params if the middleware is a rewrite
-      if (middlewareQueryString.__nextDataReq) {
-        middlewareQueryString = {
-          __nextDataReq: middlewareQueryString.__nextDataReq,
-        };
-      } else {
-        middlewareQueryString = {};
-      }
+      middlewareQueryString = middlewareQueryString.__nextDataReq
+        ? {
+            __nextDataReq: middlewareQueryString.__nextDataReq,
+          }
+        : {};
 
       rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
         middlewareQueryString[k] = v;
       });
-      rewritten = true;
     }
   }
 
@@ -184,11 +180,7 @@ export async function handleMiddleware(
   return {
     responseHeaders: resHeaders,
     url: newUrl,
-    rawPath: rewritten
-      ? newUrl
-        ? new URL(newUrl).pathname
-        : internalEvent.rawPath
-      : internalEvent.rawPath,
+    rawPath: new URL(newUrl).pathname,
     type: internalEvent.type,
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,

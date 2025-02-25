@@ -13,7 +13,11 @@ import { runWithOpenNextRequestContext } from "utils/promise";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
-import { convertRes, createServerResponse } from "./routing/util";
+import {
+  constructNextUrl,
+  convertRes,
+  createServerResponse,
+} from "./routing/util";
 import routingHandler, {
   INTERNAL_HEADER_INITIAL_PATH,
   INTERNAL_HEADER_RESOLVED_ROUTES,
@@ -102,7 +106,7 @@ export async function openNextHandler(
               rawPath: "/500",
               method: "GET",
               headers: {},
-              url: new URL("/500", new URL(internalEvent.url)).href,
+              url: constructNextUrl(internalEvent.url, "/500"),
               query: {},
               cookies: {},
               remoteAddress: "",
