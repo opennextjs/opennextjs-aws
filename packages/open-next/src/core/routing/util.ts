@@ -89,6 +89,12 @@ export function constructNextUrl(baseUrl: string, path: string) {
   return url.href;
 }
 
+export function extractHostFromHeaders(
+  headers: Record<string, string>,
+): string {
+  return headers["x-forwarded-host"] ?? headers.on ?? "on";
+}
+
 /**
  *
  * @__PURE__

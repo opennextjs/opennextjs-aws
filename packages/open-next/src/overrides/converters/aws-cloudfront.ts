@@ -17,7 +17,11 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { convertToQuery, convertToQueryString } from "../../core/routing/util";
+import {
+  convertToQuery,
+  convertToQueryString,
+  extractHostFromHeaders,
+} from "../../core/routing/util";
 
 const cloudfrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers
@@ -95,7 +99,7 @@ async function convertFromCloudFrontRequestEvent(
     type: "core",
     method,
     rawPath: uri,
-    url: `https://${headers["x-forwarded-host"] ?? "on"}${uri}${querystring ? `?${querystring}` : ""}`,
+    url: `https://${extractHostFromHeaders(headers)}${uri}${querystring ? `?${querystring}` : ""}`,
     body: Buffer.from(
       body?.data ?? "",
       body?.encoding === "base64" ? "base64" : "utf8",

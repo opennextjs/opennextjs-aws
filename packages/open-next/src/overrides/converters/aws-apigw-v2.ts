@@ -8,7 +8,10 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { convertToQuery } from "../../core/routing/util";
+import {
+  convertToQuery,
+  extractHostFromHeaders,
+} from "../../core/routing/util";
 import { removeUndefinedFromQuery } from "./utils";
 
 // Not sure which one is really needed as this is not documented anywhere but server actions redirect are not working without this,
@@ -80,7 +83,7 @@ async function convertFromAPIGatewayProxyEventV2(
     type: "core",
     method: requestContext.http.method,
     rawPath,
-    url: `https://${headers["x-forwarded-host"] ?? "on"}${rawPath}${rawQueryString ? `?${rawQueryString}` : ""}`,
+    url: `https://${extractHostFromHeaders(headers)}${rawPath}${rawQueryString ? `?${rawQueryString}` : ""}`,
     body: normalizeAPIGatewayProxyEventV2Body(event),
     headers,
     remoteAddress: requestContext.http.sourceIp,

@@ -4,6 +4,7 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
+import { extractHostFromHeaders } from "../../core/routing/util";
 import { removeUndefinedFromQuery } from "./utils";
 
 function normalizeAPIGatewayProxyEventHeaders(
@@ -62,7 +63,7 @@ async function convertFromAPIGatewayProxyEvent(
     type: "core",
     method: httpMethod,
     rawPath: path,
-    url: `https://${headers["x-forwarded-host"] ?? "on"}${path}${normalizeAPIGatewayProxyEventQueryParams(event)}`,
+    url: `https://${extractHostFromHeaders(headers)}${path}${normalizeAPIGatewayProxyEventQueryParams(event)}`,
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
     headers,
     remoteAddress: requestContext.identity.sourceIp,
