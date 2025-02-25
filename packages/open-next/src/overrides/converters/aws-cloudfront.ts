@@ -17,11 +17,8 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import {
-  convertToQuery,
-  convertToQueryString,
-  extractHostFromHeaders,
-} from "../../core/routing/util";
+import { convertToQuery, convertToQueryString } from "../../core/routing/util";
+import { extractHostFromHeaders } from "./utils";
 
 const cloudfrontBlacklistedHeaders = [
   // Disallowed headers, see: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-function-restrictions-all.html#function-restrictions-disallowed-headers

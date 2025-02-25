@@ -8,11 +8,8 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import {
-  convertToQuery,
-  extractHostFromHeaders,
-} from "../../core/routing/util";
-import { removeUndefinedFromQuery } from "./utils";
+import { convertToQuery } from "../../core/routing/util";
+import { extractHostFromHeaders, removeUndefinedFromQuery } from "./utils";
 
 // Not sure which one is really needed as this is not documented anywhere but server actions redirect are not working without this,
 // it causes a 500 error from cloudfront itself with a 'x-amzErrortype: InternalFailure' header

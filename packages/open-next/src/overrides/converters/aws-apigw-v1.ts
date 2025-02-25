@@ -4,8 +4,7 @@ import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { extractHostFromHeaders } from "../../core/routing/util";
-import { removeUndefinedFromQuery } from "./utils";
+import { extractHostFromHeaders, removeUndefinedFromQuery } from "./utils";
 
 function normalizeAPIGatewayProxyEventHeaders(
   event: APIGatewayProxyEvent,

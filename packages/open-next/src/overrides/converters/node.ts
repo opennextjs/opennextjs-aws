@@ -3,7 +3,7 @@ import type { IncomingMessage } from "node:http";
 import { parseCookies } from "http/util";
 import type { InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
-import { extractHostFromHeaders } from "../../core/routing/util";
+import { extractHostFromHeaders } from "./utils";
 
 const converter: Converter = {
   convertFrom: async (req: IncomingMessage) => {
