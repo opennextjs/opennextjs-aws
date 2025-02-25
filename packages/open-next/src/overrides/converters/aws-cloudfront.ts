@@ -95,7 +95,7 @@ async function convertFromCloudFrontRequestEvent(
     type: "core",
     method,
     rawPath: uri,
-    url: `https://${headers.host ?? "on"}${uri}${querystring ? `?${querystring}` : ""}`,
+    url: `https://${headers["x-forwarded-host"] ?? "on"}${uri}${querystring ? `?${querystring}` : ""}`,
     body: Buffer.from(
       body?.data ?? "",
       body?.encoding === "base64" ? "base64" : "utf8",

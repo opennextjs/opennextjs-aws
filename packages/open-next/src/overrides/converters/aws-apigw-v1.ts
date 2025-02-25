@@ -62,7 +62,7 @@ async function convertFromAPIGatewayProxyEvent(
     type: "core",
     method: httpMethod,
     rawPath: path,
-    url: `https://${headers.host ?? "on"}${path}${normalizeAPIGatewayProxyEventQueryParams(event)}`,
+    url: `https://${headers["x-forwarded-host"] ?? "on"}${path}${normalizeAPIGatewayProxyEventQueryParams(event)}`,
     body: Buffer.from(body ?? "", isBase64Encoded ? "base64" : "utf8"),
     headers,
     remoteAddress: requestContext.identity.sourceIp,
