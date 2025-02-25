@@ -1,8 +1,5 @@
 import { handleMiddleware } from "@opennextjs/aws/core/routing/middleware.js";
-import {
-  convertFromQueryString,
-  isExternal,
-} from "@opennextjs/aws/core/routing/util.js";
+import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
 import { toReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
@@ -51,25 +48,16 @@ type PartialEvent = Partial<
 > & { body?: string };
 
 function createEvent(event: PartialEvent): InternalEvent {
-  let rawPath: string;
-  let qs: string;
-  if (isExternal(event.url)) {
-    const url = new URL(event.url!);
-    rawPath = url.pathname;
-    qs = url.search;
-  } else {
-    const parts = (event.url ?? "/").split("?", 2);
-    rawPath = parts[0];
-    qs = parts[1] ?? "";
-  }
+  const url = event.url ?? "https://on/";
+  const { pathname, search } = new URL(url);
   return {
     type: "core",
     method: event.method ?? "GET",
-    rawPath,
-    url: event.url ?? "/",
+    rawPath: pathname,
+    url,
     body: Buffer.from(event.body ?? ""),
     headers: event.headers ?? {},
-    query: convertFromQueryString(qs),
+    query: convertFromQueryString(search.slice(1)),
     cookies: event.cookies ?? {},
     remoteAddress: event.remoteAddress ?? "::1",
   };
@@ -142,7 +130,7 @@ describe("handleMiddleware", () => {
     expect(result).toEqual({
       ...event,
       rawPath: "/rewrite",
-      url: "/rewrite",
+      url: "http://localhost/rewrite",
       responseHeaders: {
         "x-middleware-rewrite": "http://localhost/rewrite",
       },
@@ -152,7 +140,7 @@ describe("handleMiddleware", () => {
 
   it("should invoke middleware with rewrite with __nextDataReq", async () => {
     const event = createEvent({
-      url: "/rewrite?__nextDataReq=1&key=value",
+      url: "https://on/rewrite?__nextDataReq=1&key=value",
       headers: {
         host: "localhost",
       },
@@ -168,7 +156,7 @@ describe("handleMiddleware", () => {
     expect(result).toEqual({
       ...event,
       rawPath: "/rewrite",
-      url: "/rewrite",
+      url: "http://localhost/rewrite?newKey=value",
       responseHeaders: {
         "x-middleware-rewrite": "http://localhost/rewrite?newKey=value",
       },
@@ -196,7 +184,7 @@ describe("handleMiddleware", () => {
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
       ...event,
-      rawPath: "http://external/rewrite",
+      rawPath: "/rewrite",
       url: "http://external/rewrite",
       responseHeaders: {
         "x-middleware-rewrite": "http://external/rewrite",
@@ -303,7 +291,7 @@ describe("handleMiddleware", () => {
 
   it("should default to https protocol", async () => {
     const event = createEvent({
-      url: "/path",
+      url: "https://test.me/path",
       headers: {
         host: "test.me",
       },

@@ -56,18 +56,9 @@ export async function handleMiddleware(
   const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
   if (!hasMatch) return internalEvent;
 
-  // Retrieve the protocol:
-  // - In lambda, the url only contains the rawPath and the query - default to https
-  // - In cloudflare, the protocol is usually http in dev and https in production
-  const protocol = internalEvent.url.startsWith("http://") ? "http:" : "https:";
-
-  const host = headers.host
-    ? `${protocol}//${headers.host}`
-    : "http://localhost:3000";
-
-  const initialUrl = new URL(normalizedPath, host);
+  const initialUrl = new URL(normalizedPath, internalEvent.url);
   initialUrl.search = convertToQueryString(internalEvent.query);
-  const url = initialUrl.toString();
+  const url = initialUrl.href;
 
   const middleware = await middlewareLoader();
 
@@ -131,12 +122,7 @@ export async function handleMiddleware(
   // the redirected url and end the response.
   if (statusCode >= 300 && statusCode < 400) {
     resHeaders.location =
-      responseHeaders
-        .get("location")
-        ?.replace(
-          "http://localhost:3000",
-          `${protocol}//${internalEvent.headers.host}`,
-        ) ?? resHeaders.location;
+      responseHeaders.get("location") ?? resHeaders.location;
     // res.setHeader("Location", location);
     return {
       body: emptyReadableStream(),
@@ -155,28 +141,24 @@ export async function handleMiddleware(
   let middlewareQueryString = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
+    newUrl = rewriteUrl;
+    rewritten = true;
     // If not a string, it should probably throw
-    if (isExternal(rewriteUrl, internalEvent.headers.host as string)) {
-      newUrl = rewriteUrl;
-      rewritten = true;
+    if (isExternal(newUrl, internalEvent.headers.host as string)) {
       isExternalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
-      newUrl = rewriteUrlObject.pathname;
 
       // Reset the query params if the middleware is a rewrite
-      if (middlewareQueryString.__nextDataReq) {
-        middlewareQueryString = {
-          __nextDataReq: middlewareQueryString.__nextDataReq,
-        };
-      } else {
-        middlewareQueryString = {};
-      }
+      middlewareQueryString = middlewareQueryString.__nextDataReq
+        ? {
+            __nextDataReq: middlewareQueryString.__nextDataReq,
+          }
+        : {};
 
       rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
         middlewareQueryString[k] = v;
       });
-      rewritten = true;
     }
   }
 
@@ -198,9 +180,7 @@ export async function handleMiddleware(
   return {
     responseHeaders: resHeaders,
     url: newUrl,
-    rawPath: rewritten
-      ? (newUrl ?? internalEvent.rawPath)
-      : internalEvent.rawPath,
+    rawPath: new URL(newUrl).pathname,
     type: internalEvent.type,
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,

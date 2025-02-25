@@ -21,15 +21,16 @@ type PartialEvent = Partial<
 > & { body?: string };
 
 function createEvent(event: PartialEvent): InternalEvent {
-  const [rawPath, qs] = (event.url ?? "/").split("?", 2);
+  const url = event.url ?? "https://on/";
+  const { pathname, search } = new URL(url);
   return {
     type: "core",
     method: event.method ?? "GET",
-    rawPath,
+    rawPath: pathname,
     url: event.url ?? "/",
     body: Buffer.from(event.body ?? ""),
     headers: event.headers ?? {},
-    query: convertFromQueryString(qs ?? ""),
+    query: convertFromQueryString(search.slice(1)),
     cookies: event.cookies ?? {},
     remoteAddress: event.remoteAddress ?? "::1",
   };
@@ -56,7 +57,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return request headers for matching / route", () => {
     const event = createEvent({
-      url: "/",
+      url: "https://on/",
     });
 
     const result = getNextConfigHeaders(event, [
@@ -79,7 +80,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return empty request headers for matching / route with empty headers", () => {
     const event = createEvent({
-      url: "/",
+      url: "https://on/",
     });
 
     const result = getNextConfigHeaders(event, [
@@ -95,7 +96,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return request headers for matching /* route", () => {
     const event = createEvent({
-      url: "/hello-world",
+      url: "https://on/hello-world",
     });
 
     const result = getNextConfigHeaders(event, [
@@ -123,7 +124,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return request headers for matching /* route with has condition", () => {
     const event = createEvent({
-      url: "/hello-world",
+      url: "https://on/hello-world",
       cookies: {
         match: "true",
       },
@@ -150,7 +151,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return request headers for matching /* route with missing condition", () => {
     const event = createEvent({
-      url: "/hello-world",
+      url: "https://on/hello-world",
       cookies: {
         match: "true",
       },
@@ -177,7 +178,7 @@ describe("getNextConfigHeaders", () => {
 
   it("should return request headers for matching /* route with has and missing condition", () => {
     const event = createEvent({
-      url: "/hello-world",
+      url: "https://on/hello-world",
       cookies: {
         match: "true",
       },
@@ -211,18 +212,18 @@ describe("getNextConfigHeaders", () => {
 describe("handleRedirects", () => {
   it("should redirect trailing slash by default", () => {
     const event = createEvent({
-      url: "/api-route/",
+      url: "https://on/api-route/",
     });
 
     const result = handleRedirects(event, []);
 
     expect(result.statusCode).toEqual(308);
-    expect(result.headers.Location).toEqual("/api-route");
+    expect(result.headers.Location).toEqual("https://on/api-route");
   });
 
   it("should not redirect trailing slash when skipTrailingSlashRedirect is true", () => {
     const event = createEvent({
-      url: "/api-route/",
+      url: "https://on/api-route/",
     });
 
     NextConfig.skipTrailingSlashRedirect = true;
@@ -233,7 +234,7 @@ describe("handleRedirects", () => {
 
   it("should redirect matching path", () => {
     const event = createEvent({
-      url: "/api-route",
+      url: "https://on/api-route",
     });
 
     const result = handleRedirects(event, [
@@ -246,12 +247,12 @@ describe("handleRedirects", () => {
       },
     ]);
 
-    expect(result.headers.Location).toBe("/new/api-route");
+    expect(result.headers.Location).toBe("https://on/new/api-route");
   });
 
   it("should redirect matching nested path", () => {
     const event = createEvent({
-      url: "/api-route/secret",
+      url: "https://on/api-route/secret",
     });
 
     const result = handleRedirects(event, [
@@ -264,12 +265,12 @@ describe("handleRedirects", () => {
       },
     ]);
 
-    expect(result.headers.Location).toBe("/new/api-route/secret");
+    expect(result.headers.Location).toBe("https://on/new/api-route/secret");
   });
 
   it("should not redirect unmatched path", () => {
     const event = createEvent({
-      url: "/api-route",
+      url: "https://on/api-route",
     });
 
     const result = handleRedirects(event, [
@@ -287,7 +288,7 @@ describe("handleRedirects", () => {
 
   it("should redirect with + character and query string", () => {
     const event = createEvent({
-      url: "/foo",
+      url: "https://on/foo",
     });
 
     const result = handleRedirects(event, [
@@ -302,7 +303,7 @@ describe("handleRedirects", () => {
 
     expect(result.statusCode).toEqual(308);
     expect(result.headers.Location).toEqual(
-      "/search?bar=hello+world&baz=new%2C+earth",
+      "https://on/search?bar=hello+world&baz=new%2C+earth",
     );
   });
 });
@@ -310,7 +311,7 @@ describe("handleRedirects", () => {
 describe("handleRewrites", () => {
   it("should not rewrite with empty rewrites", () => {
     const event = createEvent({
-      url: "/foo?hellp=world",
+      url: "https://on/foo?hello=world",
     });
 
     const result = handleRewrites(event, []);
@@ -323,7 +324,7 @@ describe("handleRewrites", () => {
 
   it("should rewrite with params", () => {
     const event = createEvent({
-      url: "/albums/foo/bar",
+      url: "https://on/albums/foo/bar",
     });
 
     const rewrites = [
@@ -344,7 +345,7 @@ describe("handleRewrites", () => {
       internalEvent: {
         ...event,
         rawPath: "/rewrite/albums/foo/bar",
-        url: "/rewrite/albums/foo/bar",
+        url: "https://on/rewrite/albums/foo/bar",
       },
       __rewrite: rewrites[1],
       isExternalRewrite: false,
@@ -353,7 +354,7 @@ describe("handleRewrites", () => {
 
   it("should rewrite without params", () => {
     const event = createEvent({
-      url: "/foo",
+      url: "https://on/foo",
     });
 
     const rewrites = [
@@ -369,7 +370,7 @@ describe("handleRewrites", () => {
       internalEvent: {
         ...event,
         rawPath: "/bar",
-        url: "/bar",
+        url: "https://on/bar",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: false,
@@ -378,7 +379,7 @@ describe("handleRewrites", () => {
 
   it("should rewrite externally", () => {
     const event = createEvent({
-      url: "/albums/foo/bar",
+      url: "https://on/albums/foo/bar",
     });
 
     const rewrites = [
@@ -393,7 +394,7 @@ describe("handleRewrites", () => {
     expect(result).toEqual({
       internalEvent: {
         ...event,
-        rawPath: "https://external.com/search",
+        rawPath: "/search",
         url: "https://external.com/search?album=foo&song=bar",
       },
       __rewrite: rewrites[0],
@@ -403,7 +404,7 @@ describe("handleRewrites", () => {
 
   it("should rewrite with matching path with has condition", () => {
     const event = createEvent({
-      url: "/albums/foo?has=true",
+      url: "https://on/albums/foo?has=true",
     });
 
     const rewrites = [
@@ -426,7 +427,7 @@ describe("handleRewrites", () => {
       internalEvent: {
         ...event,
         rawPath: "/rewrite/albums/foo",
-        url: "/rewrite/albums/foo?has=true",
+        url: "https://on/rewrite/albums/foo?has=true",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: false,
@@ -435,7 +436,7 @@ describe("handleRewrites", () => {
 
   it("should rewrite with matching path with missing condition", () => {
     const event = createEvent({
-      url: "/albums/foo",
+      url: "https://on/albums/foo",
       headers: {
         has: "true",
       },
@@ -460,7 +461,7 @@ describe("handleRewrites", () => {
       internalEvent: {
         ...event,
         rawPath: "/rewrite/albums/foo",
-        url: "/rewrite/albums/foo",
+        url: "https://on/rewrite/albums/foo",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: false,
@@ -471,7 +472,7 @@ describe("handleRewrites", () => {
 describe("fixDataPage", () => {
   it("should return 404 for data requests that don't match the buildId", () => {
     const event = createEvent({
-      url: "/_next/data/xyz/test",
+      url: "https://on/_next/data/xyz/test",
     });
 
     const response = fixDataPage(event, "abc");
@@ -481,7 +482,7 @@ describe("fixDataPage", () => {
 
   it("should not return 404 for data requests that don't match the buildId", () => {
     const event = createEvent({
-      url: "/_next/data/abc/test",
+      url: "https://on/_next/data/abc/test",
     });
 
     const response = fixDataPage(event, "abc");
@@ -494,7 +495,7 @@ describe("fixDataPage", () => {
     NextConfig.basePath = "/base";
 
     const event = createEvent({
-      url: "/base/_next/data/abc/test",
+      url: "https://on/base/_next/data/abc/test",
     });
 
     const response = fixDataPage(event, "abc");
@@ -507,7 +508,7 @@ describe("fixDataPage", () => {
 
   it("should remove json extension from data requests and add __nextDataReq to query", () => {
     const event = createEvent({
-      url: "/_next/data/abc/test/file.json?hello=world",
+      url: "https://on/_next/data/abc/test/file.json?hello=world",
     });
 
     const response = fixDataPage(event, "abc");
@@ -515,7 +516,7 @@ describe("fixDataPage", () => {
     expect(response).toEqual({
       ...event,
       rawPath: "/test/file",
-      url: "/test/file?hello=world&__nextDataReq=1",
+      url: "https://on/test/file?hello=world&__nextDataReq=1",
     });
   });
 
@@ -523,7 +524,7 @@ describe("fixDataPage", () => {
     NextConfig.basePath = "/base";
 
     const event = createEvent({
-      url: "/base/_next/data/abc/test/file.json?hello=world",
+      url: "https://on/base/_next/data/abc/test/file.json?hello=world",
     });
 
     const response = fixDataPage(event, "abc");
@@ -531,7 +532,7 @@ describe("fixDataPage", () => {
     expect(response).toEqual({
       ...event,
       rawPath: "/test/file",
-      url: "/test/file?hello=world&__nextDataReq=1",
+      url: "https://on/test/file?hello=world&__nextDataReq=1",
     });
 
     NextConfig.basePath = undefined;

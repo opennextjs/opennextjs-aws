@@ -231,7 +231,7 @@ describe("convertFrom", () => {
       type: "core",
       method: "POST",
       rawPath: "/",
-      url: "/",
+      url: "https://on/",
       body: Buffer.from('{"message":"Hello, world!"}'),
       headers: {
         "content-type": "application/json",
@@ -271,7 +271,7 @@ describe("convertFrom", () => {
       type: "core",
       method: "POST",
       rawPath: "/",
-      url: "/?hello=world&foo=1&foo=2",
+      url: "https://on/?hello=world&foo=1&foo=2",
       body: Buffer.from('{"message":"Hello, world!"}'),
       headers: {
         "content-type": "application/json",
@@ -316,7 +316,7 @@ describe("convertFrom", () => {
       type: "core",
       method: "POST",
       rawPath: "/",
-      url: "/",
+      url: "https://on/",
       body: Buffer.from('{"message":"Hello, world!"}'),
       headers: {
         "content-type": "application/json",

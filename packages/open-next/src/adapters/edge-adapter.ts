@@ -8,10 +8,7 @@ import type { OpenNextHandlerOptions } from "types/overrides";
 // We import it like that so that the edge plugin can replace it
 import { NextConfig } from "../adapters/config";
 import { createGenericHandler } from "../core/createGenericHandler";
-import {
-  convertBodyToReadableStream,
-  convertToQueryString,
-} from "../core/routing/util";
+import { convertBodyToReadableStream } from "../core/routing/util";
 
 globalThis.__openNextAls = new AsyncLocalStorage();
 
@@ -25,13 +22,6 @@ const defaultHandler = async (
   return runWithOpenNextRequestContext(
     { isISRRevalidation: false, waitUntil: options?.waitUntil },
     async () => {
-      const host = internalEvent.headers.host
-        ? `https://${internalEvent.headers.host}`
-        : "http://localhost:3000";
-      const initialUrl = new URL(internalEvent.rawPath, host);
-      initialUrl.search = convertToQueryString(internalEvent.query);
-      const url = initialUrl.toString();
-
       // @ts-expect-error - This is bundled
       const handler = await import("./middleware.mjs");
 
@@ -43,7 +33,7 @@ const defaultHandler = async (
           i18n: NextConfig.i18n,
           trailingSlash: NextConfig.trailingSlash,
         },
-        url,
+        url: internalEvent.url,
         body: convertBodyToReadableStream(
           internalEvent.method,
           internalEvent.body,
