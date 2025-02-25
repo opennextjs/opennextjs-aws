@@ -28,7 +28,9 @@ export default async function edgeFunctionHandler(
       },
     },
   });
-  await result.waitUntil;
+  globalThis.__openNextAls
+    .getStore()
+    ?.pendingPromiseRunner.add(result.waitUntil);
   const response = result.response;
   return response;
 }
