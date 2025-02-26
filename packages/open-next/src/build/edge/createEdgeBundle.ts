@@ -16,6 +16,7 @@ import type {
 import { loadMiddlewareManifest } from "config/util.js";
 import type { OriginResolver } from "types/overrides.js";
 import logger from "../../logger.js";
+import { ContentUpdater } from "../../plugins/content-updater.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
@@ -39,7 +40,7 @@ interface BuildEdgeBundleOptions {
   additionalExternals?: string[];
   onlyBuildOnce?: boolean;
   name: string;
-  additionalPlugins: Plugin[];
+  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[];
 }
 
 export async function buildEdgeBundle({
@@ -54,7 +55,7 @@ export async function buildEdgeBundle({
   additionalExternals,
   onlyBuildOnce,
   name,
-  additionalPlugins,
+  additionalPlugins: additionalPluginsFn,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
@@ -62,6 +63,8 @@ export async function buildEdgeBundle({
       ? overrides[target]
       : undefined;
   }
+  const contentUpdater = new ContentUpdater(options);
+  const additionalPlugins = additionalPluginsFn(contentUpdater);
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
@@ -101,6 +104,7 @@ export async function buildEdgeBundle({
           isInCloudfare,
         }),
         ...additionalPlugins,
+        contentUpdater.plugin,
       ],
       treeShaking: true,
       alias: {
@@ -176,7 +180,7 @@ export async function generateEdgeBundle(
   name: string,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
-  additionalPlugins: Plugin[] = [],
+  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[] = () => [],
 ) {
   logger.info(`Generating edge bundle for: ${name}`);
 
