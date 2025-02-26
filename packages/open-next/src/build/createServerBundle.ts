@@ -6,6 +6,7 @@ import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 import type { Plugin } from "esbuild";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
+import { ContentUpdater } from "../plugins/content-updater.js";
 import { openNextReplacementPlugin } from "../plugins/replacement.js";
 import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../utils/regex.js";
@@ -22,7 +23,7 @@ interface CodeCustomization {
   additionalCodePatches: CodePatcher[];
   // These plugins are meant to apply during the esbuild bundling process.
   // This will only apply to OpenNext code.
-  additionalPlugins: Plugin[];
+  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[];
 }
 
 export async function createServerBundle(
@@ -207,7 +208,9 @@ async function generateBundle(
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 
-  const additionalPlugins = codeCustomization?.additionalPlugins ?? [];
+  const updater = new ContentUpdater(options);
+
+  const additionalPlugins = codeCustomization?.additionalPlugins(updater) ?? [];
 
   const plugins = [
     openNextReplacementPlugin({
@@ -235,6 +238,7 @@ async function generateBundle(
       overrides,
     }),
     ...additionalPlugins,
+    updater.plugin,
   ];
 
   const outfileExt = fnOptions.runtime === "deno" ? "ts" : "mjs";
