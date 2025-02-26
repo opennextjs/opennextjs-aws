@@ -9,7 +9,7 @@ import { fromReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
 import { convertToQuery } from "../../core/routing/util";
-import { removeUndefinedFromQuery } from "./utils";
+import { extractHostFromHeaders, removeUndefinedFromQuery } from "./utils";
 
 // Not sure which one is really needed as this is not documented anywhere but server actions redirect are not working without this,
 // it causes a 500 error from cloudfront itself with a 'x-amzErrortype: InternalFailure' header
@@ -75,13 +75,14 @@ async function convertFromAPIGatewayProxyEventV2(
   event: APIGatewayProxyEventV2,
 ): Promise<InternalEvent> {
   const { rawPath, rawQueryString, requestContext } = event;
+  const headers = normalizeAPIGatewayProxyEventV2Headers(event);
   return {
     type: "core",
     method: requestContext.http.method,
     rawPath,
-    url: rawPath + (rawQueryString ? `?${rawQueryString}` : ""),
+    url: `https://${extractHostFromHeaders(headers)}${rawPath}${rawQueryString ? `?${rawQueryString}` : ""}`,
     body: normalizeAPIGatewayProxyEventV2Body(event),
-    headers: normalizeAPIGatewayProxyEventV2Headers(event),
+    headers,
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
     cookies:

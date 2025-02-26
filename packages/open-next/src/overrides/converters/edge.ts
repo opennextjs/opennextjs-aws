@@ -59,18 +59,7 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
   },
   convertTo: async (result) => {
     if ("internalEvent" in result) {
-      let url = result.internalEvent.url;
-      if (!result.isExternalRewrite) {
-        if (result.origin) {
-          url = `${result.origin.protocol}://${result.origin.host}${
-            result.origin.port ? `:${result.origin.port}` : ""
-          }${url}`;
-        } else {
-          url = `https://${result.internalEvent.headers.host}${url}`;
-        }
-      }
-
-      const request = new Request(url, {
+      const request = new Request(result.internalEvent.url, {
         body: result.internalEvent.body,
         method: result.internalEvent.method,
         headers: {

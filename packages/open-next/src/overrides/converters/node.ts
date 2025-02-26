@@ -3,6 +3,7 @@ import type { IncomingMessage } from "node:http";
 import { parseCookies } from "http/util";
 import type { InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
+import { extractHostFromHeaders } from "./utils";
 
 const converter: Converter = {
   convertFrom: async (req: IncomingMessage) => {
@@ -16,22 +17,23 @@ const converter: Converter = {
       });
     });
 
-    const url = new URL(req.url!, `http://${req.headers.host}`);
+    const headers = Object.fromEntries(
+      Object.entries(req.headers ?? {})
+        .map(([key, value]) => [
+          key.toLowerCase(),
+          Array.isArray(value) ? value.join(",") : value,
+        ])
+        .filter(([key]) => key),
+    );
+    const url = new URL(req.url!, `http://${extractHostFromHeaders(headers)}`);
     const query = Object.fromEntries(url.searchParams.entries());
     return {
       type: "core",
       method: req.method ?? "GET",
       rawPath: url.pathname,
-      url: url.pathname + url.search,
+      url: url.href,
       body,
-      headers: Object.fromEntries(
-        Object.entries(req.headers ?? {})
-          .map(([key, value]) => [
-            key.toLowerCase(),
-            Array.isArray(value) ? value.join(",") : value,
-          ])
-          .filter(([key]) => key),
-      ),
+      headers,
       remoteAddress:
         (req.headers["x-forwarded-for"] as string) ??
         req.socket.remoteAddress ??

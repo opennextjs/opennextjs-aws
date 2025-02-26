@@ -26,6 +26,7 @@ import {
   dynamicRouteMatcher,
   staticRouteMatcher,
 } from "./routing/routeMatcher";
+import { constructNextUrl } from "./routing/util";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
@@ -174,7 +175,7 @@ export default async function routingHandler(
     internalEvent = {
       ...internalEvent,
       rawPath: "/404",
-      url: "/404",
+      url: constructNextUrl(internalEvent.url, "/404"),
       headers: {
         ...internalEvent.headers,
         "x-middleware-response-cache-control":

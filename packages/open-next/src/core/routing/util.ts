@@ -75,6 +75,21 @@ export function getUrlParts(url: string, isExternal: boolean) {
 }
 
 /**
+ * Creates an URL to a Next page
+ *
+ * @param baseUrl Used to get the origin
+ * @param path The pathname
+ * @returns The Next URL considering the basePath
+ *
+ * @__PURE__
+ */
+export function constructNextUrl(baseUrl: string, path: string) {
+  const nextBasePath = NextConfig.basePath;
+  const url = new URL(`${nextBasePath}${path}`, baseUrl);
+  return url.href;
+}
+
+/**
  *
  * @__PURE__
  */

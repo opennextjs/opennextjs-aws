@@ -22,6 +22,7 @@ export type BaseEventOrResult<T extends string = string> = {
 export type InternalEvent = {
   readonly method: string;
   readonly rawPath: string;
+  // Full URL - starts with "https://on/" when the host is not available
   readonly url: string;
   readonly body?: Buffer;
   readonly headers: Record<string, string>;

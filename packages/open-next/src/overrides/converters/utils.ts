@@ -9,3 +9,15 @@ export function removeUndefinedFromQuery(
   }
   return newQuery;
 }
+
+/**
+ * Extract the host from the headers (default to "on")
+ *
+ * @param headers
+ * @returns The host
+ */
+export function extractHostFromHeaders(
+  headers: Record<string, string>,
+): string {
+  return headers["x-forwarded-host"] ?? headers.host ?? "on";
+}

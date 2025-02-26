@@ -28,13 +28,7 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     }
 
     const internalEvent = await converter.convertFrom(request);
-
-    // TODO:
-    // The edge converter populate event.url with the url including the origin.
-    // This is required for middleware to keep track of the protocol (i.e. http with wrangler dev).
-    // However the server expects that the origin is not included.
-    const url = new URL(internalEvent.url);
-    (internalEvent.url as string) = url.href.slice(url.origin.length);
+    const url = new URL(request.url);
 
     const { promise: promiseResponse, resolve: resolveResponse } =
       Promise.withResolvers<Response>();
