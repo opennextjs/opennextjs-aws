@@ -11,8 +11,7 @@ export interface VersionedField<T> {
   field: T;
 }
 
-//TODO: create a version of this that would use ast-grep
-type PatchCodeFn = (args: {
+export type PatchCodeFn = (args: {
   // The content of the file that needs to be patched
   code: string;
   // The final path of the file that needs to be patched
