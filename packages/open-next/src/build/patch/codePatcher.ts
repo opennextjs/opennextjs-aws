@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
-interface VersionedField<T> {
+export interface VersionedField<T> {
   before?:
     | `${number}`
     | `${number}.${number}`
@@ -30,7 +30,7 @@ export interface CodePatcher {
   patchCode: PatchCodeFn | VersionedField<PatchCodeFn>[];
 }
 
-function extractVersionedField<T>(
+export function extractVersionedField<T>(
   fields: VersionedField<T>[],
   version: string,
 ): T[] {
