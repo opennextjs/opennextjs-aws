@@ -37,6 +37,7 @@
     "README.md"
   ],
   "dependencies": {
+    "@ast-grep/napi": "^0.35.0",
     "@aws-sdk/client-cloudfront": "3.398.0",
     "@aws-sdk/client-dynamodb": "^3.398.0",
     "@aws-sdk/client-lambda": "^3.398.0",
