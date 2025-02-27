@@ -17,7 +17,7 @@ import {
 } from "../core/resolve";
 import { constructNextUrl } from "../core/routing/util";
 import routingHandler, {
-  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
 } from "../core/routingHandler";
 
@@ -70,7 +70,7 @@ const defaultHandler = async (
               ...result.internalEvent,
               headers: {
                 ...result.internalEvent.headers,
-                [INTERNAL_HEADER_INITIAL_PATH]: internalEvent.rawPath,
+                [INTERNAL_HEADER_INITIAL_URL]: internalEvent.url,
                 [INTERNAL_HEADER_RESOLVED_ROUTES]:
                   JSON.stringify(result.resolvedRoutes) ?? "[]",
               },
@@ -78,7 +78,7 @@ const defaultHandler = async (
             isExternalRewrite: result.isExternalRewrite,
             origin,
             isISR: result.isISR,
-            initialPath: result.initialPath,
+            initialURL: result.initialURL,
             resolvedRoutes: result.resolvedRoutes,
           };
         }
@@ -98,7 +98,7 @@ const defaultHandler = async (
             isExternalRewrite: false,
             origin: false,
             isISR: result.isISR,
-            initialPath: result.internalEvent.rawPath,
+            initialURL: result.internalEvent.url,
             resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }

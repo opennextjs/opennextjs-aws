@@ -126,8 +126,11 @@ export interface RoutingResult {
   origin: Origin | false;
   // If the request is for an ISR route, will be false on every server function. Only used in external middleware
   isISR: boolean;
-  // The initial rawPath of the request before applying rewrites, if used with an external middleware will be defined in x-opennext-initial-path header
-  initialPath: string;
+  // The initial URL of the request before applying rewrites, if used with an external middleware will be defined in x-opennext-initial-url header
+  initialURL: string;
+
+  // The locale of the request, if used with an external middleware will be defined in x-opennext-locale header
+  locale?: string;
 
   // The resolved route after applying rewrites, if used with an external middleware will be defined in x-opennext-resolved-routes header as a json encoded array
   resolvedRoutes: ResolvedRoute[];

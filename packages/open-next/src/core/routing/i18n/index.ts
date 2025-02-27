@@ -20,7 +20,10 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
     : undefined;
 }
 
-function detectLocale(internalEvent: InternalEvent, i18n: i18nConfig): string {
+export function detectLocale(
+  internalEvent: InternalEvent,
+  i18n: i18nConfig,
+): string {
   if (i18n.localeDetection === false) {
     return i18n.defaultLocale;
   }

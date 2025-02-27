@@ -10,16 +10,18 @@ import type {
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
+import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error, warn } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import {
   constructNextUrl,
   convertRes,
+  convertToQuery,
   createServerResponse,
 } from "./routing/util";
 import routingHandler, {
-  INTERNAL_HEADER_INITIAL_PATH,
+  INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
@@ -51,7 +53,7 @@ export async function openNextHandler(
       // These 2 will get overwritten by the routing handler if not using an external middleware
       const internalHeaders = {
         initialPath:
-          initialHeaders[INTERNAL_HEADER_INITIAL_PATH] ?? internalEvent.rawPath,
+          initialHeaders[INTERNAL_HEADER_INITIAL_URL] ?? internalEvent.rawPath,
         resolvedRoutes: initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES]
           ? JSON.parse(initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES])
           : ([] as ResolvedRoute[]),
@@ -62,6 +64,7 @@ export async function openNextHandler(
         isExternalRewrite: false,
         origin: false,
         isISR: false,
+        initialURL: internalEvent.url,
         ...internalHeaders,
       };
 
@@ -115,7 +118,7 @@ export async function openNextHandler(
             isExternalRewrite: false,
             isISR: false,
             origin: false,
-            initialPath: internalEvent.rawPath,
+            initialURL: internalEvent.url,
             resolvedRoutes: [{ route: "/500", type: "page" }],
           };
         }
@@ -131,7 +134,7 @@ export async function openNextHandler(
               isISR: false,
               resolvedRoutes: [],
               origin: false,
-              initialPath: internalEvent.rawPath,
+              initialURL: internalEvent.url,
             },
             headers,
             options.streamCreator,
@@ -219,12 +222,34 @@ async function processRequest(
     setNextjsPrebundledReact(routingResult.internalEvent.rawPath);
     //#endOverride
 
+    // Here we try to apply as much request metadata as possible
+    // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-utils/resolve-routes.ts
+    // and `router-server` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-server.ts
+    const initialURL = new URL(routingResult.initialURL);
+    let invokeStatus: number | undefined;
+    if (routingResult.internalEvent.rawPath === "/500") {
+      invokeStatus = 500;
+    } else if (routingResult.internalEvent.rawPath === "/404") {
+      invokeStatus = 404;
+    }
+    const requestMetadata = {
+      isNextDataReq: routingResult.internalEvent.query.__nextDataReq === "1",
+      initURL: routingResult.initialURL,
+      initQuery: convertToQuery(initialURL.search),
+      initProtocol: initialURL.protocol,
+      defaultLocale: NextConfig.i18n?.defaultLocale,
+      locale: routingResult.locale,
+      middlewareInvoke: false,
+      // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
+      invokePath: routingResult.internalEvent.rawPath,
+      invokeQuery: routingResult.internalEvent.query,
+      // invokeStatus is only used for error pages
+      invokeStatus,
+    };
+
     const requestHandler =
       "getRequestHandlerWithMetadata" in nextServer
-        ? nextServer.getRequestHandlerWithMetadata({
-            isNextDataReq:
-              routingResult.internalEvent.query.__nextDataReq === "1",
-          })
+        ? nextServer.getRequestHandlerWithMetadata(requestMetadata)
         : nextServer.getRequestHandler();
     // Next Server
     await requestHandler(req, res);
@@ -254,7 +279,17 @@ async function tryRenderError(
       body: internalEvent.body,
       remoteAddress: internalEvent.remoteAddress,
     });
-    const requestHandler = nextServer.getRequestHandler();
+    // By setting this it will allow us to bypass and directly render the 404 or 500 page
+    const requestMetadata = {
+      // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
+      invokePath: type === "404" ? "/404" : "/500",
+      invokeStatus: type === "404" ? 404 : 500,
+      middlewareInvoke: false,
+    };
+    const requestHandler =
+      "getRequestHandlerWithMetadata" in nextServer
+        ? nextServer.getRequestHandlerWithMetadata(requestMetadata)
+        : nextServer.getRequestHandler();
     await requestHandler(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
