@@ -26,7 +26,7 @@ applyNextjsRequireHooksOverride();
 //#endOverride
 const cacheHandlerPath = require.resolve("./cache.cjs");
 // @ts-ignore
-export const requestHandler = new NextServer.default({
+export const nextServer = new NextServer.default({
   //#override requestHandlerHost
   hostname: "localhost",
   port: 3000,
@@ -57,7 +57,7 @@ export const requestHandler = new NextServer.default({
   customServer: false,
   dev: false,
   dir: __dirname,
-}).getRequestHandler();
+});
 
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {

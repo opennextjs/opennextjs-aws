@@ -24,7 +24,7 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
-import { requestHandler, setNextjsPrebundledReact } from "./util";
+import { nextServer, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -182,7 +182,7 @@ export async function openNextHandler(
         options?.streamCreator,
       );
 
-      await processRequest(req, res, preprocessedEvent);
+      await processRequest(req, res, routingResult);
 
       const {
         statusCode,
@@ -207,7 +207,7 @@ export async function openNextHandler(
 async function processRequest(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
-  internalEvent: InternalEvent,
+  routingResult: RoutingResult,
 ) {
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
@@ -216,9 +216,16 @@ async function processRequest(
 
   try {
     //#override applyNextjsPrebundledReact
-    setNextjsPrebundledReact(internalEvent.rawPath);
+    setNextjsPrebundledReact(routingResult.internalEvent.rawPath);
     //#endOverride
 
+    const requestHandler =
+      "getRequestHandlerWithMetadata" in nextServer
+        ? nextServer.getRequestHandlerWithMetadata({
+            isNextDataReq:
+              routingResult.internalEvent.query.__nextDataReq === "1",
+          })
+        : nextServer.getRequestHandler();
     // Next Server
     await requestHandler(req, res);
   } catch (e: any) {
@@ -226,10 +233,10 @@ async function processRequest(
     if (e.constructor.name === "NoFallbackError") {
       // Do we need to handle _not-found
       // Ideally this should never get triggered and be intercepted by the routing handler
-      await tryRenderError("404", res, internalEvent);
+      await tryRenderError("404", res, routingResult.internalEvent);
     } else {
       error("NextJS request failed.", e);
-      await tryRenderError("500", res, internalEvent);
+      await tryRenderError("500", res, routingResult.internalEvent);
     }
   }
 }
@@ -247,6 +254,7 @@ async function tryRenderError(
       body: internalEvent.body,
       remoteAddress: internalEvent.remoteAddress,
     });
+    const requestHandler = nextServer.getRequestHandler();
     await requestHandler(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
