@@ -746,6 +746,7 @@ describe("invalidateCDNOnRequest", () => {
         internalEvent: {
           headers: {},
         },
+        initialURL: "http://localhost/path",
       },
       headers,
     );
@@ -767,6 +768,7 @@ describe("invalidateCDNOnRequest", () => {
             "x-isr": "1",
           },
         },
+        initialURL: "http://localhost/path",
       },
       headers,
     );
@@ -782,7 +784,6 @@ describe("invalidateCDNOnRequest", () => {
     };
     await invalidateCDNOnRequest(
       {
-        initialPath: "/path",
         internalEvent: {
           rawPath: "/path",
           headers: {},
@@ -793,6 +794,7 @@ describe("invalidateCDNOnRequest", () => {
             route: "/path",
           },
         ],
+        initialURL: "http://localhost/path",
       },
       headers,
     );
