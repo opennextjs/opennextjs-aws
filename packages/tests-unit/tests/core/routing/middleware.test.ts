@@ -32,6 +32,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
     functions: {},
     version: 2,
   },
+  FunctionsConfigManifest: undefined,
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({

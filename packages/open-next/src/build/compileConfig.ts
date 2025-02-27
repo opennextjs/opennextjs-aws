@@ -50,7 +50,7 @@ export async function compileOpenNextConfig(
   // We need to check if the config uses the edge runtime at any point
   // If it does, we need to compile it with the edge runtime
   const usesEdgeRuntime =
-    config.middleware?.external ||
+    (config.middleware?.external && config.middleware.runtime !== "node") ||
     Object.values(config.functions || {}).some((fn) => fn.runtime === "edge");
   if (!usesEdgeRuntime) {
     logger.debug(

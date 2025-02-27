@@ -354,6 +354,12 @@ export interface OpenNextConfig {
     external: true;
 
     /**
+     * The runtime used by next for the middleware.
+     * @default "edge"
+     */
+    runtime?: "node" | "edge";
+
+    /**
      * The override options for the middleware.
      * By default the lite override are used (.i.e. s3-lite, dynamodb-lite, sqs-lite)
      * @default undefined

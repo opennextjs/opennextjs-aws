@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type {
+  FunctionsConfigManifest,
   MiddlewareManifest,
   NextConfig,
   PrerenderManifest,
@@ -122,4 +123,14 @@ export function loadMiddlewareManifest(nextDir: string) {
   const filePath = path.join(nextDir, "server", "middleware-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as MiddlewareManifest;
+}
+
+export function loadFunctionsConfigManifest(nextDir: string) {
+  const filePath = path.join(nextDir, "server/functions-config-manifest.json");
+  try {
+    const json = fs.readFileSync(filePath, "utf-8");
+    return JSON.parse(json) as FunctionsConfigManifest;
+  } catch (e) {
+    return { functions: {}, version: 1 };
+  }
 }

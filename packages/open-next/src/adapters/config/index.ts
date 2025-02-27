@@ -8,6 +8,7 @@ import {
   loadBuildId,
   loadConfig,
   loadConfigHeaders,
+  loadFunctionsConfigManifest,
   loadHtmlPages,
   loadMiddlewareManifest,
   loadPrerenderManifest,
@@ -35,3 +36,6 @@ export const MiddlewareManifest =
 export const AppPathsManifest = /* @__PURE__ */ loadAppPathsManifest(NEXT_DIR);
 export const AppPathRoutesManifest =
   /* @__PURE__ */ loadAppPathRoutesManifest(NEXT_DIR);
+
+export const FunctionsConfigManifest =
+  /* @__PURE__ */ loadFunctionsConfigManifest(NEXT_DIR);

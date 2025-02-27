@@ -16,6 +16,7 @@ import type {
 import type { OriginResolver } from "types/overrides.js";
 import logger from "../../logger.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
+import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../../utils/regex.js";
@@ -88,14 +89,12 @@ export async function buildEdgeBundle({
           target: getCrossPlatformPathRegex("adapters/middleware.js"),
           deletes: includeCache ? [] : ["includeCacheInMiddleware"],
         }),
+        openNextExternalMiddlewarePlugin(
+          path.join(options.openNextDistDir, "core/edgeFunctionHandler.js"),
+        ),
         openNextEdgePlugins({
           middlewareInfo,
           nextDir: path.join(options.appBuildOutputPath, ".next"),
-          edgeFunctionHandlerPath: path.join(
-            options.openNextDistDir,
-            "core",
-            "edgeFunctionHandler.js",
-          ),
           isInCloudfare,
         }),
       ],

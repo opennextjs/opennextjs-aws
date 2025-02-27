@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { loadFunctionsConfigManifest } from "config/util.js";
 import logger from "../logger.js";
 import type {
   MiddlewareInfo,
@@ -9,6 +10,10 @@ import type {
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
+import {
+  buildBundledNodeMiddleware,
+  buildExternalNodeMiddleware,
+} from "./middleware/buildNodeMiddleware.js";
 
 /**
  * Compiles the middleware bundle.
@@ -32,9 +37,23 @@ export async function createMiddleware(
     ),
   ) as MiddlewareManifest;
 
-  const middlewareInfo = middlewareManifest.middleware["/"] as
+  const edgeMiddlewareInfo = middlewareManifest.middleware["/"] as
     | MiddlewareInfo
     | undefined;
+
+  if (!edgeMiddlewareInfo) {
+    // If there is no middleware info, it might be a node middleware
+    const functionsConfigManifest = loadFunctionsConfigManifest(
+      path.join(appBuildOutputPath, ".next"),
+    );
+
+    if (functionsConfigManifest?.functions["/_middleware"]) {
+      await (config.middleware?.external
+        ? buildExternalNodeMiddleware(options)
+        : buildBundledNodeMiddleware(options));
+      return;
+    }
+  }
 
   if (config.middleware?.external) {
     const outputPath = path.join(outputDir, "middleware");
@@ -55,7 +74,7 @@ export async function createMiddleware(
         "middleware.js",
       ),
       outfile: path.join(outputPath, "handler.mjs"),
-      middlewareInfo,
+      middlewareInfo: edgeMiddlewareInfo,
       options,
       overrides: {
         ...config.middleware.override,
@@ -77,7 +96,7 @@ export async function createMiddleware(
         "edgeFunctionHandler.js",
       ),
       outfile: path.join(options.buildDir, "middleware.mjs"),
-      middlewareInfo,
+      middlewareInfo: edgeMiddlewareInfo,
       options,
       onlyBuildOnce: true,
       name: "middleware",

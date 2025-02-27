@@ -15,6 +15,7 @@ import path from "node:path";
 import type { NextConfig, PrerenderManifest } from "types/next-types";
 
 import logger from "../logger.js";
+import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -24,14 +25,24 @@ function copyPatchFile(outputDir: string) {
   copyFileSync(patchFile, outputPatchFile);
 }
 
+interface CopyTracedFilesOptions {
+  buildOutputPath: string;
+  packagePath: string;
+  outputDir: string;
+  routes: string[];
+  bundledNextServer: boolean;
+  skipServerFiles?: boolean;
+}
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function copyTracedFiles(
-  buildOutputPath: string,
-  packagePath: string,
-  outputDir: string,
-  routes: string[],
-  bundledNextServer: boolean,
-) {
+export async function copyTracedFiles({
+  buildOutputPath,
+  packagePath,
+  outputDir,
+  routes,
+  bundledNextServer,
+  skipServerFiles,
+}: CopyTracedFilesOptions) {
   const tsStart = Date.now();
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
@@ -58,10 +69,11 @@ export async function copyTracedFiles(
   const filesToCopy = new Map<string, string>();
 
   // Files necessary by the server
-  extractFiles(requiredServerFiles.files).forEach((f) => {
-    filesToCopy.set(f, f.replace(standaloneDir, outputDir));
-  });
-
+  if (!skipServerFiles) {
+    extractFiles(requiredServerFiles.files).forEach((f) => {
+      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
+    });
+  }
   // create directory for pages
   if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
     mkdirSync(path.join(outputNextDir, "server/pages"), {
@@ -140,6 +152,15 @@ File ${fullFilePath} does not exist
       }
     }
   };
+
+  if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
+    // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
+    copyFileSync(
+      path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
+      path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
+    );
+    computeCopyFilesForPage("middleware");
+  }
 
   const hasPageDir = routes.some((route) => route.startsWith("pages/"));
   const hasAppDir = routes.some((route) => route.startsWith("app/"));

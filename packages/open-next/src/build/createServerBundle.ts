@@ -153,13 +153,13 @@ async function generateBundle(
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
   // Copy all necessary traced files
-  await copyTracedFiles(
-    appBuildOutputPath,
+  await copyTracedFiles({
+    buildOutputPath: appBuildOutputPath,
     packagePath,
-    outputPath,
-    fnOptions.routes ?? ["app/page.tsx"],
-    isBundled,
-  );
+    outputDir: outputPath,
+    routes: fnOptions.routes ?? ["app/page.tsx"],
+    bundledNextServer: isBundled,
+  });
 
   // Build Lambda code
   // note: bundle in OpenNext package b/c the adapter relies on the
