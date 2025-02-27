@@ -26,7 +26,7 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
-import { nextServer, setNextjsPrebundledReact } from "./util";
+import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -246,13 +246,8 @@ async function processRequest(
       // invokeStatus is only used for error pages
       invokeStatus,
     };
-
-    const requestHandler =
-      "getRequestHandlerWithMetadata" in nextServer
-        ? nextServer.getRequestHandlerWithMetadata(requestMetadata)
-        : nextServer.getRequestHandler();
     // Next Server
-    await requestHandler(req, res);
+    await requestHandler(requestMetadata)(req, res);
   } catch (e: any) {
     // This might fail when using bundled next, importing won't do the trick either
     if (e.constructor.name === "NoFallbackError") {
@@ -286,11 +281,7 @@ async function tryRenderError(
       invokeStatus: type === "404" ? 404 : 500,
       middlewareInvoke: false,
     };
-    const requestHandler =
-      "getRequestHandlerWithMetadata" in nextServer
-        ? nextServer.getRequestHandlerWithMetadata(requestMetadata)
-        : nextServer.getRequestHandler();
-    await requestHandler(_req, res);
+    await requestHandler(requestMetadata)(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
     res.setHeader("Content-Type", "application/json");

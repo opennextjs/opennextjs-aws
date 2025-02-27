@@ -26,7 +26,7 @@ applyNextjsRequireHooksOverride();
 //#endOverride
 const cacheHandlerPath = require.resolve("./cache.cjs");
 // @ts-ignore
-export const nextServer = new NextServer.default({
+const nextServer = new NextServer.default({
   //#override requestHandlerHost
   hostname: "localhost",
   port: 3000,
@@ -58,6 +58,13 @@ export const nextServer = new NextServer.default({
   dev: false,
   dir: __dirname,
 });
+
+// `getRequestHandlerWithMetadata` is not available in older versions of Next.js
+// It is required to for next 15.2 to pass metadata for page router data route
+export const requestHandler = (metadata: Record<string, any>) =>
+  "getRequestHandlerWithMetadata" in nextServer
+    ? nextServer.getRequestHandlerWithMetadata(metadata)
+    : nextServer.getRequestHandler();
 
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {

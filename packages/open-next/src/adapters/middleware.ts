@@ -71,8 +71,9 @@ const defaultHandler = async (
               headers: {
                 ...result.internalEvent.headers,
                 [INTERNAL_HEADER_INITIAL_URL]: internalEvent.url,
-                [INTERNAL_HEADER_RESOLVED_ROUTES]:
-                  JSON.stringify(result.resolvedRoutes),
+                [INTERNAL_HEADER_RESOLVED_ROUTES]: JSON.stringify(
+                  result.resolvedRoutes,
+                ),
               },
             },
             isExternalRewrite: result.isExternalRewrite,
