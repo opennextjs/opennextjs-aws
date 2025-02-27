@@ -1,5 +1,78 @@
 # open-next
 
+## 3.5.0
+
+### Minor Changes
+
+- [#740](https://github.com/opennextjs/opennextjs-aws/pull/740) [`6ff03ec8d50ada5eb04de11b14ae670382707f30`](https://github.com/opennextjs/opennextjs-aws/commit/6ff03ec8d50ada5eb04de11b14ae670382707f30) Thanks [@vicb](https://github.com/vicb)! - refactor: lastModified moved to ALS
+
+  BREAKING CHANGE: `lastModified` is moved to ALS as a number from a global map indexed by `requestId`
+
+- [#756](https://github.com/opennextjs/opennextjs-aws/pull/756) [`bfef3635a9a375fba43547007d2e27e7406c5910`](https://github.com/opennextjs/opennextjs-aws/commit/bfef3635a9a375fba43547007d2e27e7406c5910) Thanks [@conico974](https://github.com/conico974)! - fix page router json data for next 15.2
+
+  This PR also use `getRequestHandlerWithMetadata` instead of `getRequestHandler` to allow assign metadata to the request.
+
+  BREAKING CHANGE: `MiddlewareResult` now contains `initialURL` instead of `initialPath`
+
+- [#725](https://github.com/opennextjs/opennextjs-aws/pull/725) [`096c2732cbb8a9e77a9f152d8aac87321fa335ae`](https://github.com/opennextjs/opennextjs-aws/commit/096c2732cbb8a9e77a9f152d8aac87321fa335ae) Thanks [@conico974](https://github.com/conico974)! - Add support for the node middleware
+
+- [#733](https://github.com/opennextjs/opennextjs-aws/pull/733) [`b59027a5899d25dd5263d1a272b33ec23fb683d3`](https://github.com/opennextjs/opennextjs-aws/commit/b59027a5899d25dd5263d1a272b33ec23fb683d3) Thanks [@vicb](https://github.com/vicb)! - refactor: `waitUntil` passed around via ALS and `OpenNextHandler` signature has changed
+
+  BREAKING CHANGE: `waitUntil` is passed around via ALS to fix #713.
+
+  `globalThis.openNextWaitUntil` is no more available, you can access `waitUntil`
+  on the ALS context: `globalThis.__openNextAls.getStore()`
+
+  The `OpenNextHandler` signature has changed: the second parameter was a `StreamCreator`.
+  It was changed to be of type `OpenNextHandlerOptions` which has both a `streamCreator` key
+  and a `waitUntil` key.
+
+  If you use a custom wrapper, you need to update the call to the handler as follow:
+
+  ```ts
+  // before
+  globalThis.openNextWaitUntil = myWaitUntil;
+  handler(internalEvent, myStreamCreator);
+
+  // after
+  handler(internalEvent, {
+    streamCreator: myStreamCreator,
+    waitUntil: myWaitUntil,
+  });
+  ```
+
+- [#717](https://github.com/opennextjs/opennextjs-aws/pull/717) [`b0b1f7776b41612d2638a33e3c9ced8c42afab0a`](https://github.com/opennextjs/opennextjs-aws/commit/b0b1f7776b41612d2638a33e3c9ced8c42afab0a) Thanks [@conico974](https://github.com/conico974)! - introduce a new optional mode for the tag cache
+
+### Patch Changes
+
+- [#750](https://github.com/opennextjs/opennextjs-aws/pull/750) [`c4b0a78eedf6d0e8011bdaade9603a64e5f29338`](https://github.com/opennextjs/opennextjs-aws/commit/c4b0a78eedf6d0e8011bdaade9603a64e5f29338) Thanks [@sommeeeer](https://github.com/sommeeeer)! - add: s3 lite override for loading images in the image optimization server
+
+  `s3-lite` override for image loading. Uses `aws4fetch` to get the objects from your s3 bucket. This will make the image optimization server work without the aws s3 sdk. This override introduces a new environment variable called `BUCKET_REGION`. It will fallback to `AWS_REGION` ?? `AWS_DEFAULT_REGION` if undefined. This will require no additional change in IAC for most users.
+
+  ```ts
+  import type { OpenNextConfig } from "@opennextjs/aws/types/open-next";
+  const config = {
+    default: {},
+    imageOptimization: {
+      loader: "s3-lite",
+    },
+  } satisfies OpenNextConfig;
+
+  export default config;
+  ```
+
+- [#727](https://github.com/opennextjs/opennextjs-aws/pull/727) [`867defe3ceacdd1079594202eae1f82391bdcd89`](https://github.com/opennextjs/opennextjs-aws/commit/867defe3ceacdd1079594202eae1f82391bdcd89) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - add and expose new `CachedFetchValue` type
+
+- [#752](https://github.com/opennextjs/opennextjs-aws/pull/752) [`e48951fcb5882b536e67581feac489cd1689ffe9`](https://github.com/opennextjs/opennextjs-aws/commit/e48951fcb5882b536e67581feac489cd1689ffe9) Thanks [@vicb](https://github.com/vicb)! - `InternalEvent#url` is now a full URL
+
+  BREAKING CHANGE: `InternalEvent#url` was only composed of the path and search query before.
+
+  Custom converters should be updated to populate the full URL instead.
+
+- [#745](https://github.com/opennextjs/opennextjs-aws/pull/745) [`ab7466f443178f3e6e0df512fd990e526ea516e7`](https://github.com/opennextjs/opennextjs-aws/commit/ab7466f443178f3e6e0df512fd990e526ea516e7) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: tagCache in initializationFunction
+
+  Add correct typing to tagCache in initializationFunction and also adds it to the `overrides` in `compileTagCacheProvider` function.
+
 ## 3.4.2
 
 ### Patch Changes
