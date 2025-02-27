@@ -1,6 +1,7 @@
 import {
   BuildId,
   ConfigHeaders,
+  NextConfig,
   PrerenderManifest,
   RoutesManifest,
 } from "config/index";
@@ -13,6 +14,7 @@ import type {
 
 import { debug } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
+import { detectLocale } from "./routing/i18n";
 import {
   fixDataPage,
   getNextConfigHeaders,
@@ -31,7 +33,8 @@ import { constructNextUrl } from "./routing/util";
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
-export const INTERNAL_HEADER_INITIAL_PATH = `${INTERNAL_HEADER_PREFIX}initial-path`;
+export const INTERNAL_HEADER_INITIAL_URL = `${INTERNAL_HEADER_PREFIX}initial-url`;
+export const INTERNAL_HEADER_LOCALE = `${INTERNAL_HEADER_PREFIX}locale`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
 
 // Geolocation headers starting from Nextjs 15
@@ -221,7 +224,10 @@ export default async function routingHandler(
     isExternalRewrite,
     origin: false,
     isISR,
-    initialPath: event.rawPath,
     resolvedRoutes,
+    initialURL: event.url,
+    locale: NextConfig.i18n
+      ? detectLocale(internalEvent, NextConfig.i18n)
+      : undefined,
   };
 }

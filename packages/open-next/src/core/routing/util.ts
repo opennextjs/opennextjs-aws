@@ -414,7 +414,8 @@ export async function invalidateCDNOnRequest(
   params: RoutingResult,
   headers: OutgoingHttpHeaders,
 ) {
-  const { internalEvent, initialPath, resolvedRoutes } = params;
+  const { internalEvent, resolvedRoutes, initialURL } = params;
+  const initialPath = new URL(initialURL).pathname;
   const isIsrRevalidation = internalEvent.headers["x-isr"] === "1";
   if (
     !isIsrRevalidation &&
