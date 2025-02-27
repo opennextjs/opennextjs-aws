@@ -22,7 +22,7 @@ export function loadBuildId(nextDir: string) {
 }
 
 export function loadHtmlPages(nextDir: string) {
-  const filePath = path.join(nextDir, "server", "pages-manifest.json");
+  const filePath = path.join(nextDir, "server/pages-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return Object.entries(JSON.parse(json))
     .filter(([_, value]) => (value as string).endsWith(".html"))
@@ -81,8 +81,7 @@ export function loadPrerenderManifest(nextDir: string) {
 export function loadAppPathsManifest(nextDir: string) {
   const appPathsManifestPath = path.join(
     nextDir,
-    "server",
-    "app-paths-manifest.json",
+    "server/app-paths-manifest.json",
   );
   const appPathsManifestJson = fs.existsSync(appPathsManifestPath)
     ? fs.readFileSync(appPathsManifestPath, "utf-8")
@@ -120,7 +119,7 @@ export function loadAppPathsManifestKeys(nextDir: string) {
 }
 
 export function loadMiddlewareManifest(nextDir: string) {
-  const filePath = path.join(nextDir, "server", "middleware-manifest.json");
+  const filePath = path.join(nextDir, "server/middleware-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(json) as MiddlewareManifest;
 }
