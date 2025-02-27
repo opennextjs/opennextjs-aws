@@ -45,14 +45,14 @@ export async function buildExternalNodeMiddleware(
   const packagePath = buildHelper.getPackagePath(options);
 
   // TODO: change this so that we don't copy unnecessary files
-  await copyTracedFiles(
-    appBuildOutputPath,
+  await copyTracedFiles({
+    buildOutputPath: appBuildOutputPath,
     packagePath,
-    outputPath,
-    [],
-    false,
-    true,
-  );
+    outputDir: outputPath,
+    routes: [],
+    bundledNextServer: false,
+    skipServerFiles: true,
+  });
 
   function override<T extends keyof Override>(target: T) {
     return typeof overrides?.[target] === "string"

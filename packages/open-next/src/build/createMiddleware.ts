@@ -1,10 +1,9 @@
 import fs from "node:fs";
-import fsAsync from "node:fs/promises";
 import path from "node:path";
 
+import { loadFunctionsConfigManifest } from "config/util.js";
 import logger from "../logger.js";
 import type {
-  FunctionsConfigManifest,
   MiddlewareInfo,
   MiddlewareManifest,
 } from "../types/next-types.js";
@@ -38,25 +37,20 @@ export async function createMiddleware(
     ),
   ) as MiddlewareManifest;
 
-  const middlewareInfo = middlewareManifest.middleware["/"] as
+  const edgeMiddlewareInfo = middlewareManifest.middleware["/"] as
     | MiddlewareInfo
     | undefined;
 
-  if (!middlewareInfo) {
+  if (!edgeMiddlewareInfo) {
     // If there is no middleware info, it might be a node middleware
-    const functionsConfigManifestPath = path.join(
-      appBuildOutputPath,
-      ".next/server/functions-config-manifest.json",
+    const functionsConfigManifest = loadFunctionsConfigManifest(
+      path.join(appBuildOutputPath, ".next"),
     );
-    const functionsConfigManifest = JSON.parse(
-      await fsAsync
-        .readFile(functionsConfigManifestPath, "utf8")
-        .catch(() => '{"functions":{}, "version": 1}'),
-    ) as FunctionsConfigManifest;
 
     if (functionsConfigManifest?.functions["/_middleware"]) {
-      await (config.middleware?.external  ? buildExternalNodeMiddleware(options) : buildBundledNodeMiddleware(options));
-      return;
+      await (config.middleware?.external
+        ? buildExternalNodeMiddleware(options)
+        : buildBundledNodeMiddleware(options));
       return;
     }
   }
@@ -80,7 +74,7 @@ export async function createMiddleware(
         "middleware.js",
       ),
       outfile: path.join(outputPath, "handler.mjs"),
-      middlewareInfo,
+      middlewareInfo: edgeMiddlewareInfo,
       options,
       overrides: {
         ...config.middleware.override,
@@ -102,7 +96,7 @@ export async function createMiddleware(
         "edgeFunctionHandler.js",
       ),
       outfile: path.join(options.buildDir, "middleware.mjs"),
-      middlewareInfo,
+      middlewareInfo: edgeMiddlewareInfo,
       options,
       onlyBuildOnce: true,
       name: "middleware",

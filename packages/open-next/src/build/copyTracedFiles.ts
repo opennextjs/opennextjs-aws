@@ -25,15 +25,24 @@ function copyPatchFile(outputDir: string) {
   copyFileSync(patchFile, outputPatchFile);
 }
 
+interface CopyTracedFilesOptions {
+  buildOutputPath: string;
+  packagePath: string;
+  outputDir: string;
+  routes: string[];
+  bundledNextServer: boolean;
+  skipServerFiles?: boolean;
+}
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
-export async function copyTracedFiles(
-  buildOutputPath: string,
-  packagePath: string,
-  outputDir: string,
-  routes: string[],
-  bundledNextServer: boolean,
-  skipServerFiles = false,
-) {
+export async function copyTracedFiles({
+  buildOutputPath,
+  packagePath,
+  outputDir,
+  routes,
+  bundledNextServer,
+  skipServerFiles,
+}: CopyTracedFilesOptions) {
   const tsStart = Date.now();
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
