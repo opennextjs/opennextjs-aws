@@ -82,7 +82,7 @@ export interface DangerousOptions {
 export type BaseOverride = {
   name: string;
 };
-export type LazyLoadedOverride<T extends BaseOverride> = () => Promise<T>;
+export type LazyLoadedOverride<T extends BaseOverride> = () => T | Promise<T>;
 
 export interface Origin {
   host: string;
