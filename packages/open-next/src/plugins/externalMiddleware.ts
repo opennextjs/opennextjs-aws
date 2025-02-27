@@ -8,11 +8,7 @@ export function openNextExternalMiddlewarePlugin(functionPath: string): Plugin {
       // If we bundle the routing, we need to resolve the middleware
       build.onResolve(
         { filter: getCrossPlatformPathRegex("./middleware.mjs") },
-        () => {
-          return {
-            path: functionPath,
-          };
-        },
+        () => ({ path: functionPath }),
       );
     },
   };

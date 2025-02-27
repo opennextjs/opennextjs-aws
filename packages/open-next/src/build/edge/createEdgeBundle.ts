@@ -90,7 +90,7 @@ export async function buildEdgeBundle({
           deletes: includeCache ? [] : ["includeCacheInMiddleware"],
         }),
         openNextExternalMiddlewarePlugin(
-          path.join(options.openNextDistDir, "core", "edgeFunctionHandler.js"),
+          path.join(options.openNextDistDir, "core/edgeFunctionHandler.js"),
         ),
         openNextEdgePlugins({
           middlewareInfo,

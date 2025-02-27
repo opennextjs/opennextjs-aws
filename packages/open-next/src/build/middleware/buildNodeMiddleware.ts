@@ -126,7 +126,7 @@ export async function buildBundledNodeMiddleware(
   await buildHelper.esbuildAsync(
     {
       entryPoints: [
-        path.join(options.openNextDistDir, "core", "nodeMiddlewareHandler.js"),
+        path.join(options.openNextDistDir, "core/nodeMiddlewareHandler.js"),
       ],
       external: ["./.next/*"],
       outfile: path.join(options.buildDir, "middleware.mjs"),

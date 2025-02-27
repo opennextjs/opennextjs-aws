@@ -128,8 +128,7 @@ export function loadMiddlewareManifest(nextDir: string) {
 export function loadFunctionsConfigManifest(nextDir: string) {
   const filePath = path.join(
     nextDir,
-    "server",
-    "functions-config-manifest.json",
+    "server/functions-config-manifest.json",
   );
   try {
     const json = fs.readFileSync(filePath, "utf-8");

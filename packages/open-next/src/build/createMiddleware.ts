@@ -55,15 +55,8 @@ export async function createMiddleware(
     ) as FunctionsConfigManifest;
 
     if (functionsConfigManifest?.functions["/_middleware"]) {
-      if (!config.middleware?.external) {
-        // If we are here, it means that we are using a node middleware
-        await buildBundledNodeMiddleware(options);
-        // We return early to not build the edge middleware
-        return;
-      }
-
-      // Here it means that we are using a node external middleware
-      await buildExternalNodeMiddleware(options);
+      await (config.middleware?.external  ? buildExternalNodeMiddleware(options) : buildBundledNodeMiddleware(options));
+      return;
       return;
     }
   }
