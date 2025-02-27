@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadFunctionsConfigManifest } from "config/util.js";
+import {
+  loadFunctionsConfigManifest,
+  loadMiddlewareManifest,
+} from "config/util.js";
 import logger from "../logger.js";
-import type {
-  MiddlewareInfo,
-  MiddlewareManifest,
-} from "../types/next-types.js";
+import type { MiddlewareInfo } from "../types/next-types.js";
 import { buildEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
@@ -27,15 +27,11 @@ export async function createMiddleware(
 ) {
   logger.info("Bundling middleware function...");
 
-  const { appBuildOutputPath, config, outputDir } = options;
+  const { config, outputDir } = options;
+  const buildOutputDotNextDir = path.join(options.appBuildOutputPath, ".next");
 
   // Get middleware manifest
-  const middlewareManifest = JSON.parse(
-    fs.readFileSync(
-      path.join(appBuildOutputPath, ".next/server/middleware-manifest.json"),
-      "utf8",
-    ),
-  ) as MiddlewareManifest;
+  const middlewareManifest = loadMiddlewareManifest(buildOutputDotNextDir);
 
   const edgeMiddlewareInfo = middlewareManifest.middleware["/"] as
     | MiddlewareInfo
@@ -44,7 +40,7 @@ export async function createMiddleware(
   if (!edgeMiddlewareInfo) {
     // If there is no middleware info, it might be a node middleware
     const functionsConfigManifest = loadFunctionsConfigManifest(
-      path.join(appBuildOutputPath, ".next"),
+      buildOutputDotNextDir,
     );
 
     if (functionsConfigManifest?.functions["/_middleware"]) {

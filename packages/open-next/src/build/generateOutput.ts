@@ -1,7 +1,5 @@
 import * as fs from "node:fs";
 import path from "node:path";
-
-import type { NextConfig } from "types/next-types.js";
 import type {
   BaseOverride,
   DefaultOverrideOptions,
@@ -10,6 +8,7 @@ import type {
   OverrideOptions,
 } from "types/open-next";
 
+import { loadConfig } from "config/util.js";
 import { type BuildOptions, getBuildId } from "./helper.js";
 
 type BaseFunction = {
@@ -188,14 +187,8 @@ export async function generateOutput(options: BuildOptions) {
 
   const defaultOriginCanstream = await canStream(config.default);
 
-  //Load required-server-files.json
-  const requiredServerFiles = JSON.parse(
-    fs.readFileSync(
-      path.join(appBuildOutputPath, ".next", "required-server-files.json"),
-      "utf-8",
-    ),
-  ).config as NextConfig;
-  const prefixer = prefixPattern(requiredServerFiles.basePath ?? "");
+  const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const prefixer = prefixPattern(nextConfig.basePath ?? "");
 
   // First add s3 origins and image optimization
 
@@ -206,9 +199,7 @@ export async function generateOutput(options: BuildOptions) {
       copy: [
         {
           from: ".open-next/assets",
-          to: requiredServerFiles.basePath
-            ? `_assets${requiredServerFiles.basePath}`
-            : "_assets",
+          to: nextConfig.basePath ? `_assets${nextConfig.basePath}` : "_assets",
           cached: true,
           versionedSubDir: prefixer("_next"),
         },

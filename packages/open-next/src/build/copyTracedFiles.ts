@@ -12,8 +12,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
-import type { NextConfig, PrerenderManifest } from "types/next-types";
 
+import { loadConfig, loadPrerenderManifest } from "config/util.js";
 import logger from "../logger.js";
 import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
@@ -47,6 +47,7 @@ export async function copyTracedFiles({
   const dotNextDir = path.join(buildOutputPath, ".next");
   const standaloneDir = path.join(dotNextDir, "standalone");
   const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
+  const standaloneServerDir = path.join(standaloneNextDir, "server");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
 
   const extractFiles = (files: string[], from = standaloneNextDir) =>
@@ -75,12 +76,12 @@ export async function copyTracedFiles({
     });
   }
   // create directory for pages
-  if (existsSync(path.join(standaloneDir, ".next/server/pages"))) {
+  if (existsSync(path.join(standaloneServerDir, "pages"))) {
     mkdirSync(path.join(outputNextDir, "server/pages"), {
       recursive: true,
     });
   }
-  if (existsSync(path.join(standaloneDir, ".next/server/app"))) {
+  if (existsSync(path.join(standaloneServerDir, "app"))) {
     mkdirSync(path.join(outputNextDir, "server/app"), {
       recursive: true,
     });
@@ -239,17 +240,15 @@ File ${fullFilePath} does not exist
 
   mkdirSync(path.join(outputNextDir, "server"), { recursive: true });
 
-  readdirSync(path.join(standaloneNextDir, "server"))
+  readdirSync(standaloneServerDir)
     .filter(
       (fileOrDir) =>
-        !statSync(
-          path.join(standaloneNextDir, "server", fileOrDir),
-        ).isDirectory(),
+        !statSync(path.join(standaloneServerDir, fileOrDir)).isDirectory(),
     )
     .filter((file) => file !== "server.js")
     .forEach((file) =>
       copyFileSync(
-        path.join(standaloneNextDir, "server", file),
+        path.join(standaloneServerDir, file),
         path.join(path.join(outputNextDir, "server"), file),
       ),
     );
@@ -285,24 +284,14 @@ File ${fullFilePath} does not exist
     const staticFiles: Array<string> = Object.values(
       JSON.parse(
         readFileSync(
-          path.join(standaloneNextDir, "server/pages-manifest.json"),
+          path.join(standaloneServerDir, "pages-manifest.json"),
           "utf8",
         ),
       ),
     );
     // Then we need to get all fallback: true dynamic routes html
-    const prerenderManifest = JSON.parse(
-      readFileSync(
-        path.join(standaloneNextDir, "prerender-manifest.json"),
-        "utf8",
-      ),
-    ) as PrerenderManifest;
-    const config = JSON.parse(
-      readFileSync(
-        path.join(standaloneNextDir, "required-server-files.json"),
-        "utf8",
-      ),
-    ).config as NextConfig;
+    const prerenderManifest = loadPrerenderManifest(standaloneNextDir);
+    const config = loadConfig(standaloneNextDir);
     const locales = config.i18n?.locales;
     Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
       if (typeof route.fallback === "string") {
