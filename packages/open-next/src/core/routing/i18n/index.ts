@@ -2,9 +2,9 @@ import { NextConfig } from "config/index.js";
 import type { DomainLocale, i18nConfig } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
 
+import { emptyReadableStream } from "utils/stream.js";
 import { debug } from "../../../adapters/logger.js";
 import { acceptLanguage } from "./accept-header";
-import { emptyReadableStream } from "utils/stream.js";
 
 function isLocalizedPath(path: string): boolean {
   return (
