@@ -5,6 +5,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream } from "utils/stream.js";
 import { debug } from "../../../adapters/logger.js";
 import { acceptLanguage } from "./accept-header";
+import { constructNextUrl } from "../util.js";
 
 function isLocalizedPath(path: string): boolean {
   return (
@@ -21,7 +22,7 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
     : undefined;
 }
 
-// Inspired by https://github.com/vercel/next.js/blob/canary/packages/next/src/shared/lib/i18n/detect-domain-locale.ts
+// Inspired by https://github.com/vercel/next.js/blob/6d93d652e0e7ba72d9a3b66e78746dce2069db03/packages/next/src/shared/lib/i18n/detect-domain-locale.ts#L3-L25
 export function detectDomainLocale({
   hostname,
   detectedLocale,
@@ -33,15 +34,18 @@ export function detectDomainLocale({
   if (!i18n || i18n.localeDetection === false || !i18n.domains) {
     return;
   }
-  for (const item of i18n.domains) {
+  const lowercasedLocale = detectedLocale?.toLowerCase();
+  for (const domain of i18n.domains) {
     // We remove the port if present
-    const domainHostname = item.domain.split(":", 1)[0].toLowerCase();
+    const domainHostname = domain.domain.split(":", 1)[0].toLowerCase();
     if (
       hostname === domainHostname ||
-      detectedLocale === item.defaultLocale.toLowerCase() ||
-      item.locales?.some((locale) => detectedLocale === locale.toLowerCase())
+      lowercasedLocale === domain.defaultLocale.toLowerCase() ||
+      domain.locales?.some(
+        (locale) => lowercasedLocale === locale.toLowerCase(),
+      )
     ) {
-      return item;
+      return domain;
     }
   }
 }
@@ -91,6 +95,12 @@ export function localizePath(internalEvent: InternalEvent): string {
   return `/${detectedLocale}${internalEvent.rawPath}`;
 }
 
+/**
+ *
+ * @param internalEvent
+ * In this function, for domain locale redirect we need to rely on the host to be present and correct
+ * @returns `false` if no redirect is needed, `InternalResult` if a redirect is needed
+ */
 export function handleLocaleRedirect(
   internalEvent: InternalEvent,
 ): false | InternalResult {
@@ -113,7 +123,7 @@ export function handleLocaleRedirect(
     hostname: internalEvent.headers.host,
   });
   const preferredDomain = detectDomainLocale({
-    detectedLocale: preferredLocale?.toLowerCase(),
+    detectedLocale: preferredLocale,
   });
 
   if (domainLocale && preferredDomain) {
@@ -141,10 +151,7 @@ export function handleLocaleRedirect(
       type: "core",
       statusCode: 307,
       headers: {
-        Location: new URL(
-          `${NextConfig.basePath || ""}/${detectedLocale}`,
-          internalEvent.url,
-        ).href,
+        Location: constructNextUrl(internalEvent.url, `/${detectedLocale}`),
       },
       body: emptyReadableStream(),
       isBase64Encoded: false,

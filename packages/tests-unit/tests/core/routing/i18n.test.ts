@@ -5,7 +5,7 @@ import {
 } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
-import { vi } from "vitest";
+import { expect, vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => {
   return {
@@ -25,7 +25,7 @@ type PartialEvent = Partial<
 function createEvent(event: PartialEvent): InternalEvent {
   const url = new URL(event.url ?? "/");
   const rawPath = url.pathname;
-  const qs = url.search;
+  const qs = url.search.slice(1);
   return {
     type: "core",
     method: event.method ?? "GET",
@@ -33,7 +33,7 @@ function createEvent(event: PartialEvent): InternalEvent {
     url: event.url ?? "/",
     body: Buffer.from(event.body ?? ""),
     headers: event.headers ?? {},
-    query: convertFromQueryString(qs ?? ""),
+    query: convertFromQueryString(qs),
     cookies: event.cookies ?? {},
     remoteAddress: event.remoteAddress ?? "::1",
   };
@@ -148,7 +148,6 @@ describe("handleLocaleRedirect", () => {
   it("should redirect to the localized path if the path is not localized", () => {
     const event = createEvent({
       url: "http://localhost",
-
       headers: {
         "accept-language": "fr",
       },
@@ -156,10 +155,11 @@ describe("handleLocaleRedirect", () => {
 
     const result = handleLocaleRedirect(event);
 
-    expect(result).toBeTruthy();
-    expect(result!.statusCode).toEqual(307);
-    expect(result!.headers).toEqual({
-      Location: "http://localhost/fr",
+    expect(result).toMatchObject({
+      statusCode: 307,
+      headers: {
+        Location: "http://localhost/fr",
+      },
     });
   });
 
@@ -170,7 +170,7 @@ describe("handleLocaleRedirect", () => {
 
     const result = handleLocaleRedirect(event);
 
-    expect(result).toBeFalsy();
+    expect(result).toBe(false);
   });
 
   it("should not redirect if not the root path", () => {
@@ -180,7 +180,7 @@ describe("handleLocaleRedirect", () => {
 
     const result = handleLocaleRedirect(event);
 
-    expect(result).toBeFalsy();
+    expect(result).toBe(false);
   });
 
   describe("using domain", () => {
@@ -210,10 +210,11 @@ describe("handleLocaleRedirect", () => {
 
       const result = handleLocaleRedirect(event);
 
-      expect(result).toBeTruthy();
-      expect(result!.statusCode).toEqual(307);
-      expect(result!.headers).toEqual({
-        Location: "http://localhost/",
+      expect(result).toMatchObject({
+        statusCode: 307,
+        headers: {
+          Location: "http://localhost/",
+        },
       });
     });
 
@@ -244,10 +245,11 @@ describe("handleLocaleRedirect", () => {
 
       const result = handleLocaleRedirect(event);
 
-      expect(result).toBeTruthy();
-      expect(result!.statusCode).toEqual(307);
-      expect(result!.headers).toEqual({
-        Location: "http://localhost/fr-FR",
+      expect(result).toMatchObject({
+        statusCode: 307,
+        headers: {
+          Location: "http://localhost/fr-FR",
+        },
       });
     });
 
@@ -278,10 +280,11 @@ describe("handleLocaleRedirect", () => {
 
       const result = handleLocaleRedirect(event);
 
-      expect(result).toBeTruthy();
-      expect(result!.statusCode).toEqual(307);
-      expect(result!.headers).toEqual({
-        Location: "http://localhost/fr-FR",
+      expect(result).toMatchObject({
+        statusCode: 307,
+        headers: {
+          Location: "http://localhost/fr-FR",
+        },
       });
     });
 
@@ -312,7 +315,7 @@ describe("handleLocaleRedirect", () => {
 
       const result = handleLocaleRedirect(event);
 
-      expect(result).toBeFalsy();
+      expect(result).toBe(false);
     });
 
     it("should not redirect if locale is not found", () => {
@@ -342,7 +345,7 @@ describe("handleLocaleRedirect", () => {
 
       const result = handleLocaleRedirect(event);
 
-      expect(result).toBeFalsy();
+      expect(result).toBe(false);
     });
   });
 });

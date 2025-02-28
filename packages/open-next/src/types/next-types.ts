@@ -71,7 +71,7 @@ export interface DomainLocale {
 export interface i18nConfig {
   locales: string[];
   defaultLocale: string;
-  domains?: Array<DomainLocale>;
+  domains?: DomainLocale[];
   localeDetection?: false;
 }
 export interface NextConfig {

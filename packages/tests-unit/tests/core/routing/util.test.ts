@@ -1,7 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import * as config from "@opennextjs/aws/adapters/config/index.js";
+import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
   addOpenNextHeader,
+  constructNextUrl,
   convertBodyToReadableStream,
   convertFromQueryString,
   convertRes,
@@ -22,7 +24,9 @@ import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
-  NextConfig: {},
+  NextConfig: {
+    basePath: "",
+  },
   HtmlPages: [],
 }));
 
@@ -813,5 +817,18 @@ describe("invalidateCDNOnRequest", () => {
         ],
       },
     ]);
+  });
+});
+
+describe("constructNextUrl", () => {
+  it("should construct next url without a basePath", () => {
+    const result = constructNextUrl("http://localhost", "/path");
+    expect(result).toBe("http://localhost/path");
+  });
+
+  it("should construct next url with a basePath", () => {
+    vi.spyOn(NextConfig, "basePath", "get").mockReturnValue("/base");
+    const result = constructNextUrl("http://localhost", "/path");
+    expect(result).toBe("http://localhost/base/path");
   });
 });
