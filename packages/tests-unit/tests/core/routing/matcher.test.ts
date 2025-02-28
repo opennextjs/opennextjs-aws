@@ -14,6 +14,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 }));
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
   localizePath: (event: InternalEvent) => event.rawPath,
+  handleLocaleRedirect: (_event: InternalEvent) => false,
 }));
 
 type PartialEvent = Partial<

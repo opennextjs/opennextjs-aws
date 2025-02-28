@@ -61,9 +61,17 @@ export type Header = {
   missing?: RouteHas[];
 };
 
+export interface DomainLocale {
+  defaultLocale: string;
+  domain: string;
+  http?: true;
+  locales: readonly string[];
+}
+
 export interface i18nConfig {
   locales: string[];
   defaultLocale: string;
+  domains?: DomainLocale[];
   localeDetection?: false;
 }
 export interface NextConfig {
