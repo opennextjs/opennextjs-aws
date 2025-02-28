@@ -316,6 +316,7 @@ export function handleRedirects(
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
   const trailingSlashRedirect = handleTrailingSlashRedirect(event);
+  // TODO: handle locale redirects directly from here, at the moment it's next that will handle it
   if (trailingSlashRedirect) return trailingSlashRedirect;
   const { internalEvent, __rewrite } = handleRewrites(
     event,
