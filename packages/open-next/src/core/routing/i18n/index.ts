@@ -31,7 +31,7 @@ export function detectDomainLocale({
   detectedLocale?: string;
 }): DomainLocale | undefined {
   const i18n = NextConfig.i18n;
-  if (!i18n || i18n.localeDetection === false || !i18n.domains) {
+  if (!i18n || !i18n.domains) {
     return;
   }
   const lowercasedLocale = detectedLocale?.toLowerCase();
@@ -54,8 +54,11 @@ export function detectLocale(
   internalEvent: InternalEvent,
   i18n: i18nConfig,
 ): string {
+  const domainLocale = detectDomainLocale({
+    hostname: internalEvent.headers.host,
+  });
   if (i18n.localeDetection === false) {
-    return i18n.defaultLocale;
+    return domainLocale?.defaultLocale ?? i18n.defaultLocale;
   }
 
   const cookiesLocale = getLocaleFromCookie(internalEvent.cookies);
@@ -67,10 +70,7 @@ export function detectLocale(
     cookiesLocale,
     preferredLocale,
     defaultLocale: i18n.defaultLocale,
-  });
-
-  const domainLocale = detectDomainLocale({
-    hostname: internalEvent.headers.host,
+    domainLocale,
   });
 
   return (
