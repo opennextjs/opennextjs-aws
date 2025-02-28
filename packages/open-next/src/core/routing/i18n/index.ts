@@ -4,8 +4,8 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 
 import { emptyReadableStream } from "utils/stream.js";
 import { debug } from "../../../adapters/logger.js";
-import { acceptLanguage } from "./accept-header";
 import { constructNextUrl } from "../util.js";
+import { acceptLanguage } from "./accept-header";
 
 function isLocalizedPath(path: string): boolean {
   return (
