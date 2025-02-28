@@ -12,7 +12,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { localizePath } from "./i18n";
+import { handleLocaleRedirect, localizePath } from "./i18n";
 import {
   constructNextUrl,
   convertFromQueryString,
@@ -316,8 +316,11 @@ export function handleRedirects(
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
   const trailingSlashRedirect = handleTrailingSlashRedirect(event);
-  // TODO: handle locale redirects directly from here, at the moment it's next that will handle it
   if (trailingSlashRedirect) return trailingSlashRedirect;
+
+  const localeRedirect = handleLocaleRedirect(event);
+  if (localeRedirect) return localeRedirect;
+
   const { internalEvent, __rewrite } = handleRewrites(
     event,
     redirects.filter((r) => !r.internal),

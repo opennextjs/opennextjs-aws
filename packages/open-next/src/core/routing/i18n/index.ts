@@ -1,9 +1,10 @@
 import { NextConfig } from "config/index.js";
 import type { DomainLocale, i18nConfig } from "types/next-types";
-import type { InternalEvent } from "types/open-next";
+import type { InternalEvent, InternalResult } from "types/open-next";
 
 import { debug } from "../../../adapters/logger.js";
 import { acceptLanguage } from "./accept-header";
+import { emptyReadableStream } from "utils/stream.js";
 
 function isLocalizedPath(path: string): boolean {
   return (
@@ -21,15 +22,15 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
 }
 
 // Inspired by https://github.com/vercel/next.js/blob/canary/packages/next/src/shared/lib/i18n/detect-domain-locale.ts
-export function detectDomainLocale(
-  hostname: string,
-  i18n: i18nConfig,
-  detectedLocale?: string,
-): DomainLocale | undefined {
-  if (i18n.localeDetection === false) {
-    return;
-  }
-  if (!i18n.domains) {
+export function detectDomainLocale({
+  hostname,
+  detectedLocale,
+}: {
+  hostname?: string;
+  detectedLocale?: string;
+}): DomainLocale | undefined {
+  const i18n = NextConfig.i18n;
+  if (!i18n || i18n.localeDetection === false || !i18n.domains) {
     return;
   }
   for (const item of i18n.domains) {
@@ -64,7 +65,9 @@ export function detectLocale(
     defaultLocale: i18n.defaultLocale,
   });
 
-  const domainLocale = detectDomainLocale(internalEvent.headers.host, i18n);
+  const domainLocale = detectDomainLocale({
+    hostname: internalEvent.headers.host,
+  });
 
   return (
     domainLocale?.defaultLocale ??
@@ -82,6 +85,23 @@ export function localizePath(internalEvent: InternalEvent): string {
   if (isLocalizedPath(internalEvent.rawPath)) {
     return internalEvent.rawPath;
   }
+
+  const detectedLocale = detectLocale(internalEvent, i18n);
+
+  return `/${detectedLocale}${internalEvent.rawPath}`;
+}
+
+export function handleLocaleRedirect(
+  internalEvent: InternalEvent,
+): false | InternalResult {
+  const i18n = NextConfig.i18n;
+  if (
+    !i18n ||
+    i18n.localeDetection === false ||
+    internalEvent.rawPath !== "/"
+  ) {
+    return false;
+  }
   const preferredLocale = acceptLanguage(
     internalEvent.headers["accept-language"],
     i18n?.locales,
@@ -89,10 +109,46 @@ export function localizePath(internalEvent: InternalEvent): string {
 
   const detectedLocale = detectLocale(internalEvent, i18n);
 
-  // not entirely sure if we should do that or not here
-  if (preferredLocale && preferredLocale !== detectedLocale) {
-    return `/${preferredLocale}${internalEvent.rawPath}`;
+  const domainLocale = detectDomainLocale({
+    hostname: internalEvent.headers.host,
+  });
+  const preferredDomain = detectDomainLocale({
+    detectedLocale: preferredLocale?.toLowerCase(),
+  });
+
+  if (domainLocale && preferredDomain) {
+    const isPDomain = preferredDomain.domain === domainLocale.domain;
+    const isPLocale = preferredDomain.defaultLocale === preferredLocale;
+    if (!isPDomain || !isPLocale) {
+      const scheme = `http${preferredDomain.http ? "" : "s"}`;
+      const rlocale = isPLocale ? "" : preferredLocale;
+      return {
+        type: "core",
+        statusCode: 307,
+        headers: {
+          Location: `${scheme}://${preferredDomain.domain}/${rlocale}`,
+        },
+        body: emptyReadableStream(),
+        isBase64Encoded: false,
+      };
+    }
   }
 
-  return `/${detectedLocale}${internalEvent.rawPath}`;
+  const defaultLocale = domainLocale?.defaultLocale ?? i18n.defaultLocale;
+
+  if (detectedLocale.toLowerCase() !== defaultLocale.toLowerCase()) {
+    return {
+      type: "core",
+      statusCode: 307,
+      headers: {
+        Location: new URL(
+          `${NextConfig.basePath || ""}/${detectedLocale}`,
+          internalEvent.url,
+        ).href,
+      },
+      body: emptyReadableStream(),
+      isBase64Encoded: false,
+    };
+  }
+  return false;
 }
