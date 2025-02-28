@@ -87,7 +87,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
  * @__PURE__
  */
 export function constructNextUrl(baseUrl: string, path: string) {
-  // basePath is generated as "" if not provided on latest versions of Next.js (not sure about older versions)
+  // basePath is generated as "" if not provided on Next.js 15 (not sure about older versions)
   const nextBasePath = NextConfig.basePath ?? "";
   const url = new URL(`${nextBasePath}${path}`, baseUrl);
   return url.href;
