@@ -203,7 +203,6 @@ describe("handleLocaleRedirect", () => {
     });
 
     const result = handleLocaleRedirect(event);
-    console.log(NextConfig.i18n);
 
     expect(result).toMatchObject({
       statusCode: 307,
