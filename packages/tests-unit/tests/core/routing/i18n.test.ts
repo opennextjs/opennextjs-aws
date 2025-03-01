@@ -142,6 +142,55 @@ describe("localizePath", () => {
 
     expect(result).toEqual("/en/foo");
   });
+
+  it("should use default locale if localeDetection is set to false", () => {
+    const i18nSpy = vi.spyOn(NextConfig, "i18n", "get").mockReturnValue({
+      defaultLocale: "en",
+      locales: ["en", "fr"],
+      localeDetection: false,
+    });
+
+    const event = createEvent({
+      url: "http://localhost/foo",
+    });
+
+    const result = localizePath(event);
+
+    expect(result).toEqual("/en/foo");
+
+    i18nSpy.mockRestore();
+  });
+
+  it("should use domain default locale if localeDetection is set to false but with a domain", () => {
+    const i18nSpy = vi.spyOn(NextConfig, "i18n", "get").mockReturnValue({
+      defaultLocale: "en",
+      locales: ["en", "fr"],
+      domains: [
+        {
+          domain: "mydomain.com",
+          defaultLocale: "en",
+        },
+        {
+          domain: "mydomain.fr",
+          defaultLocale: "fr",
+        },
+      ],
+      localeDetection: false,
+    });
+
+    const event = createEvent({
+      url: "http://mydomain.fr/foo",
+      headers: {
+        host: "mydomain.fr",
+      },
+    });
+
+    const result = localizePath(event);
+
+    expect(result).toEqual("/fr/foo");
+
+    i18nSpy.mockRestore();
+  });
 });
 
 describe("handleLocaleRedirect", () => {

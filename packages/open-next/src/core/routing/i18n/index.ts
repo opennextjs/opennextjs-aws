@@ -23,6 +23,10 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
 }
 
 // Inspired by https://github.com/vercel/next.js/blob/6d93d652e0e7ba72d9a3b66e78746dce2069db03/packages/next/src/shared/lib/i18n/detect-domain-locale.ts#L3-L25
+/**
+ * @param arg an object containing the hostname and detectedLocale
+ * @returns The `DomainLocale` object if a domain is detected, `undefined` otherwise
+ */
 export function detectDomainLocale({
   hostname,
   detectedLocale,
@@ -31,11 +35,12 @@ export function detectDomainLocale({
   detectedLocale?: string;
 }): DomainLocale | undefined {
   const i18n = NextConfig.i18n;
-  if (!i18n || i18n.localeDetection === false || !i18n.domains) {
+  const domains = i18n?.domains;
+  if (!domains) {
     return;
   }
   const lowercasedLocale = detectedLocale?.toLowerCase();
-  for (const domain of i18n.domains) {
+  for (const domain of domains) {
     // We remove the port if present
     const domainHostname = domain.domain.split(":", 1)[0].toLowerCase();
     if (
@@ -50,12 +55,21 @@ export function detectDomainLocale({
   }
 }
 
+/**
+ *
+ * @param internalEvent
+ * @param i18n
+ * @returns The detected locale, if `localeDetection` is set to `false` it will return the default locale **or** the domain default locale if a domain is detected.
+ */
 export function detectLocale(
   internalEvent: InternalEvent,
   i18n: i18nConfig,
 ): string {
+  const domainLocale = detectDomainLocale({
+    hostname: internalEvent.headers.host,
+  });
   if (i18n.localeDetection === false) {
-    return i18n.defaultLocale;
+    return domainLocale?.defaultLocale ?? i18n.defaultLocale;
   }
 
   const cookiesLocale = getLocaleFromCookie(internalEvent.cookies);
@@ -67,10 +81,7 @@ export function detectLocale(
     cookiesLocale,
     preferredLocale,
     defaultLocale: i18n.defaultLocale,
-  });
-
-  const domainLocale = detectDomainLocale({
-    hostname: internalEvent.headers.host,
+    domainLocale,
   });
 
   return (
@@ -81,11 +92,17 @@ export function detectLocale(
   );
 }
 
+/**
+ * This function is used for OpenNext internal routing to localize the path for next config rewrite/redirects/headers and the middleware
+ * @param internalEvent
+ * @returns The localized path
+ */
 export function localizePath(internalEvent: InternalEvent): string {
   const i18n = NextConfig.i18n;
   if (!i18n) {
     return internalEvent.rawPath;
   }
+  // When the path is already localized we don't need to do anything
   if (isLocalizedPath(internalEvent.rawPath)) {
     return internalEvent.rawPath;
   }
