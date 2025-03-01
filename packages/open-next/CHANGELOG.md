@@ -1,5 +1,14 @@
 # open-next
 
+## 3.5.1
+
+### Patch Changes
+
+- [#759](https://github.com/opennextjs/opennextjs-aws/pull/759) [`34511ffffc8678edf1b13256cc326caefa0b4709`](https://github.com/opennextjs/opennextjs-aws/commit/34511ffffc8678edf1b13256cc326caefa0b4709) Thanks [@conico974](https://github.com/conico974)! - Fix locale not properly defined when used in middleware with domains
+  Handle locale redirect directly in the routing layer
+
+- [#761](https://github.com/opennextjs/opennextjs-aws/pull/761) [`7b4ea5cffa21b89cb200809727b66ba033024915`](https://github.com/opennextjs/opennextjs-aws/commit/7b4ea5cffa21b89cb200809727b66ba033024915) Thanks [@conico974](https://github.com/conico974)! - Fix path localization for the middleware when using both `localeDetection:false` and domains
+
 ## 3.5.0
 
 ### Minor Changes
