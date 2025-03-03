@@ -21,10 +21,14 @@ export function loadBuildId(nextDir: string) {
   return fs.readFileSync(filePath, "utf-8").trim();
 }
 
-export function loadHtmlPages(nextDir: string) {
+export function loadPagesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "server/pages-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return Object.entries(JSON.parse(json))
+  return JSON.parse(json);
+}
+
+export function loadHtmlPages(nextDir: string) {
+  return Object.entries(loadPagesManifest(nextDir))
     .filter(([_, value]) => (value as string).endsWith(".html"))
     .map(([key]) => key);
 }

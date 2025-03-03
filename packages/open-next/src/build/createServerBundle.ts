@@ -183,7 +183,8 @@ async function generateBundle(
     {
       name: "fakePatchChunks",
       pathFilter: /chunks\/\d+\.js/,
-      patchCode: async ({ code }) => {
+      patchCode: async ({ code, manifests }) => {
+        console.log(manifests);
         return `console.log("patched chunk");\n${code}`;
       },
     },
