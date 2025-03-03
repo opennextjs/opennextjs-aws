@@ -21,9 +21,7 @@ test("should work with catch all api route", async ({ page }) => {
   expect(body).toEqual({ slug: ["first", "second", "third"] });
 });
 
-test("dynamic route should take precedence over catch all", async ({
-  page,
-}) => {
+test("dynamic route should take precedence over catch all", async ({ page }) => {
   const result = await page.goto("/api/dynamic/catch-all");
   expect(result?.status()).toBe(200);
   const body = await result?.json();
@@ -37,8 +35,9 @@ test("should work with optional catch all api route", async ({ page }) => {
   expect(body).toEqual({ optional: "true" });
 });
 
-// TODO: Open issue in Next about this
-// It seems to be broken in `next start` aswell.
+// This should work but it doesn't. It seems that the predefined api route is not taking precedence.
+// Its broken in `next start` aswell.
+// Issue currently open in Next: https://github.com/vercel/next.js/issues/76765
 test.skip("predefined api route should take presedence", async ({ page }) => {
   const result = await page.goto("/api/dynamic/precedence");
   expect(result?.status()).toBe(200);
