@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
-import * as buildHelper from "../helper.js";
 import logger from "../../logger.js";
+import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {

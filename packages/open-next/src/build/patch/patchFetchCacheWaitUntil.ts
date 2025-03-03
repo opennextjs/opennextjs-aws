@@ -1,6 +1,6 @@
 import { getCrossPlatformPathRegex } from "utils/regex.js";
-import type { CodePatcher } from "./codePatcher";
 import { createPatchCode } from "./astCodePatcher.js";
+import type { CodePatcher } from "./codePatcher";
 
 export const rule = `
 rule:
