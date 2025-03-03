@@ -1,12 +1,15 @@
 import * as fs from "node:fs/promises";
 import * as buildHelper from "../helper.js";
+import logger from "../../logger.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {
+  // The version before which the field should be used
   before?:
     | `${number}`
     | `${number}.${number}`
     | `${number}.${number}.${number}`;
+  // The version after which the field should be used
   after?: `${number}` | `${number}.${number}` | `${number}.${number}.${number}`;
   field: T;
 }
@@ -38,18 +41,18 @@ export function extractVersionedField<T>(
     if (
       field.before &&
       field.after &&
-      buildHelper.compareSemver(version, field.before) >= 0 &&
-      buildHelper.compareSemver(version, field.after) < 0
+      buildHelper.compareSemver(version, field.before) <= 0 &&
+      buildHelper.compareSemver(version, field.after) > 0
     ) {
       result.push(field.field);
     } else if (
       field.before &&
-      buildHelper.compareSemver(version, field.before) >= 0
+      buildHelper.compareSemver(version, field.before) <= 0
     ) {
       result.push(field.field);
     } else if (
       field.after &&
-      buildHelper.compareSemver(version, field.after) < 0
+      buildHelper.compareSemver(version, field.after) > 0
     ) {
       result.push(field.field);
     }
@@ -64,6 +67,7 @@ export async function applyCodePatches(
   codePatcher: CodePatcher[],
 ) {
   const nextVersion = buildOptions.nextVersion;
+  console.time("Applying code patches");
   await Promise.all(
     tracedFiles.map(async (filePath) => {
       // We check the filename against the filter to see if we should apply the patch
@@ -101,6 +105,9 @@ export async function applyCodePatches(
           ? extractVersionedField(patch.patchCode, nextVersion)
           : [patch.patchCode];
         let patchedContent = content;
+        logger.debug(
+          `Applying ${patchCodeFns.length} patches to ${filePath} for ${patch.name}`,
+        );
         for (const patchCodeFn of patchCodeFns) {
           patchedContent = await patchCodeFn({
             code: patchedContent,
@@ -113,4 +120,5 @@ export async function applyCodePatches(
       });
     }),
   );
+  console.timeEnd("Applying code patches");
 }
