@@ -13,7 +13,15 @@ import {
 } from "node:fs";
 import path from "node:path";
 
-import { loadConfig, loadPrerenderManifest } from "config/util.js";
+import {
+  loadAppPathsManifest,
+  loadBuildId,
+  loadConfig,
+  loadFunctionsConfigManifest,
+  loadMiddlewareManifest,
+  loadPagesManifest,
+  loadPrerenderManifest,
+} from "config/util.js";
 import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
 import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
@@ -48,6 +56,19 @@ interface CopyTracedFilesOptions {
   routes: string[];
   bundledNextServer: boolean;
   skipServerFiles?: boolean;
+}
+
+// TODO: add all the necessary manifests here
+function getManifests(nextDir: string) {
+  return {
+    buildId: loadBuildId(nextDir),
+    config: loadConfig(nextDir),
+    prerenderManifest: loadPrerenderManifest(nextDir),
+    pagesManifest: loadPagesManifest(nextDir),
+    appPathsManifest: loadAppPathsManifest(nextDir),
+    middlewareManifest: loadMiddlewareManifest(nextDir),
+    functionsConfigManifest: loadFunctionsConfigManifest(nextDir),
+  };
 }
 
 // eslint-disable-next-line sonarjs/cognitive-complexity
@@ -326,7 +347,6 @@ File ${fullFilePath} does not exist
 
   return {
     tracedFiles: filesToCopy.values(),
-    // TODO: actually return this
-    manifests: {},
+    manifests: getManifests(standaloneNextDir),
   };
 }

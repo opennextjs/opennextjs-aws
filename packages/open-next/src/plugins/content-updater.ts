@@ -12,7 +12,7 @@ import type { BuildOptions } from "../build/helper";
 import {
   type VersionedField,
   extractVersionedField,
-} from "../build/patch/codePatcher";
+} from "../build/patch/codePatcher.js";
 
 /**
  * The callbacks returns either an updated content or undefined if the content is unchanged.
@@ -75,9 +75,11 @@ export class ContentUpdater {
         build.onLoad(
           { filter: /\.(js|mjs|cjs|jsx|ts|tsx)$/ },
           async (args: OnLoadArgs) => {
+            const updaters = Array.from(this.updaters.values()).flat();
+            if (updaters.length === 0) {
+              return;
+            }
             let contents = await readFile(args.path, "utf-8");
-            // biome-ignore lint/correctness/noFlatMapIdentity: <explanation>
-            const updaters = this.updaters.values().flatMap((u) => u);
             for (const {
               filter,
               namespace,
