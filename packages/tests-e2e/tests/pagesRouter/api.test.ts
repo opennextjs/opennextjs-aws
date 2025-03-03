@@ -21,7 +21,9 @@ test("should work with catch all api route", async ({ page }) => {
   expect(body).toEqual({ slug: ["first", "second", "third"] });
 });
 
-test("dynamic route should take precedence over catch all", async ({ page }) => {
+test("dynamic route should take precedence over catch all", async ({
+  page,
+}) => {
   const result = await page.goto("/api/dynamic/catch-all");
   expect(result?.status()).toBe(200);
   const body = await result?.json();
