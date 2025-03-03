@@ -17,6 +17,7 @@ import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
+import { patchFetchCacheSetMissingWaitUntil } from "./patch/patchFetchCacheWaitUntil.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
@@ -180,14 +181,7 @@ async function generateBundle(
 
   await applyCodePatches(options, Array.from(tracedFiles), manifests, [
     // TODO: create real code patchers here
-    {
-      name: "fakePatchChunks",
-      pathFilter: /chunks\/\d+\.js/,
-      patchCode: async ({ code, manifests }) => {
-        console.log(manifests);
-        return `console.log("patched chunk");\n${code}`;
-      },
-    },
+    patchFetchCacheSetMissingWaitUntil,
     ...additionalCodePatches,
   ]);
 
