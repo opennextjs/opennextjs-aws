@@ -21,7 +21,7 @@ rule:
     - has: { pattern: $_.FETCH, stopBy: end }
 
 fix: |
-  globalThis.__openNextAls?.getStore()?.waitUntil?.($PROMISE)
+  globalThis.__openNextAls?.getStore()?.pendingPromiseRunner.add($PROMISE)
 `;
 
 export const patchFetchCacheSetMissingWaitUntil: CodePatcher = {
