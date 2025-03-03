@@ -249,6 +249,9 @@ importers:
       urlpattern-polyfill:
         specifier: ^10.0.0
         version: 10.0.0
+      yaml:
+        specifier: ^2.7.0
+        version: 2.7.0
     devDependencies:
       '@types/aws-lambda':
         specifier: ^8.10.109
@@ -5507,6 +5510,11 @@ packages:
 
   yaml@2.6.0:
     resolution: {integrity: sha512-a6ae//JvKDEra2kdi1qzCyrJW/WZCgFi8ydDV+eXExl95t+5R+ijnqHJbz9tmMh8FUjx3iv2fCQ4dclAQlO2UQ==}
+    engines: {node: '>= 14'}
+    hasBin: true
+
+  yaml@2.7.0:
+    resolution: {integrity: sha512-+hSoy/QHluxmC9kCIJyL/uyFmLmc+e5CFR5Wa+bpIhIj85LVb9ZH2nVnqrHoSvKogwODv0ClqZkmiSSaIH5LTA==}
     engines: {node: '>= 14'}
     hasBin: true
 
@@ -12299,6 +12307,8 @@ snapshots:
   yaml@1.10.2: {}
 
   yaml@2.6.0: {}
+
+  yaml@2.7.0: {}
 
   yargs-parser@20.2.9: {}
 

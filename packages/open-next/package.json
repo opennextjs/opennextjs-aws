@@ -51,7 +51,8 @@
     "esbuild": "0.19.2",
     "express": "5.0.1",
     "path-to-regexp": "^6.3.0",
-    "urlpattern-polyfill": "^10.0.0"
+    "urlpattern-polyfill": "^10.0.0",
+    "yaml": "^2.7.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.109",
