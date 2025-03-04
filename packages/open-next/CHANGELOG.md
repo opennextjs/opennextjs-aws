@@ -1,5 +1,11 @@
 # open-next
 
+## 3.5.2
+
+### Patch Changes
+
+- [#767](https://github.com/opennextjs/opennextjs-aws/pull/767) [`068ce66f31964543c88c7bdd1fa53f7adb76ab3d`](https://github.com/opennextjs/opennextjs-aws/commit/068ce66f31964543c88c7bdd1fa53f7adb76ab3d) Thanks [@conico974](https://github.com/conico974)! - Fix api rewrite destination with i18n and query not forwarded on rewrite
+
 ## 3.5.1
 
 ### Patch Changes
