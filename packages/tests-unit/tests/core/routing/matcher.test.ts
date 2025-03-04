@@ -395,6 +395,10 @@ describe("handleRewrites", () => {
     expect(result).toEqual({
       internalEvent: {
         ...event,
+        query: {
+          album: "foo",
+          song: "bar",
+        },
         rawPath: "/search",
         url: "https://external.com/search?album=foo&song=bar",
       },

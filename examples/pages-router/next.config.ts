@@ -26,6 +26,7 @@ const nextConfig: NextConfig = {
   ],
   rewrites: async () => [
     { source: "/rewrite", destination: "/", locale: false },
+    { source: "/rewriteWithQuery", destination: "/api/query?q=1" },
     {
       source: "/rewriteUsingQuery",
       destination: "/:destination/",

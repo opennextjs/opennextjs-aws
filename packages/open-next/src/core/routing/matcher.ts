@@ -227,11 +227,23 @@ export function handleRewrites<T extends RewriteDefinition>(
       rewrittenHost = unescapeRegex(toDestinationHost(params));
       rewrittenQuery = unescapeRegex(toDestinationQuery(params));
     }
+
+    // We need to strip the locale from the path if it's a local api route
+    if (NextConfig.i18n && !isExternalRewrite) {
+      const strippedPathLocale = rewrittenPath.replace(
+        new RegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
+        "",
+      );
+      if (strippedPathLocale.startsWith("/api/")) {
+        rewrittenPath = strippedPathLocale;
+      }
+    }
+
     rewrittenUrl = isExternalRewrite
       ? `${protocol}//${rewrittenHost}${rewrittenPath}`
       : new URL(rewrittenPath, event.url).href;
 
-    // Should we merge the query params or use only the ones from the rewrite?
+    // We merge query params from the source and the destination
     finalQuery = {
       ...query,
       ...convertFromQueryString(rewrittenQuery),
@@ -243,6 +255,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   return {
     internalEvent: {
       ...event,
+      query: finalQuery,
       rawPath: new URL(rewrittenUrl).pathname,
       url: rewrittenUrl,
     },
