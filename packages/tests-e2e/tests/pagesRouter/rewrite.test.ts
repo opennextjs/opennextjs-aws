@@ -23,3 +23,15 @@ test("Rewrite to external image", async ({ request }) => {
   expect(response.headers()["content-type"]).toBe("image/png");
   expect(validateMd5(await response.body(), EXT_PNG_MD5)).toBe(true);
 });
+
+test("Rewrite with query in destination", async ({ request }) => {
+  const response = await request.get("/rewriteWithQuery");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ query: { q: "1" } });
+});
+
+test("Rewrite with query should merge query params", async ({ request }) => {
+  const response = await request.get("/rewriteWithQuery?b=2");
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ query: { q: "1", b: "2" } });
+});
