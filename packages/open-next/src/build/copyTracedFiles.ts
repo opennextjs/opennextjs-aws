@@ -19,6 +19,23 @@ import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
+//TODO: we need to figure which packages we could safely remove
+const EXCLUDED_PACKAGES = [
+  "caniuse-lite",
+  "sharp",
+  // This seems to be only in Next 15
+  // Some of sharp deps are under the @img scope
+  "@img",
+];
+
+function isExcluded(srcPath: string) {
+  return EXCLUDED_PACKAGES.some((excluded) =>
+    new RegExp(`${path.sep}node_modules${path.sep}${excluded}${path.sep}`).test(
+      srcPath,
+    ),
+  );
+}
+
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
   const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
@@ -194,15 +211,8 @@ File ${fullFilePath} does not exist
 
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
-    if (
-      //TODO: we need to figure which packages we could safely remove
-      from.includes(path.join("node_modules", "caniuse-lite")) ||
-      // from.includes("jest-worker") || This ones seems necessary for next 12
-      from.includes(path.join("node_modules", "sharp")) ||
-      // This seems to be only in Next 15
-      // Some of sharp deps are under the @img scope
-      from.includes(path.join("node_modules", "@img"))
-    ) {
+    // We don't want to copy excluded packages (i.e sharp)
+    if (isExcluded(from)) {
       return;
     }
     mkdirSync(path.dirname(to), { recursive: true });
