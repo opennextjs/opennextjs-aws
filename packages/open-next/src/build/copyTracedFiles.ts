@@ -198,7 +198,10 @@ File ${fullFilePath} does not exist
       //TODO: we need to figure which packages we could safely remove
       from.includes(path.join("node_modules", "caniuse-lite")) ||
       // from.includes("jest-worker") || This ones seems necessary for next 12
-      from.includes(path.join("node_modules", "sharp"))
+      from.includes(path.join("node_modules", "sharp")) ||
+      // This seems to be only in Next 15
+      // Some of sharp deps are under the @img scope
+      from.includes(path.join("node_modules", "@img"))
     ) {
       return;
     }
