@@ -1,5 +1,13 @@
 # open-next
 
+## 3.5.2
+
+### Patch Changes
+
+- [#767](https://github.com/opennextjs/opennextjs-aws/pull/767) [`068ce66f31964543c88c7bdd1fa53f7adb76ab3d`](https://github.com/opennextjs/opennextjs-aws/commit/068ce66f31964543c88c7bdd1fa53f7adb76ab3d) Thanks [@conico974](https://github.com/conico974)! - Fix api rewrite destination with i18n and query not forwarded on rewrite
+
+- [#769](https://github.com/opennextjs/opennextjs-aws/pull/769) [`45e9e67892075e088774760cf3d8e027b2a539b4`](https://github.com/opennextjs/opennextjs-aws/commit/45e9e67892075e088774760cf3d8e027b2a539b4) Thanks [@sommeeeer](https://github.com/sommeeeer)! - Fix: Ignore packages under the @img/\* scope to exclude sharp from the server bundle.
+
 ## 3.5.1
 
 ### Patch Changes
