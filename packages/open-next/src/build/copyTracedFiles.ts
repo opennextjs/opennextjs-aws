@@ -14,10 +14,26 @@ import {
 import path from "node:path";
 
 import { loadConfig, loadPrerenderManifest } from "config/util.js";
+import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
 import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
+
+//TODO: we need to figure which packages we could safely remove
+const EXCLUDED_PACKAGES = [
+  "caniuse-lite",
+  "sharp",
+  // This seems to be only in Next 15
+  // Some of sharp deps are under the @img scope
+  "@img",
+];
+
+function isExcluded(srcPath: string) {
+  return EXCLUDED_PACKAGES.some((excluded) =>
+    srcPath.match(getCrossPlatformPathRegex(`/node_modules/${excluded}/`)),
+  );
+}
 
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
@@ -194,12 +210,8 @@ File ${fullFilePath} does not exist
 
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
-    if (
-      //TODO: we need to figure which packages we could safely remove
-      from.includes(path.join("node_modules", "caniuse-lite")) ||
-      // from.includes("jest-worker") || This ones seems necessary for next 12
-      from.includes(path.join("node_modules", "sharp"))
-    ) {
+    // We don't want to copy excluded packages (i.e sharp)
+    if (isExcluded(from)) {
       return;
     }
     mkdirSync(path.dirname(to), { recursive: true });
