@@ -14,6 +14,7 @@ import {
 import path from "node:path";
 
 import { loadConfig, loadPrerenderManifest } from "config/util.js";
+import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
 import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
 
@@ -30,9 +31,7 @@ const EXCLUDED_PACKAGES = [
 
 function isExcluded(srcPath: string) {
   return EXCLUDED_PACKAGES.some((excluded) =>
-    new RegExp(`${path.sep}node_modules${path.sep}${excluded}${path.sep}`).test(
-      srcPath,
-    ),
+    srcPath.match(getCrossPlatformPathRegex(`/node_modules/${excluded}/`)),
   );
 }
 
