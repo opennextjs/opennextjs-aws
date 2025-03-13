@@ -63,7 +63,12 @@ async function computeCacheControl(
         url = `${NextConfig.basePath}${url}`;
       }
       await globalThis.queue.send({
-        MessageBody: { host, url },
+        MessageBody: {
+          host,
+          url,
+          eTag: etag,
+          lastModified: lastModified ?? Date.now(),
+        },
         MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
         MessageGroupId: generateMessageGroupId(path),
       });
