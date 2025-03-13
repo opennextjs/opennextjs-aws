@@ -79,6 +79,9 @@ test("Revalidate path", async ({ page, request }) => {
   elLayout = page.getByText("Date:");
   const initialDate = await elLayout.textContent();
 
+  // Wait so that enough time passes for the data on the page to update when revalidating
+  await page.waitForTimeout(2000);
+
   // Send revalidate path request
   const result = await request.get("/api/revalidate-path");
   expect(result.status()).toEqual(200);
