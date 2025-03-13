@@ -668,7 +668,12 @@ describe("revalidateIfRequired", () => {
     await revalidateIfRequired("localhost", "/path", headers);
 
     expect(sendMock).toHaveBeenCalledWith({
-      MessageBody: { host: "localhost", url: "/path" },
+      MessageBody: {
+        host: "localhost",
+        url: "/path",
+        eTag: expect.any(String),
+        lastModified: expect.any(Number),
+      },
       MessageDeduplicationId: expect.any(String),
       MessageGroupId: expect.any(String),
     });
@@ -682,7 +687,12 @@ describe("revalidateIfRequired", () => {
     await revalidateIfRequired("localhost", "/path", headers);
 
     expect(sendMock).toHaveBeenCalledWith({
-      MessageBody: { host: "localhost", url: "/path" },
+      MessageBody: {
+        host: "localhost",
+        url: "/path",
+        eTag: expect.any(String),
+        lastModified: expect.any(Number),
+      },
       MessageDeduplicationId: expect.any(String),
       MessageGroupId: expect.any(String),
     });
