@@ -20,6 +20,8 @@ export interface QueueMessage {
   MessageBody: {
     host: string;
     url: string;
+    lastModified: number;
+    eTag: string;
   };
   MessageGroupId: string;
 }

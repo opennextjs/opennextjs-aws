@@ -324,11 +324,11 @@ export async function revalidateIfRequired(
 
       // For some weird cases, lastModified is not set, haven't been able to figure out yet why
       // For those cases we add the etag to the deduplication id, it might help
-      const etag = headers.etag ?? headers.ETag ?? "";
+      const eTag = `${headers.etag ?? headers.ETag ?? ""}`;
 
       await globalThis.queue.send({
-        MessageBody: { host, url: revalidateUrl },
-        MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${etag}`),
+        MessageBody: { host, url: revalidateUrl, eTag, lastModified },
+        MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${eTag}`),
         MessageGroupId: generateMessageGroupId(rawPath),
       });
     } catch (e) {
