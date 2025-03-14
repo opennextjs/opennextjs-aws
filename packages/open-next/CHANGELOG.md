@@ -1,5 +1,13 @@
 # open-next
 
+## 3.5.3
+
+### Patch Changes
+
+- [#776](https://github.com/opennextjs/opennextjs-aws/pull/776) [`972078366953dcb59069508c6b2a46b22c78f22b`](https://github.com/opennextjs/opennextjs-aws/commit/972078366953dcb59069508c6b2a46b22c78f22b) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: add cookies in express-dev wrapper
+
+- [#773](https://github.com/opennextjs/opennextjs-aws/pull/773) [`daa330b22e8b69b1a515e5a5cacfe8a9da418ba7`](https://github.com/opennextjs/opennextjs-aws/commit/daa330b22e8b69b1a515e5a5cacfe8a9da418ba7) Thanks [@conico974](https://github.com/conico974)! - Add additional params to the queue override
+
 ## 3.5.2
 
 ### Patch Changes
