@@ -28,6 +28,7 @@ const wrapper: WrapperHandler = async (handler, converter) => {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
         res.writeHead(prelude.statusCode, prelude.headers);
+        res.flushHeaders();
         return res;
       },
       onFinish: () => {},
