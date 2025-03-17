@@ -110,6 +110,13 @@ export async function handleMiddleware(
   const resHeaders: Record<string, string | string[]> = {};
 
   responseHeaders.delete("x-middleware-override-headers");
+  /*  Next will set the header `x-middleware-set-cookie` when you `set-cookie` in the middleware.
+   *  We can delete it here since it will be set in `set-cookie` aswell. Next removes this header in the response themselves.
+   * `x-middleware-next` is set when you invoke `NextResponse.next()`. We can delete it here aswell.
+   */
+  responseHeaders.delete("x-middleware-set-cookie");
+  responseHeaders.delete("x-middleware-next");
+
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
     if (key.startsWith(xMiddlewareKey)) {
