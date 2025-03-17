@@ -1,3 +1,19 @@
+export function generateShardId(
+  rawPath: string,
+  maxConcurrency: number,
+  prefix: string,
+) {
+  let a = cyrb128(rawPath);
+  // We use mulberry32 to generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
+  let t = (a += 0x6d2b79f5);
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  // This will generate a random int between 0 and maxConcurrency
+  const randomInt = Math.floor(randomFloat * maxConcurrency);
+  return `${prefix}-${randomInt}`;
+}
+
 // Since we're using a FIFO queue, every messageGroupId is treated sequentially
 // This could cause a backlog of messages in the queue if there is too much page to
 // revalidate at once. To avoid this, we generate a random messageGroupId for each
@@ -6,19 +22,12 @@
 // will always have the same messageGroupId.
 // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript#answer-47593316
 export function generateMessageGroupId(rawPath: string) {
-  let a = cyrb128(rawPath);
-  // We use mulberry32 to generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
-  let t = (a += 0x6d2b79f5);
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  const randomFloat = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   // This will generate a random int between 0 and MAX_REVALIDATE_CONCURRENCY
   // This means that we could have 1000 revalidate request at the same time
   const maxConcurrency = Number.parseInt(
     process.env.MAX_REVALIDATE_CONCURRENCY ?? "10",
   );
-  const randomInt = Math.floor(randomFloat * maxConcurrency);
-  return `revalidate-${randomInt}`;
+  return generateShardId(rawPath, maxConcurrency, "revalidate");
 }
 
 // Used to generate a hash int from a string
