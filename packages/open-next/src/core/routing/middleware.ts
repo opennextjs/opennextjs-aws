@@ -116,7 +116,7 @@ export async function handleMiddleware(
    */
   responseHeaders.delete("x-middleware-set-cookie");
   responseHeaders.delete("x-middleware-next");
-  
+
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
     if (key.startsWith(xMiddlewareKey)) {
