@@ -176,25 +176,18 @@ test("should be able to redirect in route handler", async ({ request }) => {
   expect(followedRes.url()).toBe("https://nextjs.org/");
 });
 
-test("dynamic segments should work in route handlers", async ({
-  request,
-}) => {
+test("dynamic segments should work in route handlers", async ({ request }) => {
   const res = await request.get("/methods/get/dynamic-segments/this-is-a-slug");
   const data = await res.json();
   expect(data.slug).toBe("this-is-a-slug");
 });
 
-test("query parameters should work in route handlers", async ({
-  request,
-}) => {
-  const res = await request.get(
-    "/methods/get/query",
-    {
-      params: {
-        query: "OpenNext is awesome!"
-      }
-    }
-  );
+test("query parameters should work in route handlers", async ({ request }) => {
+  const res = await request.get("/methods/get/query", {
+    params: {
+      query: "OpenNext is awesome!",
+    },
+  });
   const data = await res.json();
   expect(data.query).toBe("OpenNext is awesome!");
 });
