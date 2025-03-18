@@ -1,12 +1,5 @@
 import type { NextRequest } from "next/server";
 
-// You can opt-in to caching by using a route config option
-// Good to know: Other supported HTTP methods are not cached, even if they are placed alongside a GET method that is cached, in the same file.
-// export const dynamic = "force-static";
-// However in Next right now this is an issue
-// I opened an issue here: https://github.com/vercel/next.js/issues/77185
-
-// This route should be cached if you uncomment line 5
 export async function GET() {
   return Response.json({
     message: "OpenNext is awesome! :) :] :> :D",
