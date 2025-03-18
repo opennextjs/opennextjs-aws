@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
-import * as buildHelper from "../helper.js";
 import logger from "../../logger.js";
+import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {
@@ -99,12 +99,12 @@ export async function applyCodePatches(
       }
 
       // We apply the patches
+      let patchedContent = content;
 
-      patchToApply.forEach(async (patch) => {
+      for (const patch of patchToApply) {
         const patchCodeFns = Array.isArray(patch.patchCode)
           ? extractVersionedField(patch.patchCode, nextVersion)
           : [patch.patchCode];
-        let patchedContent = content;
         logger.debug(
           `Applying ${patchCodeFns.length} patches to ${filePath} for ${patch.name}`,
         );
@@ -116,8 +116,8 @@ export async function applyCodePatches(
             manifests,
           });
         }
-        await fs.writeFile(filePath, patchedContent);
-      });
+      }
+      await fs.writeFile(filePath, patchedContent);
     }),
   );
   console.timeEnd("Applying code patches");
