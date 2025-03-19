@@ -4,12 +4,18 @@ import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {
-  // The version before which the field should be used
+  /**
+   * The version before which the field should be used
+   * If the version is less than or equal to this, the field will be used
+   */
   before?:
     | `${number}`
     | `${number}.${number}`
     | `${number}.${number}.${number}`;
-  // The version after which the field should be used
+  /**
+   * The version after which the field should be used
+   * If the version is greater than this, the field will be used
+   */
   after?: `${number}` | `${number}.${number}` | `${number}.${number}.${number}`;
   field: T;
 }
@@ -67,7 +73,7 @@ export async function applyCodePatches(
   codePatcher: CodePatcher[],
 ) {
   const nextVersion = buildOptions.nextVersion;
-  console.time("Applying code patches");
+  logger.time("Applying code patches");
   await Promise.all(
     tracedFiles.map(async (filePath) => {
       // We check the filename against the filter to see if we should apply the patch
@@ -120,5 +126,5 @@ export async function applyCodePatches(
       await fs.writeFile(filePath, patchedContent);
     }),
   );
-  console.timeEnd("Applying code patches");
+  logger.timeEnd("Applying code patches");
 }

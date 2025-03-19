@@ -20,10 +20,10 @@ import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
-  additionalCodePatches: CodePatcher[];
+  additionalCodePatches?: CodePatcher[];
   // These plugins are meant to apply during the esbuild bundling process.
   // This will only apply to OpenNext code.
-  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[];
+  additionalPlugins?: (contentUpdater: ContentUpdater) => Plugin[];
 }
 
 export async function createServerBundle(
@@ -167,7 +167,7 @@ async function generateBundle(
   // Copy env files
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
-  // Copy all necessary traced files{
+  // Copy all necessary traced files
   const { tracedFiles, manifests } = await copyTracedFiles({
     buildOutputPath: appBuildOutputPath,
     packagePath,
@@ -179,15 +179,6 @@ async function generateBundle(
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
   await applyCodePatches(options, Array.from(tracedFiles), manifests, [
-    // TODO: create real code patchers here
-    {
-      name: "fakePatchChunks",
-      pathFilter: /chunks\/\d+\.js/,
-      patchCode: async ({ code, manifests }) => {
-        console.log(manifests);
-        return `console.log("patched chunk");\n${code}`;
-      },
-    },
     ...additionalCodePatches,
   ]);
 
@@ -211,7 +202,9 @@ async function generateBundle(
 
   const updater = new ContentUpdater(options);
 
-  const additionalPlugins = codeCustomization?.additionalPlugins(updater) ?? [];
+  const additionalPlugins = codeCustomization?.additionalPlugins
+    ? codeCustomization.additionalPlugins(updater)
+    : [];
 
   const plugins = [
     openNextReplacementPlugin({
@@ -239,6 +232,7 @@ async function generateBundle(
       overrides,
     }),
     ...additionalPlugins,
+    // The content updater plugin must be the last plugin
     updater.plugin,
   ];
 

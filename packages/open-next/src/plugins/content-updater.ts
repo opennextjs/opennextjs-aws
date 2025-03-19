@@ -1,5 +1,4 @@
 /**
- * Mostly copied from the cloudflare adapter
  * ESBuild stops calling `onLoad` hooks after the first hook returns an updated content.
  *
  * The updater allows multiple plugins to update the content.

@@ -104,6 +104,7 @@ export async function buildEdgeBundle({
           isInCloudfare,
         }),
         ...additionalPlugins,
+        // The content updater plugin must be the last plugin
         contentUpdater.plugin,
       ],
       treeShaking: true,
