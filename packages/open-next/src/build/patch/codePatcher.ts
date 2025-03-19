@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import logger from "../../logger.js";
 import * as buildHelper from "../helper.js";
+import type { getManifests } from "../copyTracedFiles.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {
@@ -21,14 +22,22 @@ export interface VersionedField<T> {
 }
 
 export type PatchCodeFn = (args: {
-  // The content of the file that needs to be patched
+  /**
+   * The code of the file that needs to be patched
+   */
   code: string;
-  // The final path of the file that needs to be patched
+  /**
+   * The final path of the file that needs to be patched
+   */
   filePath: string;
-  // All js files that will be included in this specific server function
+  /**
+   * All files that are traced and will be included in the bundle
+   */
   tracedFiles: string[];
-  // All next.js manifest that are present at runtime - Key relative to `.next` folder
-  manifests: Record<string, any>;
+  /**
+   * Next.js manifests that are used by Next at runtime
+   */
+  manifests: ReturnType<typeof getManifests>;
 }) => Promise<string>;
 
 export interface CodePatcher {
@@ -69,7 +78,7 @@ export function extractVersionedField<T>(
 export async function applyCodePatches(
   buildOptions: buildHelper.BuildOptions,
   tracedFiles: string[],
-  manifests: Record<string, any>,
+  manifests: ReturnType<typeof getManifests>,
   codePatcher: CodePatcher[],
 ) {
   const nextVersion = buildOptions.nextVersion;

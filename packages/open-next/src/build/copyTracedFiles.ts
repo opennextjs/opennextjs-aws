@@ -58,8 +58,7 @@ interface CopyTracedFilesOptions {
   skipServerFiles?: boolean;
 }
 
-// TODO: add all the necessary manifests here
-function getManifests(nextDir: string) {
+export function getManifests(nextDir: string) {
   return {
     buildId: loadBuildId(nextDir),
     config: loadConfig(nextDir),
