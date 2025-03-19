@@ -39,7 +39,7 @@ else {
 }
 `;
 
-const patchFetchCacheCodeunMinified = `
+const patchFetchCacheCodeUnMinified = `
 const entry = workStore.isOnDemandRevalidate ? null : await incrementalCache.get(cacheKey, {
                         kind: _responsecache.IncrementalCacheKind.FETCH,
                         revalidate: finalRevalidate,
@@ -99,7 +99,7 @@ describe("patchFetchCacheISR", () => {
   describe("Next 15", () => {
     test("on unminified code", async () => {
       expect(
-        patchCode(patchFetchCacheCodeunMinified, fetchRule),
+        patchCode(patchFetchCacheCodeUnMinified, fetchRule),
       ).toMatchInlineSnapshot(`
 "const entry = (workStore.isOnDemandRevalidate && !globalThis.__openNextAls?.getStore()?.isISRRevalidation) ? null : await incrementalCache.get(cacheKey, {
                         kind: _responsecache.IncrementalCacheKind.FETCH,
