@@ -40,11 +40,15 @@ export type PatchCodeFn = (args: {
   manifests: ReturnType<typeof getManifests>;
 }) => Promise<string>;
 
+interface IndividualPatch {
+  pathFilter: RegExp;
+  contentFilter?: RegExp;
+  patchCode: PatchCodeFn;
+}
+
 export interface CodePatcher {
   name: string;
-  pathFilter: RegExp | VersionedField<RegExp>[];
-  contentFilter?: RegExp | VersionedField<RegExp>[];
-  patchCode: PatchCodeFn | VersionedField<PatchCodeFn>[];
+  patches: IndividualPatch | VersionedField<IndividualPatch>[];
 }
 
 export function extractVersionedField<T>(
@@ -83,31 +87,34 @@ export async function applyCodePatches(
 ) {
   const nextVersion = buildOptions.nextVersion;
   logger.time("Applying code patches");
+
+  // We first filter against the version
+  // We also flatten the array of patches so that we get both the name and all the necessary patches
+  const patchesToApply = codePatcher.flatMap(({ name, patches }) =>
+    Array.isArray(patches)
+      ? extractVersionedField(patches, nextVersion).map((patch) => ({
+          name,
+          patch,
+        }))
+      : [{ name, patch: patches }],
+  );
+
   await Promise.all(
     tracedFiles.map(async (filePath) => {
       // We check the filename against the filter to see if we should apply the patch
-      const patchMatchingPath = codePatcher.filter((patch) => {
-        const filters = Array.isArray(patch.pathFilter)
-          ? extractVersionedField(patch.pathFilter, nextVersion)
-          : [patch.pathFilter];
-        return filters.some((filter) => filePath.match(filter));
+      const patchMatchingPath = patchesToApply.filter(({ patch }) => {
+        return filePath.match(patch.pathFilter);
       });
       if (patchMatchingPath.length === 0) {
         return;
       }
       const content = await fs.readFile(filePath, "utf-8");
       // We filter a last time against the content this time
-      const patchToApply = patchMatchingPath.filter((patch) => {
+      const patchToApply = patchMatchingPath.filter(({ patch }) => {
         if (!patch.contentFilter) {
           return true;
         }
-        const contentFilters = Array.isArray(patch.contentFilter)
-          ? extractVersionedField(patch.contentFilter, nextVersion)
-          : [patch.contentFilter];
-        return contentFilters.some((filter) =>
-          // If there is no filter, we just return true to apply the patch
-          filter ? content.match(filter) : true,
-        );
+        return content.match(patch.contentFilter);
       });
       if (patchToApply.length === 0) {
         return;
@@ -116,21 +123,14 @@ export async function applyCodePatches(
       // We apply the patches
       let patchedContent = content;
 
-      for (const patch of patchToApply) {
-        const patchCodeFns = Array.isArray(patch.patchCode)
-          ? extractVersionedField(patch.patchCode, nextVersion)
-          : [patch.patchCode];
-        logger.debug(
-          `Applying ${patchCodeFns.length} patches to ${filePath} for ${patch.name}`,
-        );
-        for (const patchCodeFn of patchCodeFns) {
-          patchedContent = await patchCodeFn({
-            code: patchedContent,
-            filePath,
-            tracedFiles,
-            manifests,
-          });
-        }
+      for (const { patch, name } of patchToApply) {
+        logger.debug(`Applying code patch: ${name} to ${filePath}`);
+        patchedContent = await patch.patchCode({
+          code: patchedContent,
+          filePath,
+          tracedFiles,
+          manifests,
+        });
       }
       await fs.writeFile(filePath, patchedContent);
     }),
