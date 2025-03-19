@@ -16,7 +16,10 @@ import path from "node:path";
 import { loadConfig, loadPrerenderManifest } from "config/util.js";
 import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
-import { MIDDLEWARE_TRACE_FILE } from "./constant.js";
+import {
+  INSTRUMENTATION_TRACE_FILE,
+  MIDDLEWARE_TRACE_FILE,
+} from "./constant.js";
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
@@ -170,6 +173,17 @@ File ${fullFilePath} does not exist
     }
   };
 
+  // Check for instrumentation trace file
+  if (existsSync(path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE))) {
+    // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
+    copyFileSync(
+      path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE),
+      path.join(standaloneNextDir, INSTRUMENTATION_TRACE_FILE),
+    );
+    computeCopyFilesForPage("instrumentation");
+    logger.debug("Adding instrumentation trace files");
+  }
+
   if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
     copyFileSync(
@@ -177,6 +191,7 @@ File ${fullFilePath} does not exist
       path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
     );
     computeCopyFilesForPage("middleware");
+    logger.debug("Adding node middleware trace files");
   }
 
   const hasPageDir = routes.some((route) => route.startsWith("pages/"));
