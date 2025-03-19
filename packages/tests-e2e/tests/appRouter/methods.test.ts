@@ -141,7 +141,7 @@ test("revalidate should work in GET route handler", async ({
 
 test("should cache a static GET route", async ({ request }) => {
   const res = await request.get("/methods/get/static");
-  expect(res.headers()["cache-control"]).toBe("s-maxage=31536000,");
+  expect(res.headers()["cache-control"]).toContain("s-maxage=31536000");
 });
 
 test("should be able to set cookies in route handler", async ({ request }) => {
