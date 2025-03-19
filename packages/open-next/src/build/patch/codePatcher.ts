@@ -1,7 +1,7 @@
 import * as fs from "node:fs/promises";
 import logger from "../../logger.js";
-import * as buildHelper from "../helper.js";
 import type { getManifests } from "../copyTracedFiles.js";
+import * as buildHelper from "../helper.js";
 
 // Either before or after should be provided, otherwise just use the field directly
 export interface VersionedField<T> {
