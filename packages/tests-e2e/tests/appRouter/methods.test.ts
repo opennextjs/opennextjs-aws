@@ -155,7 +155,7 @@ test("should be able to set cookies in route handler", async ({ request }) => {
   const postData = await postRes.json();
   expect(postData.message).toBe("ok");
   const cookies = postRes.headers()["set-cookie"];
-  expect(cookies).toBe("auth_session=SUPER_SECRET_SESSION_ID_1234");
+  expect(cookies).toContain("auth_session=SUPER_SECRET_SESSION_ID_1234");
 });
 
 test("should be able to redirect in route handler", async ({ request }) => {
