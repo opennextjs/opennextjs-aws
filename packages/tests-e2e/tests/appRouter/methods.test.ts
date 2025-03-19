@@ -80,15 +80,8 @@ test.describe("all supported methods should work in route handlers", () => {
     });
     expect(optionsRes.status()).toEqual(204);
     const headers = optionsRes.headers();
-    expect(headers.allow).toContain("GET");
-    expect(headers.allow).toContain("HEAD");
-    expect(headers.allow).toContain("POST");
-    expect(headers.allow).toContain("PUT");
-    expect(headers.allow).toContain("PATCH");
-    expect(headers.allow).toContain("DELETE");
-    expect(headers.allow).toContain("OPTIONS");
-    expect(headers.allow).toContain("LOVE");
-    expect(headers.special).toContain("OpenNext is the best :) :] :> :D");
+    expect(headers.allow).toBe("GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, LOVE");
+    expect(headers.special).toBe("OpenNext is the best :) :] :> :D");
   });
 });
 
@@ -160,7 +153,7 @@ test("should be able to set cookies in route handler", async ({ request }) => {
   const postData = await postRes.json();
   expect(postData.message).toBe("ok");
   const cookies = postRes.headers()["set-cookie"];
-  expect(cookies).toContain("auth_session=SUPER_SECRET_SESSION_ID_1234");
+  expect(cookies).toBe("auth_session=SUPER_SECRET_SESSION_ID_1234");
 });
 
 test("should be able to redirect in route handler", async ({ request }) => {
