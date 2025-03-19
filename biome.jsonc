@@ -46,9 +46,6 @@
         "rules": {
           "suspicious": {
             "noRedeclare": "off"
-          },
-          "complexity": {
-            "useLiteralKeys": "off"
           }
         }
       }

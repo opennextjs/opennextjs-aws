@@ -80,15 +80,15 @@ test.describe("all supported methods should work in route handlers", () => {
     });
     expect(optionsRes.status()).toEqual(204);
     const headers = optionsRes.headers();
-    expect(headers["allow"]).toContain("GET");
-    expect(headers["allow"]).toContain("HEAD");
-    expect(headers["allow"]).toContain("POST");
-    expect(headers["allow"]).toContain("PUT");
-    expect(headers["allow"]).toContain("PATCH");
-    expect(headers["allow"]).toContain("DELETE");
-    expect(headers["allow"]).toContain("OPTIONS");
-    expect(headers["allow"]).toContain("LOVE");
-    expect(headers["special"]).toContain("OpenNext is the best :) :] :> :D");
+    expect(headers.allow).toContain("GET");
+    expect(headers.allow).toContain("HEAD");
+    expect(headers.allow).toContain("POST");
+    expect(headers.allow).toContain("PUT");
+    expect(headers.allow).toContain("PATCH");
+    expect(headers.allow).toContain("DELETE");
+    expect(headers.allow).toContain("OPTIONS");
+    expect(headers.allow).toContain("LOVE");
+    expect(headers.special).toContain("OpenNext is the best :) :] :> :D");
   });
 });
 
@@ -169,7 +169,7 @@ test("should be able to redirect in route handler", async ({ request }) => {
     maxRedirects: 0,
   });
   expect(redirectRes.status()).toBe(307);
-  expect(redirectRes.headers()["location"]).toBe("https://nextjs.org/");
+  expect(redirectRes.headers().location).toBe("https://nextjs.org/");
 
   // Check if the redirect works
   const followedRes = await request.get("/methods/get/redirect");
