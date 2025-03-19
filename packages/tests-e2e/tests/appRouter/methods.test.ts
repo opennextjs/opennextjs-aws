@@ -80,7 +80,9 @@ test.describe("all supported methods should work in route handlers", () => {
     });
     expect(optionsRes.status()).toEqual(204);
     const headers = optionsRes.headers();
-    expect(headers.allow).toBe("GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, LOVE");
+    expect(headers.allow).toBe(
+      "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS, LOVE",
+    );
     expect(headers.special).toBe("OpenNext is the best :) :] :> :D");
   });
 });
