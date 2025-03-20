@@ -212,6 +212,12 @@ async function generateBundle(
     "14.1",
   );
 
+  const isAfter142 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "14.2",
+  );
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const updater = new ContentUpdater(options);
@@ -227,6 +233,7 @@ async function generateBundle(
       deletes: [
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
+        ...(isAfter142 ? ["patchAsyncStorage"] : []),
       ],
     }),
     openNextReplacementPlugin({
