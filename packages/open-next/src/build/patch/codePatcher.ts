@@ -55,7 +55,7 @@ export function parseVersions(versions?: Versions): {
     return {};
   }
   // We need to use regex to extract the versions
-  const versionRegex = /([<>]=?)([0-9]+\.[0-9]+\.[0-9]+)/g;
+  const versionRegex = /([<>]=)(\d+\.\d+\.\d+)/g;
   const matches = Array.from(versions.matchAll(versionRegex));
   if (matches.length === 0) {
     throw new Error("Invalid version range, no matches found");
@@ -69,7 +69,7 @@ export function parseVersions(versions?: Versions): {
     const [_, operator, version] = match;
     if (operator === "<=") {
       before = version;
-    } else if (operator === ">=") {
+    } else {
       after = version;
     }
   }
