@@ -138,7 +138,7 @@ export async function openNextHandler(
               origin: false,
               initialURL: internalEvent.url,
             },
-            headers,
+            routingResult.headers,
             options.streamCreator,
           );
           response.statusCode = routingResult.statusCode;
