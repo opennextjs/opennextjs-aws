@@ -99,26 +99,38 @@ export function extractVersionedField<T>(
   const result: T[] = [];
 
   for (const field of fields) {
+    // No versions specified, the patch always apply
+    if (!field.versions) {
+      result.push(field.field);
+      continue;
+    }
+
     const { before, after } = parseVersions(field.versions);
-    if (
-      before &&
-      after &&
-      buildHelper.compareSemver(version, "<=", before) &&
-      buildHelper.compareSemver(version, ">=", after)
-    ) {
-      result.push(field.field);
-    } else if (
-      before &&
-      !after &&
-      buildHelper.compareSemver(version, "<=", before)
-    ) {
-      result.push(field.field);
-    } else if (
-      after &&
-      !before &&
-      buildHelper.compareSemver(version, ">=", after)
-    ) {
-      result.push(field.field);
+
+    // range
+    if (before && after) {
+      if (
+        buildHelper.compareSemver(version, "<=", before) &&
+        buildHelper.compareSemver(version, ">=", after)
+      ) {
+        result.push(field.field);
+      }
+      continue;
+    }
+
+    // before only
+    if (before) {
+      if (buildHelper.compareSemver(version, "<=", before)) {
+        result.push(field.field);
+      }
+      continue;
+    }
+
+    // after only
+    if (after) {
+      if (buildHelper.compareSemver(version, ">=", after)) {
+        result.push(field.field);
+      }
     }
   }
   return result;

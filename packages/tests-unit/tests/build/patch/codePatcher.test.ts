@@ -55,6 +55,12 @@ describe("extractVersionedField", () => {
     expect(result).toEqual([]);
   });
 
+  it("should return the field when versions is not specified", () => {
+    const result = extractVersionedField([{ field: 0 }], "15.1.0");
+
+    expect(result).toEqual([0]);
+  });
+
   it("should throw an error if a single version range is invalid because of a space before", () => {
     expect(() =>
       extractVersionedField([{ versions: "<= 15.0.0", field: 0 }], "15.0.0"),

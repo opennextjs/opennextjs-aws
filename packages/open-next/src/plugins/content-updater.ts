@@ -13,6 +13,8 @@ import {
   extractVersionedField,
 } from "../build/patch/codePatcher.js";
 
+export type * from "esbuild";
+
 /**
  * The callbacks returns either an updated content or undefined if the content is unchanged.
  */
