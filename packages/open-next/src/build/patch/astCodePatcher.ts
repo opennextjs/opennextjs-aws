@@ -11,6 +11,8 @@ import {
 import yaml from "yaml";
 import type { PatchCodeFn } from "./codePatcher";
 
+export type * from "@ast-grep/napi";
+
 /**
  * fix has the same meaning as in yaml rules
  * see https://ast-grep.github.io/guide/rewrite-code.html#using-fix-in-yaml-rule
@@ -33,7 +35,10 @@ export function applyRule(
   rule: string | RuleConfig,
   root: SgNode,
   { once = false } = {},
-) {
+): {
+  edits: Edit[];
+  matches: SgNode[];
+} {
   const ruleConfig: RuleConfig =
     typeof rule === "string" ? yaml.parse(rule) : rule;
   if (ruleConfig.transform) {
@@ -80,7 +85,7 @@ export function applyRule(
  * @param lang The language to parse. Defaults to TypeScript.
  * @returns The root for the file.
  */
-export function parseFile(path: string, lang = Lang.TypeScript) {
+export function parseFile(path: string, lang = Lang.TypeScript): SgNode {
   return parse(lang, readFileSync(path, { encoding: "utf-8" })).root();
 }
 
@@ -106,6 +111,11 @@ export function patchCode(
   return node.commitEdits(edits);
 }
 
+/**
+ * @param rule
+ * @param lang
+ * @returns a callback applying the the rule.
+ */
 export function createPatchCode(
   rule: string | RuleConfig,
   lang = Lang.TypeScript,
