@@ -36,7 +36,7 @@ export async function createImageOptimizationBundle(
     }),
   ];
 
-  if (buildHelper.compareSemver(options.nextVersion, "14.1.1") >= 0) {
+  if (buildHelper.compareSemver(options.nextVersion, ">=", "14.1.1")) {
     plugins.push(
       openNextReplacementPlugin({
         name: "opennext-14.1.1-image-optimization",

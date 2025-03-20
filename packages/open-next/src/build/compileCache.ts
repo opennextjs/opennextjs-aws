@@ -17,8 +17,11 @@ export function compileCache(
   const ext = format === "cjs" ? "cjs" : "mjs";
   const outFile = path.join(options.buildDir, `cache.${ext}`);
 
-  const isAfter15 =
-    buildHelper.compareSemver(options.nextVersion, "15.0.0") >= 0;
+  const isAfter15 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "15.0.0",
+  );
 
   buildHelper.esbuildSync(
     {
