@@ -1,5 +1,9 @@
 const config = {
-  default: {},
+  default: {
+    override: {
+      wrapper: "aws-lambda-streaming",
+    },
+  },
   functions: {},
   buildCommand: "npx turbo build",
 };
