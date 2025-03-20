@@ -17,6 +17,10 @@ import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
+import {
+  patchFetchCacheForISR,
+  patchUnstableCacheForISR,
+} from "./patch/patchFetchCacheISR.js";
 import { patchFetchCacheSetMissingWaitUntil } from "./patch/patchFetchCacheWaitUntil.js";
 
 interface CodeCustomization {
@@ -181,6 +185,8 @@ async function generateBundle(
 
   await applyCodePatches(options, tracedFiles, manifests, [
     patchFetchCacheSetMissingWaitUntil,
+    patchFetchCacheForISR,
+    patchUnstableCacheForISR,
     ...additionalCodePatches,
   ]);
 
@@ -206,6 +212,12 @@ async function generateBundle(
     "14.1",
   );
 
+  const isAfter142 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "14.2",
+  );
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const updater = new ContentUpdater(options);
@@ -221,6 +233,7 @@ async function generateBundle(
       deletes: [
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
+        ...(isAfter142 ? ["patchAsyncStorage"] : []),
       ],
     }),
     openNextReplacementPlugin({
