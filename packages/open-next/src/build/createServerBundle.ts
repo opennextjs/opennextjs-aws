@@ -178,7 +178,7 @@ async function generateBundle(
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
-  await applyCodePatches(options, Array.from(tracedFiles), manifests, [
+  await applyCodePatches(options, tracedFiles, manifests, [
     ...additionalCodePatches,
   ]);
 

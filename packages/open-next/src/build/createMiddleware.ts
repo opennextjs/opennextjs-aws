@@ -81,7 +81,6 @@ export async function createMiddleware(
       additionalExternals: config.edgeExternals,
       onlyBuildOnce: forceOnlyBuildOnce === true,
       name: "middleware",
-      additionalPlugins: () => [],
     });
 
     installDependencies(outputPath, config.middleware?.install);
@@ -97,7 +96,6 @@ export async function createMiddleware(
       options,
       onlyBuildOnce: true,
       name: "middleware",
-      additionalPlugins: () => [],
     });
   }
 }

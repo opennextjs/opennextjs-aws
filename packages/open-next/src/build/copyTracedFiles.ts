@@ -345,7 +345,7 @@ File ${fullFilePath} does not exist
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 
   return {
-    tracedFiles: filesToCopy.values(),
+    tracedFiles: Array.from(filesToCopy.values()),
     manifests: getManifests(standaloneNextDir),
   };
 }

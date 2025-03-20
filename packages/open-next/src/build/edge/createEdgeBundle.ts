@@ -40,7 +40,7 @@ interface BuildEdgeBundleOptions {
   additionalExternals?: string[];
   onlyBuildOnce?: boolean;
   name: string;
-  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[];
+  additionalPlugins?: (contentUpdater: ContentUpdater) => Plugin[];
 }
 
 export async function buildEdgeBundle({
@@ -64,7 +64,9 @@ export async function buildEdgeBundle({
       : undefined;
   }
   const contentUpdater = new ContentUpdater(options);
-  const additionalPlugins = additionalPluginsFn(contentUpdater);
+  const additionalPlugins = additionalPluginsFn
+    ? additionalPluginsFn(contentUpdater)
+    : [];
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
