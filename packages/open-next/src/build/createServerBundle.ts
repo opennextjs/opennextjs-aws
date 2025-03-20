@@ -190,15 +190,21 @@ async function generateBundle(
   //       Next.js app.
 
   const disableNextPrebundledReact =
-    buildHelper.compareSemver(options.nextVersion, "13.5.1") >= 0 ||
-    buildHelper.compareSemver(options.nextVersion, "13.4.1") <= 0;
+    buildHelper.compareSemver(options.nextVersion, ">=", "13.5.1") ||
+    buildHelper.compareSemver(options.nextVersion, "<=", "13.4.1");
 
   const overrides = fnOptions.override ?? {};
 
-  const isBefore13413 =
-    buildHelper.compareSemver(options.nextVersion, "13.4.13") <= 0;
-  const isAfter141 =
-    buildHelper.compareSemver(options.nextVersion, "14.1") >= 0;
+  const isBefore13413 = buildHelper.compareSemver(
+    options.nextVersion,
+    "<=",
+    "13.4.13",
+  );
+  const isAfter141 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "14.1",
+  );
 
   const disableRouting = isBefore13413 || config.middleware?.external;
 

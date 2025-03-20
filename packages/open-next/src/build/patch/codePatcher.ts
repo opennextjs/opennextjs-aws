@@ -103,20 +103,20 @@ export function extractVersionedField<T>(
     if (
       before &&
       after &&
-      buildHelper.compareSemver(version, before) <= 0 &&
-      buildHelper.compareSemver(version, after) >= 0
+      buildHelper.compareSemver(version, "<=", before) &&
+      buildHelper.compareSemver(version, ">=", after)
     ) {
       result.push(field.field);
     } else if (
       before &&
       !after &&
-      buildHelper.compareSemver(version, before) <= 0
+      buildHelper.compareSemver(version, "<=", before)
     ) {
       result.push(field.field);
     } else if (
       after &&
       !before &&
-      buildHelper.compareSemver(version, after) >= 0
+      buildHelper.compareSemver(version, ">=", after)
     ) {
       result.push(field.field);
     }
