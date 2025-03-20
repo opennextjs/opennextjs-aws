@@ -13,4 +13,6 @@ export default {
   info: console.log,
   warn: (...args: any[]) => console.warn(chalk.yellow("WARN"), ...args),
   error: (...args: any[]) => console.error(chalk.red("ERROR"), ...args),
+  time: console.time,
+  timeEnd: console.timeEnd,
 };

@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 
 import fs from "node:fs";
 import path from "node:path";
-import { build } from "esbuild";
+import { type Plugin, build } from "esbuild";
 import type { MiddlewareInfo } from "types/next-types";
 import type {
   IncludedConverter,
@@ -16,6 +16,7 @@ import type {
 import { loadMiddlewareManifest } from "config/util.js";
 import type { OriginResolver } from "types/overrides.js";
 import logger from "../../logger.js";
+import { ContentUpdater } from "../../plugins/content-updater.js";
 import { openNextEdgePlugins } from "../../plugins/edge.js";
 import { openNextExternalMiddlewarePlugin } from "../../plugins/externalMiddleware.js";
 import { openNextReplacementPlugin } from "../../plugins/replacement.js";
@@ -39,6 +40,7 @@ interface BuildEdgeBundleOptions {
   additionalExternals?: string[];
   onlyBuildOnce?: boolean;
   name: string;
+  additionalPlugins?: (contentUpdater: ContentUpdater) => Plugin[];
 }
 
 export async function buildEdgeBundle({
@@ -53,6 +55,7 @@ export async function buildEdgeBundle({
   additionalExternals,
   onlyBuildOnce,
   name,
+  additionalPlugins: additionalPluginsFn,
 }: BuildEdgeBundleOptions) {
   const isInCloudfare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
@@ -60,6 +63,10 @@ export async function buildEdgeBundle({
       ? overrides[target]
       : undefined;
   }
+  const contentUpdater = new ContentUpdater(options);
+  const additionalPlugins = additionalPluginsFn
+    ? additionalPluginsFn(contentUpdater)
+    : [];
   await esbuildAsync(
     {
       entryPoints: [entrypoint],
@@ -98,6 +105,9 @@ export async function buildEdgeBundle({
           nextDir: path.join(options.appBuildOutputPath, ".next"),
           isInCloudfare,
         }),
+        ...additionalPlugins,
+        // The content updater plugin must be the last plugin
+        contentUpdater.plugin,
       ],
       treeShaking: true,
       alias: {
@@ -173,6 +183,7 @@ export async function generateEdgeBundle(
   name: string,
   options: BuildOptions,
   fnOptions: SplittedFunctionOptions,
+  additionalPlugins: (contentUpdater: ContentUpdater) => Plugin[] = () => [],
 ) {
   logger.info(`Generating edge bundle for: ${name}`);
 
@@ -226,5 +237,6 @@ export async function generateEdgeBundle(
     overrides: fnOptions.override,
     additionalExternals: options.config.edgeExternals,
     name,
+    additionalPlugins,
   });
 }
