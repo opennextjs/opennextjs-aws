@@ -180,6 +180,7 @@ async function generateBundle(
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
   await applyCodePatches(options, tracedFiles, manifests, [
+    patchFetchCacheSetMissingWaitUntil,
     ...additionalCodePatches,
   ]);
 
