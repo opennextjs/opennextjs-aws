@@ -93,3 +93,47 @@ test("Incremental Static Regeneration with data cache", async ({ page }) => {
   expect(originalCachedDate).toEqual(finalCachedDate);
   expect(originalFetchedDate).toEqual(finalFetchedDate);
 });
+
+test("dynamicParams set to true", async ({ page }) => {
+  const res = await page.goto("/isr/dynamic-params-true/1");
+  expect(res?.status()).toEqual(200);
+  expect(res?.headers()["x-nextjs-cache"]).toEqual("HIT");
+  const title = await page.getByTestId("title").textContent();
+  const content = await page.getByTestId("content").textContent();
+  expect(title).toEqual("Post 1");
+  expect(content).toEqual("This is post 1");
+
+  // should SSR for a path that has not been generated
+  const res2 = await page.goto("/isr/dynamic-params-true/11");
+  expect(res2?.headers()["x-nextjs-cache"]).toEqual("MISS");
+  const title2 = await page.getByTestId("title").textContent();
+  const content2 = await page.getByTestId("content").textContent();
+  expect(title2).toEqual("Post 11");
+  expect(content2).toEqual("This is post 11");
+
+  // should 500 for a non-existing path
+  const res3 = await page.goto("/isr/dynamic-params-true/21");
+  expect(res3?.status()).toEqual(500);
+  expect(res3?.headers()["cache-control"]).toBe(
+    "private, no-cache, no-store, max-age=0, must-revalidate",
+  );
+});
+
+test("dynamicParams set to false", async ({ page }) => {
+  // should return 200 and x-nextjs-cache HIT for an existing path
+  const res = await page.goto("/isr/dynamic-params-false/1");
+  expect(res?.status()).toEqual(200);
+  expect(res?.headers()["x-nextjs-cache"]).toEqual("HIT");
+  const title = await page.getByTestId("title").textContent();
+  const content = await page.getByTestId("content").textContent();
+  expect(title).toEqual("Post 1");
+  expect(content).toEqual("This is post 1");
+
+  // should return 404 for a non-existing path
+  const res2 = await page.goto("/isr/dynamic-params-false/11");
+  expect(res2?.status()).toEqual(404);
+  expect(res2?.headers()["cache-control"]).toBe(
+    "private, no-cache, no-store, max-age=0, must-revalidate",
+  );
+  await expect(await page.getByText("404")).toBeAttached();
+});
