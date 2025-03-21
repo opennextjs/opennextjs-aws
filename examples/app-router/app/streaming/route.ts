@@ -23,10 +23,7 @@ const encoder = new TextEncoder();
 
 async function* makeIterator() {
   for (let i = 1; i <= 10; i++) {
-    const timestamp = Date.now();
-    yield encoder.encode(
-      `<p data-testid="iteratorCount" data-timestamp="${timestamp}">${i}</p>`,
-    );
+    yield encoder.encode(`<p data-testid="iteratorCount">${i}</p>`);
     await sleep(1000);
   }
 }
