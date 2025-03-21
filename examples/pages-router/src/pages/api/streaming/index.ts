@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { ReadableStream } from "node:stream/web";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 function iteratorToStream(iterator: AsyncIterator<Uint8Array>) {
@@ -46,6 +47,6 @@ export default async function handler(
   const iterator = makeIterator();
   const stream = iteratorToStream(iterator);
 
-  // @ts-ignore - not sure how to make typescript happy here
+  // we need to import ReadableStream from `node:stream/web` to make TypeScript happy
   return Readable.fromWeb(stream).pipe(res);
 }
