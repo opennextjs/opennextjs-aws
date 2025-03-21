@@ -1,4 +1,4 @@
-export const dynamicParams = false; // or false, to 404 on unknown paths
+export const dynamicParams = false; // or true, to make it try SSR unknown paths
 
 interface Post {
   id: string;
