@@ -115,12 +115,12 @@ export async function copyTracedFiles({
     });
   }
   // create directory for pages
-  if (existsSync(path.join(standaloneServerDir, "pages"))) {
+  if (existsSync(path.join(standaloneNextDir, "server/pages"))) {
     mkdirSync(path.join(outputNextDir, "server/pages"), {
       recursive: true,
     });
   }
-  if (existsSync(path.join(standaloneServerDir, "app"))) {
+  if (existsSync(path.join(standaloneNextDir, "server/app"))) {
     mkdirSync(path.join(outputNextDir, "server/app"), {
       recursive: true,
     });
@@ -329,12 +329,7 @@ File ${fullFilePath} does not exist
   if (hasPageDir) {
     // First we get truly static files - i.e. pages without getStaticProps
     const staticFiles: Array<string> = Object.values(
-      JSON.parse(
-        readFileSync(
-          path.join(standaloneServerDir, "pages-manifest.json"),
-          "utf8",
-        ),
-      ),
+      loadPagesManifest(standaloneNextDir),
     );
     // Then we need to get all fallback: true dynamic routes html
     const prerenderManifest = loadPrerenderManifest(standaloneNextDir);
