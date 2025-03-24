@@ -34,7 +34,7 @@ export async function build(
   const { config, buildDir } = await compileOpenNextConfig(
     baseDir,
     openNextConfigPath,
-    nodeExternals,
+    { nodeExternals },
   );
 
   // Initialize options

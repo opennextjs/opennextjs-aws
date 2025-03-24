@@ -15,13 +15,14 @@ import { validateConfig } from "./validateConfig.js";
  *
  * @param baseDir Directory where to look for the configuration.
  * @param openNextConfigPath Override the default configuration when provided. Relative to baseDir.
- * @param nodeExternals Externals for the Node.js compilation.
+ * @param nodeExternals Coma separated list of Externals for the Node.js compilation.
+ * @param compileEdge Force compiling for the edge runtime when true
  * @return The configuration and the build directory.
  */
 export async function compileOpenNextConfig(
   baseDir: string,
   openNextConfigPath?: string,
-  nodeExternals?: string,
+  { nodeExternals = "", compileEdge = false } = {},
 ) {
   const sourcePath = path.join(
     baseDir,
@@ -32,7 +33,7 @@ export async function compileOpenNextConfig(
   let configPath = compileOpenNextConfigNode(
     sourcePath,
     buildDir,
-    nodeExternals ? nodeExternals.split(",") : [],
+    nodeExternals.split(","),
   );
 
   // On Windows, we need to use file:// protocol to load the config file using import()
@@ -52,13 +53,13 @@ export async function compileOpenNextConfig(
   const usesEdgeRuntime =
     (config.middleware?.external && config.middleware.runtime !== "node") ||
     Object.values(config.functions || {}).some((fn) => fn.runtime === "edge");
-  if (!usesEdgeRuntime) {
+  if (usesEdgeRuntime || compileEdge) {
+    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
+  } else {
+    // Skip compiling for the edge runtime.
     logger.debug(
       "No edge runtime found in the open-next.config.ts. Using default config.",
     );
-    //Nothing to do here
-  } else {
-    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
   }
 
   return { config, buildDir };
