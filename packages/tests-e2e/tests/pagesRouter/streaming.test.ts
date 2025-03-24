@@ -1,54 +1,50 @@
 import { expect, test } from "@playwright/test";
 
+const SADE_SMOOTH_OPERATOR_LYRIC = `Diamond life, lover boy
+He move in space with minimum waste and maximum joy
+City lights and business nights
+When you require streetcar desire for higher heights
+No place for beginners or sensitive hearts
+When sentiment is left to chance
+No place to be ending but somewhere to start
+No need to ask, he's a smooth operator
+Smooth operator, smooth operator
+Smooth operator`;
+
 test("streaming should work in api route", async ({ page }) => {
-  const ITERATOR_LENGTH = 10;
+  await page.goto("/sse");
 
-  const res = await page.goto("/api/streaming", {
-    // we set waitUntil: "commit" to ensure that the response is streamed
-    // without this option, the response would be buffered and sent all at once
-    // we could also drop the `await` aswell, but then we can't see the headers first.
-    waitUntil: "commit",
-  });
+  // wait for first line to be present
+  await page.getByTestId("line").first().waitFor();
+  const initialLines = await page.getByTestId("line").count();
+  // fail if all lines appear at once
+  // this is a safeguard to ensure that the response is streamed and not buffered all at once
+  expect(initialLines).toBe(1);
 
-  expect(res?.headers()["content-type"]).toBe("text/html; charset=utf-8");
-  expect(res?.headers()["cache-control"]).toBe("no-cache, no-transform");
-  // AWS API Gateway remaps the connection header to `x-amzn-remapped-connection`
-  expect(res?.headers()["x-amzn-remapped-connection"]).toBe("keep-alive");
-
-  // wait for first number to be present
-  await page.getByTestId("iteratorCount").first().waitFor();
-
-  const seenNumbers: Array<{ number: string; time: number }> = [];
+  const seenLines: Array<{ line: string; time: number }> = [];
   const startTime = Date.now();
 
-  const initialParagraphs = await page.getByTestId("iteratorCount").count();
-  // fail if all paragraphs appear at once
-  // this is a safeguard to ensure that the response is streamed and not buffered all at once
-  expect(initialParagraphs).toBe(1);
-
-  while (
-    seenNumbers.length < ITERATOR_LENGTH &&
-    Date.now() - startTime < 11000
-  ) {
-    const elements = await page.getByTestId("iteratorCount").all();
-    if (elements.length > seenNumbers.length) {
-      expect(elements.length).toBe(seenNumbers.length + 1);
-      const newElement = elements[elements.length - 1];
-      seenNumbers.push({
-        number: await newElement.innerText(),
+  // we loop until we see all lines
+  while (seenLines.length < SADE_SMOOTH_OPERATOR_LYRIC.split("\n").length) {
+    const lines = await page.getByTestId("line").all();
+    if (lines.length > seenLines.length) {
+      expect(lines.length).toBe(seenLines.length + 1);
+      const newLine = lines[lines.length - 1];
+      seenLines.push({
+        line: await newLine.innerText(),
         time: Date.now() - startTime,
       });
     }
-    await page.waitForTimeout(100);
+    // wait for a bit before checking again
+    await page.waitForTimeout(200);
   }
 
-  expect(seenNumbers.map((n) => n.number)).toEqual(
-    [...Array(ITERATOR_LENGTH)].map((_, i) => String(i + 1)),
+  expect(seenLines.map((n) => n.line)).toEqual(
+    SADE_SMOOTH_OPERATOR_LYRIC.split("\n"),
   );
-
-  // verify streaming timing
-  for (let i = 1; i < seenNumbers.length; i++) {
-    const timeDiff = seenNumbers[i].time - seenNumbers[i - 1].time;
-    expect(timeDiff).toBeGreaterThanOrEqual(100);
+  for (let i = 1; i < seenLines.length; i++) {
+    expect(seenLines[i].time - seenLines[i - 1].time).toBeGreaterThan(500);
   }
+
+  await expect(page.getByTestId("video")).toBeVisible();
 });
