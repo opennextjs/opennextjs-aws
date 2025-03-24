@@ -53,13 +53,13 @@ export async function compileOpenNextConfig(
   const usesEdgeRuntime =
     (config.middleware?.external && config.middleware.runtime !== "node") ||
     Object.values(config.functions || {}).some((fn) => fn.runtime === "edge");
-  if (!(usesEdgeRuntime || compileEdge)) {
+  if (usesEdgeRuntime || compileEdge) {
+    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
+  } else {
     // Skip compiling for the edge runtime.
     logger.debug(
       "No edge runtime found in the open-next.config.ts. Using default config.",
     );
-  } else {
-    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
   }
 
   return { config, buildDir };
