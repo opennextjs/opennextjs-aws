@@ -1,13 +1,10 @@
+import { notFound } from "next/navigation";
+
 // We'll prerender only the params from `generateStaticParams` at build time.
 // If a request comes in for a path that hasn't been generated,
 // Next.js will server-render the page on-demand.
+// https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config#dynamicparams
 export const dynamicParams = true; // or false, to 404 on unknown paths
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-}
 
 const POSTS = Array.from({ length: 20 }, (_, i) => ({
   id: String(i + 1),
@@ -36,7 +33,13 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const post = (await fakeGetPostFetch(id)) as Post;
+  const post = await fakeGetPostFetch(id);
+  if (Number(id) === 1337) {
+    throw new Error("This is an error!");
+  }
+  if (!post) {
+    notFound();
+  }
   return (
     <main>
       <h1 data-testid="title">{post.title}</h1>

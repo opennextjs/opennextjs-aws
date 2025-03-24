@@ -1,10 +1,5 @@
+// https://nextjs.org/docs/app/api-reference/file-conventions/route-segment-config#dynamicparams
 export const dynamicParams = false; // or true, to make it try SSR unknown paths
-
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-}
 
 const POSTS = Array.from({ length: 20 }, (_, i) => ({
   id: String(i + 1),
@@ -33,11 +28,11 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const post = (await fakeGetPostFetch(id)) as Post;
+  const post = await fakeGetPostFetch(id);
   return (
     <main>
-      <h1 data-testid="title">{post.title}</h1>
-      <p data-testid="content">{post.content}</p>
+      <h1 data-testid="title">{post?.title}</h1>
+      <p data-testid="content">{post?.content}</p>
     </main>
   );
 }
