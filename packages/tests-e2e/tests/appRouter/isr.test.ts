@@ -114,8 +114,8 @@ test.describe("dynamicParams set to true", () => {
     expect(content).toEqual("This is post 11");
   });
 
-  test("should 404 for a path that is not found", async ({ page }) => {
-    const res = await page.goto("/isr/dynamic-params-false/11");
+  test("should 404 when you call notFound", async ({ page }) => {
+    const res = await page.goto("/isr/dynamic-params-true/20");
     expect(res?.status()).toEqual(404);
     expect(res?.headers()["cache-control"]).toBe(
       "private, no-cache, no-store, max-age=0, must-revalidate",
