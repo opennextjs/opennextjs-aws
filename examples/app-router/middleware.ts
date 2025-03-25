@@ -24,6 +24,10 @@ export function middleware(request: NextRequest) {
       },
     });
   }
+  if (path === "/rewrite-external") {
+    const u = new URL("https://opennext.js.org/share.png");
+    return NextResponse.rewrite(u);
+  }
   const requestHeaders = new Headers();
   // Setting the Request Headers, this should be available in RSC
   requestHeaders.set("request-header", "request-header");
