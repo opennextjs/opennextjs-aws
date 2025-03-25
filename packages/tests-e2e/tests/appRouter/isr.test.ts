@@ -105,6 +105,8 @@ test.describe("dynamicParams set to true", () => {
     expect(content).toEqual("This is post 1");
   });
 
+  // In `next start` this test would fail on subsequent requests because `x-nextjs-cache` would be `HIT`
+  // However, once deployed to AWS, Cloudfront will cache `MISS`
   test("should SSR on a path that was not prebuilt", async ({ page }) => {
     const res = await page.goto("/isr/dynamic-params-true/11");
     expect(res?.headers()["x-nextjs-cache"]).toEqual("MISS");
