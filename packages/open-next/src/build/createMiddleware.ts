@@ -94,6 +94,7 @@ export async function createMiddleware(
       outfile: path.join(options.buildDir, "middleware.mjs"),
       middlewareInfo: edgeMiddlewareInfo,
       options,
+      overrides: config.default.override,
       onlyBuildOnce: true,
       name: "middleware",
     });

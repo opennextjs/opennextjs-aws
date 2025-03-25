@@ -430,7 +430,9 @@ export async function isEdgeRuntime(
     return false;
   }
   if (typeof overrides.wrapper === "string") {
-    return ["cloudflare-edge", "cloudflare"].includes(overrides.wrapper);
+    return ["cloudflare-edge", "cloudflare", "cloudflare-node"].includes(
+      overrides.wrapper,
+    );
   }
   return (await overrides?.wrapper?.())?.edgeRuntime;
 }
