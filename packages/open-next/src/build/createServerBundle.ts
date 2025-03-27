@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 
+import { loadMiddlewareManifest } from "config/util.js";
 import type { Plugin } from "esbuild";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
@@ -135,12 +136,14 @@ async function generateBundle(
   //       `.next/standalone/package/path` (ie. `.next`, `server.js`).
   //       We need to output the handler file inside the package path.
   const packagePath = buildHelper.getPackagePath(options);
-  fs.mkdirSync(path.join(outputPath, packagePath), { recursive: true });
+  const outPackagePath = path.join(outputPath, packagePath);
+
+  fs.mkdirSync(outPackagePath, { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
   fs.copyFileSync(
     path.join(options.buildDir, `cache.${ext}`),
-    path.join(outputPath, packagePath, "cache.cjs"),
+    path.join(outPackagePath, "cache.cjs"),
   );
 
   if (fnOptions.runtime === "deno") {
@@ -150,7 +153,7 @@ async function generateBundle(
   // Bundle next server if necessary
   const isBundled = fnOptions.experimentalBundledNextServer ?? false;
   if (isBundled) {
-    await bundleNextServer(path.join(outputPath, packagePath), appPath, {
+    await bundleNextServer(outPackagePath, appPath, {
       minify: options.minify,
     });
   }
@@ -159,15 +162,26 @@ async function generateBundle(
   if (!config.middleware?.external) {
     fs.copyFileSync(
       path.join(options.buildDir, "middleware.mjs"),
-      path.join(outputPath, packagePath, "middleware.mjs"),
+      path.join(outPackagePath, "middleware.mjs"),
     );
+
+    const middlewareManifest = loadMiddlewareManifest(
+      path.join(options.appBuildOutputPath, ".next"),
+    );
+    const wasmFiles = middlewareManifest.middleware["/"]?.wasm ?? [];
+    if (wasmFiles.length > 0) {
+      fs.mkdirSync(path.join(outPackagePath, "wasm"), { recursive: true });
+      for (const wasmFile of wasmFiles) {
+        fs.copyFileSync(
+          path.join(options.appBuildOutputPath, ".next", wasmFile.filePath),
+          path.join(outPackagePath, `wasm/${wasmFile.name}.wasm`),
+        );
+      }
+    }
   }
 
   // Copy open-next.config.mjs
-  buildHelper.copyOpenNextConfig(
-    options.buildDir,
-    path.join(outputPath, packagePath),
-  );
+  buildHelper.copyOpenNextConfig(options.buildDir, outPackagePath);
 
   // Copy env files
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);

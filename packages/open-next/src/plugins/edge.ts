@@ -139,15 +139,18 @@ if (!globalThis.URLPattern) {
 `
 }
 ${wasmFiles
-  .map((file) =>
+  .map((file, i) =>
     isInCloudfare
-      ? `import ${file.name} from './wasm/${file.name}.wasm';`
+      ? // Decorate the name to avoid name collisions
+        `import __OpenNextWasm${i} from './wasm/${file.name}.wasm';
+globalThis.${file.name} = __OpenNextWasm${i}`
       : `const ${file.name} = readFileSync(path.join(__dirname,'/wasm/${file.name}.wasm'));`,
   )
   .join("\n")}
 ${entryFiles.map((file) => `require("${file}");`).join("\n")}
 ${contents}
         `;
+
           return {
             contents,
           };
