@@ -1,5 +1,13 @@
 # open-next
 
+## 3.5.4
+
+### Patch Changes
+
+- [#796](https://github.com/opennextjs/opennextjs-aws/pull/796) [`c97ced159f4758991e0b9614abfda431fe50bbe6`](https://github.com/opennextjs/opennextjs-aws/commit/c97ced159f4758991e0b9614abfda431fe50bbe6) Thanks [@vicb](https://github.com/vicb)! - Add a `compileEdge` parameter to `compileOpenNextConfig`
+
+- [#802](https://github.com/opennextjs/opennextjs-aws/pull/802) [`8392e22a43430b10338d8e8f73cbbc14148aabbb`](https://github.com/opennextjs/opennextjs-aws/commit/8392e22a43430b10338d8e8f73cbbc14148aabbb) Thanks [@vicb](https://github.com/vicb)! - fix(middleware): copy wasm files for bundled middleware
+
 ## 3.5.3
 
 ### Patch Changes
