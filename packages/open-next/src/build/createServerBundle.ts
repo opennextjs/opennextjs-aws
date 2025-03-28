@@ -14,7 +14,10 @@ import { getCrossPlatformPathRegex } from "../utils/regex.js";
 import { bundleNextServer } from "./bundleNextServer.js";
 import { compileCache } from "./compileCache.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
-import { generateEdgeBundle } from "./edge/createEdgeBundle.js";
+import {
+  copyMiddlewareResources,
+  generateEdgeBundle,
+} from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
@@ -168,16 +171,12 @@ async function generateBundle(
     const middlewareManifest = loadMiddlewareManifest(
       path.join(options.appBuildOutputPath, ".next"),
     );
-    const wasmFiles = middlewareManifest.middleware["/"]?.wasm ?? [];
-    if (wasmFiles.length > 0) {
-      fs.mkdirSync(path.join(outPackagePath, "wasm"), { recursive: true });
-      for (const wasmFile of wasmFiles) {
-        fs.copyFileSync(
-          path.join(options.appBuildOutputPath, ".next", wasmFile.filePath),
-          path.join(outPackagePath, `wasm/${wasmFile.name}.wasm`),
-        );
-      }
-    }
+
+    copyMiddlewareResources(
+      options,
+      middlewareManifest.middleware["/"],
+      outPackagePath,
+    );
   }
 
   // Copy open-next.config.mjs

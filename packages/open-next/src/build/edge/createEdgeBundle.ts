@@ -57,7 +57,7 @@ export async function buildEdgeBundle({
   name,
   additionalPlugins: additionalPluginsFn,
 }: BuildEdgeBundleOptions) {
-  const isInCloudfare = await isEdgeRuntime(overrides);
+  const isInCloudflare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
     return typeof overrides?.[target] === "string"
       ? overrides[target]
@@ -103,7 +103,7 @@ export async function buildEdgeBundle({
         openNextEdgePlugins({
           middlewareInfo,
           nextDir: path.join(options.appBuildOutputPath, ".next"),
-          isInCloudfare,
+          isInCloudflare,
         }),
         ...additionalPlugins,
         // The content updater plugin must be the last plugin
@@ -146,7 +146,7 @@ Object.defineProperty = function(o, p, a) {
 };
 
   ${
-    isInCloudfare
+    isInCloudflare
       ? ""
       : `
   const require = (await import("node:module")).createRequire(import.meta.url);
@@ -209,25 +209,7 @@ export async function generateEdgeBundle(
   }
   const middlewareInfo = functions[0];
 
-  //Copy wasm files
-  const wasmFiles = middlewareInfo.wasm;
-  mkdirSync(path.join(outputDir, "wasm"), { recursive: true });
-  for (const wasmFile of wasmFiles) {
-    fs.copyFileSync(
-      path.join(buildOutputDotNextDir, wasmFile.filePath),
-      path.join(outputDir, `wasm/${wasmFile.name}.wasm`),
-    );
-  }
-
-  // Copy assets
-  const assets = middlewareInfo.assets;
-  mkdirSync(path.join(outputDir, "assets"), { recursive: true });
-  for (const asset of assets) {
-    fs.copyFileSync(
-      path.join(buildOutputDotNextDir, asset.filePath),
-      path.join(outputDir, `assets/${asset.name}`),
-    );
-  }
+  copyMiddlewareResources(options, middlewareInfo, outputDir);
 
   await buildEdgeBundle({
     middlewareInfo,
@@ -239,4 +221,29 @@ export async function generateEdgeBundle(
     name,
     additionalPlugins,
   });
+}
+
+/**
+ * Copy wasm files and assets into the destDir.
+ */
+export function copyMiddlewareResources(
+  options: BuildOptions,
+  middlewareInfo: MiddlewareInfo | undefined,
+  destDir: string,
+) {
+  mkdirSync(path.join(destDir, "wasm"), { recursive: true });
+  for (const file of middlewareInfo?.wasm ?? []) {
+    fs.copyFileSync(
+      path.join(options.appBuildOutputPath, ".next", file.filePath),
+      path.join(destDir, `wasm/${file.name}.wasm`),
+    );
+  }
+
+  mkdirSync(path.join(destDir, "assets"), { recursive: true });
+  for (const file of middlewareInfo?.assets ?? []) {
+    fs.copyFileSync(
+      path.join(options.appBuildOutputPath, ".next", file.filePath),
+      path.join(destDir, `assets/${file.name}`),
+    );
+  }
 }
