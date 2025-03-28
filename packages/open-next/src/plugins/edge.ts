@@ -24,19 +24,19 @@ import { getCrossPlatformPathRegex } from "../utils/regex.js";
 export interface IPluginSettings {
   nextDir: string;
   middlewareInfo?: MiddlewareInfo;
-  isInCloudfare?: boolean;
+  isInCloudflare?: boolean;
 }
 
 /**
  * @param opts.nextDir - The path to the .next directory
  * @param opts.middlewareInfo - Information about the middleware
- * @param opts.isInCloudfare - Whether the code runs on the cloudflare runtime
+ * @param opts.isInCloudflare - Whether the code runs on the cloudflare runtime
  * @returns
  */
 export function openNextEdgePlugins({
   nextDir,
   middlewareInfo,
-  isInCloudfare,
+  isInCloudflare,
 }: IPluginSettings): Plugin {
   const entryFiles =
     middlewareInfo?.files.map((file: string) => path.join(nextDir, file)) ?? [];
@@ -94,7 +94,7 @@ globalThis.self = globalThis;
 globalThis._ROUTES = ${JSON.stringify(routes)};
 
 ${
-  isInCloudfare
+  isInCloudflare
     ? ""
     : `
 import {readFileSync} from "node:fs";
@@ -138,16 +138,11 @@ if (!globalThis.URLPattern) {
 }
 `
 }
-${wasmFiles
-  .map((file) =>
-    isInCloudfare
-      ? `import ${file.name} from './wasm/${file.name}.wasm';`
-      : `const ${file.name} = readFileSync(path.join(__dirname,'/wasm/${file.name}.wasm'));`,
-  )
-  .join("\n")}
+${importWasm(wasmFiles, { isInCloudflare })}
 ${entryFiles.map((file) => `require("${file}");`).join("\n")}
 ${contents}
         `;
+
           return {
             contents,
           };
@@ -201,4 +196,23 @@ ${contents}
       );
     },
   };
+}
+
+function importWasm(
+  files: MiddlewareInfo["wasm"],
+  { isInCloudflare }: { isInCloudflare?: boolean },
+) {
+  return files
+    .map(({ name }) => {
+      if (isInCloudflare) {
+        // As `.next/server/src/middleware.js` references the name,
+        // using `import ${name} from '...'` would cause ESBuild to rename the import.
+        // We use `globalThis.${name}` to make sure `middleware.js` reference name will match.
+        return `import __onw_${name}__ from './wasm/${name}.wasm'
+globalThis.${name} = __onw_${name}__`;
+      }
+
+      return `const ${name} = readFileSync(path.join(__dirname,'/wasm/${name}.wasm'));`;
+    })
+    .join("\n");
 }
