@@ -20,9 +20,10 @@ import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import {
   patchFetchCacheForISR,
   patchUnstableCacheForISR,
-} from "./patch/patchFetchCacheISR.js";
-import { patchFetchCacheSetMissingWaitUntil } from "./patch/patchFetchCacheWaitUntil.js";
-import { patchEnvVars, patchNextServer } from "./patch/patchNextServer.js";
+  patchNextServer,
+  patchEnvVars,
+  patchFetchCacheSetMissingWaitUntil,
+} from "./patch/patches/index.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code

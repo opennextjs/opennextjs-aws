@@ -3,7 +3,7 @@ import {
   removeMiddlewareManifestRule,
   minimalRule,
   disablePreloadingRule,
-} from "@opennextjs/aws/build/patch/patchNextServer.js";
+} from "@opennextjs/aws/build/patch/patches/patchNextServer.js";
 import { it, describe } from "vitest";
 
 const nextServerGetMiddlewareManifestCode = `
