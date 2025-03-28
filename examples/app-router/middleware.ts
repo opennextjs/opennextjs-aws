@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
     const u = new URL("https://opennext.js.org/share.png");
     return NextResponse.rewrite(u);
   }
-  const requestHeaders = new Headers();
+  const requestHeaders = new Headers(request.headers);
   // Setting the Request Headers, this should be available in RSC
   requestHeaders.set("request-header", "request-header");
   requestHeaders.set(
