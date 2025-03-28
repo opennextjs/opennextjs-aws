@@ -47,7 +47,20 @@ fix:
   '{}'
 `;
 
-const envVarRuleCreator = (envVar: string, value: string) => `
+// This rule is mostly for splitted edge functions so that we don't try to match them on the other non edge functions
+export const removeMiddlewareManifestRule = `
+rule:
+  kind: statement_block
+  inside:
+    kind: method_definition
+    has:
+      kind: property_identifier
+      regex: getMiddlewareManifest
+fix:
+  '{return null;}'
+`;
+
+export const envVarRuleCreator = (envVar: string, value: string) => `
 rule:
   kind: member_expression
   pattern: process.env.${envVar}
@@ -75,6 +88,14 @@ export const patchNextServer: CodePatcher = {
         pathFilter: /next-server\.(js)$/,
         contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
         patchCode: createPatchCode(disablePreloadingRule),
+      },
+    },
+    {
+      versions: ">=15.0.0",
+      field: {
+        pathFilter: /next-server\.(js)$/,
+        contentFilter: /getMiddlewareManifest/,
+        patchCode: createPatchCode(removeMiddlewareManifestRule),
       },
     },
   ],
