@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    authInterrupts: true,
+  },
   redirects: async () => {
     return [
       {
