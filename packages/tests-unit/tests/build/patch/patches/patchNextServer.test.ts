@@ -1,10 +1,10 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
-  removeMiddlewareManifestRule,
-  minimalRule,
   disablePreloadingRule,
+  minimalRule,
+  removeMiddlewareManifestRule,
 } from "@opennextjs/aws/build/patch/patches/patchNextServer.js";
-import { it, describe } from "vitest";
+import { describe, it } from "vitest";
 
 const nextServerGetMiddlewareManifestCode = `
 class NextNodeServer extends _baseserver.default {

@@ -18,11 +18,11 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import {
-  patchFetchCacheForISR,
-  patchUnstableCacheForISR,
-  patchNextServer,
   patchEnvVars,
+  patchFetchCacheForISR,
   patchFetchCacheSetMissingWaitUntil,
+  patchNextServer,
+  patchUnstableCacheForISR,
 } from "./patch/patches/index.js";
 
 interface CodeCustomization {
