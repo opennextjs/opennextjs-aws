@@ -329,6 +329,10 @@ CMD ["node", "index.mjs"]
     `,
     );
   }
+
+  if (fnOptions.copyFiles) {
+    buildHelper.copyCustomFiles(fnOptions.copyFiles, outPackagePath);
+  }
 }
 
 function shouldGenerateDockerfile(options: FunctionOptions) {

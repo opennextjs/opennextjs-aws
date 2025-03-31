@@ -23,7 +23,11 @@ import { openNextReplacementPlugin } from "../../plugins/replacement.js";
 import { openNextResolvePlugin } from "../../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../../utils/regex.js";
 import { type BuildOptions, isEdgeRuntime } from "../helper.js";
-import { copyOpenNextConfig, esbuildAsync } from "../helper.js";
+import {
+  copyCustomFiles,
+  copyOpenNextConfig,
+  esbuildAsync,
+} from "../helper.js";
 
 type Override = OverrideOptions & {
   originResolver?: LazyLoadedOverride<OriginResolver> | IncludedOriginResolver;
@@ -221,6 +225,10 @@ export async function generateEdgeBundle(
     name,
     additionalPlugins,
   });
+
+  if (fnOptions.copyFiles) {
+    copyCustomFiles(fnOptions.copyFiles, outputDir);
+  }
 }
 
 /**

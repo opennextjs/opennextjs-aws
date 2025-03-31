@@ -290,6 +290,15 @@ export interface DefaultFunctionOptions<
   install?: InstallOptions;
 }
 
+/**
+ * @srcPath The path to the file to copy. Can be absolute or relative path.
+ * @dstPath The path to the destination in the server function. Must be a relative path.
+ */
+export interface CopyFile {
+  srcPath: string;
+  dstPath: string;
+}
+
 export interface FunctionOptions extends DefaultFunctionOptions {
   /**
    * Runtime used
@@ -313,6 +322,20 @@ export interface FunctionOptions extends DefaultFunctionOptions {
    * @deprecated This is not supported in 14.2+
    */
   experimentalBundledNextServer?: boolean;
+  /**
+   * Manually copy files into the server function after the build.
+   * @copyFiles The files to copy. Is an array of objects with srcPath and dstPath.
+   * @example
+   * ```ts
+   * copyFiles: [
+   *   {
+   *     srcPath: 'relativefile.txt',
+   *     dstPath: '/this/is/a/folder.txt',
+   *   },
+   * ]
+   * ```
+   */
+  copyFiles?: CopyFile[];
 }
 
 export type RouteTemplate =

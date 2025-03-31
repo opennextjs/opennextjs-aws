@@ -6,6 +6,7 @@ import url from "node:url";
 import type { BuildOptions as ESBuildOptions } from "esbuild";
 import { build as buildAsync, buildSync } from "esbuild";
 import type {
+  CopyFile,
   DefaultOverrideOptions,
   OpenNextConfig,
 } from "types/open-next.js";
@@ -439,4 +440,31 @@ export async function isEdgeRuntime(
 
 export function getPackagePath(options: BuildOptions) {
   return path.relative(options.monorepoRoot, options.appBuildOutputPath);
+}
+
+/**
+ * Copy files that are specified in the `copyFiles` property of the OpenNext config into the output directory.
+ *
+ * @param copyFiles - Array of files to copy. Each file should have a `srcPath` and `dstPath` property.
+ * @param outputPath - Path to the output directory.
+ */
+export function copyCustomFiles(copyFiles: CopyFile[], outputPath: string) {
+  copyFiles.forEach(({ srcPath, dstPath }) => {
+    if (!fs.existsSync(srcPath)) {
+      logger.warn(
+        `${srcPath} was not found. Make sure this file exists. Can be a relative path to the app directory or an absolute path.`,
+      );
+      return;
+    }
+
+    // Create the destination directory if it doesn't exist
+    const fullDestPath = path.join(outputPath, dstPath);
+    const destDir = path.dirname(fullDestPath);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    fs.copyFileSync(srcPath, fullDestPath);
+    logger.debug(`Copied ${srcPath} to ${fullDestPath}`);
+  });
 }
