@@ -291,8 +291,8 @@ export interface DefaultFunctionOptions<
 }
 
 /**
- * @srcPath The path to the file to copy. Can be absolute or relative path.
- * @dstPath The path to the destination in the server function. Must be a relative path.
+ * @srcPath The path to the file to copy. Can be absolute or relative path. Can use glob pattern.
+ * @dstPath The relative path to the destination in the server function. Will become a directory if multiple files are found in srcPath.
  */
 export interface CopyFile {
   srcPath: string;
@@ -324,6 +324,7 @@ export interface FunctionOptions extends DefaultFunctionOptions {
   experimentalBundledNextServer?: boolean;
   /**
    * Manually copy files into the server function after the build.
+   * If multiple files are found with srcPath, dstPath will become a directory.
    * @copyFiles The files to copy. Is an array of objects with srcPath and dstPath.
    * @example
    * ```ts

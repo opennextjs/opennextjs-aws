@@ -5,6 +5,7 @@ import url from "node:url";
 
 import type { BuildOptions as ESBuildOptions } from "esbuild";
 import { build as buildAsync, buildSync } from "esbuild";
+import { globSync } from "glob";
 import type {
   CopyFile,
   DefaultOverrideOptions,
@@ -443,28 +444,55 @@ export function getPackagePath(options: BuildOptions) {
 }
 
 /**
- * Copy files that are specified in the `copyFiles` property of the OpenNext config into the output directory.
+ * Copy files that are specified in the `copyFiles` property into the server functions output directory.
  *
  * @param copyFiles - Array of files to copy. Each file should have a `srcPath` and `dstPath` property.
  * @param outputPath - Path to the output directory.
  */
 export function copyCustomFiles(copyFiles: CopyFile[], outputPath: string) {
   copyFiles.forEach(({ srcPath, dstPath }) => {
-    if (!fs.existsSync(srcPath)) {
-      logger.warn(
-        `${srcPath} was not found. Make sure this file exists. Can be a relative path to the app directory or an absolute path.`,
-      );
+    // Find all files matching the pattern
+    const matchedFiles = globSync(srcPath, {
+      nodir: true,
+      windowsPathsNoEscape: true,
+    });
+
+    if (matchedFiles.length === 0) {
+      logger.warn(`No files found for pattern: ${srcPath}`);
       return;
     }
 
-    // Create the destination directory if it doesn't exist
-    const fullDestPath = path.join(outputPath, dstPath);
-    const destDir = path.dirname(fullDestPath);
-    if (!fs.existsSync(destDir)) {
-      fs.mkdirSync(destDir, { recursive: true });
-    }
+    if (matchedFiles.length === 1) {
+      // Single file match - use dstPath as it is
+      const srcFile = matchedFiles[0];
+      const fullDstPath = path.join(outputPath, dstPath);
 
-    fs.copyFileSync(srcPath, fullDestPath);
-    logger.debug(`Copied ${srcPath} to ${fullDestPath}`);
+      copyFile(srcFile, fullDstPath);
+    } else {
+      // Multiple files matched, dstPath will become a directory
+      matchedFiles.forEach((srcFile) => {
+        const filename = path.basename(srcFile);
+        const fullDstPath = path.join(outputPath, dstPath, filename);
+        copyFile(srcFile, fullDstPath);
+      });
+    }
   });
+}
+/**
+ * Copy a file to the destination path.
+ *
+ * @param srcFile - Path to the source file.
+ * @param fullDstPath - Path to the destination file.
+ */
+function copyFile(srcFile: string, fullDstPath: string) {
+  const dstDir = path.dirname(fullDstPath);
+
+  if (!fs.existsSync(dstDir)) {
+    fs.mkdirSync(dstDir, { recursive: true });
+  }
+  if (fs.existsSync(fullDstPath)) {
+    logger.warn(`File already exists: ${fullDstPath}. It will be overwritten.`);
+  }
+  fs.copyFileSync(srcFile, fullDstPath);
+  logger.debug(`Copied ${srcFile} to ${fullDstPath}`);
 }
