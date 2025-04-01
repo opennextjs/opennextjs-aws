@@ -13,7 +13,6 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         res.setHeader("Set-Cookie", prelude.cookies);
         res.writeHead(prelude.statusCode, prelude.headers);
         res.flushHeaders();
-        res.uncork();
         return res;
       },
     };
