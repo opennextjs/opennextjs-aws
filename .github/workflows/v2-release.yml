@@ -1,0 +1,27 @@
+name: v2-release
+
+on: workflow_dispatch
+
+jobs:
+  release:
+    name: Pre-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        # https://github.com/actions/checkout
+        uses: actions/checkout@v4
+
+      # Setup .npmrc file to publish to npm
+      - uses: actions/setup-node@v4
+        with:
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: ./.github/actions/pnpm-setup
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Publish Pre-release to npm
+        run: pnpm release-v2
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
