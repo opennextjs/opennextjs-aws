@@ -4,6 +4,7 @@ import {
   FunctionsConfigManifest,
   MiddlewareManifest,
   NextConfig,
+  PrerenderManifest,
 } from "config/index.js";
 import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
@@ -57,7 +58,14 @@ export async function handleMiddleware(
   const headers = internalEvent.headers;
 
   // We bypass the middleware if the request is internal
-  if (headers["x-isr"]) return internalEvent;
+  // We should only do that if the request has the correct `x-prerender-revalidate` header
+  // The `x-prerender-revalidate` header is set at build time and should be safe to trust
+  if (
+    headers["x-isr"] &&
+    headers["x-prerender-revalidate"] ===
+      PrerenderManifest.preview.previewModeId
+  )
+    return internalEvent;
 
   // We only need the normalizedPath to check if the middleware should run
   const normalizedPath = localizePath(internalEvent);
