@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { NEXT_DIR, NextConfig } from "../config/index.js";
+import { NEXT_DIR, NextConfig, PrerenderManifest } from "../config/index.js";
 import { InternalEvent, InternalResult } from "../event-mapper.js";
 import { IncomingMessage } from "../http/request.js";
 import { ServerlessResponse } from "../http/response.js";
@@ -46,7 +46,12 @@ export async function handleMiddleware(
   const hasMatch = middleMatch.some((r) => r.test(rawPath));
   if (!hasMatch) return internalEvent;
   // We bypass the middleware if the request is internal
-  if (internalEvent.headers["x-isr"]) return internalEvent;
+  if (
+    internalEvent.headers["x-isr"] &&
+    internalEvent.headers["x-prerender-revalidate"] ===
+      PrerenderManifest.preview.previewModeId
+  )
+    return internalEvent;
 
   const req = new IncomingMessage(internalEvent);
   const res = new ServerlessResponse({
