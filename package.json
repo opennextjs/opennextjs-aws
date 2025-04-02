@@ -13,8 +13,7 @@
     "test": "turbo run test",
     "e2e:test": "turbo run e2e:test",
     "version": "./.changeset/version",
-    "release": "./.changeset/release",
-    "release-v2": "./.changeset/release-v2"
+    "release": "./.changeset/release"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
