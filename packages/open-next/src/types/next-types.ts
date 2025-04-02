@@ -174,6 +174,9 @@ export interface PrerenderManifest {
       dataRouteRegex: string;
     };
   };
+  preview: {
+    previewModeId: string;
+  };
 }
 
 export type Options = {

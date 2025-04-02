@@ -33,6 +33,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
     version: 2,
   },
   FunctionsConfigManifest: undefined,
+  PrerenderManifest: {
+    preview: {
+      previewModeId: "preview",
+    },
+  },
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
@@ -76,12 +81,52 @@ describe("handleMiddleware", () => {
     const event = createEvent({
       headers: {
         "x-isr": "1",
+        "x-prerender-revalidate": "preview",
       },
     });
     const result = await handleMiddleware(event, middlewareLoader);
 
     expect(middlewareLoader).not.toHaveBeenCalled();
     expect(result).toEqual(event);
+  });
+
+  it("should not bypass middleware for request with an incorrect x-prerender-revalidate", async () => {
+    const event = createEvent({
+      headers: {
+        "x-isr": "1",
+        "x-prerender-revalidate": "incorrect",
+      },
+    });
+    middleware.mockResolvedValue({
+      status: 302,
+      headers: new Headers({
+        location: "/redirect",
+      }),
+    });
+    const result = await handleMiddleware(event, middlewareLoader);
+
+    expect(middlewareLoader).toHaveBeenCalled();
+    expect(result.statusCode).toEqual(302);
+    expect(result.headers.location).toEqual("/redirect");
+  });
+
+  it("should not bypass middleware if there is no x-prerender-revalidate", async () => {
+    const event = createEvent({
+      headers: {
+        "x-isr": "1",
+      },
+    });
+    middleware.mockResolvedValue({
+      status: 302,
+      headers: new Headers({
+        location: "/redirect",
+      }),
+    });
+    const result = await handleMiddleware(event, middlewareLoader);
+
+    expect(middlewareLoader).toHaveBeenCalled();
+    expect(result.statusCode).toEqual(302);
+    expect(result.headers.location).toEqual("/redirect");
   });
 
   it("should invoke middleware with redirect", async () => {
