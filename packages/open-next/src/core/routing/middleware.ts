@@ -151,11 +151,13 @@ export async function handleMiddleware(
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
+  let rewritten = false;
   let isExternalRewrite = false;
   let middlewareQueryString = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
     newUrl = rewriteUrl;
+    rewritten = true;
     // If not a string, it should probably throw
     if (isExternal(newUrl, internalEvent.headers.host as string)) {
       isExternalRewrite = true;
