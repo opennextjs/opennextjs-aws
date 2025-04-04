@@ -1,5 +1,13 @@
 # open-next
 
+## 3.5.5
+
+### Patch Changes
+
+- [#814](https://github.com/opennextjs/opennextjs-aws/pull/814) [`c1be82506924887aa560348d1e908d7ca283f3fa`](https://github.com/opennextjs/opennextjs-aws/commit/c1be82506924887aa560348d1e908d7ca283f3fa) Thanks [@conico974](https://github.com/conico974)! - fix cache-control header for fully static page router route
+
+- [#816](https://github.com/opennextjs/opennextjs-aws/pull/816) [`38bda6d4e35e30eba0d80078b89eba0b4eb40fbd`](https://github.com/opennextjs/opennextjs-aws/commit/38bda6d4e35e30eba0d80078b89eba0b4eb40fbd) Thanks [@conico974](https://github.com/conico974)! - return the user 500 in case of middleware error
+
 ## 3.5.4
 
 ### Patch Changes
