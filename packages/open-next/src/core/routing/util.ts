@@ -243,7 +243,11 @@ export function fixCacheHeaderForHtmlPages(
   const localizedPath = localizePath(internalEvent);
   // WORKAROUND: `NextServer` does not set cache headers for HTML pages
   // https://opennext.js.org/aws/v2/advanced/workaround#workaround-nextserver-does-not-set-cache-headers-for-html-pages
-  if (HtmlPages.includes(localizedPath)) {
+  // Requests containing an `x-middleware-prefetch` header must not be cached
+  if (
+    HtmlPages.includes(localizedPath) &&
+    !internalEvent.headers["x-middleware-prefetch"]
+  ) {
     headers[CommonHeaders.CACHE_CONTROL] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }

@@ -487,6 +487,7 @@ describe("fixCacheHeaderForHtmlPages", () => {
     fixCacheHeaderForHtmlPages(
       {
         rawPath: "/my-html-page",
+        headers: {},
       },
       headers,
     );
@@ -494,6 +495,23 @@ describe("fixCacheHeaderForHtmlPages", () => {
     expect(headers["cache-control"]).toBe(
       "public, max-age=0, s-maxage=31536000, must-revalidate",
     );
+  });
+
+  it("should not add cache-control header for html page but with an `x-middleware-prefetch` header", () => {
+    const headers: Record<string, string> = {};
+    config.HtmlPages.push("/my-html-page");
+
+    fixCacheHeaderForHtmlPages(
+      {
+        rawPath: "/my-html-page",
+        headers: {
+          "x-middleware-prefetch": "1",
+        },
+      },
+      headers,
+    );
+
+    expect(headers).not.toHaveProperty("cache-control");
   });
 
   it("should not add cache-control header for non html page", () => {
