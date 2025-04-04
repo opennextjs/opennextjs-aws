@@ -12,7 +12,7 @@ import type {
   RoutingResult,
 } from "types/open-next";
 
-import { debug } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {
@@ -65,169 +65,196 @@ function applyMiddlewareHeaders(
 export default async function routingHandler(
   event: InternalEvent,
 ): Promise<InternalResult | RoutingResult> {
-  // Add Next geo headers
-  for (const [openNextGeoName, nextGeoName] of Object.entries(
-    geoHeaderToNextHeader,
-  )) {
-    const value = event.headers[openNextGeoName];
-    if (value) {
-      event.headers[nextGeoName] = value;
+  try {
+    // Add Next geo headers
+    for (const [openNextGeoName, nextGeoName] of Object.entries(
+      geoHeaderToNextHeader,
+    )) {
+      const value = event.headers[openNextGeoName];
+      if (value) {
+        event.headers[nextGeoName] = value;
+      }
     }
-  }
 
-  // First we remove internal headers
-  // We don't want to allow users to set these headers
-  for (const key of Object.keys(event.headers)) {
-    if (
-      key.startsWith(INTERNAL_HEADER_PREFIX) ||
-      key.startsWith(MIDDLEWARE_HEADER_PREFIX)
-    ) {
-      delete event.headers[key];
+    // First we remove internal headers
+    // We don't want to allow users to set these headers
+    for (const key of Object.keys(event.headers)) {
+      if (
+        key.startsWith(INTERNAL_HEADER_PREFIX) ||
+        key.startsWith(MIDDLEWARE_HEADER_PREFIX)
+      ) {
+        delete event.headers[key];
+      }
     }
-  }
 
-  const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
+    const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
 
-  let internalEvent = fixDataPage(event, BuildId);
-  if ("statusCode" in internalEvent) {
-    return internalEvent;
-  }
-
-  const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
-  if (redirect) {
-    debug("redirect", redirect);
-    return redirect;
-  }
-
-  const eventOrResult = await handleMiddleware(internalEvent);
-  const isResult = "statusCode" in eventOrResult;
-  if (isResult) {
-    return eventOrResult;
-  }
-  const middlewareResponseHeaders = eventOrResult.responseHeaders;
-  let isExternalRewrite = eventOrResult.isExternalRewrite ?? false;
-  // internalEvent is `InternalEvent | MiddlewareEvent`
-  internalEvent = eventOrResult;
-
-  if (!isExternalRewrite) {
-    // First rewrite to be applied
-    const beforeRewrites = handleRewrites(
-      internalEvent,
-      RoutesManifest.rewrites.beforeFiles,
-    );
-    internalEvent = beforeRewrites.internalEvent;
-    isExternalRewrite = beforeRewrites.isExternalRewrite;
-  }
-  const foundStaticRoute = staticRouteMatcher(internalEvent.rawPath);
-  const isStaticRoute = !isExternalRewrite && foundStaticRoute.length > 0;
-
-  if (!(isStaticRoute || isExternalRewrite)) {
-    // Second rewrite to be applied
-    const afterRewrites = handleRewrites(
-      internalEvent,
-      RoutesManifest.rewrites.afterFiles,
-    );
-    internalEvent = afterRewrites.internalEvent;
-    isExternalRewrite = afterRewrites.isExternalRewrite;
-  }
-
-  // We want to run this just before the dynamic route check
-  const { event: fallbackEvent, isISR } = handleFallbackFalse(
-    internalEvent,
-    PrerenderManifest,
-  );
-  internalEvent = fallbackEvent;
-
-  const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
-  const isDynamicRoute = !isExternalRewrite && foundDynamicRoute.length > 0;
-
-  if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
-    // Fallback rewrite to be applied
-    const fallbackRewrites = handleRewrites(
-      internalEvent,
-      RoutesManifest.rewrites.fallback,
-    );
-    internalEvent = fallbackRewrites.internalEvent;
-    isExternalRewrite = fallbackRewrites.isExternalRewrite;
-  }
-
-  // Api routes are not present in the routes manifest except if they're not behind /api
-  // /api even if it's a page route doesn't get generated in the manifest
-  // Ideally we would need to properly check api routes here
-  const isApiRoute =
-    internalEvent.rawPath === apiPrefix ||
-    internalEvent.rawPath.startsWith(`${apiPrefix}/`);
-
-  const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
-
-  const isRouteFoundBeforeAllRewrites =
-    isStaticRoute || isDynamicRoute || isExternalRewrite;
-
-  // If we still haven't found a route, we show the 404 page
-  // We need to ensure that rewrites are applied before showing the 404 page
-  if (
-    !(
-      isRouteFoundBeforeAllRewrites ||
-      isApiRoute ||
-      isNextImageRoute ||
-      // We need to check again once all rewrites have been applied
-      staticRouteMatcher(internalEvent.rawPath).length > 0 ||
-      dynamicRouteMatcher(internalEvent.rawPath).length > 0
-    )
-  ) {
-    internalEvent = {
-      ...internalEvent,
-      rawPath: "/404",
-      url: constructNextUrl(internalEvent.url, "/404"),
-      headers: {
-        ...internalEvent.headers,
-        "x-middleware-response-cache-control":
-          "private, no-cache, no-store, max-age=0, must-revalidate",
-      },
-    };
-  }
-
-  if (
-    globalThis.openNextConfig.dangerous?.enableCacheInterception &&
-    !("statusCode" in internalEvent)
-  ) {
-    debug("Cache interception enabled");
-    internalEvent = await cacheInterceptor(internalEvent);
+    let internalEvent = fixDataPage(event, BuildId);
     if ("statusCode" in internalEvent) {
-      applyMiddlewareHeaders(
-        internalEvent.headers,
-        {
-          ...middlewareResponseHeaders,
-          ...nextHeaders,
-        },
-        false,
-      );
       return internalEvent;
     }
+
+    const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
+    if (redirect) {
+      debug("redirect", redirect);
+      return redirect;
+    }
+
+    const eventOrResult = await handleMiddleware(internalEvent);
+    const isResult = "statusCode" in eventOrResult;
+    if (isResult) {
+      return eventOrResult;
+    }
+    const middlewareResponseHeaders = eventOrResult.responseHeaders;
+    let isExternalRewrite = eventOrResult.isExternalRewrite ?? false;
+    // internalEvent is `InternalEvent | MiddlewareEvent`
+    internalEvent = eventOrResult;
+
+    if (!isExternalRewrite) {
+      // First rewrite to be applied
+      const beforeRewrites = handleRewrites(
+        internalEvent,
+        RoutesManifest.rewrites.beforeFiles,
+      );
+      internalEvent = beforeRewrites.internalEvent;
+      isExternalRewrite = beforeRewrites.isExternalRewrite;
+    }
+    const foundStaticRoute = staticRouteMatcher(internalEvent.rawPath);
+    const isStaticRoute = !isExternalRewrite && foundStaticRoute.length > 0;
+
+    if (!(isStaticRoute || isExternalRewrite)) {
+      // Second rewrite to be applied
+      const afterRewrites = handleRewrites(
+        internalEvent,
+        RoutesManifest.rewrites.afterFiles,
+      );
+      internalEvent = afterRewrites.internalEvent;
+      isExternalRewrite = afterRewrites.isExternalRewrite;
+    }
+
+    // We want to run this just before the dynamic route check
+    const { event: fallbackEvent, isISR } = handleFallbackFalse(
+      internalEvent,
+      PrerenderManifest,
+    );
+    internalEvent = fallbackEvent;
+
+    const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
+    const isDynamicRoute = !isExternalRewrite && foundDynamicRoute.length > 0;
+
+    if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
+      // Fallback rewrite to be applied
+      const fallbackRewrites = handleRewrites(
+        internalEvent,
+        RoutesManifest.rewrites.fallback,
+      );
+      internalEvent = fallbackRewrites.internalEvent;
+      isExternalRewrite = fallbackRewrites.isExternalRewrite;
+    }
+
+    // Api routes are not present in the routes manifest except if they're not behind /api
+    // /api even if it's a page route doesn't get generated in the manifest
+    // Ideally we would need to properly check api routes here
+    const isApiRoute =
+      internalEvent.rawPath === apiPrefix ||
+      internalEvent.rawPath.startsWith(`${apiPrefix}/`);
+
+    const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
+
+    const isRouteFoundBeforeAllRewrites =
+      isStaticRoute || isDynamicRoute || isExternalRewrite;
+
+    // If we still haven't found a route, we show the 404 page
+    // We need to ensure that rewrites are applied before showing the 404 page
+    if (
+      !(
+        isRouteFoundBeforeAllRewrites ||
+        isApiRoute ||
+        isNextImageRoute ||
+        // We need to check again once all rewrites have been applied
+        staticRouteMatcher(internalEvent.rawPath).length > 0 ||
+        dynamicRouteMatcher(internalEvent.rawPath).length > 0
+      )
+    ) {
+      internalEvent = {
+        ...internalEvent,
+        rawPath: "/404",
+        url: constructNextUrl(internalEvent.url, "/404"),
+        headers: {
+          ...internalEvent.headers,
+          "x-middleware-response-cache-control":
+            "private, no-cache, no-store, max-age=0, must-revalidate",
+        },
+      };
+    }
+
+    if (
+      globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+      !("statusCode" in internalEvent)
+    ) {
+      debug("Cache interception enabled");
+      internalEvent = await cacheInterceptor(internalEvent);
+      if ("statusCode" in internalEvent) {
+        applyMiddlewareHeaders(
+          internalEvent.headers,
+          {
+            ...middlewareResponseHeaders,
+            ...nextHeaders,
+          },
+          false,
+        );
+        return internalEvent;
+      }
+    }
+
+    // We apply the headers from the middleware response last
+    applyMiddlewareHeaders(internalEvent.headers, {
+      ...middlewareResponseHeaders,
+      ...nextHeaders,
+    });
+
+    const resolvedRoutes: ResolvedRoute[] = [
+      ...foundStaticRoute,
+      ...foundDynamicRoute,
+    ];
+
+    debug("resolvedRoutes", resolvedRoutes);
+
+    return {
+      internalEvent,
+      isExternalRewrite,
+      origin: false,
+      isISR,
+      resolvedRoutes,
+      initialURL: event.url,
+      locale: NextConfig.i18n
+        ? detectLocale(internalEvent, NextConfig.i18n)
+        : undefined,
+    };
+  } catch (e) {
+    error("Error in routingHandler", e);
+    // In case of an error, we want to return the 500 page from Next.js
+    return {
+      internalEvent: {
+        type: "core",
+        method: "GET",
+        rawPath: "/500",
+        url: constructNextUrl(event.url, "/500"),
+        headers: {
+          ...event.headers,
+        },
+        query: event.query,
+        cookies: event.cookies,
+        remoteAddress: event.remoteAddress,
+      },
+      isExternalRewrite: false,
+      origin: false,
+      isISR: false,
+      resolvedRoutes: [],
+      initialURL: event.url,
+      locale: NextConfig.i18n
+        ? detectLocale(event, NextConfig.i18n)
+        : undefined,
+    };
   }
-
-  // We apply the headers from the middleware response last
-  applyMiddlewareHeaders(internalEvent.headers, {
-    ...middlewareResponseHeaders,
-    ...nextHeaders,
-  });
-
-  const resolvedRoutes: ResolvedRoute[] = [
-    ...foundStaticRoute,
-    ...foundDynamicRoute,
-  ];
-
-  debug("resolvedRoutes", resolvedRoutes);
-
-  return {
-    internalEvent,
-    isExternalRewrite,
-    origin: false,
-    isISR,
-    resolvedRoutes,
-    initialURL: event.url,
-    locale: NextConfig.i18n
-      ? detectLocale(internalEvent, NextConfig.i18n)
-      : undefined,
-  };
 }

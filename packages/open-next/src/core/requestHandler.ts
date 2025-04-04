@@ -12,7 +12,7 @@ import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
-import { debug, error, warn } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
 import {
   constructNextUrl,
@@ -71,11 +71,7 @@ export async function openNextHandler(
       };
 
       //#override withRouting
-      try {
-        routingResult = await routingHandler(internalEvent);
-      } catch (e) {
-        warn("Routing failed.", e);
-      }
+      routingResult = await routingHandler(internalEvent);
       //#endOverride
 
       const headers =
