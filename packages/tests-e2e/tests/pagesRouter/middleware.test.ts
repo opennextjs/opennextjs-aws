@@ -1,4 +1,4 @@
-import { test, expect } from "playwright/test";
+import { expect, test } from "playwright/test";
 
 test("should return 500 on middleware error", async ({ request }) => {
   const response = await request.get("/", {
