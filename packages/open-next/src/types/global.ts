@@ -211,4 +211,13 @@ declare global {
    * Defined in `createMainHandler`
    */
   var cdnInvalidationHandler: CDNInvalidationHandler;
+
+  /**
+   * A function to preload the routes.
+   * This needs to be defined on globalThis because it can be used by custom overrides.
+   * Only available in main functions.
+   */
+  var __next_route_preloader: (
+    stage: "waitUntil" | "start" | "warmerEvent" | "onDemand",
+  ) => Promise<void>;
 }

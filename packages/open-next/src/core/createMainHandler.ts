@@ -26,6 +26,8 @@ export async function createMainHandler() {
   globalThis.serverId = generateUniqueId();
   globalThis.openNextConfig = config;
 
+  await globalThis.__next_route_preloader("start");
+
   // Default queue
   globalThis.queue = await resolveQueue(thisFunction.override?.queue);
 

@@ -2,7 +2,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
   fetchRule,
   unstable_cacheRule,
-} from "@opennextjs/aws/build/patch/patchFetchCacheISR.js";
+} from "@opennextjs/aws/build/patch/patches/patchFetchCacheISR.js";
 import { describe } from "vitest";
 
 const unstable_cacheCode = `
