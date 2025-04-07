@@ -1,3 +1,5 @@
+import type { ReadableStream } from "node:stream/web";
+
 interface CachedFetchValue {
   kind: "FETCH";
   data: {
