@@ -22,10 +22,12 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import {
+  patchEnvVars,
   patchFetchCacheForISR,
+  patchFetchCacheSetMissingWaitUntil,
+  patchNextServer,
   patchUnstableCacheForISR,
-} from "./patch/patchFetchCacheISR.js";
-import { patchFetchCacheSetMissingWaitUntil } from "./patch/patchFetchCacheWaitUntil.js";
+} from "./patch/patches/index.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
@@ -200,6 +202,8 @@ async function generateBundle(
     patchFetchCacheSetMissingWaitUntil,
     patchFetchCacheForISR,
     patchUnstableCacheForISR,
+    patchNextServer,
+    patchEnvVars,
     ...additionalCodePatches,
   ]);
 

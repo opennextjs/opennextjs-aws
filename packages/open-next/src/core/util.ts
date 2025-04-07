@@ -6,7 +6,7 @@ import {
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
 
-import { debug } from "../adapters/logger.js";
+import { debug, error } from "../adapters/logger.js";
 import {
   applyOverride as applyNextjsRequireHooksOverride,
   overrideHooks as overrideNextjsRequireHooks,
@@ -59,6 +59,53 @@ const nextServer = new NextServer.default({
   dir: __dirname,
 });
 
+let routesLoaded = false;
+
+globalThis.__next_route_preloader = async (stage) => {
+  if (routesLoaded) {
+    return;
+  }
+  const thisFunction = globalThis.fnName
+    ? globalThis.openNextConfig.functions![globalThis.fnName]
+    : globalThis.openNextConfig.default;
+  const routePreloadingBehavior =
+    thisFunction?.routePreloadingBehavior ?? "none";
+  if (routePreloadingBehavior === "none") {
+    routesLoaded = true;
+    return;
+  }
+  if (!("unstable_preloadEntries" in nextServer)) {
+    debug(
+      "The current version of Next.js does not support route preloading. Skipping route preloading.",
+    );
+    routesLoaded = true;
+    return;
+  }
+  if (stage === "waitUntil" && routePreloadingBehavior === "withWaitUntil") {
+    // We need to access the waitUntil
+    const waitUntil = globalThis.__openNextAls.getStore()?.waitUntil;
+    if (!waitUntil) {
+      error(
+        "You've tried to use the 'withWaitUntil' route preloading behavior, but the 'waitUntil' function is not available.",
+      );
+      routesLoaded = true;
+      return;
+    }
+    debug("Preloading entries with waitUntil");
+    waitUntil?.(nextServer.unstable_preloadEntries());
+    routesLoaded = true;
+  } else if (
+    (stage === "start" && routePreloadingBehavior === "onStart") ||
+    (stage === "warmerEvent" && routePreloadingBehavior === "onWarmerEvent") ||
+    stage === "onDemand"
+  ) {
+    const startTimestamp = Date.now();
+    debug("Preloading entries");
+    await nextServer.unstable_preloadEntries();
+    debug("Preloading entries took", Date.now() - startTimestamp, "ms");
+    routesLoaded = true;
+  }
+};
 // `getRequestHandlerWithMetadata` is not available in older versions of Next.js
 // It is required to for next 15.2 to pass metadata for page router data route
 export const requestHandler = (metadata: Record<string, any>) =>

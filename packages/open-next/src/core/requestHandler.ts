@@ -47,6 +47,7 @@ export async function openNextHandler(
       waitUntil: options?.waitUntil,
     },
     async () => {
+      await globalThis.__next_route_preloader("waitUntil");
       if (initialHeaders["x-forwarded-host"]) {
         initialHeaders.host = initialHeaders["x-forwarded-host"];
       }

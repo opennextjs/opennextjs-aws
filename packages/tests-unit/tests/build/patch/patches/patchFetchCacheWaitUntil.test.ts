@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { rule } from "@opennextjs/aws/build/patch/patchFetchCacheWaitUntil.js";
+import { rule } from "@opennextjs/aws/build/patch/patches/patchFetchCacheWaitUntil.js";
 
 describe("patchFetchCacheSetMissingWaitUntil", () => {
   test("on minified code", () => {

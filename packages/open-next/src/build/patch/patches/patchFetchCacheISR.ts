@@ -1,7 +1,7 @@
 import { Lang } from "@ast-grep/napi";
 import { getCrossPlatformPathRegex } from "utils/regex.js";
-import { createPatchCode } from "./astCodePatcher.js";
-import type { CodePatcher } from "./codePatcher";
+import { createPatchCode } from "../astCodePatcher.js";
+import type { CodePatcher } from "../codePatcher.js";
 
 export const fetchRule = `
 rule:

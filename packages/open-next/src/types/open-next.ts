@@ -118,6 +118,21 @@ export interface ResolvedRoute {
   type: RouteType;
 }
 
+/**
+ * The route preloading behavior. Only supported in Next 15+.
+ * Default behavior of Next is disabled. You should do your own testing to choose which one suits you best
+ * - "none" - No preloading of the route at all. This is the default
+ * - "withWaitUntil" - Preload the route using the waitUntil provided by the wrapper - If not supported, it will fallback to "none". At the moment only cloudflare wrappers provide a `waitUntil`
+ * - "onWarmerEvent" - Preload the route on the warmer event - Needs to be implemented by the wrapper. Only supported in `aws-lambda-streaming` wrapper for now
+ * - "onStart" - Preload the route before even invoking the wrapper - This is a blocking operation. The handler will only be created after all the routes have been loaded, it may increase the cold start time by a lot in some cases. Useful for long running server or in serverless with some careful testing
+ * @default "none"
+ */
+export type RoutePreloadingBehavior =
+  | "none"
+  | "withWaitUntil"
+  | "onWarmerEvent"
+  | "onStart";
+
 export interface RoutingResult {
   internalEvent: InternalEvent;
   // If the request is an external rewrite, if used with an external middleware will be false on every server function
@@ -170,7 +185,6 @@ export type IncludedWarmer = "aws-lambda" | "dummy";
 export type IncludedProxyExternalRequest = "node" | "fetch" | "dummy";
 
 export type IncludedCDNInvalidationHandler = "cloudfront" | "dummy";
-
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -313,6 +327,8 @@ export interface FunctionOptions extends DefaultFunctionOptions {
    * @deprecated This is not supported in 14.2+
    */
   experimentalBundledNextServer?: boolean;
+
+  routePreloadingBehavior?: RoutePreloadingBehavior;
 }
 
 export type RouteTemplate =
