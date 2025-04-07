@@ -3,7 +3,7 @@ import type { IncomingMessage } from "node:http";
 import { parseCookies } from "http/util";
 import type { InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
-import { extractHostFromHeaders } from "./utils";
+import { extractHostFromHeaders, getQueryFromSearchParams } from "./utils.js";
 
 const converter: Converter = {
   convertFrom: async (req: IncomingMessage) => {
@@ -26,7 +26,7 @@ const converter: Converter = {
         .filter(([key]) => key),
     );
     const url = new URL(req.url!, `http://${extractHostFromHeaders(headers)}`);
-    const query = Object.fromEntries(url.searchParams.entries());
+    const query = getQueryFromSearchParams(url.searchParams);
     return {
       type: "core",
       method: req.method ?? "GET",

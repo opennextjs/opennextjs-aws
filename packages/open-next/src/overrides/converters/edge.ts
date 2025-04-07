@@ -7,6 +7,7 @@ import type {
   MiddlewareResult,
 } from "types/open-next";
 import type { Converter } from "types/overrides";
+import { getQueryFromSearchParams } from "./utils.js";
 
 declare global {
   // Makes convertTo returns the request instead of fetching it.
@@ -18,18 +19,7 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
     const url = new URL(event.url);
 
     const searchParams = url.searchParams;
-    const query: Record<string, string | string[]> = {};
-    for (const [key, value] of searchParams.entries()) {
-      if (key in query) {
-        if (Array.isArray(query[key])) {
-          query[key].push(value);
-        } else {
-          query[key] = [query[key], value];
-        }
-      } else {
-        query[key] = value;
-      }
-    }
+    const query = getQueryFromSearchParams(searchParams);
     // Transform body into Buffer
     const body = await event.arrayBuffer();
     const headers: Record<string, string> = {};
