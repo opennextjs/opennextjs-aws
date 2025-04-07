@@ -1,4 +1,7 @@
-export * from "./patchEnvVar.js";
-export * from "./patchNextServer.js";
-export * from "./patchFetchCacheISR.js";
-export * from "./patchFetchCacheWaitUntil.js";
+export { envVarRuleCreator, patchEnvVars } from "./patchEnvVar.js";
+export { patchNextServer } from "./patchNextServer.js";
+export {
+  patchFetchCacheForISR,
+  patchUnstableCacheForISR,
+} from "./patchFetchCacheISR.js";
+export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.js";

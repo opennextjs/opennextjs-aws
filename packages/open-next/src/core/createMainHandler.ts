@@ -26,6 +26,7 @@ export async function createMainHandler() {
   globalThis.serverId = generateUniqueId();
   globalThis.openNextConfig = config;
 
+  // If route preloading behavior is set to start, it will wait for every single route to be preloaded before even creating the main handler.
   await globalThis.__next_route_preloader("start");
 
   // Default queue

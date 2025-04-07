@@ -1,6 +1,7 @@
 import { createPatchCode } from "../astCodePatcher.js";
 import type { CodePatcher } from "../codePatcher.js";
 
+// This rule will replace the `NEXT_MINIMAL` env variable with true in multiple places to avoid executing unwanted path (i.e. next middleware, edge functions and image optimization)
 export const minimalRule = `
 rule:
   kind: member_expression
@@ -29,6 +30,7 @@ fix:
   'true'
 `;
 
+// This rule will disable the background preloading of route done by NextServer by default during the creation of NextServer
 export const disablePreloadingRule = `
 rule:
   kind: statement_block
@@ -63,6 +65,7 @@ fix:
 export const patchNextServer: CodePatcher = {
   name: "patch-next-server",
   patches: [
+    // Skip executing next middleware, edge functions and image optimization inside NextServer
     {
       versions: ">=15.0.0",
       field: {
@@ -71,6 +74,7 @@ export const patchNextServer: CodePatcher = {
         patchCode: createPatchCode(minimalRule),
       },
     },
+    // Disable Next background preloading done at creation of `NetxServer`
     {
       versions: ">=15.0.0",
       field: {
@@ -79,6 +83,7 @@ export const patchNextServer: CodePatcher = {
         patchCode: createPatchCode(disablePreloadingRule),
       },
     },
+    // Don't match edge functions in `NextServer`
     {
       versions: ">=15.0.0",
       field: {

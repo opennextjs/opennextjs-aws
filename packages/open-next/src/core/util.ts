@@ -59,10 +59,10 @@ const nextServer = new NextServer.default({
   dir: __dirname,
 });
 
-let alreadyLoaded = false;
+let routesLoaded = false;
 
 globalThis.__next_route_preloader = async (stage) => {
-  if (alreadyLoaded) {
+  if (routesLoaded) {
     return;
   }
   const thisFunction = globalThis.fnName
@@ -71,14 +71,14 @@ globalThis.__next_route_preloader = async (stage) => {
   const routePreloadingBehavior =
     thisFunction?.routePreloadingBehavior ?? "none";
   if (routePreloadingBehavior === "none") {
-    alreadyLoaded = true;
+    routesLoaded = true;
     return;
   }
   if (!("unstable_preloadEntries" in nextServer)) {
     debug(
       "The current version of Next.js does not support route preloading. Skipping route preloading.",
     );
-    alreadyLoaded = true;
+    routesLoaded = true;
     return;
   }
   if (stage === "waitUntil" && routePreloadingBehavior === "withWaitUntil") {
@@ -88,10 +88,12 @@ globalThis.__next_route_preloader = async (stage) => {
       error(
         "You've tried to use the 'withWaitUntil' route preloading behavior, but the 'waitUntil' function is not available.",
       );
+      routesLoaded = true;
+      return;
     }
     debug("Preloading entries with waitUntil");
     waitUntil?.(nextServer.unstable_preloadEntries());
-    alreadyLoaded = true;
+    routesLoaded = true;
   } else if (
     (stage === "start" && routePreloadingBehavior === "onStart") ||
     (stage === "warmerEvent" && routePreloadingBehavior === "onWarmerEvent") ||
@@ -101,7 +103,7 @@ globalThis.__next_route_preloader = async (stage) => {
     debug("Preloading entries");
     await nextServer.unstable_preloadEntries();
     debug("Preloading entries took", Date.now() - startTimestamp, "ms");
-    alreadyLoaded = true;
+    routesLoaded = true;
   }
 };
 // `getRequestHandlerWithMetadata` is not available in older versions of Next.js

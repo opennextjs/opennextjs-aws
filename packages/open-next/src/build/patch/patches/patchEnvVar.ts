@@ -1,13 +1,22 @@
 import { createPatchCode } from "../astCodePatcher.js";
 import type { CodePatcher } from "../codePatcher";
 
+/**
+ * This function create an ast-grep rule to replace specific env var inside an if.
+ * This is used to avoid loading unnecessary deps at runtime
+ * @param envVar The env var that we want to replace
+ * @param value The value that we want to replace it with
+ * @returns
+ */
 export const envVarRuleCreator = (envVar: string, value: string) => `
 rule:
   kind: member_expression
   pattern: process.env.${envVar}
   inside:
-    kind: if_statement
+    kind: parenthesized_expression
     stopBy: end
+    inside:
+      kind: if_statement
 fix:
   '${value}'
 `;
@@ -15,6 +24,7 @@ fix:
 export const patchEnvVars: CodePatcher = {
   name: "patch-env-vars",
   patches: [
+    // This patch will set the `NEXT_RUNTIME` env var to "node" to avoid loading unnecessary edge deps at runtime
     {
       versions: ">=15.0.0",
       field: {
@@ -23,6 +33,7 @@ export const patchEnvVars: CodePatcher = {
         patchCode: createPatchCode(envVarRuleCreator("NEXT_RUNTIME", '"node"')),
       },
     },
+    // This patch will set `NODE_ENV` to production to avoid loading unnecessary dev deps at runtime
     {
       versions: ">=15.0.0",
       field: {
@@ -34,6 +45,7 @@ export const patchEnvVars: CodePatcher = {
         ),
       },
     },
+    // This patch will set `TURBOPACK` env to false to avoid loading turbopack related deps at runtime
     {
       versions: ">=15.0.0",
       field: {

@@ -118,6 +118,14 @@ export interface ResolvedRoute {
   type: RouteType;
 }
 
+/**
+ * The route preloading behavior. Only supported in Next 15+.
+ * - "none" - No preloading of the route at all
+ * - "withWaitUntil" - Preload the route using the waitUntil provided by the wrapper - If not supported, it will fallback to "none"
+ * - "onWarmerEvent" - Preload the route on the warmer event - Needs to be implemented by the wrapper. Only supported in `aws-lambda-streaming` wrapper for now
+ * - "onStart" - Preload the route before even invoking the wrapper - This is a blocking operation. The handler will only be created after all the routes have been loaded, it may increase the cold start time by a lot in some cases.
+ * @default "none"
+ */
 export type RoutePreloadingBehavior =
   | "none"
   | "withWaitUntil"
@@ -319,14 +327,6 @@ export interface FunctionOptions extends DefaultFunctionOptions {
    */
   experimentalBundledNextServer?: boolean;
 
-  /**
-   * The route preloading behavior. Only supported in Next 15+.
-   * - "none" - No preloading of the route at all
-   * - "withWaitUntil" - Preload the route using the waitUntil provided by the wrapper - If not supported, it will fallback to "none"
-   * - "onWarmerEvent" - Preload the route on the warmer event - Needs to be implemented by the wrapper. Only supported in `aws-lambda-streaming` wrapper for now
-   * - "onStart" - Preload the route before even invoking the wrapper - This is a blocking operation and if not used properly, may increase the cold start time by a lot
-   * @default "none"
-   */
   routePreloadingBehavior?: RoutePreloadingBehavior;
 }
 
