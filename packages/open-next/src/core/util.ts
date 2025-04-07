@@ -25,6 +25,7 @@ overrideNextjsRequireHooks(NextConfig);
 applyNextjsRequireHooksOverride();
 //#endOverride
 const cacheHandlerPath = require.resolve("./cache.cjs");
+const composableCacheHandlerPath = require.resolve("./composable-cache.cjs");
 // @ts-ignore
 const nextServer = new NextServer.default({
   //#override requestHandlerHost
@@ -51,6 +52,12 @@ const nextServer = new NextServer.default({
       //#endOverride
       //#override experimentalIncrementalCacheHandler
       incrementalCacheHandlerPath: cacheHandlerPath,
+      //#endOverride
+
+      //#override composableCache
+      cacheHandlers: {
+        default: composableCacheHandlerPath,
+      },
       //#endOverride
     },
   },

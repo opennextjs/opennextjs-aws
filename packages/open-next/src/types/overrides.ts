@@ -125,6 +125,8 @@ Cons :
 */
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
+  // Necessary for the composable cache
+  getLastRevalidated(tags: string[]): Promise<number>;
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
   writeTags(tags: string[]): Promise<void>;
   // Optional method to get paths by tags
