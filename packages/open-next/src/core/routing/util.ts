@@ -122,23 +122,20 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * Make sure that multi-value query parameters are transformed to
  * ?key=value1&key=value2&... so that Next converts those parameters
  * to an array when reading the query parameters
+ * query should be properly encoded before using this function
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
-  // URLSearchParams is a representation of the PARSED query.
-  // So we must decode the value before appending it to the URLSearchParams.
-  // https://stackoverflow.com/a/45516812
-  const urlQuery = new URLSearchParams();
+  const queryStrings: string[] = [];
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((entry) => urlQuery.append(key, decodeURIComponent(entry)));
+      value.forEach((entry) => queryStrings.push(`${key}=${entry}`));
     } else {
-      urlQuery.append(key, decodeURIComponent(value));
+      queryStrings.push(`${key}=${value}`);
     }
   });
-  const queryString = urlQuery.toString();
 
-  return queryString ? `?${queryString}` : "";
+  return queryStrings.length > 0 ? `?${queryStrings.join("&")}` : "";
 }
 
 /**
@@ -182,11 +179,15 @@ export function getMiddlewareMatch(
  *
  * @__PURE__
  */
-export function escapeRegex(str: string) {
-  return str
+export function escapeRegex(
+  str: string,
+  { isPath }: { isPath?: boolean } = {},
+) {
+  const result = str
     .replaceAll("(.)", "_µ1_")
     .replaceAll("(..)", "_µ2_")
     .replaceAll("(...)", "_µ3_");
+  return isPath ? result : result.replaceAll("+", "_µ4_");
 }
 
 /**
@@ -197,7 +198,8 @@ export function unescapeRegex(str: string) {
   return str
     .replaceAll("_µ1_", "(.)")
     .replaceAll("_µ2_", "(..)")
-    .replaceAll("_µ3_", "(...)");
+    .replaceAll("_µ3_", "(...)")
+    .replaceAll("_µ4_", "+");
 }
 
 /**
