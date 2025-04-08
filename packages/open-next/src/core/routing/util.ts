@@ -41,10 +41,18 @@ export function convertFromQueryString(query: string) {
   return queryParts.reduce(
     (acc, part) => {
       const [key, value] = part.split("=");
-      acc[key] = value;
+      if (key in acc) {
+        if (Array.isArray(acc[key])) {
+          acc[key].push(value);
+        } else {
+          acc[key] = [acc[key], value];
+        }
+      } else {
+        acc[key] = value;
+      }
       return acc;
     },
-    {} as Record<string, string>,
+    {} as Record<string, string | string[]>,
   );
 }
 

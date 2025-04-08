@@ -107,9 +107,9 @@ describe("convertFromQueryString", () => {
     });
   });
 
-  it("converts query string with multiple keys (last one wins)", () => {
+  it("converts query string with multiple keys", () => {
     expect(convertFromQueryString("search=value&search=other")).toEqual({
-      search: "other",
+      search: ["value", "other"],
     });
   });
 });
