@@ -10,16 +10,8 @@ import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { localizePath } from "./i18n/index.js";
-//NOTE: we should try to avoid importing stuff from next as much as possible
-// every release of next could break this
-// const { run } = require("next/dist/server/web/sandbox");
-// const { getCloneableBody } = require("next/dist/server/body-streams");
-// const {
-//   signalFromNodeResponse,
-// } = require("next/dist/server/web/spec-extension/adapters/next-request");
 import {
   convertBodyToReadableStream,
-  convertToQueryString,
   getMiddlewareMatch,
   isExternal,
 } from "./util.js";
@@ -45,14 +37,16 @@ function defaultMiddlewareLoader() {
   return import("./middleware.mjs");
 }
 
-// NOTE: As of Nextjs 13.4.13+, the middleware is handled outside the next-server.
-// OpenNext will run the middleware in a sandbox and set the appropriate req headers
-// and res.body prior to processing the next-server.
-// @returns undefined | res.end()
-
-//    if res.end() is return, the parent needs to return and not process next server
+/**
+ *
+ * @param internalEvent the internal event
+ * @param initialSearch the initial query string as it was received in the handler
+ * @param middlewareLoader Only used for unit test
+ * @returns `Promise<MiddlewareEvent | InternalResult>`
+ */
 export async function handleMiddleware(
   internalEvent: InternalEvent,
+  initialSearch: string,
   middlewareLoader: MiddlewareLoader = defaultMiddlewareLoader,
 ): Promise<MiddlewareEvent | InternalResult> {
   const headers = internalEvent.headers;
@@ -73,7 +67,7 @@ export async function handleMiddleware(
   if (!hasMatch) return internalEvent;
 
   const initialUrl = new URL(normalizedPath, internalEvent.url);
-  initialUrl.search = convertToQueryString(internalEvent.query);
+  initialUrl.search = initialSearch;
   const url = initialUrl.href;
 
   const middleware = await middlewareLoader();

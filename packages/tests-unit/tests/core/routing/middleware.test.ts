@@ -84,7 +84,7 @@ describe("handleMiddleware", () => {
         "x-prerender-revalidate": "preview",
       },
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).not.toHaveBeenCalled();
     expect(result).toEqual(event);
@@ -103,7 +103,7 @@ describe("handleMiddleware", () => {
         location: "/redirect",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result.statusCode).toEqual(302);
@@ -122,7 +122,7 @@ describe("handleMiddleware", () => {
         location: "/redirect",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result.statusCode).toEqual(302);
@@ -137,7 +137,7 @@ describe("handleMiddleware", () => {
         location: "/redirect",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result.statusCode).toEqual(302);
@@ -152,7 +152,7 @@ describe("handleMiddleware", () => {
         location: "http://external/redirect",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result.statusCode).toEqual(302);
@@ -170,7 +170,7 @@ describe("handleMiddleware", () => {
         "x-middleware-rewrite": "http://localhost/rewrite",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -196,7 +196,7 @@ describe("handleMiddleware", () => {
         "x-middleware-rewrite": "http://localhost/rewrite?newKey=value",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -225,7 +225,7 @@ describe("handleMiddleware", () => {
         "x-middleware-rewrite": "http://external/rewrite",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -246,7 +246,7 @@ describe("handleMiddleware", () => {
         "x-middleware-request-custom-header": "value",
       }),
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -268,7 +268,7 @@ describe("handleMiddleware", () => {
       headers: new Headers(),
       body,
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -291,7 +291,7 @@ describe("handleMiddleware", () => {
       }),
       body,
     });
-    const result = await handleMiddleware(event, middlewareLoader);
+    const result = await handleMiddleware(event, "", middlewareLoader);
 
     expect(middlewareLoader).toHaveBeenCalled();
     expect(result).toEqual({
@@ -312,7 +312,7 @@ describe("handleMiddleware", () => {
         host: "test.me",
       },
     });
-    await handleMiddleware(event, middlewareLoader);
+    await handleMiddleware(event, "", middlewareLoader);
     expect(middleware).toHaveBeenCalledWith(
       expect.objectContaining({
         url: "http://test.me/path",
@@ -327,7 +327,7 @@ describe("handleMiddleware", () => {
         host: "test.me/path",
       },
     });
-    await handleMiddleware(event, middlewareLoader);
+    await handleMiddleware(event, "", middlewareLoader);
     expect(middleware).toHaveBeenCalledWith(
       expect.objectContaining({
         url: "https://test.me/path",
@@ -342,10 +342,29 @@ describe("handleMiddleware", () => {
         host: "test.me",
       },
     });
-    await handleMiddleware(event, middlewareLoader);
+    await handleMiddleware(event, "", middlewareLoader);
     expect(middleware).toHaveBeenCalledWith(
       expect.objectContaining({
         url: "https://test.me/path",
+      }),
+    );
+  });
+
+  it("should use the initial search query", async () => {
+    const event = createEvent({
+      url: "https://test.me/path?something=General%2520Banner",
+      headers: {
+        host: "test.me",
+      },
+    });
+    await handleMiddleware(
+      event,
+      "?something=General%2520Banner",
+      middlewareLoader,
+    );
+    expect(middleware).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://test.me/path?something=General%2520Banner",
       }),
     );
   });

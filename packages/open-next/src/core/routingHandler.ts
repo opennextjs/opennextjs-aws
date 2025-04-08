@@ -100,7 +100,13 @@ export default async function routingHandler(
       return redirect;
     }
 
-    const eventOrResult = await handleMiddleware(internalEvent);
+    const eventOrResult = await handleMiddleware(
+      internalEvent,
+      // We need to pass the initial search without any decoding
+      // TODO: we'd need to refactor InternalEvent to include the initial querystring directly
+      // Should be done in another PR because it is a breaking change
+      new URL(event.url).search,
+    );
     const isResult = "statusCode" in eventOrResult;
     if (isResult) {
       return eventOrResult;
