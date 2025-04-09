@@ -1,3 +1,5 @@
+import type { ReadableStream } from "node:stream/web";
+
 interface CachedFetchValue {
   kind: "FETCH";
   data: {
@@ -79,7 +81,7 @@ export interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-export type Extension = "cache" | "fetch";
+export type Extension = "cache" | "fetch" | "composable";
 
 type MetaHeaders = {
   "x-next-cache-tags"?: string;
@@ -105,3 +107,27 @@ export type IncrementalCacheContext = {
   fetchIdx?: number | undefined;
   tags?: string[] | undefined;
 };
+
+export interface ComposableCacheEntry {
+  value: ReadableStream<Uint8Array>;
+  tags: string[];
+  stale: number;
+  timestamp: number;
+  expire: number;
+  revalidate: number;
+}
+
+export type StoredComposableCacheEntry = Omit<ComposableCacheEntry, "value"> & {
+  value: string;
+};
+
+export interface ComposableCacheHandler {
+  get(cacheKey: string): Promise<ComposableCacheEntry | undefined>;
+  set(
+    cacheKey: string,
+    pendingEntry: Promise<ComposableCacheEntry>,
+  ): Promise<void>;
+  refreshTags(): Promise<void>;
+  getExpiration(...tags: string[]): Promise<number>;
+  expireTags(...tags: string[]): Promise<void>;
+}

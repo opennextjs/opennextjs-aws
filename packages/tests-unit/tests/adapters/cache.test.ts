@@ -361,7 +361,7 @@ describe("CacheHandler", () => {
       expect(incrementalCache.set).toHaveBeenCalledWith(
         "key",
         { type: "route", body: "{}", meta: { status: 200, headers: {} } },
-        false,
+        "cache",
       );
     });
 
@@ -382,7 +382,7 @@ describe("CacheHandler", () => {
           body: Buffer.from("{}").toString("base64"),
           meta: { status: 200, headers: { "content-type": "image/png" } },
         },
-        false,
+        "cache",
       );
     });
 
@@ -402,7 +402,7 @@ describe("CacheHandler", () => {
           html: "<html></html>",
           json: {},
         },
-        false,
+        "cache",
       );
     });
 
@@ -423,7 +423,7 @@ describe("CacheHandler", () => {
           rsc: "rsc",
           meta: { status: 200, headers: {} },
         },
-        false,
+        "cache",
       );
     });
 
@@ -444,7 +444,7 @@ describe("CacheHandler", () => {
           rsc: "rsc",
           meta: { status: 200, headers: {} },
         },
-        false,
+        "cache",
       );
     });
 
@@ -474,7 +474,7 @@ describe("CacheHandler", () => {
           },
           revalidate: 60,
         },
-        true,
+        "fetch",
       );
     });
 
@@ -487,7 +487,7 @@ describe("CacheHandler", () => {
           type: "redirect",
           props: {},
         },
-        false,
+        "cache",
       );
     });
 
