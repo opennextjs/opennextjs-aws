@@ -34,10 +34,8 @@ const handler: WrapperHandler =
     });
 
     // Check if response is already compressed
-    const alreadyEncoded =
-      handlerResponse.headers["content-encoding"] ??
-      handlerResponse.headers["Content-Encoding"] ??
-      "";
+    // The handlers response headers are lowercase
+    const alreadyEncoded = handlerResponse.headers["content-encoding"] ?? "";
 
     // Return early here if the response is already compressed
     if (alreadyEncoded) {
