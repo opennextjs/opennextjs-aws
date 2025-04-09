@@ -1,43 +1,15 @@
-import { Readable, Writable } from "node:stream";
+import { Readable, type Transform, Writable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
 import zlib from "node:zlib";
 
-import type {
-  APIGatewayProxyEvent,
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResult,
-  APIGatewayProxyResultV2,
-  CloudFrontRequestEvent,
-  CloudFrontRequestResult,
-} from "aws-lambda";
-import type { WrapperHandler } from "types/overrides";
-
 import type { InternalResult, StreamCreator } from "types/open-next";
-import { error } from "../../adapters/logger";
 import type {
-  WarmerEvent,
-  WarmerResponse,
-} from "../../adapters/warmer-function";
-
-type AwsLambdaEvent =
-  | APIGatewayProxyEventV2
-  | CloudFrontRequestEvent
-  | APIGatewayProxyEvent
-  | WarmerEvent;
-
-type AwsLambdaReturn =
-  | APIGatewayProxyResultV2
-  | APIGatewayProxyResult
-  | CloudFrontRequestResult
-  | WarmerResponse;
-
-function formatWarmerResponse(event: WarmerEvent) {
-  return new Promise<WarmerResponse>((resolve) => {
-    setTimeout(() => {
-      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
-    }, event.delay);
-  });
-}
+  AwsLambdaEvent,
+  AwsLambdaReturn,
+  WrapperHandler,
+} from "types/overrides";
+import { formatWarmerResponse } from "utils/overrides";
+import { error } from "../../adapters/logger";
 
 const handler: WrapperHandler =
   async (handler, converter) =>
@@ -48,11 +20,7 @@ const handler: WrapperHandler =
     }
 
     const internalEvent = await converter.convertFrom(event);
-    //TODO: create a simple reproduction and open an issue in the node repo
-    //This is a workaround, there is an issue in node that causes node to crash silently if the OpenNextNodeResponse stream is not consumed
-    //This does not happen everytime, it's probably caused by suspended component in ssr (either via <Suspense> or loading.tsx)
-    //Everyone that wish to create their own wrapper without a StreamCreator should implement this workaround
-    //This is not necessary if the underlying handler does not use OpenNextNodeResponse (At the moment, OpenNextNodeResponse is used by the node runtime servers and the image server)
+    // This is a workaround, you can read more about it in the aws-lambda wrapper
     const fakeStream: StreamCreator = {
       writeHeaders: () => {
         return new Writable({
@@ -62,6 +30,18 @@ const handler: WrapperHandler =
         });
       },
     };
+
+    const handlerResponse = await handler(internalEvent, {
+      streamCreator: fakeStream,
+    });
+
+    // Check if response is already compressed
+    const prevEncoding =
+      handlerResponse.headers?.["content-encoding"] ??
+      handlerResponse.headers?.["Content-Encoding"] ??
+      "";
+
+    // Return early here if the response is already compressed
 
     const acceptEncoding =
       internalEvent.headers["accept-encoding"] ??
@@ -76,10 +56,6 @@ const handler: WrapperHandler =
     } else if (acceptEncoding?.includes("deflate")) {
       contentEncoding = "deflate";
     }
-
-    const handlerResponse = await handler(internalEvent, {
-      streamCreator: fakeStream,
-    });
 
     const response: InternalResult = {
       ...handlerResponse,
@@ -105,29 +81,30 @@ function compressBody(body: ReadableStream, encoding: string | null) {
   if (!encoding) return body;
   try {
     const readable = Readable.fromWeb(body);
+    let transform: Transform;
 
     switch (encoding) {
       case "br":
-        return Readable.toWeb(
-          readable.pipe(
-            zlib.createBrotliCompress({
-              params: {
-                // This is a compromise between speed and compression ratio.
-                // The default one will most likely timeout an AWS Lambda with default configuration on large bodies (>6mb).
-                // Therefore we set it to 6, which is a good compromise.
-                [zlib.constants.BROTLI_PARAM_QUALITY]:
-                  Number(process.env.BROTLI_QUALITY) ?? 6,
-              },
-            }),
-          ),
-        );
+        transform = zlib.createBrotliCompress({
+          params: {
+            // This is a compromise between speed and compression ratio.
+            // The default one will most likely timeout an AWS Lambda with default configuration on large bodies (>6mb).
+            // Therefore we set it to 6, which is a good compromise.
+            [zlib.constants.BROTLI_PARAM_QUALITY]:
+              Number(process.env.BROTLI_QUALITY) ?? 6,
+          },
+        });
+        break;
       case "gzip":
-        return Readable.toWeb(readable.pipe(zlib.createGzip()));
+        transform = zlib.createGzip();
+        break;
       case "deflate":
-        return Readable.toWeb(readable.pipe(zlib.createDeflate()));
+        transform = zlib.createDeflate();
+        break;
       default:
         return body;
     }
+    return Readable.toWeb(readable.pipe(transform));
   } catch (e) {
     error("Error compressing body:", e);
     // Fall back to no compression on error

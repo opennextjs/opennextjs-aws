@@ -1,40 +1,12 @@
 import { Writable } from "node:stream";
 
-import type {
-  APIGatewayProxyEvent,
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResult,
-  APIGatewayProxyResultV2,
-  CloudFrontRequestEvent,
-  CloudFrontRequestResult,
-} from "aws-lambda";
-import type { WrapperHandler } from "types/overrides";
-
 import type { StreamCreator } from "types/open-next";
 import type {
-  WarmerEvent,
-  WarmerResponse,
-} from "../../adapters/warmer-function";
-
-type AwsLambdaEvent =
-  | APIGatewayProxyEventV2
-  | CloudFrontRequestEvent
-  | APIGatewayProxyEvent
-  | WarmerEvent;
-
-type AwsLambdaReturn =
-  | APIGatewayProxyResultV2
-  | APIGatewayProxyResult
-  | CloudFrontRequestResult
-  | WarmerResponse;
-
-function formatWarmerResponse(event: WarmerEvent) {
-  return new Promise<WarmerResponse>((resolve) => {
-    setTimeout(() => {
-      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
-    }, event.delay);
-  });
-}
+  AwsLambdaEvent,
+  AwsLambdaReturn,
+  WrapperHandler,
+} from "types/overrides";
+import { formatWarmerResponse } from "utils/overrides";
 
 const handler: WrapperHandler =
   async (handler, converter) =>
