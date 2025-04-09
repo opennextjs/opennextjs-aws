@@ -2,14 +2,11 @@ import { Readable, type Transform, Writable } from "node:stream";
 import type { ReadableStream } from "node:stream/web";
 import zlib from "node:zlib";
 
+import type { AwsLambdaEvent, AwsLambdaReturn } from "types/aws-lambda";
 import type { InternalResult, StreamCreator } from "types/open-next";
-import type {
-  AwsLambdaEvent,
-  AwsLambdaReturn,
-  WrapperHandler,
-} from "types/overrides";
-import { formatWarmerResponse } from "utils/overrides";
+import type { WrapperHandler } from "types/overrides";
 import { error } from "../../adapters/logger";
+import { formatWarmerResponse } from "./aws-lambda";
 
 const handler: WrapperHandler =
   async (handler, converter) =>
@@ -20,7 +17,8 @@ const handler: WrapperHandler =
     }
 
     const internalEvent = await converter.convertFrom(event);
-    // This is a workaround, you can read more about it in the aws-lambda wrapper
+    // This is a workaround
+    // https://github.com/opennextjs/opennextjs-aws/blob/e9b37fd44eb856eb8ae73168bf455ff85dd8b285/packages/open-next/src/overrides/wrappers/aws-lambda.ts#L49-L53
     const fakeStream: StreamCreator = {
       writeHeaders: () => {
         return new Writable({
@@ -36,13 +34,17 @@ const handler: WrapperHandler =
     });
 
     // Check if response is already compressed
-    const prevEncoding =
-      handlerResponse.headers?.["content-encoding"] ??
-      handlerResponse.headers?.["Content-Encoding"] ??
+    const alreadyEncoded =
+      handlerResponse.headers["content-encoding"] ??
+      handlerResponse.headers["Content-Encoding"] ??
       "";
 
     // Return early here if the response is already compressed
+    if (alreadyEncoded) {
+      return converter.convertTo(handlerResponse, event);
+    }
 
+    // We compress the body if the client accepts it
     const acceptEncoding =
       internalEvent.headers["accept-encoding"] ??
       internalEvent.headers["Accept-Encoding"] ??

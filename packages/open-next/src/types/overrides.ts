@@ -1,16 +1,6 @@
 import type { Readable } from "node:stream";
 
 import type { Meta } from "types/cache";
-
-import type {
-  APIGatewayProxyEvent,
-  APIGatewayProxyEventV2,
-  APIGatewayProxyResult,
-  APIGatewayProxyResultV2,
-  CloudFrontRequestEvent,
-  CloudFrontRequestResult,
-} from "aws-lambda";
-import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type {
   BaseEventOrResult,
   BaseOverride,
@@ -238,15 +228,3 @@ type CDNPath = {
 export type CDNInvalidationHandler = BaseOverride & {
   invalidatePaths: (paths: CDNPath[]) => Promise<void>;
 };
-
-export type AwsLambdaEvent =
-  | APIGatewayProxyEventV2
-  | CloudFrontRequestEvent
-  | APIGatewayProxyEvent
-  | WarmerEvent;
-
-export type AwsLambdaReturn =
-  | APIGatewayProxyResultV2
-  | APIGatewayProxyResult
-  | CloudFrontRequestResult
-  | WarmerResponse;

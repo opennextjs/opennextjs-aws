@@ -1,12 +1,20 @@
 import { Writable } from "node:stream";
 
+import type { AwsLambdaEvent, AwsLambdaReturn } from "types/aws-lambda";
 import type { StreamCreator } from "types/open-next";
+import type { WrapperHandler } from "types/overrides";
 import type {
-  AwsLambdaEvent,
-  AwsLambdaReturn,
-  WrapperHandler,
-} from "types/overrides";
-import { formatWarmerResponse } from "utils/overrides";
+  WarmerEvent,
+  WarmerResponse,
+} from "../../adapters/warmer-function";
+
+export function formatWarmerResponse(event: WarmerEvent) {
+  return new Promise<WarmerResponse>((resolve) => {
+    setTimeout(() => {
+      resolve({ serverId, type: "warmer" } satisfies WarmerResponse);
+    }, event.delay);
+  });
+}
 
 const handler: WrapperHandler =
   async (handler, converter) =>

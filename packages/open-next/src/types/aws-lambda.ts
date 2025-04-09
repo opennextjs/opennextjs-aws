@@ -1,5 +1,15 @@
 import type { Writable } from "node:stream";
-import type { APIGatewayProxyEventV2, Context } from "aws-lambda";
+
+import type {
+  APIGatewayProxyEvent,
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResult,
+  APIGatewayProxyResultV2,
+  CloudFrontRequestEvent,
+  CloudFrontRequestResult,
+  Context,
+} from "aws-lambda";
+import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 
 export interface ResponseStream extends Writable {
   getBufferedData(): Buffer;
@@ -25,3 +35,15 @@ declare global {
     }
   }
 }
+
+export type AwsLambdaEvent =
+  | APIGatewayProxyEventV2
+  | CloudFrontRequestEvent
+  | APIGatewayProxyEvent
+  | WarmerEvent;
+
+export type AwsLambdaReturn =
+  | APIGatewayProxyResultV2
+  | APIGatewayProxyResult
+  | CloudFrontRequestResult
+  | WarmerResponse;
