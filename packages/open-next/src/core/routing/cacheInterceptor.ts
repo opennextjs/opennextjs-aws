@@ -89,7 +89,7 @@ async function computeCacheControl(
 async function generateResult(
   event: InternalEvent,
   localizedPath: string,
-  cachedValue: CacheValue<false>,
+  cachedValue: CacheValue<"cache">,
   lastModified?: number,
 ): Promise<InternalResult> {
   debug("Returning result from experimental cache");

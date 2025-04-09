@@ -81,7 +81,7 @@ export interface CacheHandlerValue {
   value: IncrementalCacheValue | null;
 }
 
-export type Extension = "cache" | "fetch";
+export type Extension = "cache" | "fetch" | "composable";
 
 type MetaHeaders = {
   "x-next-cache-tags"?: string;
@@ -117,11 +117,8 @@ export interface ComposableCacheEntry {
   revalidate: number;
 }
 
-export type StoredComposableCacheEntry = {
-  value: ComposableCacheEntry & {
-    value: string;
-  };
-  lastModified: number;
+export type StoredComposableCacheEntry = Omit<ComposableCacheEntry, "value"> & {
+  value: string;
 };
 
 export interface ComposableCacheHandler {

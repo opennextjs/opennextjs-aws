@@ -57,7 +57,7 @@ export default class Cache {
   async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
     debug("get fetch cache", { key, softTags, tags });
     try {
-      const cachedEntry = await globalThis.incrementalCache.get(key, true);
+      const cachedEntry = await globalThis.incrementalCache.get(key, "fetch");
 
       if (cachedEntry?.value === undefined) return null;
 
@@ -107,7 +107,7 @@ export default class Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     try {
-      const cachedEntry = await globalThis.incrementalCache.get(key, false);
+      const cachedEntry = await globalThis.incrementalCache.get(key, "cache");
 
       if (!cachedEntry?.value) {
         return null;
@@ -225,7 +225,7 @@ export default class Cache {
                   headers,
                 },
               },
-              false,
+              "cache",
             );
             break;
           }
@@ -245,7 +245,7 @@ export default class Cache {
                     headers,
                   },
                 },
-                false,
+                "cache",
               );
             } else {
               await globalThis.incrementalCache.set(
@@ -255,7 +255,7 @@ export default class Cache {
                   html,
                   json: pageData,
                 },
-                false,
+                "cache",
               );
             }
             break;
@@ -273,12 +273,12 @@ export default class Cache {
                   headers,
                 },
               },
-              false,
+              "cache",
             );
             break;
           }
           case "FETCH":
-            await globalThis.incrementalCache.set<true>(key, data, true);
+            await globalThis.incrementalCache.set(key, data, "fetch");
             break;
           case "REDIRECT":
             await globalThis.incrementalCache.set(
@@ -287,7 +287,7 @@ export default class Cache {
                 type: "redirect",
                 props: data.props,
               },
-              false,
+              "cache",
             );
             break;
           case "IMAGE":
