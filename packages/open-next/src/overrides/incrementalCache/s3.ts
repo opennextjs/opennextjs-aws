@@ -40,11 +40,11 @@ function buildS3Key(key: string, extension: Extension) {
 }
 
 const incrementalCache: IncrementalCache = {
-  async get(key, isFetch) {
+  async get(key, cacheType) {
     const result = await s3Client.send(
       new GetObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
-        Key: buildS3Key(key, isFetch ? "fetch" : "cache"),
+        Key: buildS3Key(key, cacheType ?? "cache"),
       }),
     );
 
@@ -56,11 +56,11 @@ const incrementalCache: IncrementalCache = {
       lastModified: result.LastModified?.getTime(),
     };
   },
-  async set(key, value, isFetch): Promise<void> {
+  async set(key, value, cacheType): Promise<void> {
     await s3Client.send(
       new PutObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
-        Key: buildS3Key(key, isFetch ? "fetch" : "cache"),
+        Key: buildS3Key(key, cacheType ?? "cache"),
         Body: JSON.stringify(value),
       }),
     );

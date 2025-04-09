@@ -44,13 +44,10 @@ function buildS3Key(key: string, extension: Extension) {
 }
 
 const incrementalCache: IncrementalCache = {
-  async get(key, isFetch) {
-    const result = await awsFetch(
-      buildS3Key(key, isFetch ? "fetch" : "cache"),
-      {
-        method: "GET",
-      },
-    );
+  async get(key, cacheType) {
+    const result = await awsFetch(buildS3Key(key, cacheType ?? "cache"), {
+      method: "GET",
+    });
 
     if (result.status === 404) {
       throw new IgnorableError("Not found");
@@ -66,14 +63,11 @@ const incrementalCache: IncrementalCache = {
       ).getTime(),
     };
   },
-  async set(key, value, isFetch): Promise<void> {
-    const response = await awsFetch(
-      buildS3Key(key, isFetch ? "fetch" : "cache"),
-      {
-        method: "PUT",
-        body: JSON.stringify(value),
-      },
-    );
+  async set(key, value, cacheType): Promise<void> {
+    const response = await awsFetch(buildS3Key(key, cacheType ?? "cache"), {
+      method: "PUT",
+      body: JSON.stringify(value),
+    });
     if (response.status !== 200) {
       throw new RecoverableError(`Failed to set cache: ${response.status}`);
     }

@@ -1,4 +1,8 @@
-import type { CacheValue, IncrementalCache } from "types/overrides";
+import type {
+  CacheEntryType,
+  CacheValue,
+  IncrementalCache,
+} from "types/overrides";
 import { customFetchClient } from "utils/fetch";
 import { LRUCache } from "utils/lru";
 import { debug } from "../../adapters/logger";
@@ -50,11 +54,14 @@ const buildDynamoKey = (key: string) => {
  */
 const multiTierCache: IncrementalCache = {
   name: "multi-tier-ddb-s3",
-  async get<IsFetch extends boolean = false>(key: string, isFetch?: IsFetch) {
+  async get<CacheType extends CacheEntryType = "cache">(
+    key: string,
+    isFetch?: CacheType,
+  ) {
     // First we check the local cache
     const localCacheEntry = localCache.get(key) as
       | {
-          value: CacheValue<IsFetch>;
+          value: CacheValue<CacheType>;
           lastModified: number;
         }
       | undefined;
