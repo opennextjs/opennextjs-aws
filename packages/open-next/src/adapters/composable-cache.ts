@@ -1,19 +1,17 @@
-import type {
-  ComposableCacheEntry,
-  ComposableCacheHandler,
-  StoredComposableCacheEntry,
-} from "types/cache";
+import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
 export default {
   async get(cacheKey: string) {
     try {
-      // TODO: update the type of the incremental cache
-      const result = (await globalThis.incrementalCache.get(
+      const result = await globalThis.incrementalCache.get(
         cacheKey,
-        true,
-      )) as unknown as StoredComposableCacheEntry;
+        "composable",
+      );
+      if (!result || !result.value?.value) {
+        return undefined;
+      }
 
       debug("composable cache result", result);
 
@@ -30,10 +28,14 @@ export default {
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
     const entry = await pendingEntry;
     const valueToStore = await fromReadableStream(entry.value);
-    await globalThis.incrementalCache.set(cacheKey, {
-      ...entry,
-      value: valueToStore,
-    } as any);
+    await globalThis.incrementalCache.set(
+      cacheKey,
+      {
+        ...entry,
+        value: valueToStore,
+      },
+      "composable",
+    );
   },
 
   async refreshTags() {
