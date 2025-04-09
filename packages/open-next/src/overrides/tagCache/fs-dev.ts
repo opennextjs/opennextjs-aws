@@ -2,6 +2,7 @@ import type { TagCache } from "types/overrides";
 
 import fs from "node:fs";
 
+// TODO: fix this for monorepo
 const tagFile = "../../dynamodb-provider/dynamodb-cache.json";
 
 const tagContent = fs.readFileSync(tagFile, "utf-8");
@@ -44,7 +45,7 @@ const tagCache: TagCache = {
       newTags.map((tag) => ({
         tag: { S: tag.tag },
         path: { S: tag.path },
-        revalidatedAt: { N: String(tag.revalidatedAt) },
+        revalidatedAt: { N: String(tag.revalidatedAt ?? 1) },
       })),
     );
   },
