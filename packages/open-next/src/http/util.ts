@@ -39,3 +39,25 @@ export function parseCookies(
     ? cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim())
     : cookies;
 }
+
+/**
+ *
+ * Get the query object from an iterable of [key, value] pairs
+ * @param it - The iterable of [key, value] pairs
+ * @returns The query object
+ */
+export function getQueryFromIterator(it: Iterable<[string, string]>) {
+  const query: Record<string, string | string[]> = {};
+  for (const [key, value] of it) {
+    if (key in query) {
+      if (Array.isArray(query[key])) {
+        query[key].push(value);
+      } else {
+        query[key] = [query[key], value];
+      }
+    } else {
+      query[key] = value;
+    }
+  }
+  return query;
+}

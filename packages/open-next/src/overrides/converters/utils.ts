@@ -1,3 +1,5 @@
+import { getQueryFromIterator } from "http/util.js";
+
 export function removeUndefinedFromQuery(
   query: Record<string, string | string[] | undefined>,
 ) {
@@ -20,4 +22,14 @@ export function extractHostFromHeaders(
   headers: Record<string, string>,
 ): string {
   return headers["x-forwarded-host"] ?? headers.host ?? "on";
+}
+
+/**
+ * Get the query object from an URLSearchParams
+ *
+ * @param searchParams
+ * @returns
+ */
+export function getQueryFromSearchParams(searchParams: URLSearchParams) {
+  return getQueryFromIterator(searchParams.entries());
 }

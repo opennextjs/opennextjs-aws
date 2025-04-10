@@ -107,9 +107,9 @@ describe("convertFromQueryString", () => {
     });
   });
 
-  it("converts query string with multiple keys (last one wins)", () => {
+  it("converts query string with multiple keys", () => {
     expect(convertFromQueryString("search=value&search=other")).toEqual({
-      search: "other",
+      search: ["value", "other"],
     });
   });
 });
@@ -308,6 +308,16 @@ describe("convertToQueryString", () => {
       "?key=value1&key=value2&another=value3",
     );
   });
+
+  it("should respect existing query encoding", () => {
+    const query = {
+      key: ["value%201", "value2+something+else"],
+      another: "value3",
+    };
+    expect(convertToQueryString(query)).toBe(
+      "?key=value%201&key=value2+something+else&another=value3",
+    );
+  });
 });
 
 describe("convertToQuery", () => {
@@ -383,13 +393,18 @@ describe("regex", () => {
       ["/a/b/(..)(..)c", "/a/b/_µ2__µ2_c"],
       ["/a/(...)b", "/a/_µ3_b"],
       ["/feed/(..)photo/[id]", "/feed/_µ2_photo/[id]"],
+      ["?something=a+b", "?something=a_µ4_b"],
     ])(
-      "should escape (.), (..), (...) with _µ1_, _µ2_, _µ3_ - %s",
+      "should escape (.), (..), (...), + with _µ1_, _µ2_, _µ3_, _µ4_ - %s",
       (input, expected) => {
         const result = escapeRegex(input);
         expect(result).toBe(expected);
       },
     );
+
+    it("should not escape plus for a path", () => {
+      expect(escapeRegex("/:path+", { isPath: true })).toBe("/:path+");
+    });
   });
 
   describe("unescapeRegex", () => {
@@ -399,6 +414,7 @@ describe("regex", () => {
       ["/a/b/_µ2__µ2_c", "/a/b/(..)(..)c"],
       ["/a/_µ3_b", "/a/(...)b"],
       ["/feed/_µ2_photo/[id]", "/feed/(..)photo/[id]"],
+      ["?something=a_µ4_b", "?something=a+b"],
     ])(
       "should unescape _µ1_, _µ2_, _µ3_ with (.), (..), (...) - %s",
       (input, expected) => {
