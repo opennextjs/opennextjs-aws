@@ -15,6 +15,7 @@ const compatibilityMatrix: Record<IncludedWrapper, IncludedConverter[]> = {
     "aws-cloudfront",
     "sqs-revalidate",
   ],
+  "aws-lambda-compressed": ["aws-apigw-v2"],
   "aws-lambda-streaming": ["aws-apigw-v2"],
   cloudflare: ["edge"],
   "cloudflare-edge": ["edge"],

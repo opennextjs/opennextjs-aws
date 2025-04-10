@@ -1,7 +1,6 @@
 import type { Readable } from "node:stream";
 
 import type { Meta } from "types/cache";
-
 import type {
   BaseEventOrResult,
   BaseOverride,
