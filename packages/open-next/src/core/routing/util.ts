@@ -5,7 +5,7 @@ import { Readable } from "node:stream";
 import { BuildId, HtmlPages, NextConfig } from "config/index.js";
 import type { IncomingMessage } from "http/index.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
-import { parseHeaders } from "http/util.js";
+import { getQueryFromIterator, parseHeaders } from "http/util.js";
 import type {
   FunctionsConfigManifest,
   MiddlewareManifest,
@@ -38,21 +38,11 @@ export function isExternal(url?: string, host?: string) {
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
   const queryParts = query.split("&");
-  return queryParts.reduce(
-    (acc, part) => {
-      const [key, value] = part.split("=");
-      if (key in acc) {
-        if (Array.isArray(acc[key])) {
-          acc[key].push(value);
-        } else {
-          acc[key] = [acc[key], value];
-        }
-      } else {
-        acc[key] = value;
-      }
-      return acc;
-    },
-    {} as Record<string, string | string[]>,
+  return getQueryFromIterator(
+    queryParts.map((p) => {
+      const [key, value] = p.split("=");
+      return [key, value] as const;
+    }),
   );
 }
 

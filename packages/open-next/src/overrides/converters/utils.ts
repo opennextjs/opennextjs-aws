@@ -1,3 +1,5 @@
+import { getQueryFromIterator } from "http/util.js";
+
 export function removeUndefinedFromQuery(
   query: Record<string, string | string[] | undefined>,
 ) {
@@ -29,17 +31,5 @@ export function extractHostFromHeaders(
  * @returns
  */
 export function getQueryFromSearchParams(searchParams: URLSearchParams) {
-  const query: Record<string, string | string[]> = {};
-  for (const [key, value] of searchParams.entries()) {
-    if (key in query) {
-      if (Array.isArray(query[key])) {
-        query[key].push(value);
-      } else {
-        query[key] = [query[key], value];
-      }
-    } else {
-      query[key] = value;
-    }
-  }
-  return query;
+  return getQueryFromIterator(searchParams.entries());
 }
