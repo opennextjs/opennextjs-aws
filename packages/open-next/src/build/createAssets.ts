@@ -1,12 +1,22 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { loadConfig } from "config/util.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
 import * as buildHelper from "./helper.js";
 
-export function createStaticAssets(options: buildHelper.BuildOptions) {
+/**
+ * Copy the static assets to the output folder
+ *
+ * @param options
+ * @param useBasePath whether to adjust paths according to Next.js configure basePath
+ */
+export function createStaticAssets(
+  options: buildHelper.BuildOptions,
+  { useBasePath = false } = {},
+) {
   logger.info("Bundling static assets...");
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
@@ -20,7 +30,7 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
    *
    * Copy over:
    * - .next/BUILD_ID => BUILD_ID
-   * - .next/static   => _next/static
+   * - .next/static   => _next/static or basePath/_next/static when useBasePath is true
    * - public/*       => *
    * - app/favicon.ico or src/app/favicon.ico  => favicon.ico
    *
@@ -30,9 +40,13 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
   );
+
+  const NextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const basePath = useBasePath ? (NextConfig.basePath ?? "") : "";
+
   fs.cpSync(
     path.join(appBuildOutputPath, ".next/static"),
-    path.join(outputPath, "_next", "static"),
+    path.join(outputPath, basePath, "_next", "static"),
     { recursive: true },
   );
   if (fs.existsSync(appPublicPath)) {
