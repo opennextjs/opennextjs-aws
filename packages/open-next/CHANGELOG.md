@@ -1,5 +1,21 @@
 # open-next
 
+## 3.5.6
+
+### Patch Changes
+
+- [#819](https://github.com/opennextjs/opennextjs-aws/pull/819) [`997b3921f508270da412ce780a6d55b26aa15e9f`](https://github.com/opennextjs/opennextjs-aws/commit/997b3921f508270da412ce780a6d55b26aa15e9f) Thanks [@sommeeeer](https://github.com/sommeeeer)! - Add aws-lambda-compressed wrapper
+
+  New wrapper called `aws-lambda-compressed`. The compression quality for brotli can be configured using the `BROTLI_QUALITY` environment variable. If not set, it defaults to 6.
+
+- [#817](https://github.com/opennextjs/opennextjs-aws/pull/817) [`be3653ae741048cbb61802617032b7f249110d83`](https://github.com/opennextjs/opennextjs-aws/commit/be3653ae741048cbb61802617032b7f249110d83) Thanks [@conico974](https://github.com/conico974)! - fix to not decode searchParams
+  fix multivalue query in searchParams for Node
+
+- [#800](https://github.com/opennextjs/opennextjs-aws/pull/800) [`e9b37fd44eb856eb8ae73168bf455ff85dd8b285`](https://github.com/opennextjs/opennextjs-aws/commit/e9b37fd44eb856eb8ae73168bf455ff85dd8b285) Thanks [@conico974](https://github.com/conico974)! - Some perf improvements :
+  - Eliminate unnecessary runtime imports (i.e. dev react dependencies and next precompiled dev or turbopack dependencies)
+  - Refactor route preloading to be either on-demand or using waitUntil or at the start or during warmerEvent.
+  - Add a global function to preload routes when needed.
+
 ## 3.5.5
 
 ### Patch Changes
