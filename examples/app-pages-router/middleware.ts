@@ -43,6 +43,19 @@ export function middleware(request: NextRequest) {
       },
     });
   }
+
+  if (path === "/head" && request.method === "HEAD") {
+    return new NextResponse(null, {
+      headers: {
+        "x-from-middleware": "true",
+      },
+    });
+  }
+
+  if (path === "/fetch") {
+    // This one test both that we don't modify immutable headers
+    return fetch(new URL("/api/hello", request.url));
+  }
   const rHeaders = new Headers(request.headers);
   const r = NextResponse.next({
     request: {
