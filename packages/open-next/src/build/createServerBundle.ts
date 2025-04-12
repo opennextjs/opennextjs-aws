@@ -28,6 +28,7 @@ import {
   patchNextServer,
   patchUnstableCacheForISR,
 } from "./patch/patches/index.js";
+import { patchBackgroundRevalidation } from "./patch/patches/patchBackgroundRevalidation.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
@@ -204,6 +205,7 @@ async function generateBundle(
     patchUnstableCacheForISR,
     patchNextServer,
     patchEnvVars,
+    patchBackgroundRevalidation,
     ...additionalCodePatches,
   ]);
 
