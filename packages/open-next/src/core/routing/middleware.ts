@@ -176,7 +176,7 @@ export async function handleMiddleware(
       statusCode: statusCode,
       headers: resHeaders,
       body,
-      isBase64Encoded: true,
+      isBase64Encoded: false,
     } satisfies InternalResult;
   }
 
