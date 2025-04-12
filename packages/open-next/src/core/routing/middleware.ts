@@ -111,13 +111,15 @@ export async function handleMiddleware(
   const reqHeaders: Record<string, string> = {};
   const resHeaders: Record<string, string | string[]> = {};
 
-  responseHeaders.delete("x-middleware-override-headers");
-  /*  Next will set the header `x-middleware-set-cookie` when you `set-cookie` in the middleware.
-   *  We can delete it here since it will be set in `set-cookie` aswell. Next removes this header in the response themselves.
-   * `x-middleware-next` is set when you invoke `NextResponse.next()`. We can delete it here aswell.
-   */
-  responseHeaders.delete("x-middleware-set-cookie");
-  responseHeaders.delete("x-middleware-next");
+  // These are internal headers used by Next.js, we don't want to expose them to the client
+  const filteredHeaders = [
+    "x-middleware-override-headers",
+    "x-middleware-set-cookie",
+    "x-middleware-next",
+    "x-middleware-rewrite",
+    // We need to drop `content-encoding` because it will be decoded
+    "content-encoding",
+  ];
 
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
@@ -125,6 +127,7 @@ export async function handleMiddleware(
       const k = key.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
     } else {
+      if (filteredHeaders.includes(key.toLowerCase())) return;
       if (key.toLowerCase() === "set-cookie") {
         resHeaders[key] = resHeaders[key]
           ? [...resHeaders[key], value]
@@ -134,21 +137,6 @@ export async function handleMiddleware(
       }
     }
   });
-
-  // If the middleware returned a Redirect, we set the `Location` header with
-  // the redirected url and end the response.
-  if (statusCode >= 300 && statusCode < 400) {
-    resHeaders.location =
-      responseHeaders.get("location") ?? resHeaders.location;
-    // res.setHeader("Location", location);
-    return {
-      body: emptyReadableStream(),
-      type: internalEvent.type,
-      statusCode: statusCode,
-      headers: resHeaders,
-      isBase64Encoded: false,
-    } satisfies InternalResult;
-  }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
@@ -177,11 +165,11 @@ export async function handleMiddleware(
     }
   }
 
-  // If the middleware returned a `NextResponse`, pipe the body to res. This will return
-  // the body immediately to the client.
-  if (result.body) {
+  // If the middleware wants to directly return a response (i.e. not using `NextResponse.next()` or `NextResponse.rewrite()`)
+  // we return the response directly
+  if (!rewriteUrl && !responseHeaders.get("x-middleware-next")) {
     // transfer response body to res
-    const body = result.body as ReadableStream<Uint8Array>;
+    const body = (result.body as ReadableStream) ?? emptyReadableStream();
 
     return {
       type: internalEvent.type,

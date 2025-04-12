@@ -177,9 +177,7 @@ describe("handleMiddleware", () => {
       ...event,
       rawPath: "/rewrite",
       url: "http://localhost/rewrite",
-      responseHeaders: {
-        "x-middleware-rewrite": "http://localhost/rewrite",
-      },
+      responseHeaders: {},
       isExternalRewrite: false,
     });
   });
@@ -203,9 +201,7 @@ describe("handleMiddleware", () => {
       ...event,
       rawPath: "/rewrite",
       url: "http://localhost/rewrite?newKey=value",
-      responseHeaders: {
-        "x-middleware-rewrite": "http://localhost/rewrite?newKey=value",
-      },
+      responseHeaders: {},
       query: {
         __nextDataReq: "1",
         newKey: "value",
@@ -232,9 +228,7 @@ describe("handleMiddleware", () => {
       ...event,
       rawPath: "/rewrite",
       url: "http://external/rewrite",
-      responseHeaders: {
-        "x-middleware-rewrite": "http://external/rewrite",
-      },
+      responseHeaders: {},
       isExternalRewrite: true,
     });
   });
@@ -244,6 +238,7 @@ describe("handleMiddleware", () => {
     middleware.mockResolvedValue({
       headers: new Headers({
         "x-middleware-request-custom-header": "value",
+        "x-middleware-next": "1",
       }),
     });
     const result = await handleMiddleware(event, "", middlewareLoader);
