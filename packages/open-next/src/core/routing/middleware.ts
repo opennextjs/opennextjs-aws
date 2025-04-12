@@ -111,13 +111,15 @@ export async function handleMiddleware(
   const reqHeaders: Record<string, string> = {};
   const resHeaders: Record<string, string | string[]> = {};
 
-  responseHeaders.delete("x-middleware-override-headers");
-  /*  Next will set the header `x-middleware-set-cookie` when you `set-cookie` in the middleware.
-   *  We can delete it here since it will be set in `set-cookie` aswell. Next removes this header in the response themselves.
-   * `x-middleware-next` is set when you invoke `NextResponse.next()`. We can delete it here aswell.
-   */
-  responseHeaders.delete("x-middleware-set-cookie");
-  responseHeaders.delete("x-middleware-next");
+  // These are internal headers used by Next.js, we don't want to expose them to the client
+  const filteredHeaders = [
+    "x-middleware-override-headers",
+    "x-middleware-set-cookie",
+    "x-middleware-next",
+    "x-middleware-rewrite",
+    // We need to drop `content-encoding` because it will be decoded
+    "content-encoding",
+  ];
 
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
@@ -125,6 +127,7 @@ export async function handleMiddleware(
       const k = key.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
     } else {
+      if (filteredHeaders.includes(key.toLowerCase())) return;
       if (key.toLowerCase() === "set-cookie") {
         resHeaders[key] = resHeaders[key]
           ? [...resHeaders[key], value]
@@ -188,7 +191,7 @@ export async function handleMiddleware(
       statusCode: statusCode,
       headers: resHeaders,
       body,
-      isBase64Encoded: false,
+      isBase64Encoded: true,
     } satisfies InternalResult;
   }
 
