@@ -12,10 +12,6 @@ rule:
     -  has:
          kind: member_expression
          regex: "context.isPrefetch"
-    - inside:
-        kind: parenthesized_expression
-        inside:
-          kind: if_statement
 fix:
   'true'`;
 
@@ -23,7 +19,8 @@ export const patchBackgroundRevalidation = {
   name: "patchBackgroundRevalidation",
   patches: [
     {
-      versions: ">=14.0.0",
+      // TODO: test for earlier versions of Next
+      versions: ">=14.1.0",
       field: {
         pathFilter: getCrossPlatformPathRegex("server/response-cache/index.js"),
         patchCode: createPatchCode(rule),

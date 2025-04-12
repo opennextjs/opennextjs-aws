@@ -253,6 +253,7 @@ async function generateBundle(
         ...(disableNextPrebundledReact ? ["applyNextjsPrebundledReact"] : []),
         ...(disableRouting ? ["withRouting"] : []),
         ...(isAfter142 ? ["patchAsyncStorage"] : []),
+        ...(isAfter141 ? ["appendPrefetch"] : []),
       ],
     }),
     openNextReplacementPlugin({
