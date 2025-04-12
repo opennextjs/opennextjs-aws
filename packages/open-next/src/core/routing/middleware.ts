@@ -138,21 +138,6 @@ export async function handleMiddleware(
     }
   });
 
-  // If the middleware returned a Redirect, we set the `Location` header with
-  // the redirected url and end the response.
-  if (statusCode >= 300 && statusCode < 400) {
-    resHeaders.location =
-      responseHeaders.get("location") ?? resHeaders.location;
-    // res.setHeader("Location", location);
-    return {
-      body: emptyReadableStream(),
-      type: internalEvent.type,
-      statusCode: statusCode,
-      headers: resHeaders,
-      isBase64Encoded: false,
-    } satisfies InternalResult;
-  }
-
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
@@ -180,11 +165,11 @@ export async function handleMiddleware(
     }
   }
 
-  // If the middleware returned a `NextResponse`, pipe the body to res. This will return
-  // the body immediately to the client.
-  if (result.body) {
+  // If the middleware wants to directly return a response (i.e. not using `NextResponse.next()` or `NextResponse.rewrite()`)
+  // we return the response directly
+  if (!rewriteUrl && !responseHeaders.get("x-middleware-next")) {
     // transfer response body to res
-    const body = result.body as ReadableStream<Uint8Array>;
+    const body = (result.body as ReadableStream) ?? emptyReadableStream();
 
     return {
       type: internalEvent.type,
