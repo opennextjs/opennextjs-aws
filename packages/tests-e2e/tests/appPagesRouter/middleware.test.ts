@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("should return correctly on HEAD request with an empty body", async ({
   request,
