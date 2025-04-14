@@ -1,22 +1,41 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { loadConfig } from "config/util.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
 import * as buildHelper from "./helper.js";
 
-export function createStaticAssets(options: buildHelper.BuildOptions) {
+/**
+ * Copy the static assets to the output folder
+ *
+ * WARNING: `useBasePath` should be set to `false` when the output file is used.
+ *
+ * @param options OpenNext build options
+ * @param useBasePath whether to copy files into the to Next.js configured basePath
+ */
+export function createStaticAssets(
+  options: buildHelper.BuildOptions,
+  { useBasePath = false } = {},
+) {
   logger.info("Bundling static assets...");
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
+  const NextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const basePath = useBasePath ? (NextConfig.basePath ?? "") : "";
+
   // Create output folder
-  const outputPath = path.join(outputDir, "assets");
+  const outputPath = path.join(outputDir, "assets", basePath);
   fs.mkdirSync(outputPath, { recursive: true });
 
   /**
-   * Next.js outputs assets into multiple files. Copy into the same directory.
+   * Next.js outputs assets into multiple files.
+   *
+   * Copy into the same directory:
+   * - `.open-next/assets` when `useBasePath` is `false`
+   * - `.open-next/assets/basePath` when `useBasePath` is `true`
    *
    * Copy over:
    * - .next/BUILD_ID => BUILD_ID
@@ -30,6 +49,7 @@ export function createStaticAssets(options: buildHelper.BuildOptions) {
     path.join(appBuildOutputPath, ".next/BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
   );
+
   fs.cpSync(
     path.join(appBuildOutputPath, ".next/static"),
     path.join(outputPath, "_next", "static"),
