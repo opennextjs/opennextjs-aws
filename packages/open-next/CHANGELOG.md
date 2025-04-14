@@ -1,5 +1,14 @@
 # open-next
 
+## 3.5.7
+
+### Patch Changes
+
+- [#825](https://github.com/opennextjs/opennextjs-aws/pull/825) [`5f5d8a69550165b2f19748b09382ed71a7526258`](https://github.com/opennextjs/opennextjs-aws/commit/5f5d8a69550165b2f19748b09382ed71a7526258) Thanks [@conico974](https://github.com/conico974)! - remove prefetch header for next 14.1+
+
+- [#823](https://github.com/opennextjs/opennextjs-aws/pull/823) [`910b57f352c543287c78f3661d0fe8ef7da8b57d`](https://github.com/opennextjs/opennextjs-aws/commit/910b57f352c543287c78f3661d0fe8ef7da8b57d) Thanks [@conico974](https://github.com/conico974)! - fix issue when returning fetch from the middleware
+  Also fix an issue that prevented retunning response with an empty body in the middleware
+
 ## 3.5.6
 
 ### Patch Changes
