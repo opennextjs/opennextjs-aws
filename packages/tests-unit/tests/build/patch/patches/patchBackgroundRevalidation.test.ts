@@ -20,7 +20,7 @@ const codeToPatch = `if (cachedResponse && !isOnDemandRevalidate) {
                 }`;
 
 describe("patchBackgroundRevalidation", () => {
-  it("Should patch code for Next 14+", () => {
+  it("Should patch code", () => {
     expect(
       patchCode(codeToPatch, rule),
     ).toMatchInlineSnapshot(`"if (cachedResponse && !isOnDemandRevalidate) {
