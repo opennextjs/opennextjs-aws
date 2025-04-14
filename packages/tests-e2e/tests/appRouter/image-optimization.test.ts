@@ -18,3 +18,10 @@ test("Image Optimization", async ({ page }) => {
   await expect(el).toHaveJSProperty("complete", true);
   await expect(el).not.toHaveJSProperty("naturalWidth", 0);
 });
+
+test("should return 400 on bad request", async ({ request }) => {
+  const res = await request.get("/_next/image");
+  expect(res.status()).toBe(400);
+  expect(res.headers()["cache-control"]).toBe("public,max-age=60,immutable");
+  expect(await res.text()).toBe(`"url" parameter is required`);
+});
