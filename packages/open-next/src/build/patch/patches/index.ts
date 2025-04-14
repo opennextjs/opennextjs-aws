@@ -5,3 +5,4 @@ export {
   patchUnstableCacheForISR,
 } from "./patchFetchCacheISR.js";
 export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.js";
+export { patchBackgroundRevalidation } from "./patchBackgroundRevalidation.js";
