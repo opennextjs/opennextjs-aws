@@ -22,13 +22,13 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import {
+  patchBackgroundRevalidation,
   patchEnvVars,
   patchFetchCacheForISR,
   patchFetchCacheSetMissingWaitUntil,
   patchNextServer,
   patchUnstableCacheForISR,
 } from "./patch/patches/index.js";
-import { patchBackgroundRevalidation } from "./patch/patches/patchBackgroundRevalidation.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
