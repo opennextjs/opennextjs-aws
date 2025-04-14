@@ -311,8 +311,12 @@ export default class Cache {
     if (config?.disableTagCache || config?.disableIncrementalCache) {
       return;
     }
+    const _tags = Array.isArray(tags) ? tags : [tags];
+    if (_tags.length === 0) {
+      return;
+    }
+
     try {
-      const _tags = Array.isArray(tags) ? tags : [tags];
       if (globalThis.tagCache.mode === "nextMode") {
         const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
 
@@ -336,6 +340,7 @@ export default class Cache {
         }
         return;
       }
+
       for (const tag of _tags) {
         debug("revalidateTag", tag);
         // Find all keys with the given tag
