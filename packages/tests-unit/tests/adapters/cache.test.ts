@@ -587,6 +587,14 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
     });
 
+    it("Should not call writeTags when the tag list is empty for nextMode", async () => {
+      globalThis.tagCache.mode = "nextMode";
+      await cache.revalidateTag([]);
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
     it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {
       globalThis.tagCache.mode = "nextMode";
       globalThis.tagCache.getPathsByTags = vi
