@@ -83,7 +83,7 @@ export async function defaultHandler(
     // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
     if ("errorMessage" in imageParams) {
       return buildFailureResponse(
-        new Error(imageParams.errorMessage),
+        imageParams.errorMessage,
         options?.streamCreator,
         400,
       );
@@ -108,10 +108,13 @@ export async function defaultHandler(
       nextConfig,
       downloadHandler,
     );
-
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    return buildFailureResponse(e, options?.streamCreator);
+    error("Failed to optimize image", e);
+    return buildFailureResponse(
+      "Internal server error",
+      options?.streamCreator,
+    );
   }
 }
 
@@ -188,11 +191,11 @@ function buildSuccessResponse(
 }
 
 function buildFailureResponse(
-  e: any,
+  errorMessage: string,
   streamCreator?: StreamCreator,
   statusCode = 500,
 ): InternalResult {
-  debug(e);
+  debug(errorMessage, statusCode);
   if (streamCreator) {
     const response = new OpenNextNodeResponse(
       () => void 0,
@@ -203,7 +206,7 @@ function buildFailureResponse(
       Vary: "Accept",
       "Cache-Control": "public,max-age=60,immutable",
     });
-    response.end(e?.message || e?.toString() || "An error occurred");
+    response.end(errorMessage);
   }
   return {
     type: "core",
@@ -214,7 +217,7 @@ function buildFailureResponse(
       // For failed images, allow client to retry after 1 minute.
       "Cache-Control": "public,max-age=60,immutable",
     },
-    body: toReadableStream(e?.message || e?.toString() || "An error occurred"),
+    body: toReadableStream(errorMessage),
   };
 }
 
