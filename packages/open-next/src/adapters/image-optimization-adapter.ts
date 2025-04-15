@@ -82,6 +82,10 @@ export async function defaultHandler(
     // We return a 400 here if imageParams returns an errorMessage
     // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
     if ("errorMessage" in imageParams) {
+      error(
+        "Error during validation of image params",
+        imageParams.errorMessage,
+      );
       return buildFailureResponse(
         imageParams.errorMessage,
         options?.streamCreator,
