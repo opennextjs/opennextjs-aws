@@ -19,7 +19,9 @@ test("Image Optimization", async ({ page }) => {
   await expect(el).not.toHaveJSProperty("naturalWidth", 0);
 });
 
-test("should return 400 when validateParams returns an errorMessage", async ({ request }) => {
+test("should return 400 when validateParams returns an errorMessage", async ({
+  request,
+}) => {
   const res = await request.get("/_next/image");
   expect(res.status()).toBe(400);
   expect(res.headers()["cache-control"]).toBe("public,max-age=60,immutable");
