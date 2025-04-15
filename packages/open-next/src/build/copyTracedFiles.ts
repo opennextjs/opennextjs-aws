@@ -243,12 +243,16 @@ File ${fullFilePath} does not exist
     computeCopyFilesForPage(route);
   });
 
+  // Only files that are actually copied
+  const tracedFiles: string[] = [];
+
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
     // We don't want to copy excluded packages (i.e sharp)
     if (isExcluded(from)) {
       return;
     }
+    tracedFiles.push(to);
     mkdirSync(path.dirname(to), { recursive: true });
     let symlink = null;
     // For pnpm symlink we need to do that
@@ -355,7 +359,7 @@ File ${fullFilePath} does not exist
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 
   return {
-    tracedFiles: Array.from(filesToCopy.values()),
+    tracedFiles,
     manifests: getManifests(standaloneNextDir),
   };
 }
