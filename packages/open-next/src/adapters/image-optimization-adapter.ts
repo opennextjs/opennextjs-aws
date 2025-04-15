@@ -79,6 +79,19 @@ export async function defaultHandler(
       headers,
       queryString === null ? undefined : queryString,
     );
+    // We return a 400 here if imageParams returns an errorMessage
+    // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
+    if ("errorMessage" in imageParams) {
+      error(
+        "Error during validation of image params",
+        imageParams.errorMessage,
+      );
+      return buildFailureResponse(
+        imageParams.errorMessage,
+        options?.streamCreator,
+        400,
+      );
+    }
     let etag: string | undefined;
     // We don't cache any images, so in order to be able to return 304 responses, we compute an ETag from what is assumed to be static
     if (process.env.OPENNEXT_STATIC_ETAG) {
@@ -99,10 +112,13 @@ export async function defaultHandler(
       nextConfig,
       downloadHandler,
     );
-
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    return buildFailureResponse(e, options?.streamCreator);
+    error("Failed to optimize image", e);
+    return buildFailureResponse(
+      "Internal server error",
+      options?.streamCreator,
+    );
   }
 }
 
@@ -124,9 +140,6 @@ function validateImageParams(
     false,
   );
   debug("image params", imageParams);
-  if ("errorMessage" in imageParams) {
-    throw new Error(imageParams.errorMessage);
-  }
   return imageParams;
 }
 
@@ -182,34 +195,33 @@ function buildSuccessResponse(
 }
 
 function buildFailureResponse(
-  e: any,
+  errorMessage: string,
   streamCreator?: StreamCreator,
+  statusCode = 500,
 ): InternalResult {
-  debug(e);
+  debug(errorMessage, statusCode);
   if (streamCreator) {
     const response = new OpenNextNodeResponse(
       () => void 0,
       async () => void 0,
       streamCreator,
     );
-    response.writeHead(500, {
+    response.writeHead(statusCode, {
       Vary: "Accept",
       "Cache-Control": "public,max-age=60,immutable",
-      "Content-Type": "application/json",
     });
-    response.end(e?.message || e?.toString() || "An error occurred");
+    response.end(errorMessage);
   }
   return {
     type: "core",
     isBase64Encoded: false,
-    statusCode: 500,
+    statusCode: statusCode,
     headers: {
       Vary: "Accept",
       // For failed images, allow client to retry after 1 minute.
       "Cache-Control": "public,max-age=60,immutable",
-      "Content-Type": "application/json",
     },
-    body: toReadableStream(e?.message || e?.toString() || "An error occurred"),
+    body: toReadableStream(errorMessage),
   };
 }
 
