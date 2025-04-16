@@ -111,6 +111,7 @@ jobs:
       - name: Install Nextjs in app-pages-router
         working-directory: examples/app-pages-router
         run: pnpm add next@${{ needs.check_next_version.outputs.previousNextVersion }}
+      # We do not install the latest canary of Next in the experimental app.
 
       - name: Get Playwright version
         id: playwright-version
@@ -157,6 +158,8 @@ jobs:
           echo "PAGES_ROUTER_URL=$PAGES_ROUTER_URL" >> $GITHUB_ENV
           APP_PAGES_ROUTER_URL=$(jq -r '.["e2e-example-AppPagesRouter"].url' .sst/outputs.json)
           echo "APP_PAGES_ROUTER_URL=$APP_PAGES_ROUTER_URL" >> $GITHUB_ENV
+          EXPERIMENTAL_APP_URL=$(jq -r '.["e2e-example-Experimental"].url' .sst/outputs.json)
+          echo "EXPERIMENTAL_APP_URL=$EXPERIMENTAL_APP_URL" >> $GITHUB_ENV
 
       - name: Run e2e Test
         run: npm run e2e:test
