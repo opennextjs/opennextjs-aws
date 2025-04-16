@@ -98,10 +98,44 @@ export type TagCacheMetaFile = {
   revalidatedAt: { N: string };
 };
 
-export type IncrementalCacheContext = {
-  revalidate?: number | false | undefined;
-  fetchCache?: boolean | undefined;
-  fetchUrl?: string | undefined;
-  fetchIdx?: number | undefined;
-  tags?: string[] | undefined;
-};
+// Cache context since https://github.com/vercel/next.js/pull/76207
+interface SetIncrementalFetchCacheContext {
+  fetchCache: true;
+  fetchUrl?: string;
+  fetchIdx?: number;
+  tags?: string[];
+}
+
+interface SetIncrementalResponseCacheContext {
+  fetchCache?: false;
+  cacheControl?: {
+    revalidate: number | false;
+    expire?: number;
+  };
+
+  /**
+   * True if the route is enabled for PPR.
+   */
+  isRoutePPREnabled?: boolean;
+
+  /**
+   * True if this is a fallback request.
+   */
+  isFallback?: boolean;
+}
+
+// Before #76207 revalidate was passed this way
+interface SetIncrementalCacheContext {
+  revalidate?: number | false;
+  isRoutePPREnabled?: boolean;
+  isFallback?: boolean;
+}
+
+// Before https://github.com/vercel/next.js/pull/53321 context on set was just the revalidate
+type OldSetIncrementalCacheContext = number | false | undefined;
+
+export type IncrementalCacheContext =
+  | OldSetIncrementalCacheContext
+  | SetIncrementalCacheContext
+  | SetIncrementalFetchCacheContext
+  | SetIncrementalResponseCacheContext;
