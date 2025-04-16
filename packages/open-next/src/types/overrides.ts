@@ -79,7 +79,12 @@ export type WithLastModified<T> = {
 
 export type CacheValue<IsFetch extends boolean> = (IsFetch extends true
   ? CachedFetchValue
-  : CachedFile) & { revalidate?: number | false };
+  : CachedFile) & {
+  /**
+   * This is available for page cache entry, but only at runtime.
+   */
+  revalidate?: number | false;
+};
 
 export type IncrementalCache = {
   get<IsFetch extends boolean = false>(
