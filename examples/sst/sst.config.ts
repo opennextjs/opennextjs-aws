@@ -2,8 +2,8 @@ import type { SSTConfig } from "sst";
 
 import { AppPagesRouter } from "./stacks/AppPagesRouter";
 import { AppRouter } from "./stacks/AppRouter";
-import { PagesRouter } from "./stacks/PagesRouter";
 import { Experimental } from "./stacks/Experimental";
+import { PagesRouter } from "./stacks/PagesRouter";
 
 export default {
   config(_input) {
