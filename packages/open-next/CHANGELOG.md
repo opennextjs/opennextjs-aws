@@ -1,5 +1,17 @@
 # open-next
 
+## 3.5.8
+
+### Patch Changes
+
+- [#828](https://github.com/opennextjs/opennextjs-aws/pull/828) [`195b67dfeb2ea0b7402ebb17bcfbdd0c28af01a5`](https://github.com/opennextjs/opennextjs-aws/commit/195b67dfeb2ea0b7402ebb17bcfbdd0c28af01a5) Thanks [@vicb](https://github.com/vicb)! - fix(tagCache): do not call writeTags with an empty list
+
+- [#831](https://github.com/opennextjs/opennextjs-aws/pull/831) [`741b53916af59fd0ef2b41dc7068f3f430f06946`](https://github.com/opennextjs/opennextjs-aws/commit/741b53916af59fd0ef2b41dc7068f3f430f06946) Thanks [@vicb](https://github.com/vicb)! - fix: only report actually copied traced files
+
+- [#835](https://github.com/opennextjs/opennextjs-aws/pull/835) [`4761bf561d7f6b1f99cd0c1e7c28276fb2591344`](https://github.com/opennextjs/opennextjs-aws/commit/4761bf561d7f6b1f99cd0c1e7c28276fb2591344) Thanks [@vicb](https://github.com/vicb)! - trace node packages
+
+- [#830](https://github.com/opennextjs/opennextjs-aws/pull/830) [`af2fd9dbeb524381b5d8135264768356d9292605`](https://github.com/opennextjs/opennextjs-aws/commit/af2fd9dbeb524381b5d8135264768356d9292605) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: return 400 when validateImageParams from Next passes an errorMessage
+
 ## 3.5.7
 
 ### Patch Changes
