@@ -71,6 +71,10 @@ function buildDynamoObject(tag: string, revalidatedAt?: number) {
 export default {
   name: "ddb-nextMode",
   mode: "nextMode",
+  getLastRevalidated: async (tags: string[]) => {
+    // Not supported for now
+    return 0;
+  },
   hasBeenRevalidated: async (tags: string[], lastModified?: number) => {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
       return false;

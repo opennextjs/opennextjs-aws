@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   experimental: {
     ppr: "incremental",
     nodeMiddleware: true,
+    dynamicIO: true,
   },
 };
 

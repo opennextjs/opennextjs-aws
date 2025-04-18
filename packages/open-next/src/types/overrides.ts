@@ -1,6 +1,7 @@
 import type { Readable } from "node:stream";
 
-import type { Meta } from "types/cache";
+import type { Extension, Meta, StoredComposableCacheEntry } from "types/cache";
+
 import type {
   BaseEventOrResult,
   BaseOverride,
@@ -77,24 +78,29 @@ export type WithLastModified<T> = {
   value?: T;
 };
 
-export type CacheValue<IsFetch extends boolean> = (IsFetch extends true
-  ? CachedFetchValue
-  : CachedFile) & {
-  /**
-   * This is available for page cache entry, but only at runtime.
-   */
-  revalidate?: number | false;
-};
+export type CacheEntryType = Extension;
+
+export type CacheValue<CacheType extends CacheEntryType> =
+  (CacheType extends "fetch"
+    ? CachedFetchValue
+    : CacheType extends "cache"
+      ? CachedFile
+      : StoredComposableCacheEntry) & {
+    /**
+     * This is available for page cache entry, but only at runtime.
+     */
+    revalidate?: number | false;
+  };
 
 export type IncrementalCache = {
-  get<IsFetch extends boolean = false>(
+  get<CacheType extends CacheEntryType = "cache">(
     key: string,
-    isFetch?: IsFetch,
-  ): Promise<WithLastModified<CacheValue<IsFetch>> | null>;
-  set<IsFetch extends boolean = false>(
+    cacheType?: CacheType,
+  ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
+  set<CacheType extends CacheEntryType = "cache">(
     key: string,
-    value: CacheValue<IsFetch>,
-    isFetch?: IsFetch,
+    value: CacheValue<CacheType>,
+    isFetch?: CacheType,
   ): Promise<void>;
   delete(key: string): Promise<void>;
   name: string;
@@ -129,6 +135,8 @@ Cons :
 */
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
+  // Necessary for the composable cache
+  getLastRevalidated(tags: string[]): Promise<number>;
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
   writeTags(tags: string[]): Promise<void>;
   // Optional method to get paths by tags
