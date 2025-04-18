@@ -106,4 +106,10 @@ export default {
     }
     await globalThis.tagCache.writeTags(Array.from(setToWrite));
   },
+
+  // This one is necessary for older versions of next
+  async receiveExpiredTags(...tags: string[]) {
+    // This function does absolutely nothing
+    return;
+  },
 } satisfies ComposableCacheHandler;

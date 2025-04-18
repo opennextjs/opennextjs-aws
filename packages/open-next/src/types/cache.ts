@@ -164,4 +164,8 @@ export interface ComposableCacheHandler {
   refreshTags(): Promise<void>;
   getExpiration(...tags: string[]): Promise<number>;
   expireTags(...tags: string[]): Promise<void>;
+  /**
+   * This function is only there for older versions and do nothing
+   */
+  receiveExpiredTags(...tags: string[]): Promise<void>;
 }
