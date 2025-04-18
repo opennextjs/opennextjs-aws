@@ -2,6 +2,7 @@ import type { SSTConfig } from "sst";
 
 import { AppPagesRouter } from "./stacks/AppPagesRouter";
 import { AppRouter } from "./stacks/AppRouter";
+import { Experimental } from "./stacks/Experimental";
 import { PagesRouter } from "./stacks/PagesRouter";
 
 export default {
@@ -12,6 +13,10 @@ export default {
     };
   },
   stacks(app) {
-    app.stack(AppRouter).stack(PagesRouter).stack(AppPagesRouter);
+    app
+      .stack(AppRouter)
+      .stack(PagesRouter)
+      .stack(AppPagesRouter)
+      .stack(Experimental);
   },
 } satisfies SSTConfig;
