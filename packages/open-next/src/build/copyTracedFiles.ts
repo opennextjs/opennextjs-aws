@@ -89,9 +89,6 @@ export async function copyTracedFiles({
   const standaloneServerDir = path.join(standaloneNextDir, "server");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
 
-  const extractFiles = (files: string[], from = standaloneNextDir) =>
-    files.map((f) => path.resolve(from, f));
-
   // On next 14+, we might not have to include those files
   // For next 13, we need to include them otherwise we get runtime error
   const requiredServerFiles = JSON.parse(
@@ -106,12 +103,25 @@ export async function copyTracedFiles({
     ),
   );
 
+  // Files to copy
+  // Map from files in the `.next/standalone` to files in the `.open-next` folder
   const filesToCopy = new Map<string, string>();
+
+  // Node packages
+  // Map from folders in the project to folders in the `.open-next` folder
+  const nodePackages = new Map<string, string>();
 
   // Files necessary by the server
   if (!skipServerFiles) {
-    extractFiles(requiredServerFiles.files).forEach((f) => {
-      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
+    requiredServerFiles.files.forEach((tracedPath: string) => {
+      const src = path.join(standaloneNextDir, tracedPath);
+      const dst = path.join(outputDir, packagePath, ".next", tracedPath);
+      filesToCopy.set(src, dst);
+
+      const module = path.join(dotNextDir, tracedPath);
+      if (module.endsWith("package.json")) {
+        nodePackages.set(path.dirname(module), path.dirname(dst));
+      }
     });
   }
   // create directory for pages
@@ -131,17 +141,19 @@ export async function copyTracedFiles({
   });
 
   const computeCopyFilesForPage = (pagePath: string) => {
-    const fullFilePath = `server/${pagePath}.js`;
+    const serverPath = `server/${pagePath}.js`;
+    const serverDir = path.dirname(serverPath);
+
     let requiredFiles: { files: string[] };
     try {
       requiredFiles = JSON.parse(
         readFileSync(
-          path.join(standaloneNextDir, `${fullFilePath}.nft.json`),
+          path.join(standaloneNextDir, `${serverPath}.nft.json`),
           "utf8",
         ),
       );
     } catch (e) {
-      if (existsSync(path.join(standaloneNextDir, fullFilePath))) {
+      if (existsSync(path.join(standaloneNextDir, serverPath))) {
         //TODO: add a link to the docs
         throw new Error(
           `
@@ -156,27 +168,37 @@ See the docs for more information on how to bundle edge runtime functions.
       throw new Error(`
 --------------------------------------------------------------------------------
 We cannot find the route for ${pagePath}.
-File ${fullFilePath} does not exist
+File ${serverPath} does not exist
 --------------------------------------------------------------------------------`);
     }
-    const dir = path.dirname(fullFilePath);
-    extractFiles(
-      requiredFiles.files,
-      path.join(standaloneNextDir, dir),
-    ).forEach((f) => {
-      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
+
+    requiredFiles.files.forEach((tracedPath: string) => {
+      const src = path.join(standaloneNextDir, serverDir, tracedPath);
+      const dst = path.join(
+        outputDir,
+        packagePath,
+        ".next",
+        serverDir,
+        tracedPath,
+      );
+      filesToCopy.set(src, dst);
+
+      const module = path.join(dotNextDir, serverDir, tracedPath);
+      if (module.endsWith("package.json")) {
+        nodePackages.set(path.dirname(module), path.dirname(dst));
+      }
     });
 
-    if (!existsSync(path.join(standaloneNextDir, fullFilePath))) {
+    if (!existsSync(path.join(standaloneNextDir, serverPath))) {
       throw new Error(
         `This error should only happen for static 404 and 500 page from page router. Report this if that's not the case.,
-        File ${fullFilePath} does not exist`,
+        File ${serverPath} does not exist`,
       );
     }
 
     filesToCopy.set(
-      path.join(standaloneNextDir, fullFilePath),
-      path.join(outputNextDir, fullFilePath),
+      path.join(standaloneNextDir, serverPath),
+      path.join(outputNextDir, serverPath),
     );
   };
 
@@ -360,6 +382,7 @@ File ${fullFilePath} does not exist
 
   return {
     tracedFiles,
+    nodePackages,
     manifests: getManifests(standaloneNextDir),
   };
 }
