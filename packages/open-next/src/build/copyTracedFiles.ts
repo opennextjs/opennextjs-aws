@@ -89,40 +89,46 @@ export async function copyTracedFiles({
   const standaloneServerDir = path.join(standaloneNextDir, "server");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
 
-  // On next 14+, we might not have to include those files
-  // For next 13, we need to include them otherwise we get runtime error
-  const requiredServerFiles = JSON.parse(
-    readFileSync(
-      path.join(
-        dotNextDir,
-        bundledNextServer
-          ? "next-minimal-server.js.nft.json"
-          : "next-server.js.nft.json",
-      ),
-      "utf8",
-    ),
-  );
-
   // Files to copy
   // Map from files in the `.next/standalone` to files in the `.open-next` folder
   const filesToCopy = new Map<string, string>();
 
   // Node packages
   // Map from folders in the project to folders in the `.open-next` folder
+  // The map might also include the mono-repo path.
   const nodePackages = new Map<string, string>();
 
-  // Files necessary by the server
-  if (!skipServerFiles) {
-    requiredServerFiles.files.forEach((tracedPath: string) => {
-      const src = path.join(standaloneNextDir, tracedPath);
-      const dst = path.join(outputDir, packagePath, ".next", tracedPath);
+  /**
+   * Extracts files and node packages from a .nft.json file
+   * @param nftFile path to the .nft.json file relative to `.next/`
+   */
+  const processNftFile = (nftFile: string) => {
+    const subDir = path.dirname(nftFile);
+    const files: string[] = JSON.parse(
+      readFileSync(path.join(dotNextDir, nftFile), "utf8"),
+    ).files;
+
+    files.forEach((tracedPath: string) => {
+      const src = path.join(standaloneNextDir, subDir, tracedPath);
+      const dst = path.join(outputNextDir, subDir, tracedPath);
       filesToCopy.set(src, dst);
 
-      const module = path.join(dotNextDir, tracedPath);
+      const module = path.join(dotNextDir, subDir, tracedPath);
       if (module.endsWith("package.json")) {
         nodePackages.set(path.dirname(module), path.dirname(dst));
       }
     });
+  };
+
+  // Files necessary by the server
+  if (!skipServerFiles) {
+    // On next 14+, we might not have to include those files
+    // For next 13, we need to include them otherwise we get runtime error
+    const nftFile = bundledNextServer
+      ? "next-minimal-server.js.nft.json"
+      : "next-server.js.nft.json";
+
+    processNftFile(nftFile);
   }
   // create directory for pages
   if (existsSync(path.join(standaloneNextDir, "server/pages"))) {
@@ -142,18 +148,11 @@ export async function copyTracedFiles({
 
   const computeCopyFilesForPage = (pagePath: string) => {
     const serverPath = `server/${pagePath}.js`;
-    const serverDir = path.dirname(serverPath);
 
-    let requiredFiles: { files: string[] };
     try {
-      requiredFiles = JSON.parse(
-        readFileSync(
-          path.join(standaloneNextDir, `${serverPath}.nft.json`),
-          "utf8",
-        ),
-      );
+      processNftFile(`${serverPath}.nft.json`);
     } catch (e) {
-      if (existsSync(path.join(standaloneNextDir, serverPath))) {
+      if (existsSync(path.join(dotNextDir, serverPath))) {
         //TODO: add a link to the docs
         throw new Error(
           `
@@ -171,23 +170,6 @@ We cannot find the route for ${pagePath}.
 File ${serverPath} does not exist
 --------------------------------------------------------------------------------`);
     }
-
-    requiredFiles.files.forEach((tracedPath: string) => {
-      const src = path.join(standaloneNextDir, serverDir, tracedPath);
-      const dst = path.join(
-        outputDir,
-        packagePath,
-        ".next",
-        serverDir,
-        tracedPath,
-      );
-      filesToCopy.set(src, dst);
-
-      const module = path.join(dotNextDir, serverDir, tracedPath);
-      if (module.endsWith("package.json")) {
-        nodePackages.set(path.dirname(module), path.dirname(dst));
-      }
-    });
 
     if (!existsSync(path.join(standaloneNextDir, serverPath))) {
       throw new Error(
