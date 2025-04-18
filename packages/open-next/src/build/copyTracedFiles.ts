@@ -89,30 +89,46 @@ export async function copyTracedFiles({
   const standaloneServerDir = path.join(standaloneNextDir, "server");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
 
-  const extractFiles = (files: string[], from = standaloneNextDir) =>
-    files.map((f) => path.resolve(from, f));
-
-  // On next 14+, we might not have to include those files
-  // For next 13, we need to include them otherwise we get runtime error
-  const requiredServerFiles = JSON.parse(
-    readFileSync(
-      path.join(
-        dotNextDir,
-        bundledNextServer
-          ? "next-minimal-server.js.nft.json"
-          : "next-server.js.nft.json",
-      ),
-      "utf8",
-    ),
-  );
-
+  // Files to copy
+  // Map from files in the `.next/standalone` to files in the `.open-next` folder
   const filesToCopy = new Map<string, string>();
+
+  // Node packages
+  // Map from folders in the project to folders in the `.open-next` folder
+  // The map might also include the mono-repo path.
+  const nodePackages = new Map<string, string>();
+
+  /**
+   * Extracts files and node packages from a .nft.json file
+   * @param nftFile path to the .nft.json file relative to `.next/`
+   */
+  const processNftFile = (nftFile: string) => {
+    const subDir = path.dirname(nftFile);
+    const files: string[] = JSON.parse(
+      readFileSync(path.join(dotNextDir, nftFile), "utf8"),
+    ).files;
+
+    files.forEach((tracedPath: string) => {
+      const src = path.join(standaloneNextDir, subDir, tracedPath);
+      const dst = path.join(outputNextDir, subDir, tracedPath);
+      filesToCopy.set(src, dst);
+
+      const module = path.join(dotNextDir, subDir, tracedPath);
+      if (module.endsWith("package.json")) {
+        nodePackages.set(path.dirname(module), path.dirname(dst));
+      }
+    });
+  };
 
   // Files necessary by the server
   if (!skipServerFiles) {
-    extractFiles(requiredServerFiles.files).forEach((f) => {
-      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
-    });
+    // On next 14+, we might not have to include those files
+    // For next 13, we need to include them otherwise we get runtime error
+    const nftFile = bundledNextServer
+      ? "next-minimal-server.js.nft.json"
+      : "next-server.js.nft.json";
+
+    processNftFile(nftFile);
   }
   // create directory for pages
   if (existsSync(path.join(standaloneNextDir, "server/pages"))) {
@@ -131,17 +147,12 @@ export async function copyTracedFiles({
   });
 
   const computeCopyFilesForPage = (pagePath: string) => {
-    const fullFilePath = `server/${pagePath}.js`;
-    let requiredFiles: { files: string[] };
+    const serverPath = `server/${pagePath}.js`;
+
     try {
-      requiredFiles = JSON.parse(
-        readFileSync(
-          path.join(standaloneNextDir, `${fullFilePath}.nft.json`),
-          "utf8",
-        ),
-      );
+      processNftFile(`${serverPath}.nft.json`);
     } catch (e) {
-      if (existsSync(path.join(standaloneNextDir, fullFilePath))) {
+      if (existsSync(path.join(dotNextDir, serverPath))) {
         //TODO: add a link to the docs
         throw new Error(
           `
@@ -156,27 +167,20 @@ See the docs for more information on how to bundle edge runtime functions.
       throw new Error(`
 --------------------------------------------------------------------------------
 We cannot find the route for ${pagePath}.
-File ${fullFilePath} does not exist
+File ${serverPath} does not exist
 --------------------------------------------------------------------------------`);
     }
-    const dir = path.dirname(fullFilePath);
-    extractFiles(
-      requiredFiles.files,
-      path.join(standaloneNextDir, dir),
-    ).forEach((f) => {
-      filesToCopy.set(f, f.replace(standaloneDir, outputDir));
-    });
 
-    if (!existsSync(path.join(standaloneNextDir, fullFilePath))) {
+    if (!existsSync(path.join(standaloneNextDir, serverPath))) {
       throw new Error(
         `This error should only happen for static 404 and 500 page from page router. Report this if that's not the case.,
-        File ${fullFilePath} does not exist`,
+        File ${serverPath} does not exist`,
       );
     }
 
     filesToCopy.set(
-      path.join(standaloneNextDir, fullFilePath),
-      path.join(outputNextDir, fullFilePath),
+      path.join(standaloneNextDir, serverPath),
+      path.join(outputNextDir, serverPath),
     );
   };
 
@@ -360,6 +364,7 @@ File ${fullFilePath} does not exist
 
   return {
     tracedFiles,
+    nodePackages,
     manifests: getManifests(standaloneNextDir),
   };
 }
