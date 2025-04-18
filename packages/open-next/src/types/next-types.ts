@@ -85,6 +85,7 @@ export interface NextConfig {
   };
   images: ImageConfig;
   poweredByHeader?: boolean;
+  serverExternalPackages?: string[];
 }
 
 export interface RouteDefinition {
