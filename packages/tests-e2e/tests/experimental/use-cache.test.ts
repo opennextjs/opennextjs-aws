@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("cached component should work in ssr", async ({ page }) => {
   await page.goto("/use-cache/ssr");
