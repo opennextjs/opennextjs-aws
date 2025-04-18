@@ -1,4 +1,4 @@
-import { unstable_cacheTag, unstable_cacheLife } from "next/cache";
+import { unstable_cacheLife, unstable_cacheTag } from "next/cache";
 
 export async function FullyCachedComponent() {
   "use cache";
