@@ -28,6 +28,7 @@ import {
   patchFetchCacheSetMissingWaitUntil,
   patchNextServer,
   patchUnstableCacheForISR,
+  patchUseCacheForISR,
 } from "./patch/patches/index.js";
 
 interface CodeCustomization {
@@ -212,6 +213,7 @@ async function generateBundle(
     patchNextServer,
     patchEnvVars,
     patchBackgroundRevalidation,
+    patchUseCacheForISR,
     ...additionalCodePatches,
   ]);
 
