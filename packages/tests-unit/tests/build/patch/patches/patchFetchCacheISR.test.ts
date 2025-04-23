@@ -2,6 +2,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
   fetchRule,
   unstable_cacheRule,
+  useCacheRule,
 } from "@opennextjs/aws/build/patch/patches/patchFetchCacheISR.js";
 import { describe } from "vitest";
 
@@ -53,6 +54,24 @@ const entry = workStore.isOnDemandRevalidate ? null : await incrementalCache.get
 const patchFetchCacheCodeMinifiedNext15 = `
 let t=P.isOnDemandRevalidate?null:await V.get(n,{kind:l.IncrementalCacheKind.FETCH,revalidate:_,fetchUrl:y,fetchIdx:X,tags:N,softTags:C});
 `;
+
+const patchUseCacheUnminified = `
+function shouldForceRevalidate(workStore, workUnitStore) {
+    if (workStore.isOnDemandRevalidate || workStore.isDraftMode) {
+        return true;
+    }
+    if (workStore.dev && workUnitStore) {
+        if (workUnitStore.type === 'request') {
+            return workUnitStore.headers.get('cache-control') === 'no-cache';
+        }
+        if (workUnitStore.type === 'cache') {
+            return workUnitStore.forceRevalidate;
+        }
+    }
+    return false;
+}`;
+const patchUseCacheMinified = `
+function D(e,t){if(e.isOnDemandRevalidate||e.isDraftMode)return!0;if(e.dev&&t){if("request"===t.type)return"no-cache"===t.headers.get("cache-control");if("cache"===t.type)return t.forceRevalidate}return!1}`;
 
 describe("patchUnstableCacheForISR", () => {
   test("on unminified code", async () => {
@@ -123,4 +142,33 @@ describe("patchFetchCacheISR", () => {
     });
   });
   //TODO: Add test for Next 14.2.24
+});
+
+describe("patchUseCache", () => {
+  test("on unminified code", async () => {
+    expect(
+      patchCode(patchUseCacheUnminified, useCacheRule),
+    ).toMatchInlineSnapshot(`
+"function shouldForceRevalidate(workStore, workUnitStore) {
+    if ((workStore.isOnDemandRevalidate && !globalThis.__openNextAls?.getStore()?.isISRRevalidation) || workStore.isDraftMode) {
+        return true;
+    }
+    if (workStore.dev && workUnitStore) {
+        if (workUnitStore.type === 'request') {
+            return workUnitStore.headers.get('cache-control') === 'no-cache';
+        }
+        if (workUnitStore.type === 'cache') {
+            return workUnitStore.forceRevalidate;
+        }
+    }
+    return false;
+}"`);
+  });
+  test("on minified code", async () => {
+    expect(
+      patchCode(patchUseCacheMinified, useCacheRule),
+    ).toMatchInlineSnapshot(`
+"function D(e,t){if((e.isOnDemandRevalidate && !globalThis.__openNextAls?.getStore()?.isISRRevalidation)||e.isDraftMode)return!0;if(e.dev&&t){if("request"===t.type)return"no-cache"===t.headers.get("cache-control");if("cache"===t.type)return t.forceRevalidate}return!1}"
+`);
+  });
 });

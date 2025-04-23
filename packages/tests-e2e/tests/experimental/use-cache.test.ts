@@ -21,9 +21,8 @@ test("cached component should work in ssr", async ({ page }) => {
     isrText = await isrElt.textContent();
     await page.waitForTimeout(1000);
   } while (isrText === initialIsrText);
-
-  expect(fullyCachedElt).toHaveText(initialFullyCachedText ?? "");
-  expect(isrElt).not.toHaveText(initialIsrText ?? "");
+  const fullyCachedText = await fullyCachedElt.textContent();
+  expect(fullyCachedText).toEqual(initialFullyCachedText);
 });
 
 test("revalidateTag should work for fullyCached component", async ({
@@ -42,5 +41,47 @@ test("revalidateTag should work for fullyCached component", async ({
 
   await page.reload();
   await expect(fullyCachedElt).toBeVisible();
-  expect(fullyCachedElt).not.toHaveText(initialFullyCachedText ?? "");
+  const newFullyCachedText = await fullyCachedElt.textContent();
+  expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
+});
+
+test("cached component should work in isr", async ({ page }) => {
+  await page.goto("/use-cache/isr");
+
+  let fullyCachedElt = page.getByTestId("fullyCached");
+  let isrElt = page.getByTestId("isr");
+
+  await expect(fullyCachedElt).toBeVisible();
+  await expect(isrElt).toBeVisible();
+
+  let initialFullyCachedText = await fullyCachedElt.textContent();
+  let initialIsrText = await isrElt.textContent();
+
+  // We have to force reload until ISR has triggered at least once, otherwise the test will be flakey
+
+  let isrText = initialIsrText;
+
+  while (isrText === initialIsrText) {
+    await page.reload();
+    isrElt = page.getByTestId("isr");
+    fullyCachedElt = page.getByTestId("fullyCached");
+    await expect(isrElt).toBeVisible();
+    isrText = await isrElt.textContent();
+    await expect(fullyCachedElt).toBeVisible();
+    initialFullyCachedText = await fullyCachedElt.textContent();
+    await page.waitForTimeout(1000);
+  }
+  initialIsrText = isrText;
+
+  do {
+    await page.reload();
+    fullyCachedElt = page.getByTestId("fullyCached");
+    isrElt = page.getByTestId("isr");
+    await expect(fullyCachedElt).toBeVisible();
+    await expect(isrElt).toBeVisible();
+    isrText = await isrElt.textContent();
+    await page.waitForTimeout(1000);
+  } while (isrText === initialIsrText);
+  const fullyCachedText = await fullyCachedElt.textContent();
+  expect(fullyCachedText).toEqual(initialFullyCachedText);
 });
