@@ -39,7 +39,9 @@ export function openNextEdgePlugins({
   isInCloudflare,
 }: IPluginSettings): Plugin {
   const entryFiles =
-    middlewareInfo?.files.map((file: string) => path.join(nextDir, file)) ?? [];
+    middlewareInfo?.files.map((file: string) =>
+      path.join(nextDir, file).replace(/\\/g, "/"),
+    ) ?? [];
   const routes = middlewareInfo
     ? [
         {
