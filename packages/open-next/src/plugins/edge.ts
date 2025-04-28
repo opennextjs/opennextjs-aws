@@ -19,6 +19,7 @@ import {
   loadRoutesManifest,
 } from "../adapters/config/util.js";
 import logger from "../logger.js";
+import { normalizePath } from "../utils/normalize-path.js";
 import { getCrossPlatformPathRegex } from "../utils/regex.js";
 
 export interface IPluginSettings {
@@ -40,7 +41,7 @@ export function openNextEdgePlugins({
 }: IPluginSettings): Plugin {
   const entryFiles =
     middlewareInfo?.files.map((file: string) =>
-      path.join(nextDir, file).replace(/\\/g, "/"),
+      normalizePath(path.join(nextDir, file)),
     ) ?? [];
   const routes = middlewareInfo
     ? [
