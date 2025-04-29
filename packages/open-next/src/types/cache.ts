@@ -98,7 +98,7 @@ export type TagCacheMetaFile = {
   revalidatedAt: { N: string };
 };
 
-// Cache context since https://github.com/vercel/next.js/pull/76207
+// Cache context since vercel/next.js#76207
 interface SetIncrementalFetchCacheContext {
   fetchCache: true;
   fetchUrl?: string;
@@ -124,14 +124,14 @@ interface SetIncrementalResponseCacheContext {
   isFallback?: boolean;
 }
 
-// Before #76207 revalidate was passed this way
+// Before vercel/next.js#76207 revalidate was passed this way
 interface SetIncrementalCacheContext {
   revalidate?: number | false;
   isRoutePPREnabled?: boolean;
   isFallback?: boolean;
 }
 
-// Before https://github.com/vercel/next.js/pull/53321 context on set was just the revalidate
+// Before vercel/next.js#53321 context on set was just the revalidate
 type OldSetIncrementalCacheContext = number | false | undefined;
 
 export type IncrementalCacheContext =
