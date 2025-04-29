@@ -7,7 +7,7 @@ import * as buildHelper from "./helper.js";
  *
  * @param options Build options.
  * @param format Output format.
- * @returns The path to the compiled file.
+ * @returns An object containing the paths to the compiled cache and composable cache files.
  */
 export function compileCache(
   options: buildHelper.BuildOptions,
@@ -15,7 +15,7 @@ export function compileCache(
 ) {
   const { config } = options;
   const ext = format === "cjs" ? "cjs" : "mjs";
-  const outFile = path.join(options.buildDir, `cache.${ext}`);
+  const compiledCacheFile = path.join(options.buildDir, `cache.${ext}`);
 
   const isAfter15 = buildHelper.compareSemver(
     options.nextVersion,
@@ -23,11 +23,12 @@ export function compileCache(
     "15.0.0",
   );
 
+  // Normal cache
   buildHelper.esbuildSync(
     {
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
       entryPoints: [path.join(options.openNextDistDir, "adapters", "cache.js")],
-      outfile: outFile,
+      outfile: compiledCacheFile,
       target: ["node18"],
       format,
       banner: {
@@ -44,5 +45,39 @@ export function compileCache(
     },
     options,
   );
-  return outFile;
+
+  const compiledComposableCacheFile = path.join(
+    options.buildDir,
+    `composable-cache.${ext}`,
+  );
+
+  // Composable cache
+  buildHelper.esbuildSync(
+    {
+      external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
+      entryPoints: [
+        path.join(options.openNextDistDir, "adapters", "composable-cache.js"),
+      ],
+      outfile: compiledComposableCacheFile,
+      target: ["node18"],
+      format,
+      banner: {
+        js: [
+          `globalThis.disableIncrementalCache = ${
+            config.dangerous?.disableIncrementalCache ?? false
+          };`,
+          `globalThis.disableDynamoDBCache = ${
+            config.dangerous?.disableTagCache ?? false
+          };`,
+          `globalThis.isNextAfter15 = ${isAfter15};`,
+        ].join(""),
+      },
+    },
+    options,
+  );
+
+  return {
+    cache: compiledCacheFile,
+    composableCache: compiledComposableCacheFile,
+  };
 }

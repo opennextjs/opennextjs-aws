@@ -28,7 +28,7 @@ export async function hasBeenRevalidated(
   return _lastModified === -1;
 }
 
-export function getTagsFromValue(value?: CacheValue<false>) {
+export function getTagsFromValue(value?: CacheValue<"cache">) {
   if (!value) {
     return [];
   }

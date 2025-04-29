@@ -28,6 +28,7 @@ import {
   patchFetchCacheSetMissingWaitUntil,
   patchNextServer,
   patchUnstableCacheForISR,
+  patchUseCacheForISR,
 } from "./patch/patches/index.js";
 
 interface CodeCustomization {
@@ -147,9 +148,15 @@ async function generateBundle(
   fs.mkdirSync(outPackagePath, { recursive: true });
 
   const ext = fnOptions.runtime === "deno" ? "mjs" : "cjs";
+  // Normal cache
   fs.copyFileSync(
     path.join(options.buildDir, `cache.${ext}`),
     path.join(outPackagePath, "cache.cjs"),
+  );
+  // Composable cache
+  fs.copyFileSync(
+    path.join(options.buildDir, `composable-cache.${ext}`),
+    path.join(outPackagePath, "composable-cache.cjs"),
   );
 
   if (fnOptions.runtime === "deno") {
@@ -206,6 +213,7 @@ async function generateBundle(
     patchNextServer,
     patchEnvVars,
     patchBackgroundRevalidation,
+    patchUseCacheForISR,
     ...additionalCodePatches,
   ]);
 
@@ -237,6 +245,12 @@ async function generateBundle(
     "14.2",
   );
 
+  const isAfter152 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "15.2.0",
+  );
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const updater = new ContentUpdater(options);
@@ -265,6 +279,7 @@ async function generateBundle(
         ...(isAfter141
           ? ["experimentalIncrementalCacheHandler"]
           : ["stableIncrementalCache"]),
+        ...(isAfter152 ? [] : ["composableCache"]),
       ],
     }),
 

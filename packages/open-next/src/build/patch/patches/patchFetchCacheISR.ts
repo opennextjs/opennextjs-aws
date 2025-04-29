@@ -78,6 +78,29 @@ fix:
   ($STORE_OR_CACHE.isOnDemandRevalidate && !globalThis.__openNextAls?.getStore()?.isISRRevalidation)
 `;
 
+export const useCacheRule = `
+rule:
+  kind: member_expression
+  pattern: $STORE_OR_CACHE.isOnDemandRevalidate
+  inside:
+    kind: binary_expression
+    has: 
+      kind: member_expression
+      pattern: $STORE_OR_CACHE.isDraftMode
+    inside:
+      kind: if_statement
+      stopBy: end
+      has: 
+        kind: return_statement
+        any:
+          - has:
+              kind: 'true'
+          - has:
+              regex: '!0'
+        stopBy: end
+fix:
+  '($STORE_OR_CACHE.isOnDemandRevalidate && !globalThis.__openNextAls?.getStore()?.isISRRevalidation)'`;
+
 export const patchFetchCacheForISR: CodePatcher = {
   name: "patch-fetch-cache-for-isr",
   patches: [
@@ -107,6 +130,23 @@ export const patchUnstableCacheForISR: CodePatcher = {
         ),
         contentFilter: /\.isOnDemandRevalidate/,
         patchCode: createPatchCode(unstable_cacheRule, Lang.JavaScript),
+      },
+    },
+  ],
+};
+
+export const patchUseCacheForISR: CodePatcher = {
+  name: "patch-use-cache-for-isr",
+  patches: [
+    {
+      versions: ">=15.3.0",
+      field: {
+        pathFilter: getCrossPlatformPathRegex(
+          String.raw`(server/chunks/.*\.js|\.runtime\..*\.js|use-cache/use-cache-wrapper\.js)$`,
+          { escape: false },
+        ),
+        contentFilter: /\.isOnDemandRevalidate/,
+        patchCode: createPatchCode(useCacheRule, Lang.JavaScript),
       },
     },
   ],
