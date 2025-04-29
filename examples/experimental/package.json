@@ -1,0 +1,24 @@
+{
+  "name": "experimental",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "openbuild": "node ../../packages/open-next/dist/index.js build",
+    "dev": "next dev --turbopack --port 3004",
+    "build": "next build",
+    "start": "next start --port 3004",
+    "lint": "next lint",
+    "clean": "rm -rf .turbo node_modules .next .open-next"
+  },
+  "dependencies": {
+    "next": "15.4.0-canary.14",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
+  }
+}
