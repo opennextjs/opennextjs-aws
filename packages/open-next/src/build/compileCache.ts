@@ -7,7 +7,7 @@ import * as buildHelper from "./helper.js";
  *
  * @param options Build options.
  * @param format Output format.
- * @returns The path to the compiled file.
+ * @returns An object containing the paths to the compiled cache and composable cache files.
  */
 export function compileCache(
   options: buildHelper.BuildOptions,
@@ -16,10 +16,6 @@ export function compileCache(
   const { config } = options;
   const ext = format === "cjs" ? "cjs" : "mjs";
   const compiledCacheFile = path.join(options.buildDir, `cache.${ext}`);
-  const compiledComposableCacheFile = path.join(
-    options.buildDir,
-    `composable-cache.${ext}`,
-  );
 
   const isAfter15 = buildHelper.compareSemver(
     options.nextVersion,
@@ -48,6 +44,11 @@ export function compileCache(
       },
     },
     options,
+  );
+
+  const compiledComposableCacheFile = path.join(
+    options.buildDir,
+    `composable-cache.${ext}`,
   );
 
   // Composable cache

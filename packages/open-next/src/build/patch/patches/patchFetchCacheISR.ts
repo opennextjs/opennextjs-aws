@@ -142,7 +142,7 @@ export const patchUseCacheForISR: CodePatcher = {
       versions: ">=15.3.0",
       field: {
         pathFilter: getCrossPlatformPathRegex(
-          String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|use-cache/use-cache-wrapper\.js)$`,
+          String.raw`(server/chunks/.*\.js|\.runtime\..*\.js|use-cache/use-cache-wrapper\.js)$`,
           { escape: false },
         ),
         contentFilter: /\.isOnDemandRevalidate/,

@@ -9,7 +9,7 @@ export default {
         cacheKey,
         "composable",
       );
-      if (!result || !result.value?.value) {
+      if (!result?.value?.value) {
         return undefined;
       }
 
