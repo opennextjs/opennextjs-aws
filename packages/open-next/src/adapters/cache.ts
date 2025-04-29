@@ -207,6 +207,7 @@ export default class Cache {
       if (data === null || data === undefined) {
         await globalThis.incrementalCache.delete(key);
       } else {
+        const revalidate = this.extractRevalidateForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
@@ -224,6 +225,7 @@ export default class Cache {
                   status,
                   headers,
                 },
+                revalidate,
               },
               false,
             );
@@ -244,6 +246,7 @@ export default class Cache {
                     status,
                     headers,
                   },
+                  revalidate,
                 },
                 false,
               );
@@ -254,6 +257,7 @@ export default class Cache {
                   type: "page",
                   html,
                   json: pageData,
+                  revalidate,
                 },
                 false,
               );
@@ -272,6 +276,7 @@ export default class Cache {
                   status,
                   headers,
                 },
+                revalidate,
               },
               false,
             );
@@ -286,6 +291,7 @@ export default class Cache {
               {
                 type: "redirect",
                 props: data.props,
+                revalidate,
               },
               false,
             );
@@ -424,7 +430,8 @@ export default class Cache {
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
     const derivedTags: string[] =
       data?.kind === "FETCH"
-        ? (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
+        ? //@ts-expect-error - On older versions of next, ctx was a number, but for these cases we use data?.data?.tags
+          (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
         : data?.kind === "PAGE"
           ? (data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
           : [];
@@ -445,5 +452,23 @@ export default class Cache {
         })),
       );
     }
+  }
+
+  private extractRevalidateForSet(
+    ctx?: IncrementalCacheContext,
+  ): number | false | undefined {
+    if (ctx === undefined) {
+      return undefined;
+    }
+    if (typeof ctx === "number" || ctx === false) {
+      return ctx;
+    }
+    if ("revalidate" in ctx) {
+      return ctx.revalidate;
+    }
+    if ("cacheControl" in ctx) {
+      return ctx.cacheControl?.revalidate;
+    }
+    return undefined;
   }
 }
