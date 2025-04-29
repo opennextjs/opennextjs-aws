@@ -1,13 +1,10 @@
+import { setTimeout } from "node:timers/promises";
 import { headers } from "next/headers";
 
 export async function DynamicComponent() {
   const _headers = await headers();
   // Simulate a delay to mimic server-side calls
-  const date = await new Promise((resolve) =>
-    setTimeout(() => {
-      resolve(new Date().toString());
-    }, 1000),
-  );
+  await setTimeout(1000, new Date().toString());
   return (
     <div>
       <h1>Dynamic Component</h1>
