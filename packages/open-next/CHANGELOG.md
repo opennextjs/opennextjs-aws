@@ -1,5 +1,45 @@
 # open-next
 
+## 3.6.0
+
+### Minor Changes
+
+- [#843](https://github.com/opennextjs/opennextjs-aws/pull/843) [`64ee6845dd38d8b543ecbe1cda807ae1f9a37a16`](https://github.com/opennextjs/opennextjs-aws/commit/64ee6845dd38d8b543ecbe1cda807ae1f9a37a16) Thanks [@conico974](https://github.com/conico974)! - Introduce support for the composable cache
+
+  BREAKING CHANGE: The interface for the Incremental cache has changed. The new interface use a Cache type instead of a boolean to distinguish between the different types of caches. It also includes a new Cache type for the composable cache. The new interface is as follows:
+
+  ```ts
+  export type CacheEntryType = "cache" | "fetch" | "composable";
+
+  export type IncrementalCache = {
+    get<CacheType extends CacheEntryType = "cache">(
+      key: string,
+      cacheType?: CacheType
+    ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
+    set<CacheType extends CacheEntryType = "cache">(
+      key: string,
+      value: CacheValue<CacheType>,
+      isFetch?: CacheType
+    ): Promise<void>;
+    delete(key: string): Promise<void>;
+    name: string;
+  };
+  ```
+
+  NextModeTagCache also get a new function `getLastRevalidated` used for the composable cache:
+
+  ```ts
+    getLastRevalidated(tags: string[]): Promise<number>;
+  ```
+
+### Patch Changes
+
+- [#844](https://github.com/opennextjs/opennextjs-aws/pull/844) [`1ed738fed4184fe1f509c17d87239a6ec89cd014`](https://github.com/opennextjs/opennextjs-aws/commit/1ed738fed4184fe1f509c17d87239a6ec89cd014) Thanks [@conico974](https://github.com/conico974)! - Fix middleware search params with multiple values
+
+- [#833](https://github.com/opennextjs/opennextjs-aws/pull/833) [`3b979a2c18f2cf3f930f89587158fda29645fbbc`](https://github.com/opennextjs/opennextjs-aws/commit/3b979a2c18f2cf3f930f89587158fda29645fbbc) Thanks [@conico974](https://github.com/conico974)! - pass revalidate for ISR/SSG cache
+
+- [#839](https://github.com/opennextjs/opennextjs-aws/pull/839) [`de53c4d2458f22d056320b71bd28567b8ac6ec04`](https://github.com/opennextjs/opennextjs-aws/commit/de53c4d2458f22d056320b71bd28567b8ac6ec04) Thanks [@james-elicx](https://github.com/james-elicx)! - fix edge middleware path on windows
+
 ## 3.5.8
 
 ### Patch Changes
