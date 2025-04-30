@@ -5,5 +5,7 @@ test.describe("next/amp", () => {
     await page.goto("/amp");
     const timeago = await page.getByTestId("amp-timeago").textContent();
     expect(timeago).toBe("just now");
+    const htmlEl = page.locator("html");
+    await expect(htmlEl).toHaveAttribute("amp");
   });
 });
