@@ -27,6 +27,14 @@ export function middleware(request: NextRequest) {
     u.searchParams.set("a", "b");
     return NextResponse.rewrite(u);
   }
+  if (path === "/rewrite-multi-params") {
+    const u = new URL("/rewrite-destination", `${protocol}://${host}`);
+    u.searchParams.append("multi", "0");
+    u.searchParams.append("multi", "1");
+    u.searchParams.append("multi", "2");
+    u.searchParams.set("a", "b");
+    return NextResponse.rewrite(u);
+  }
   if (path === "/api/middleware") {
     return new NextResponse(JSON.stringify({ hello: "middleware" }), {
       status: 200,

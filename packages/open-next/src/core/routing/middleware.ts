@@ -15,6 +15,7 @@ import {
   getMiddlewareMatch,
   isExternal,
 } from "./util.js";
+import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
 
 const middlewareManifest = MiddlewareManifest;
 const functionsConfigManifest = FunctionsConfigManifest;
@@ -151,17 +152,16 @@ export async function handleMiddleware(
       isExternalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
+      // If we have a rewrite, search params from the rewrite URL should be used and override the original search params
 
-      // Reset the query params if the middleware is a rewrite
-      middlewareQueryString = middlewareQueryString.__nextDataReq
-        ? {
-            __nextDataReq: middlewareQueryString.__nextDataReq,
-          }
-        : {};
+      middlewareQueryString = getQueryFromSearchParams(
+        rewriteUrlObject.searchParams,
+      );
 
-      rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
-        middlewareQueryString[k] = v;
-      });
+      // We still need to add internal search params to the query string for pages router on older versions of Next.js
+      if ("__nextDataReq" in internalEvent.query) {
+        middlewareQueryString.__nextDataReq = internalEvent.query.__nextDataReq;
+      }
     }
   }
 
