@@ -9,6 +9,7 @@ import {
 import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
+import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
 import { localizePath } from "./i18n/index.js";
 import {
   convertBodyToReadableStream,
@@ -142,7 +143,7 @@ export async function handleMiddleware(
   // NOTE: the header was added to `req` from above
   const rewriteUrl = responseHeaders.get("x-middleware-rewrite");
   let isExternalRewrite = false;
-  let middlewareQueryString = internalEvent.query;
+  let middlewareQuery = internalEvent.query;
   let newUrl = internalEvent.url;
   if (rewriteUrl) {
     newUrl = rewriteUrl;
@@ -151,17 +152,14 @@ export async function handleMiddleware(
       isExternalRewrite = true;
     } else {
       const rewriteUrlObject = new URL(rewriteUrl);
+      // Search params from the rewritten URL override the original search params
 
-      // Reset the query params if the middleware is a rewrite
-      middlewareQueryString = middlewareQueryString.__nextDataReq
-        ? {
-            __nextDataReq: middlewareQueryString.__nextDataReq,
-          }
-        : {};
+      middlewareQuery = getQueryFromSearchParams(rewriteUrlObject.searchParams);
 
-      rewriteUrlObject.searchParams.forEach((v: string, k: string) => {
-        middlewareQueryString[k] = v;
-      });
+      // We still need to add internal search params to the query string for pages router on older versions of Next.js
+      if ("__nextDataReq" in internalEvent.query) {
+        middlewareQuery.__nextDataReq = internalEvent.query.__nextDataReq;
+      }
     }
   }
 
@@ -188,7 +186,7 @@ export async function handleMiddleware(
     headers: { ...internalEvent.headers, ...reqHeaders },
     body: internalEvent.body,
     method: internalEvent.method,
-    query: middlewareQueryString,
+    query: middlewareQuery,
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
     isExternalRewrite,
