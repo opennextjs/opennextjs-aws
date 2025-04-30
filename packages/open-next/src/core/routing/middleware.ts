@@ -9,13 +9,13 @@ import {
 import type { InternalEvent, InternalResult } from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
+import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
 import { localizePath } from "./i18n/index.js";
 import {
   convertBodyToReadableStream,
   getMiddlewareMatch,
   isExternal,
 } from "./util.js";
-import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
 
 const middlewareManifest = MiddlewareManifest;
 const functionsConfigManifest = FunctionsConfigManifest;
