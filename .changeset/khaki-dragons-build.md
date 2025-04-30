@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-Fix middleware search params with multiple value
+Fix middleware search params with multiple values
