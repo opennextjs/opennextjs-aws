@@ -1,4 +1,8 @@
-import { FullyCachedComponent, ISRComponent } from "@/components/cached";
+import {
+  FullyCachedComponent,
+  FullyCachedComponentWithTag,
+  ISRComponent,
+} from "@/components/cached";
 import { headers } from "next/headers";
 import { Suspense } from "react";
 
@@ -11,6 +15,9 @@ export default async function Page() {
       <p>{_headers.get("accept") ?? "No accept headers"}</p>
       <Suspense fallback={<p>Loading...</p>}>
         <FullyCachedComponent />
+      </Suspense>
+      <Suspense fallback={<p>Loading...</p>}>
+        <FullyCachedComponentWithTag />
       </Suspense>
       <Suspense fallback={<p>Loading...</p>}>
         <ISRComponent />
