@@ -92,6 +92,8 @@ export async function openNextHandler(
         delete headers[rawKey];
       }
 
+      delete overwrittenResponseHeaders["x-middleware-set-cookie"];
+
       if (
         "isExternalRewrite" in routingResult &&
         routingResult.isExternalRewrite === true

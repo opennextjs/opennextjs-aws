@@ -115,7 +115,6 @@ export async function handleMiddleware(
   // These are internal headers used by Next.js, we don't want to expose them to the client
   const filteredHeaders = [
     "x-middleware-override-headers",
-    "x-middleware-set-cookie",
     "x-middleware-next",
     "x-middleware-rewrite",
     // We need to drop `content-encoding` because it will be decoded
