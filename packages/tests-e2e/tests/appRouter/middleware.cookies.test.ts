@@ -21,4 +21,24 @@ test.describe("Middleware Cookies", () => {
 
     expect(await page.getByTestId("foo").textContent()).toBe("bar");
   });
+  test("should not expose internal Next headers in response", async ({
+    page,
+    context,
+  }) => {
+    const responsePromise = page.waitForResponse((response) =>
+      response.url().includes("/cookies"),
+    );
+
+    await page.goto("/cookies");
+
+    const response = await responsePromise;
+    const headers = response.headers();
+
+    const cookies = await context.cookies();
+    const fooCookie = cookies.find(({ name }) => name === "foo");
+    expect(fooCookie?.value).toBe("bar");
+
+    expect(headers).not.toHaveProperty("x-middleware-set-cookie");
+    expect(headers).not.toHaveProperty("x-middleware-next");
+  });
 });
