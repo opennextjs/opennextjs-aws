@@ -28,6 +28,11 @@ export function middleware(request: NextRequest) {
     const u = new URL("https://opennext.js.org/share.png");
     return NextResponse.rewrite(u);
   }
+  if (path === "/cookies") {
+    const res = NextResponse.next();
+    res.cookies.set("foo", "bar");
+    return res;
+  }
   const requestHeaders = new Headers(request.headers);
   // Setting the Request Headers, this should be available in RSC
   requestHeaders.set("request-header", "request-header");

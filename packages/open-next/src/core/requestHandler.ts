@@ -87,7 +87,11 @@ export async function openNextHandler(
           continue;
         }
         const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
-        overwrittenResponseHeaders[key] = value;
+        // We skip this header here since it is used by Next internally and we don't want it on the response headers.
+        // This header needs to be present in the request headers for processRequest, so cookies().get() from Next will work on initial render.
+        if (key !== "x-middleware-set-cookie") {
+          overwrittenResponseHeaders[key] = value;
+        }
         headers[key] = value;
         delete headers[rawKey];
       }
