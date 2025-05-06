@@ -39,6 +39,6 @@ test.describe("Middleware Rewrite", () => {
     await expect(el).toBeVisible();
     el = page.getByText("multi:", { exact: true });
     await expect(el).toBeVisible();
-    expect(el).toHaveText("multi:");
+    await expect(el).toHaveText("multi:");
   });
 });
