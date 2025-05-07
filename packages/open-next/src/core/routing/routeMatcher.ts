@@ -1,6 +1,6 @@
 import { AppPathRoutesManifest, RoutesManifest } from "config/index";
 import type { RouteDefinition } from "types/next-types";
-import type { RouteType } from "types/open-next";
+import type { ResolvedRoute, RouteType } from "types/open-next";
 
 // Add the locale prefix to the regex so we correctly match the rawPath
 const optionalLocalePrefixRegex = `^/(?:${RoutesManifest.locales.map((locale) => `${locale}/?`).join("|")})?`;
@@ -17,11 +17,6 @@ const optionalPrefix = optionalLocalePrefixRegex.replace(
   "^/",
   optionalBasepathPrefixRegex,
 );
-
-export type MatchedRoute = {
-  route: string;
-  type: RouteType;
-};
 
 function routeMatcher(routeDefinitions: RouteDefinition[]) {
   const regexp = routeDefinitions.map((route) => ({
@@ -40,7 +35,7 @@ function routeMatcher(routeDefinitions: RouteDefinition[]) {
     }
   }
 
-  return function matchRoute(path: string): MatchedRoute[] {
+  return function matchRoute(path: string): ResolvedRoute[] {
     const foundRoutes = regexp.filter((route) => route.regexp.test(path));
 
     return foundRoutes.map((foundRoute) => {

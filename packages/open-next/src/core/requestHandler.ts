@@ -221,55 +221,73 @@ async function processRequest(
   // https://github.com/dougmoscrop/serverless-http/issues/227
   delete req.body;
 
+  // Here we try to apply as much request metadata as possible
+  // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-utils/resolve-routes.ts
+  // and `router-server` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-server.ts
+  const initialURL = new URL(routingResult.initialURL);
+  let invokeStatus: number | undefined;
+  if (routingResult.internalEvent.rawPath === "/500") {
+    invokeStatus = 500;
+  } else if (routingResult.internalEvent.rawPath === "/404") {
+    invokeStatus = 404;
+  }
+  const requestMetadata = {
+    isNextDataReq: routingResult.internalEvent.query.__nextDataReq === "1",
+    initURL: routingResult.initialURL,
+    initQuery: convertToQuery(initialURL.search),
+    initProtocol: initialURL.protocol,
+    defaultLocale: NextConfig.i18n?.defaultLocale,
+    locale: routingResult.locale,
+    middlewareInvoke: false,
+    // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
+    invokePath: routingResult.internalEvent.rawPath,
+    invokeQuery: routingResult.internalEvent.query,
+    // invokeStatus is only used for error pages
+    invokeStatus,
+  };
+
   try {
     //#override applyNextjsPrebundledReact
     setNextjsPrebundledReact(routingResult.internalEvent.rawPath);
     //#endOverride
 
-    // Here we try to apply as much request metadata as possible
-    // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-utils/resolve-routes.ts
-    // and `router-server` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-server.ts
-    const initialURL = new URL(routingResult.initialURL);
-    let invokeStatus: number | undefined;
-    if (routingResult.internalEvent.rawPath === "/500") {
-      invokeStatus = 500;
-    } else if (routingResult.internalEvent.rawPath === "/404") {
-      invokeStatus = 404;
-    }
-    const requestMetadata = {
-      isNextDataReq: routingResult.internalEvent.query.__nextDataReq === "1",
-      initURL: routingResult.initialURL,
-      initQuery: convertToQuery(initialURL.search),
-      initProtocol: initialURL.protocol,
-      defaultLocale: NextConfig.i18n?.defaultLocale,
-      locale: routingResult.locale,
-      middlewareInvoke: false,
-      // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
-      invokePath: routingResult.internalEvent.rawPath,
-      invokeQuery: routingResult.internalEvent.query,
-      // invokeStatus is only used for error pages
-      invokeStatus,
-    };
     // Next Server
     await requestHandler(requestMetadata)(req, res);
   } catch (e: any) {
     // This might fail when using bundled next, importing won't do the trick either
     if (e.constructor.name === "NoFallbackError") {
-      // Do we need to handle _not-found
-      // Ideally this should almost never get triggered and be intercepted by the routing handler
-      // We try only once to render another route if there is one
-      if (routingResult.resolvedRoutes.length > 1) {
-        try {
-          await requestHandler({
-            ...routingResult,
-            invokeOutput: routingResult.resolvedRoutes[1].route,
-          })(req, res);
-        } catch (e) {
-          error("NextJS request failed.", e);
-          await tryRenderError("500", res, routingResult.internalEvent);
-        }
-      }
-      await tryRenderError("404", res, routingResult.internalEvent);
+      await handleNoFallbackError(req, res, routingResult, requestMetadata);
+    } else {
+      error("NextJS request failed.", e);
+      await tryRenderError("500", res, routingResult.internalEvent);
+    }
+  }
+}
+
+async function handleNoFallbackError(
+  req: IncomingMessage,
+  res: OpenNextNodeResponse,
+  routingResult: RoutingResult,
+  metadata: Record<string, unknown>,
+  index = 1,
+) {
+  if (index >= 5) {
+    await tryRenderError("500", res, routingResult.internalEvent);
+    return;
+  }
+  if (index >= routingResult.resolvedRoutes.length) {
+    await tryRenderError("404", res, routingResult.internalEvent);
+    return;
+  }
+  try {
+    await requestHandler({
+      ...routingResult,
+      invokeOutput: routingResult.resolvedRoutes[index].route,
+      ...metadata,
+    })(req, res);
+  } catch (e: any) {
+    if (e.constructor.name === "NoFallbackError") {
+      await handleNoFallbackError(req, res, routingResult, metadata, index + 1);
     } else {
       error("NextJS request failed.", e);
       await tryRenderError("500", res, routingResult.internalEvent);

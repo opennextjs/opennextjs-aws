@@ -406,9 +406,13 @@ export function handleFallbackFalse(
     locales?.includes(rawPath.split("/")[1]) ||
     // If we don't use locales, we don't need to add the default locale
     locales === undefined;
-  const localizedPath = routesAlreadyHaveLocale
+  let localizedPath = routesAlreadyHaveLocale
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
+  // We need to remove the trailing slash if it exists
+  if (NextConfig.trailingSlash && localizedPath.endsWith("/")) {
+    localizedPath = localizedPath.slice(0, -1);
+  }
   const matchedStaticRoute = staticRouteMatcher(localizedPath);
   const prerenderedFallbackRoutesName = prerenderedFallbackRoutes.map(
     ([name]) => name,
