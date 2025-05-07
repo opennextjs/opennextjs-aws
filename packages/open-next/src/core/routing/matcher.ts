@@ -22,6 +22,7 @@ import {
   isExternal,
   unescapeRegex,
 } from "./util";
+import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 
 const routeHasMatcher =
   (
@@ -393,12 +394,13 @@ export function handleFallbackFalse(
 ): { event: InternalEvent; isISR: boolean } {
   const { rawPath } = internalEvent;
   const { dynamicRoutes, routes } = prerenderManifest;
-  const routeFallback = Object.entries(dynamicRoutes)
-    .filter(([, { fallback }]) => fallback === false)
-    .some(([, { routeRegex }]) => {
-      const routeRegexExp = new RegExp(routeRegex);
-      return routeRegexExp.test(rawPath);
-    });
+  const prerenderedFallbackRoutes = Object.entries(dynamicRoutes).filter(
+    ([, { fallback }]) => fallback === false,
+  );
+  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) => {
+    const routeRegexExp = new RegExp(routeRegex);
+    return routeRegexExp.test(rawPath);
+  });
   const locales = NextConfig.i18n?.locales;
   const routesAlreadyHaveLocale =
     locales?.includes(rawPath.split("/")[1]) ||
@@ -407,8 +409,20 @@ export function handleFallbackFalse(
   const localizedPath = routesAlreadyHaveLocale
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
+  const matchedStaticRoute = staticRouteMatcher(localizedPath);
+  const prerenderedFallbackRoutesName = prerenderedFallbackRoutes.map(
+    ([name]) => name,
+  );
+  const matchedDynamicRoute = dynamicRouteMatcher(localizedPath).filter(
+    ({ route }) => !prerenderedFallbackRoutesName.includes(route),
+  );
   const isPregenerated = Object.keys(routes).includes(localizedPath);
-  if (routeFallback && !isPregenerated) {
+  if (
+    routeFallback &&
+    !isPregenerated &&
+    matchedStaticRoute.length === 0 &&
+    matchedDynamicRoute.length === 0
+  ) {
     return {
       event: {
         ...internalEvent,

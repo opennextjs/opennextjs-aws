@@ -18,6 +18,11 @@ const optionalPrefix = optionalLocalePrefixRegex.replace(
   optionalBasepathPrefixRegex,
 );
 
+export type MatchedRoute = {
+  route: string;
+  type: RouteType;
+};
+
 function routeMatcher(routeDefinitions: RouteDefinition[]) {
   const regexp = routeDefinitions.map((route) => ({
     page: route.page,
@@ -35,7 +40,7 @@ function routeMatcher(routeDefinitions: RouteDefinition[]) {
     }
   }
 
-  return function matchRoute(path: string) {
+  return function matchRoute(path: string): MatchedRoute[] {
     const foundRoutes = regexp.filter((route) => route.regexp.test(path));
 
     return foundRoutes.map((foundRoute) => {
