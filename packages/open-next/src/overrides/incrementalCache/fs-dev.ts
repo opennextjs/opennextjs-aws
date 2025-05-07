@@ -2,10 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type { IncrementalCache } from "types/overrides.js";
-import { getOutputDir } from "utils/normalize-path";
+import { getMonorepoRelativePath } from "utils/normalize-path";
 
 const buildId = process.env.NEXT_BUILD_ID;
-const basePath = path.join(getOutputDir(), `cache/${buildId}`);
+const basePath = path.join(getMonorepoRelativePath(), `cache/${buildId}`);
 
 const getCacheKey = (key: string) => {
   return path.join(basePath, `${key}.cache`);

@@ -3,15 +3,15 @@ import express from "express";
 
 import type { StreamCreator } from "types/open-next.js";
 import type { WrapperHandler } from "types/overrides.js";
-import { getOutputDir } from "utils/normalize-path";
+import { getMonorepoRelativePath } from "utils/normalize-path";
 
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static(path.join(getOutputDir(), "assets")));
+  app.use(express.static(path.join(getMonorepoRelativePath(), "assets")));
 
   const imageHandlerPath = path.join(
-    getOutputDir(),
+    getMonorepoRelativePath(),
     "image-optimization-function/index.mjs",
   );
 
