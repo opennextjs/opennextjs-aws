@@ -13,6 +13,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
 import { handleLocaleRedirect, localizePath } from "./i18n";
+import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 import {
   constructNextUrl,
   convertFromQueryString,
@@ -22,7 +23,6 @@ import {
   isExternal,
   unescapeRegex,
 } from "./util";
-import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 
 const routeHasMatcher =
   (
