@@ -11,5 +11,6 @@ export function getOutputDir() {
       .filter(Boolean)
       .map(() => "..")
       .join("/"),
+    "../../",
   );
 }

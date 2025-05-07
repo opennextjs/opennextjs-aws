@@ -8,11 +8,11 @@ import { getOutputDir } from "utils/normalize-path";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static(path.join(getOutputDir(), "../../assets")));
+  app.use(express.static(path.join(getOutputDir(), "assets")));
 
   const imageHandlerPath = path.join(
     getOutputDir(),
-    "../../image-optimization-function/index.mjs",
+    "image-optimization-function/index.mjs",
   );
 
   const imageHandler = await import(imageHandlerPath).then((m) => m.handler);

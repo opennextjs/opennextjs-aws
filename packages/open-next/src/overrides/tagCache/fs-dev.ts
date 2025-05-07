@@ -6,7 +6,7 @@ import { getOutputDir } from "utils/normalize-path";
 
 const tagFile = path.join(
   getOutputDir(),
-  "../../dynamodb-provider/dynamodb-cache.json",
+  "dynamodb-provider/dynamodb-cache.json",
 );
 const tagContent = fs.readFileSync(tagFile, "utf-8");
 
