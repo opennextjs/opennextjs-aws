@@ -256,7 +256,19 @@ async function processRequest(
     // This might fail when using bundled next, importing won't do the trick either
     if (e.constructor.name === "NoFallbackError") {
       // Do we need to handle _not-found
-      // Ideally this should never get triggered and be intercepted by the routing handler
+      // Ideally this should almost never get triggered and be intercepted by the routing handler
+      // We try only once to render another route if there is one
+      if (routingResult.resolvedRoutes.length > 1) {
+        try {
+          await requestHandler({
+            ...routingResult,
+            invokeOutput: routingResult.resolvedRoutes[1].route,
+          })(req, res);
+        } catch (e) {
+          error("NextJS request failed.", e);
+          await tryRenderError("500", res, routingResult.internalEvent);
+        }
+      }
       await tryRenderError("404", res, routingResult.internalEvent);
     } else {
       error("NextJS request failed.", e);
