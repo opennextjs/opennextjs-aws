@@ -303,7 +303,7 @@ async function generateBundle(
       banner: {
         js: [
           needsGlobalOutputDir(options)
-            ? `globalThis.outputDir = "${outputDir}"`
+            ? `globalThis.outputDir = "${outputDir}";`
             : "",
           "import process from 'node:process';",
           "import { Buffer } from 'node:buffer';",
