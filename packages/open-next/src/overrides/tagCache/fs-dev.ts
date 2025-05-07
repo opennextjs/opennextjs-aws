@@ -4,8 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 const tagFile = path.join(
-  globalThis.outputDir,
-  "dynamodb-provider/dynamodb-cache.json",
+  globalThis.monorepoPackagePath
+    .split("/")
+    .filter(Boolean)
+    .map(() => "../")
+    .join(""),
+  "../../dynamodb-provider/dynamodb-cache.json",
 );
 const tagContent = fs.readFileSync(tagFile, "utf-8");
 

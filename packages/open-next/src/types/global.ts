@@ -222,7 +222,8 @@ declare global {
   ) => Promise<void>;
 
   /**
-   * This is for dev overrides that needs the output directory.
+   * This is the relative package path of the monorepo. It will be an empty string "" in normal repos.
+   * ex. `packages/web`
    */
-  var outputDir: string;
+  var monorepoPackagePath: string;
 }
