@@ -1,14 +1,11 @@
-import type { TagCache } from "types/overrides";
-
 import fs from "node:fs";
 import path from "node:path";
 
+import type { TagCache } from "types/overrides";
+import { getOutputDir } from "utils/normalize-path";
+
 const tagFile = path.join(
-  globalThis.monorepoPackagePath
-    .split("/")
-    .filter(Boolean)
-    .map(() => "../")
-    .join(""),
+  getOutputDir(),
   "../../dynamodb-provider/dynamodb-cache.json",
 );
 const tagContent = fs.readFileSync(tagFile, "utf-8");

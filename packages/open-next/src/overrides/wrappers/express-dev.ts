@@ -3,24 +3,16 @@ import express from "express";
 
 import type { StreamCreator } from "types/open-next.js";
 import type { WrapperHandler } from "types/overrides.js";
-
-const outputDir = path.join(
-  globalThis.monorepoPackagePath
-    .split("/")
-    .filter(Boolean)
-    .map(() => "../")
-    .join(""),
-  "../../",
-);
+import { getOutputDir } from "utils/normalize-path";
 
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static(path.join(outputDir, "assets")));
+  app.use(express.static(path.join(getOutputDir(), "../../assets")));
 
   const imageHandlerPath = path.join(
-    outputDir,
-    "image-optimization-function/index.mjs",
+    getOutputDir(),
+    "../../image-optimization-function/index.mjs",
   );
 
   const imageHandler = await import(imageHandlerPath).then((m) => m.handler);
