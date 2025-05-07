@@ -222,8 +222,8 @@ async function processRequest(
   delete req.body;
 
   // Here we try to apply as much request metadata as possible
-  // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-utils/resolve-routes.ts
-  // and `router-server` https://github.com/vercel/next.js/blob/canary/packages/next/src/server/lib/router-server.ts
+  // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-utils/resolve-routes.ts
+  // and `router-server` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-server.ts
   const initialURL = new URL(routingResult.initialURL);
   let invokeStatus: number | undefined;
   if (routingResult.internalEvent.rawPath === "/500") {
