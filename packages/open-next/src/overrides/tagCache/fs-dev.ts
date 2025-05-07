@@ -1,10 +1,12 @@
 import type { TagCache } from "types/overrides";
 
 import fs from "node:fs";
+import path from "node:path";
 
-// TODO: fix this for monorepo
-const tagFile = "../../dynamodb-provider/dynamodb-cache.json";
-
+const tagFile = path.join(
+  globalThis.outputDir,
+  "dynamodb-provider/dynamodb-cache.json",
+);
 const tagContent = fs.readFileSync(tagFile, "utf-8");
 
 let tags = JSON.parse(tagContent) as {

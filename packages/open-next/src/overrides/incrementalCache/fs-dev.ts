@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const buildId = process.env.NEXT_BUILD_ID;
-const basePath = path.resolve(process.cwd(), `../../cache/${buildId}`);
+const basePath = path.join(globalThis.outputDir, `cache/${buildId}`);
 
 const getCacheKey = (key: string) => {
   return path.join(basePath, `${key}.cache`);

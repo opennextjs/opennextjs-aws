@@ -302,7 +302,9 @@ async function generateBundle(
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
         js: [
-          `globalThis.monorepoPackagePath = "${packagePath}";`,
+          needsGlobalOutputDir(options)
+            ? `globalThis.outputDir = "${outputDir}"`
+            : "",
           "import process from 'node:process';",
           "import { Buffer } from 'node:buffer';",
           "import { createRequire as topLevelCreateRequire } from 'module';",
@@ -394,4 +396,14 @@ async function minifyServerBundle(outputDir: string) {
     compress_json: true,
     mangle: true,
   });
+}
+
+// Check if we need the outputDir in any dev override
+// Remember to update this if you add a new override that needs the outputDir
+function needsGlobalOutputDir(options: buildHelper.BuildOptions) {
+  return (
+    options.config.default?.override?.wrapper === "express-dev" ||
+    options.config.default.override?.incrementalCache === "fs-dev" ||
+    options.config.default.override?.tagCache === "fs-dev"
+  );
 }

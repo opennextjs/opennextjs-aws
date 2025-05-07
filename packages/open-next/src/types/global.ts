@@ -220,4 +220,9 @@ declare global {
   var __next_route_preloader: (
     stage: "waitUntil" | "start" | "warmerEvent" | "onDemand",
   ) => Promise<void>;
+
+  /**
+   * This is for dev overrides that needs the output directory.
+   */
+  var outputDir: string;
 }

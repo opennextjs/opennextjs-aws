@@ -1,3 +1,4 @@
+import path from "node:path";
 import express from "express";
 
 import type { StreamCreator } from "types/open-next.js";
@@ -6,9 +7,13 @@ import type { WrapperHandler } from "types/overrides.js";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static("../../assets"));
+  app.use(express.static(path.join(globalThis.outputDir, "assets")));
 
-  const imageHandlerPath = "../../image-optimization-function/index.mjs";
+  const imageHandlerPath = path.join(
+    globalThis.outputDir,
+    "image-optimization-function/index.mjs",
+  );
+
   const imageHandler = await import(imageHandlerPath).then((m) => m.handler);
 
   app.all("/_next/image", async (req, res) => {
