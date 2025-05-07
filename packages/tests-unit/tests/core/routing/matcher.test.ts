@@ -11,6 +11,66 @@ import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
+  AppPathRoutesManifest: {
+    "/api/app/route": "/api/app",
+    "/app/page": "/app",
+    "/catchAll/[...slug]/page": "/catchAll/[...slug]",
+  },
+  RoutesManifest: {
+    version: 3,
+    pages404: true,
+    caseSensitive: false,
+    basePath: "",
+    locales: [],
+    redirects: [],
+    headers: [],
+    routes: {
+      dynamic: [
+        {
+          page: "/catchAll/[...slug]",
+          regex: "^/catchAll/(.+?)(?:/)?$",
+          routeKeys: {
+            nxtPslug: "nxtPslug",
+          },
+          namedRegex: "^/catchAll/(?<nxtPslug>.+?)(?:/)?$",
+        },
+        {
+          page: "/page/catchAll/[...slug]",
+          regex: "^/page/catchAll/(.+?)(?:/)?$",
+          routeKeys: {
+            nxtPslug: "nxtPslug",
+          },
+          namedRegex: "^/page/catchAll/(?<nxtPslug>.+?)(?:/)?$",
+        },
+      ],
+      static: [
+        {
+          page: "/app",
+          regex: "^/app(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/app(?:/)?$",
+        },
+        {
+          page: "/api/app",
+          regex: "^/api/app(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/api/app(?:/)?$",
+        },
+        {
+          page: "/page",
+          regex: "^/page(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/page(?:/)?$",
+        },
+        {
+          page: "/page/catchAll/static",
+          regex: "^/page/catchAll/static(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/page/catchAll/static(?:/)?$",
+        },
+      ],
+    },
+  },
 }));
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
   localizePath: (event: InternalEvent) => event.rawPath,
