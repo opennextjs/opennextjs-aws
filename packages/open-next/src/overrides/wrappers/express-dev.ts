@@ -1,14 +1,20 @@
+import path from "node:path";
 import express from "express";
 
 import type { StreamCreator } from "types/open-next.js";
 import type { WrapperHandler } from "types/overrides.js";
+import { getMonorepoRelativePath } from "utils/normalize-path";
 
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static("../../assets"));
+  app.use(express.static(path.join(getMonorepoRelativePath(), "assets")));
 
-  const imageHandlerPath = "../../image-optimization-function/index.mjs";
+  const imageHandlerPath = path.join(
+    getMonorepoRelativePath(),
+    "image-optimization-function/index.mjs",
+  );
+
   const imageHandler = await import(imageHandlerPath).then((m) => m.handler);
 
   app.all("/_next/image", async (req, res) => {

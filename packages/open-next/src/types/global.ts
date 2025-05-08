@@ -220,4 +220,10 @@ declare global {
   var __next_route_preloader: (
     stage: "waitUntil" | "start" | "warmerEvent" | "onDemand",
   ) => Promise<void>;
+
+  /**
+   * This is the relative package path of the monorepo. It will be an empty string "" in normal repos.
+   * ex. `packages/web`
+   */
+  var monorepoPackagePath: string;
 }
