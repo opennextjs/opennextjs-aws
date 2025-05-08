@@ -146,22 +146,20 @@ export async function cacheInterceptor(
   }
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
-  // If empty path, it means we want index
-  if (localizedPath === "") {
-    localizedPath = "index";
-  }
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
   const isISR =
-    Object.keys(PrerenderManifest.routes).includes(localizedPath) ||
+    Object.keys(PrerenderManifest.routes).includes(localizedPath ?? "/") ||
     Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
       new RegExp(dr.routeRegex).test(localizedPath),
     );
   debug("isISR", isISR);
   if (isISR) {
     try {
-      const cachedData = await globalThis.incrementalCache.get(localizedPath);
+      const cachedData = await globalThis.incrementalCache.get(
+        localizedPath ?? "/index",
+      );
       debug("cached data in interceptor", cachedData);
 
       if (!cachedData?.value) {
