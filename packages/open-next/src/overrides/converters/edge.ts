@@ -78,7 +78,22 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
     }
     const headers = new Headers();
     for (const [key, value] of Object.entries(result.headers)) {
-      headers.set(key, Array.isArray(value) ? value.join(",") : value);
+      if (key === "set-cookie" && typeof value === "string") {
+        // If the value is a string, we need to parse it into an array
+        // This is the case for middleware direct result
+        const cookies = parseCookies(value);
+        for (const cookie of cookies) {
+          headers.append(key, cookie);
+        }
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          headers.append(key, v);
+        }
+      } else {
+        headers.set(key, value);
+      }
     }
 
     return new Response(result.body as ReadableStream, {
