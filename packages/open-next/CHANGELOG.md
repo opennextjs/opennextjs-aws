@@ -1,5 +1,21 @@
 # open-next
 
+## 3.6.1
+
+### Patch Changes
+
+- [#851](https://github.com/opennextjs/opennextjs-aws/pull/851) [`68a13a4d56e198629fe1d3ae6e6d4034f3a01c0c`](https://github.com/opennextjs/opennextjs-aws/commit/68a13a4d56e198629fe1d3ae6e6d4034f3a01c0c) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure cookies set in middleware are available on initial render when using `cookies().get()` from Next.js
+
+- [#860](https://github.com/opennextjs/opennextjs-aws/pull/860) [`2447024cb8f003164fe2ce856a89019e6d048d89`](https://github.com/opennextjs/opennextjs-aws/commit/2447024cb8f003164fe2ce856a89019e6d048d89) Thanks [@conico974](https://github.com/conico974)! - fix cache interceptor for index page
+
+- [#861](https://github.com/opennextjs/opennextjs-aws/pull/861) [`1b7889000ab8c740d42b54dae56f431b8eb86647`](https://github.com/opennextjs/opennextjs-aws/commit/1b7889000ab8c740d42b54dae56f431b8eb86647) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: make fs-dev imageLoader work in monorepo
+
+- [#858](https://github.com/opennextjs/opennextjs-aws/pull/858) [`f25c249407af542bd5ccc6078aecf5d7811c247b`](https://github.com/opennextjs/opennextjs-aws/commit/f25c249407af542bd5ccc6078aecf5d7811c247b) Thanks [@conico974](https://github.com/conico974)! - fix 404 with fallback false on dynamic route
+
+- [#859](https://github.com/opennextjs/opennextjs-aws/pull/859) [`d5d137f7595e6e5e1aa47fbe8dee371968e59402`](https://github.com/opennextjs/opennextjs-aws/commit/d5d137f7595e6e5e1aa47fbe8dee371968e59402) Thanks [@conico974](https://github.com/conico974)! - fix cookies for edge converters
+
+- [#857](https://github.com/opennextjs/opennextjs-aws/pull/857) [`c2da3a8df638b8facdb896e22538a143b3425006`](https://github.com/opennextjs/opennextjs-aws/commit/c2da3a8df638b8facdb896e22538a143b3425006) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: make dev overrides work in monorepo
+
 ## 3.6.0
 
 ### Minor Changes
