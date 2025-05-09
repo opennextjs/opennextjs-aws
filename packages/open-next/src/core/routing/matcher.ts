@@ -13,6 +13,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
 import { handleLocaleRedirect, localizePath } from "./i18n";
+import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 import {
   constructNextUrl,
   convertFromQueryString,
@@ -393,22 +394,39 @@ export function handleFallbackFalse(
 ): { event: InternalEvent; isISR: boolean } {
   const { rawPath } = internalEvent;
   const { dynamicRoutes, routes } = prerenderManifest;
-  const routeFallback = Object.entries(dynamicRoutes)
-    .filter(([, { fallback }]) => fallback === false)
-    .some(([, { routeRegex }]) => {
-      const routeRegexExp = new RegExp(routeRegex);
-      return routeRegexExp.test(rawPath);
-    });
+  const prerenderedFallbackRoutes = Object.entries(dynamicRoutes).filter(
+    ([, { fallback }]) => fallback === false,
+  );
+  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) => {
+    const routeRegexExp = new RegExp(routeRegex);
+    return routeRegexExp.test(rawPath);
+  });
   const locales = NextConfig.i18n?.locales;
   const routesAlreadyHaveLocale =
     locales?.includes(rawPath.split("/")[1]) ||
     // If we don't use locales, we don't need to add the default locale
     locales === undefined;
-  const localizedPath = routesAlreadyHaveLocale
+  let localizedPath = routesAlreadyHaveLocale
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
+  // We need to remove the trailing slash if it exists
+  if (NextConfig.trailingSlash && localizedPath.endsWith("/")) {
+    localizedPath = localizedPath.slice(0, -1);
+  }
+  const matchedStaticRoute = staticRouteMatcher(localizedPath);
+  const prerenderedFallbackRoutesName = prerenderedFallbackRoutes.map(
+    ([name]) => name,
+  );
+  const matchedDynamicRoute = dynamicRouteMatcher(localizedPath).filter(
+    ({ route }) => !prerenderedFallbackRoutesName.includes(route),
+  );
   const isPregenerated = Object.keys(routes).includes(localizedPath);
-  if (routeFallback && !isPregenerated) {
+  if (
+    routeFallback &&
+    !isPregenerated &&
+    matchedStaticRoute.length === 0 &&
+    matchedDynamicRoute.length === 0
+  ) {
     return {
       event: {
         ...internalEvent,
