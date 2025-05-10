@@ -9,9 +9,9 @@ import { printHeader } from "./build/utils.js";
 
 const command = process.argv[2];
 const stage = process.argv[3];
-const validCommand = 
-  command === "build" || 
-  command === "preview" || 
+const validCommand =
+  command === "build" ||
+  command === "preview" ||
   (command === "generate" && stage === "local");
 
 if (!validCommand) {
