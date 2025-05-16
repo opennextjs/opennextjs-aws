@@ -271,6 +271,17 @@ describe("getNextConfigHeaders", () => {
 });
 
 describe("handleRedirects", () => {
+  it("should redirect repeated slashes", () => {
+    const event = createEvent({
+      url: "https://on/api-route//foo",
+    });
+
+    const result = handleRedirects(event, []);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual("https://on/api-route/foo");
+  });
+
   it("should redirect trailing slash by default", () => {
     const event = createEvent({
       url: "https://on/api-route/",

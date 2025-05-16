@@ -1,7 +1,7 @@
 import path from "node:path";
 
 export function normalizePath(path: string) {
-  return path.replace(/\\/g, "/");
+  return path.replace(/\\/g, "/").replace(/\/\/+/g, "/");
 }
 
 export function getMonorepoRelativePath(relativePath = "../.."): string {
