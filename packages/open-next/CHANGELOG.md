@@ -1,5 +1,11 @@
 # open-next
 
+## 3.6.2
+
+### Patch Changes
+
+- [#864](https://github.com/opennextjs/opennextjs-aws/pull/864) [`daaf38f45e6aa5596fb4dfdb912aee254fcb94e3`](https://github.com/opennextjs/opennextjs-aws/commit/daaf38f45e6aa5596fb4dfdb912aee254fcb94e3) Thanks [@conico974](https://github.com/conico974)! - set process.env.NODE_ENV to production during edge config compilation
+
 ## 3.6.1
 
 ### Patch Changes
