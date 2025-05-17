@@ -263,6 +263,10 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
+// Normalizes repeated slashes in the path e.g. hello//world -> hello/world
+// or backslashes to forward slashes. This prevents requests such as //domain
+// from invoking the middleware with `request.url === "domain"`.
+// See: https://github.com/vercel/next.js/blob/3ecf087f10fdfba4426daa02b459387bc9c3c54f/packages/next/src/server/base-server.ts#L1016-L1020
 function handleRepeatedSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
