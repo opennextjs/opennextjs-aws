@@ -9,8 +9,8 @@ import type {
   RouteHas,
 } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
+import { normalizeRepeatedSlashes } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
-import { normalizeRepeatedSlashes } from "utils/normalize-path"
 
 import { debug } from "../../adapters/logger";
 import { handleLocaleRedirect, localizePath } from "./i18n";
