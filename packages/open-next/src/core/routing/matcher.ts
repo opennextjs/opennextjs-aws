@@ -9,6 +9,7 @@ import type {
   RouteHas,
 } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
+import { normalizeRepeatedSlashes } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
@@ -262,6 +263,25 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
+function handleRepeatedSlashRedirect(
+  event: InternalEvent,
+): false | InternalResult {
+  // Redirect `https://example.com//foo` to `https://example.com/foo`.
+  if (event.rawPath.match(/(\\|\/\/)/)) {
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: normalizeRepeatedSlashes(new URL(event.url)),
+      },
+      body: emptyReadableStream(),
+      isBase64Encoded: false,
+    };
+  }
+
+  return false;
+}
+
 function handleTrailingSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
@@ -326,6 +346,9 @@ export function handleRedirects(
   event: InternalEvent,
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
+  const repeatedSlashRedirect = handleRepeatedSlashRedirect(event);
+  if (repeatedSlashRedirect) return repeatedSlashRedirect;
+
   const trailingSlashRedirect = handleTrailingSlashRedirect(event);
   if (trailingSlashRedirect) return trailingSlashRedirect;
 
