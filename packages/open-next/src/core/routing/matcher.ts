@@ -10,7 +10,7 @@ import type {
 } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
-import { normalizePath } from "utils/normalize-path"
+import { normalizeRepeatedSlashes } from "utils/normalize-path"
 
 import { debug } from "../../adapters/logger";
 import { handleLocaleRedirect, localizePath } from "./i18n";
@@ -267,15 +267,12 @@ function handleRepeatedSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
   // Redirect `https://example.com//foo` to `https://example.com/foo`.
-  const url = new URL(event.url);
-  if (url.pathname.match(/(\\|\/\/)/)) {
+  if (event.rawPath.match(/(\\|\/\/)/)) {
     return {
       type: event.type,
       statusCode: 308,
       headers: {
-        Location: `${url.protocol}//${url.host}${normalizePath(url.pathname)}${
-          url.search
-        }`,
+        Location: normalizeRepeatedSlashes(new URL(event.url)),
       },
       body: emptyReadableStream(),
       isBase64Encoded: false,
