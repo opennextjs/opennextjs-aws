@@ -6,7 +6,7 @@ import type { Converter } from "types/overrides";
 import { extractHostFromHeaders, getQueryFromSearchParams } from "./utils.js";
 
 const converter: Converter = {
-  convertFrom: async (req: IncomingMessage) => {
+  convertFrom: async (req: IncomingMessage & { protocol?: string }) => {
     const body = await new Promise<Buffer>((resolve) => {
       const chunks: Uint8Array[] = [];
       req.on("data", (chunk) => {
@@ -25,9 +25,9 @@ const converter: Converter = {
         ])
         .filter(([key]) => key),
     );
+    // https://nodejs.org/api/http.html#messageurl
     const url = new URL(
-      req.url!.replace(/^\/\/+/, "/"),
-      `http://${extractHostFromHeaders(headers)}`,
+      `${req.protocol ? req.protocol : "http"}://${extractHostFromHeaders(headers)}${req.url}`,
     );
     const query = getQueryFromSearchParams(url.searchParams);
     return {
