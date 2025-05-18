@@ -25,7 +25,10 @@ const converter: Converter = {
         ])
         .filter(([key]) => key),
     );
-    const url = new URL(req.url!, `http://${extractHostFromHeaders(headers)}`);
+    const url = new URL(
+      req.url!.replace(/^\/\/+/, "/"),
+      `http://${extractHostFromHeaders(headers)}`,
+    );
     const query = getQueryFromSearchParams(url.searchParams);
     return {
       type: "core",
