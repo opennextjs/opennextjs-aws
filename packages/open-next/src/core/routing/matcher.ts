@@ -9,6 +9,7 @@ import type {
   RouteHas,
 } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
+import { normalizeRepeatedSlashes } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
@@ -262,6 +263,29 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
+// Normalizes repeated slashes in the path e.g. hello//world -> hello/world
+// or backslashes to forward slashes. This prevents requests such as //domain
+// from invoking the middleware with `request.url === "domain"`.
+// See: https://github.com/vercel/next.js/blob/3ecf087f10fdfba4426daa02b459387bc9c3c54f/packages/next/src/server/base-server.ts#L1016-L1020
+function handleRepeatedSlashRedirect(
+  event: InternalEvent,
+): false | InternalResult {
+  // Redirect `https://example.com//foo` to `https://example.com/foo`.
+  if (event.rawPath.match(/(\\|\/\/)/)) {
+    return {
+      type: event.type,
+      statusCode: 308,
+      headers: {
+        Location: normalizeRepeatedSlashes(new URL(event.url)),
+      },
+      body: emptyReadableStream(),
+      isBase64Encoded: false,
+    };
+  }
+
+  return false;
+}
+
 function handleTrailingSlashRedirect(
   event: InternalEvent,
 ): false | InternalResult {
@@ -326,6 +350,9 @@ export function handleRedirects(
   event: InternalEvent,
   redirects: RedirectDefinition[],
 ): InternalResult | undefined {
+  const repeatedSlashRedirect = handleRepeatedSlashRedirect(event);
+  if (repeatedSlashRedirect) return repeatedSlashRedirect;
+
   const trailingSlashRedirect = handleTrailingSlashRedirect(event);
   if (trailingSlashRedirect) return trailingSlashRedirect;
 
