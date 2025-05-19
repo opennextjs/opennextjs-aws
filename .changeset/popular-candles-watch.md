@@ -1,5 +1,5 @@
 ---
-"@opennextjs/aws": major
+"@opennextjs/aws": patch
 ---
 
-fix(middleware): copy wasm files for bundled middleware
+fix(middleware): copy wasm files for the external middleware

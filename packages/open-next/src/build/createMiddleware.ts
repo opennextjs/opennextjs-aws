@@ -7,7 +7,10 @@ import {
 } from "config/util.js";
 import logger from "../logger.js";
 import type { MiddlewareInfo } from "../types/next-types.js";
-import { buildEdgeBundle, copyMiddlewareResources } from "./edge/createEdgeBundle.js";
+import {
+  buildEdgeBundle,
+  copyMiddlewareResources,
+} from "./edge/createEdgeBundle.js";
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import {
@@ -51,10 +54,10 @@ export async function createMiddleware(
     }
   }
 
-  const outputPath = path.join(outputDir, "middleware");
-  copyMiddlewareResources(options, edgeMiddlewareInfo, outputPath);
-
   if (config.middleware?.external) {
+    const outputPath = path.join(outputDir, "middleware");
+    copyMiddlewareResources(options, edgeMiddlewareInfo, outputPath);
+
     fs.mkdirSync(outputPath, { recursive: true });
 
     // Copy open-next.config.mjs
