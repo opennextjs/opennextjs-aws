@@ -59,7 +59,7 @@ export function openNextEdgePlugins({
     setup(build) {
       logger.debug(chalk.blue("OpenNext Edge plugin"));
 
-      build.onResolve({ filter: /\.(mjs|wasm)$/g }, () => {
+      build.onResolve({ filter: /\.(mjs|wasm)$/ }, () => {
         return {
           external: true,
         };

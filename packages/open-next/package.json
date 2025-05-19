@@ -18,8 +18,8 @@
   },
   "exports": {
     "./*": {
-      "default": "./dist/*",
-      "types": "./dist/*.d.ts"
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*"
     }
   },
   "typesVersions": {
@@ -48,7 +48,7 @@
     "@tsconfig/node18": "^1.0.1",
     "aws4fetch": "^1.0.18",
     "chalk": "^5.3.0",
-    "esbuild": "0.19.2",
+    "esbuild": "catalog:",
     "express": "5.0.1",
     "path-to-regexp": "^6.3.0",
     "urlpattern-polyfill": "^10.0.0",
