@@ -129,6 +129,21 @@ async function generateResult(
     },
   };
 }
+
+/**
+ *
+ * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/shared/lib/router/utils/escape-path-delimiters.ts#L2-L10
+ */
+function escapePathDelimiters(
+  segment: string,
+  escapeEncoded?: boolean,
+): string {
+  return segment.replace(
+    new RegExp(`([/#?]${escapeEncoded ? "|%(2f|23|3f|5c)" : ""})`, "gi"),
+    (char: string) => encodeURIComponent(char),
+  );
+}
+
 /**
  *
  * SSG cache key needs to be decoded, but some characters needs to be properly escaped
@@ -139,11 +154,7 @@ function decodePathParams(pathname: string): string {
     .split("/")
     .map((segment) => {
       try {
-        // https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/shared/lib/router/utils/escape-path-delimiters.ts#L2-L10
-        return decodeURIComponent(segment).replace(
-          /([\/#?]|%(2f|23|3f|5c))/gi,
-          (char: string) => encodeURIComponent(char),
-        );
+        return escapePathDelimiters(decodeURIComponent(segment), true);
       } catch (e) {
         // If decodeURIComponent fails, we return the original segment
         return segment;
