@@ -120,7 +120,7 @@ export function compileOpenNextConfigEdge(
     external: externals,
     define: {
       // with the default esbuild config, the NODE_ENV will be set to "development", we don't want that
-      "process.env.NODE_ENV": "production",
+      "process.env.NODE_ENV": '"production"',
     },
   });
 }
