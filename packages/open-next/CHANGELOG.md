@@ -1,5 +1,21 @@
 # open-next
 
+## 3.6.2
+
+### Patch Changes
+
+- [#864](https://github.com/opennextjs/opennextjs-aws/pull/864) [`daaf38f45e6aa5596fb4dfdb912aee254fcb94e3`](https://github.com/opennextjs/opennextjs-aws/commit/daaf38f45e6aa5596fb4dfdb912aee254fcb94e3) Thanks [@conico974](https://github.com/conico974)! - set process.env.NODE_ENV to production during edge config compilation
+
+- [#863](https://github.com/opennextjs/opennextjs-aws/pull/863) [`d434708d07ac297b5317f4ace990836195bd8b3f`](https://github.com/opennextjs/opennextjs-aws/commit/d434708d07ac297b5317f4ace990836195bd8b3f) Thanks [@dnewbound0](https://github.com/dnewbound0)! - feat: redirect requests with repeated slashes
+
+- [#868](https://github.com/opennextjs/opennextjs-aws/pull/868) [`1bebc1ada498a8466fb1293ba3d57a2147929be4`](https://github.com/opennextjs/opennextjs-aws/commit/1bebc1ada498a8466fb1293ba3d57a2147929be4) Thanks [@conico974](https://github.com/conico974)! - decode path params in cache interceptor
+
+- [#869](https://github.com/opennextjs/opennextjs-aws/pull/869) [`1664d836a64752bd5bdbf9d9a62fde535891a88e`](https://github.com/opennextjs/opennextjs-aws/commit/1664d836a64752bd5bdbf9d9a62fde535891a88e) Thanks [@sommeeeer](https://github.com/sommeeeer)! - chore: bump esbuild to latest version (0.25.4)
+
+- [#862](https://github.com/opennextjs/opennextjs-aws/pull/862) [`d6889d89c894b35e4bd042404a466fd709f528c1`](https://github.com/opennextjs/opennextjs-aws/commit/d6889d89c894b35e4bd042404a466fd709f528c1) Thanks [@naikaayush](https://github.com/naikaayush)! - fix(middleware): copy wasm files for the external middleware
+
+- [#867](https://github.com/opennextjs/opennextjs-aws/pull/867) [`69a26e76e2354c28c73d9a89bd3c429fe30c3510`](https://github.com/opennextjs/opennextjs-aws/commit/69a26e76e2354c28c73d9a89bd3c429fe30c3510) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: remove leading forward slashes from url in node converter
+
 ## 3.6.1
 
 ### Patch Changes
