@@ -72,4 +72,46 @@ test.describe("Next Config Redirect", () => {
     });
     await expect(el).toBeVisible();
   });
+  test("Should properly encode the Location header for redirects with query params", async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto("/config-redirect");
+    const responsePromise = page.waitForResponse((response) => {
+      return response.status() === 307;
+    });
+    page.getByTestId("redirect-link").click();
+    const res = await responsePromise;
+    await page.waitForURL("/config-redirect/dest?q=äöå€");
+
+    const locationHeader = res.headers().location;
+    expect(locationHeader).toBe(
+      `${baseURL}/config-redirect/dest?q=%C3%A4%C3%B6%C3%A5%E2%82%AC`,
+    );
+    expect(res.status()).toBe(307);
+
+    const searchParams = page.getByTestId("searchParams");
+    await expect(searchParams).toHaveText("q: äöå€");
+  });
+  test("Should respect already encoded query params", async ({
+    page,
+    baseURL,
+  }) => {
+    await page.goto("/config-redirect");
+    const responsePromise = page.waitForResponse((response) => {
+      return response.status() === 307;
+    });
+    page.getByTestId("redirect-link-already-encoded").click();
+    const res = await responsePromise;
+    await page.waitForURL("/config-redirect/dest?q=äöå€");
+
+    const locationHeader = res.headers().location;
+    expect(locationHeader).toBe(
+      `${baseURL}/config-redirect/dest?q=%C3%A4%C3%B6%C3%A5%E2%82%AC`,
+    );
+    expect(res.status()).toBe(307);
+
+    const searchParams = page.getByTestId("searchParams");
+    await expect(searchParams).toHaveText("q: äöå€");
+  });
 });
