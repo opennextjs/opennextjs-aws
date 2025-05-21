@@ -96,6 +96,11 @@ export default async function routingHandler(
 
     const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
     if (redirect) {
+      // We need to encode query params in the Location header to make sure it is valid according to RFC
+      // https://stackoverflow.com/a/7654605/16587222
+      redirect.headers.Location = new URL(
+        redirect.headers.Location as string,
+      ).href;
       debug("redirect", redirect);
       return redirect;
     }
