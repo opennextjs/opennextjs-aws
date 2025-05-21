@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-fix: Ensure Location header is encoded in redirects from next config
+fix: Ensure Location header is properly encoded in redirects happening from next config
