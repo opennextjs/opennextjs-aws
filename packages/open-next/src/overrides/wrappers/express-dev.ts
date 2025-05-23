@@ -1,6 +1,7 @@
 import path from "node:path";
 import express from "express";
 
+import { NextConfig } from "config/index";
 import type { StreamCreator } from "types/open-next.js";
 import type { WrapperHandler } from "types/overrides.js";
 import { getMonorepoRelativePath } from "utils/normalize-path";
@@ -8,7 +9,11 @@ import { getMonorepoRelativePath } from "utils/normalize-path";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
   // To serve static assets
-  app.use(express.static(path.join(getMonorepoRelativePath(), "assets")));
+  const basePath = NextConfig.basePath ?? "";
+  app.use(
+    basePath,
+    express.static(path.join(getMonorepoRelativePath(), "assets")),
+  );
 
   const imageHandlerPath = path.join(
     getMonorepoRelativePath(),
@@ -17,7 +22,7 @@ const wrapper: WrapperHandler = async (handler, converter) => {
 
   const imageHandler = await import(imageHandlerPath).then((m) => m.handler);
 
-  app.all("/_next/image", async (req, res) => {
+  app.all(`${NextConfig.basePath ?? ""}/_next/image`, async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
