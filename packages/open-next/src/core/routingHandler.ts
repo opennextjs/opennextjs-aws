@@ -24,7 +24,6 @@ import {
 } from "./routing/matcher";
 import { handleMiddleware } from "./routing/middleware";
 import {
-  apiPrefix,
   dynamicRouteMatcher,
   staticRouteMatcher,
 } from "./routing/routeMatcher";
@@ -158,13 +157,6 @@ export default async function routingHandler(
       isExternalRewrite = fallbackRewrites.isExternalRewrite;
     }
 
-    // Api routes are not present in the routes manifest except if they're not behind /api
-    // /api even if it's a page route doesn't get generated in the manifest
-    // Ideally we would need to properly check api routes here
-    const isApiRoute =
-      internalEvent.rawPath === apiPrefix ||
-      internalEvent.rawPath.startsWith(`${apiPrefix}/`);
-
     const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
 
     const isRouteFoundBeforeAllRewrites =
@@ -175,7 +167,6 @@ export default async function routingHandler(
     if (
       !(
         isRouteFoundBeforeAllRewrites ||
-        isApiRoute ||
         isNextImageRoute ||
         // We need to check again once all rewrites have been applied
         staticRouteMatcher(internalEvent.rawPath).length > 0 ||
