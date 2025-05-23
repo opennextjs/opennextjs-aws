@@ -51,12 +51,6 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
           namedRegex: "^/app(?:/)?$",
         },
         {
-          page: "/api/app",
-          regex: "^/api/app(?:/)?$",
-          routeKeys: {},
-          namedRegex: "^/api/app(?:/)?$",
-        },
-        {
           page: "/page",
           regex: "^/page(?:/)?$",
           routeKeys: {},
