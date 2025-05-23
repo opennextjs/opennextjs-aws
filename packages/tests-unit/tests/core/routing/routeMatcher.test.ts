@@ -46,12 +46,6 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
           namedRegex: "^/app(?:/)?$",
         },
         {
-          page: "/api/app",
-          regex: "^/api/app(?:/)?$",
-          routeKeys: {},
-          namedRegex: "^/api/app(?:/)?$",
-        },
-        {
           page: "/page",
           regex: "^/page(?:/)?$",
           routeKeys: {},
@@ -66,6 +60,12 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
       ],
     },
   },
+  getStaticAPIRoutes: () => [
+    {
+      page: "/api/app",
+      regex: "^/api/app(?:/)?$",
+    },
+  ],
 }));
 
 describe("routeMatcher", () => {
