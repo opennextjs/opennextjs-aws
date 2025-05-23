@@ -20,10 +20,11 @@
     "@changesets/changelog-github": "^0.4.4",
     "@changesets/cli": "^2.22.0",
     "pkg-pr-new": "^0.0.29",
-    "turbo": "1.10.12"
+    "turbo": "^2.5.3"
   },
   "engines": {
     "node": ">=18",
     "pnpm": ">=9"
-  }
+  },
+  "packageManager": "pnpm@9.15.9"
 }
