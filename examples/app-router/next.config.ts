@@ -6,13 +6,6 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@example/shared"],
   output: "standalone",
   // outputFileTracingRoot: "../sst",
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  //TODO: remove this when i'll figure out why it fails locally
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -59,6 +52,11 @@ const nextConfig: NextConfig = {
         permanent: false,
         basePath: false,
         locale: false,
+      },
+      {
+        source: "/next-config-redirect-encoding",
+        destination: "/config-redirect/dest",
+        permanent: false,
       },
     ];
   },
