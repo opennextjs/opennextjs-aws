@@ -68,11 +68,6 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   ],
   NEXT_DIR:
     "/home/opennextuser/coding/git/mynextproject/.open-next/server-functions/default/.next",
-  loadPagesManifest: () => ({
-    "/api/app": "pages/api/app.js",
-    "/page": "pages/page.js",
-    "/app": "app/page.js",
-  }),
 }));
 
 vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
