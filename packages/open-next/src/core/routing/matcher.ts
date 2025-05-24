@@ -437,8 +437,8 @@ export function handleFallbackFalse(
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
   // We need to remove the trailing slash if it exists
-  // Not if localizedPath is "/" tho, because that would not make it find `isPregenerated` below since it would be try to match an empty string.
   if (
+    // Not if localizedPath is "/" tho, because that would not make it find `isPregenerated` below since it would be try to match an empty string.
     localizedPath !== "/" &&
     NextConfig.trailingSlash &&
     localizedPath.endsWith("/")
