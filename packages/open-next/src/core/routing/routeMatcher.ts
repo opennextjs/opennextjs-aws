@@ -12,7 +12,7 @@ const optionalBasepathPrefixRegex = RoutesManifest.basePath
   : "^/";
 
 // Add the basePath prefix to the api routes
-export const apiPrefix = `${RoutesManifest.basePath ?? ""}/api`;
+const apiPrefix = `${RoutesManifest.basePath ?? ""}/api`;
 
 const optionalPrefix = optionalLocalePrefixRegex.replace(
   "^/",
@@ -68,7 +68,7 @@ export const dynamicRouteMatcher = routeMatcher(RoutesManifest.routes.dynamic);
  *
  * Without it handleFallbackFalse will 404 on static API routes if there is a catch-all route on root level.
  */
-export function getStaticAPIRoutes(): RouteDefinition[] {
+function getStaticAPIRoutes(): RouteDefinition[] {
   const createRouteDefinition = (route: string) => ({
     page: route,
     regex: `^${route}(?:/)?$`,

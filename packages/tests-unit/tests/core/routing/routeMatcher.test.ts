@@ -66,6 +66,25 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
       regex: "^/api/app(?:/)?$",
     },
   ],
+  NEXT_DIR:
+    "/home/opennextuser/coding/git/mynextproject/.open-next/server-functions/default/.next",
+  loadPagesManifest: () => ({
+    "/api/app": "pages/api/app.js",
+    "/page": "pages/page.js",
+    "/app": "app/page.js",
+  }),
+}));
+
+vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
+  loadPagesManifest: () => ({
+    "/_app": "pages/_app.js",
+    "/_document": "pages/_document.js",
+    "/api/hello": "pages/api/hello.js",
+    "/mypage": "pages/mypage.html",
+    "/_error": "pages/_error.js",
+    "/[[...subpage]]": "pages/[[...subpage]].js",
+    "/404": "pages/404.html",
+  }),
 }));
 
 describe("routeMatcher", () => {
@@ -90,6 +109,14 @@ describe("routeMatcher", () => {
         {
           route: "/api/app",
           type: "route",
+        },
+      ]);
+
+      const helloRoute = staticRouteMatcher("/api/hello");
+      expect(helloRoute).toEqual([
+        {
+          route: "/api/hello",
+          type: "page",
         },
       ]);
     });
