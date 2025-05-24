@@ -1,4 +1,8 @@
-import { AppPathRoutesManifest, RoutesManifest } from "config/index";
+import {
+  AppPathRoutesManifest,
+  RoutesManifest,
+  getStaticAPIRoutes,
+} from "config/index";
 import type { RouteDefinition } from "types/next-types";
 import type { ResolvedRoute, RouteType } from "types/open-next";
 
@@ -53,5 +57,8 @@ function routeMatcher(routeDefinitions: RouteDefinition[]) {
   };
 }
 
-export const staticRouteMatcher = routeMatcher(RoutesManifest.routes.static);
+export const staticRouteMatcher = routeMatcher([
+  ...RoutesManifest.routes.static,
+  ...getStaticAPIRoutes(),
+]);
 export const dynamicRouteMatcher = routeMatcher(RoutesManifest.routes.dynamic);

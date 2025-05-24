@@ -24,7 +24,7 @@ export function loadBuildId(nextDir: string) {
 export function loadPagesManifest(nextDir: string) {
   const filePath = path.join(nextDir, "server/pages-manifest.json");
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json);
+  return JSON.parse(json) as Record<string, string>;
 }
 
 export function loadHtmlPages(nextDir: string) {

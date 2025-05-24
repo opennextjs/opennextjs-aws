@@ -51,12 +51,6 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
           namedRegex: "^/app(?:/)?$",
         },
         {
-          page: "/api/app",
-          regex: "^/api/app(?:/)?$",
-          routeKeys: {},
-          namedRegex: "^/api/app(?:/)?$",
-        },
-        {
           page: "/page",
           regex: "^/page(?:/)?$",
           routeKeys: {},
@@ -71,6 +65,12 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
       ],
     },
   },
+  getStaticAPIRoutes: () => [
+    {
+      page: "/api/app",
+      regex: "^/api/app(?:/)?$",
+    },
+  ],
 }));
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
   localizePath: (event: InternalEvent) => event.rawPath,

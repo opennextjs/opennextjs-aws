@@ -437,7 +437,12 @@ export function handleFallbackFalse(
     ? rawPath
     : `/${NextConfig.i18n?.defaultLocale}${rawPath}`;
   // We need to remove the trailing slash if it exists
-  if (NextConfig.trailingSlash && localizedPath.endsWith("/")) {
+  // Not if localizedPath is "/" tho, because that would not make it find `isPregenerated` below since it would be try to match an empty string.
+  if (
+    localizedPath !== "/" &&
+    NextConfig.trailingSlash &&
+    localizedPath.endsWith("/")
+  ) {
     localizedPath = localizedPath.slice(0, -1);
   }
   const matchedStaticRoute = staticRouteMatcher(localizedPath);
@@ -447,6 +452,7 @@ export function handleFallbackFalse(
   const matchedDynamicRoute = dynamicRouteMatcher(localizedPath).filter(
     ({ route }) => !prerenderedFallbackRoutesName.includes(route),
   );
+
   const isPregenerated = Object.keys(routes).includes(localizedPath);
   if (
     routeFallback &&
