@@ -11,9 +11,6 @@ const optionalBasepathPrefixRegex = RoutesManifest.basePath
   ? `^${RoutesManifest.basePath}/?`
   : "^/";
 
-// Add the basePath prefix to the api routes
-const apiPrefix = `${RoutesManifest.basePath ?? ""}/api`;
-
 const optionalPrefix = optionalLocalePrefixRegex.replace(
   "^/",
   optionalBasepathPrefixRegex,
