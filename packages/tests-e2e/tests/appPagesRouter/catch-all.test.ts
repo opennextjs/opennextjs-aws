@@ -14,7 +14,7 @@ test.describe("Catch-all route in root should work", () => {
     const pElement = page.getByText("Path: conico974", { exact: true });
     await pElement.isVisible();
   });
-  test("should be possible to visit a long path", async ({ page }) => {
+  test("should be possible to visit a long pregenerated path", async ({ page }) => {
     await page.goto("/super/long/path/to/secret/page");
     const h1Text = await page.getByTestId("page").textContent();
     expect(h1Text).toBe("Page: super,long,path,to,secret,page");
