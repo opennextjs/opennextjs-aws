@@ -1,5 +1,8 @@
-import { AppPathRoutesManifest, NEXT_DIR, RoutesManifest } from "config/index";
-import { loadPagesManifest } from "config/util";
+import {
+  AppPathRoutesManifest,
+  PagesManifest,
+  RoutesManifest,
+} from "config/index";
 import type { RouteDefinition } from "types/next-types";
 import type { ResolvedRoute, RouteType } from "types/open-next";
 
@@ -73,7 +76,6 @@ function getStaticAPIRoutes(): RouteDefinition[] {
   const dynamicRoutePages = new Set(
     RoutesManifest.routes.dynamic.map(({ page }) => page),
   );
-  const PagesManifest = loadPagesManifest(NEXT_DIR);
   const pagesStaticAPIRoutes = Object.keys(PagesManifest)
     .filter(
       (route) => route.startsWith("/api/") && !dynamicRoutePages.has(route),

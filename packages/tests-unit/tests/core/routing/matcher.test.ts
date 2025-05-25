@@ -65,30 +65,17 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
       ],
     },
   },
-  getStaticAPIRoutes: () => [
-    {
-      page: "/api/app",
-      regex: "^/api/app(?:/)?$",
-    },
-  ],
-  NEXT_DIR:
-    "/home/opennextuser/coding/git/mynextproject/.open-next/server-functions/default/.next",
+  PagesManifest: {
+    "/_app": "pages/_app.js",
+    "/_document": "pages/_document.js",
+    "/_error": "pages/_error.js",
+    "/404": "pages/404.html",
+  },
 }));
+
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
   localizePath: (event: InternalEvent) => event.rawPath,
   handleLocaleRedirect: (_event: InternalEvent) => false,
-}));
-
-vi.mock("@opennextjs/aws/adapters/config/util.js", () => ({
-  loadPagesManifest: () => ({
-    "/_app": "pages/_app.js",
-    "/_document": "pages/_document.js",
-    "/api/hello": "pages/api/hello.js",
-    "/mypage": "pages/mypage.html",
-    "/_error": "pages/_error.js",
-    "/[[...subpage]]": "pages/[[...subpage]].js",
-    "/404": "pages/404.html",
-  }),
 }));
 
 type PartialEvent = Partial<

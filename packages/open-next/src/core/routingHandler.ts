@@ -137,14 +137,17 @@ export default async function routingHandler(
       isExternalRewrite = afterRewrites.isExternalRewrite;
     }
 
+    let isISR = false;
     // We want to run this just before the dynamic route check
     // We can skip it if its an external rewrite
-    const { event: fallbackEvent, isISR } = handleFallbackFalse(
-      internalEvent,
-      PrerenderManifest,
-      isExternalRewrite,
-    );
-    internalEvent = fallbackEvent;
+    if (!isExternalRewrite) {
+      const fallbackResult = handleFallbackFalse(
+        internalEvent,
+        PrerenderManifest,
+      );
+      internalEvent = fallbackResult.event;
+      isISR = fallbackResult.isISR;
+    }
 
     const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
     const isDynamicRoute = !isExternalRewrite && foundDynamicRoute.length > 0;

@@ -11,6 +11,7 @@ import {
   loadFunctionsConfigManifest,
   loadHtmlPages,
   loadMiddlewareManifest,
+  loadPagesManifest,
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "./util.js";
@@ -28,6 +29,7 @@ export const RoutesManifest = /* @__PURE__ */ loadRoutesManifest(NEXT_DIR);
 export const ConfigHeaders = /* @__PURE__ */ loadConfigHeaders(NEXT_DIR);
 export const PrerenderManifest =
   /* @__PURE__ */ loadPrerenderManifest(NEXT_DIR);
+export const PagesManifest = /* @__PURE__ */ loadPagesManifest(NEXT_DIR);
 export const AppPathsManifestKeys =
   /* @__PURE__ */ loadAppPathsManifestKeys(NEXT_DIR);
 export const MiddlewareManifest =
