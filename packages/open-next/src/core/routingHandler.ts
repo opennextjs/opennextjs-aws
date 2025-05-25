@@ -138,9 +138,11 @@ export default async function routingHandler(
     }
 
     // We want to run this just before the dynamic route check
+    // We can skip it if its an external rewrite
     const { event: fallbackEvent, isISR } = handleFallbackFalse(
       internalEvent,
       PrerenderManifest,
+      isExternalRewrite,
     );
     internalEvent = fallbackEvent;
 

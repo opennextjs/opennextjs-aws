@@ -17,5 +17,8 @@ test("fix _next/data", async ({ page }) => {
   expect(response2.request().url()).toMatch(/\/_next\/data\/.*\/en\.json$/);
   await page.waitForURL("/");
   const body = await response2.json();
-  expect(body).toEqual({ pageProps: { hello: "world" }, __N_SSG: true });
+  expect(body).toEqual({
+    pageProps: { subpage: [], pageType: "home" },
+    __N_SSG: true,
+  });
 });

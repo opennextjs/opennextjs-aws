@@ -418,7 +418,14 @@ export function fixDataPage(
 export function handleFallbackFalse(
   internalEvent: InternalEvent,
   prerenderManifest: PrerenderManifest,
+  isExternalRewrite: boolean,
 ): { event: InternalEvent; isISR: boolean } {
+  if (isExternalRewrite) {
+    return {
+      event: internalEvent,
+      isISR: false,
+    };
+  }
   const { rawPath } = internalEvent;
   const { dynamicRoutes, routes } = prerenderManifest;
   const prerenderedFallbackRoutes = Object.entries(dynamicRoutes).filter(
