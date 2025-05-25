@@ -1,15 +1,6 @@
 import Nav from "@example/shared/components/Nav";
 import Head from "next/head";
 
-// Not used, but necessary to get prefetching to work
-export function getStaticProps() {
-  return {
-    props: {
-      hello: "world",
-    },
-  };
-}
-
 export default function Home() {
   return (
     <>
