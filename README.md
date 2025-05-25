@@ -96,6 +96,8 @@ To run `OpenNext` locally:
    path/to/opennextjs-aws/packages/open-next/dist/index.js build
    ```
 
+There is also a way to run OpenNext locally. You can read a guide about it [here](https://opennext.js.org/aws/contribute/local_run). Be aware that this will not work the same way as a deployed version. Its mostly used to development/debugging purposes.
+
 ### Coldstart
 
 OpenNext provide you with a warmer function that can be used to reduce cold start.
