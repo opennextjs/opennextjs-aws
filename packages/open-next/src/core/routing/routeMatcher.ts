@@ -1,4 +1,8 @@
-import { AppPathRoutesManifest, RoutesManifest } from "config/index";
+import {
+  AppPathRoutesManifest,
+  PagesManifest,
+  RoutesManifest,
+} from "config/index";
 import type { RouteDefinition } from "types/next-types";
 import type { ResolvedRoute, RouteType } from "types/open-next";
 
@@ -9,9 +13,6 @@ const optionalLocalePrefixRegex = `^/(?:${RoutesManifest.locales.map((locale) =>
 const optionalBasepathPrefixRegex = RoutesManifest.basePath
   ? `^${RoutesManifest.basePath}/?`
   : "^/";
-
-// Add the basePath prefix to the api routes
-export const apiPrefix = `${RoutesManifest.basePath ?? ""}/api`;
 
 const optionalPrefix = optionalLocalePrefixRegex.replace(
   "^/",
@@ -53,5 +54,42 @@ function routeMatcher(routeDefinitions: RouteDefinition[]) {
   };
 }
 
-export const staticRouteMatcher = routeMatcher(RoutesManifest.routes.static);
+export const staticRouteMatcher = routeMatcher([
+  ...RoutesManifest.routes.static,
+  ...getStaticAPIRoutes(),
+]);
 export const dynamicRouteMatcher = routeMatcher(RoutesManifest.routes.dynamic);
+
+/**
+ * Returns static API routes for both app and pages router cause Next will filter them out in staticRoutes in `routes-manifest.json`.
+ * We also need to filter out page files that are under `app/api/*` as those would not be present in the routes manifest either.
+ * This line from Next.js skips it:
+ * https://github.com/vercel/next.js/blob/ded56f952154a40dcfe53bdb38c73174e9eca9e5/packages/next/src/build/index.ts#L1299
+ *
+ * Without it handleFallbackFalse will 404 on static API routes if there is a catch-all route on root level.
+ */
+function getStaticAPIRoutes(): RouteDefinition[] {
+  const createRouteDefinition = (route: string) => ({
+    page: route,
+    regex: `^${route}(?:/)?$`,
+  });
+  const dynamicRoutePages = new Set(
+    RoutesManifest.routes.dynamic.map(({ page }) => page),
+  );
+  const pagesStaticAPIRoutes = Object.keys(PagesManifest)
+    .filter(
+      (route) => route.startsWith("/api/") && !dynamicRoutePages.has(route),
+    )
+    .map(createRouteDefinition);
+
+  // We filter out both static API and page routes from the app paths manifest
+  const appPathsStaticAPIRoutes = Object.values(AppPathRoutesManifest)
+    .filter(
+      (route) =>
+        route.startsWith("/api/") ||
+        (route === "/api" && !dynamicRoutePages.has(route)),
+    )
+    .map(createRouteDefinition);
+
+  return [...pagesStaticAPIRoutes, ...appPathsStaticAPIRoutes];
+}

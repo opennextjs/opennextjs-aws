@@ -46,12 +46,6 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
           namedRegex: "^/app(?:/)?$",
         },
         {
-          page: "/api/app",
-          regex: "^/api/app(?:/)?$",
-          routeKeys: {},
-          namedRegex: "^/api/app(?:/)?$",
-        },
-        {
           page: "/page",
           regex: "^/page(?:/)?$",
           routeKeys: {},
@@ -65,6 +59,13 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         },
       ],
     },
+  },
+  PagesManifest: {
+    "/_app": "pages/_app.js",
+    "/_document": "pages/_document.js",
+    "/api/hello": "pages/api/hello.js",
+    "/_error": "pages/_error.js",
+    "/404": "pages/404.html",
   },
 }));
 
@@ -90,6 +91,14 @@ describe("routeMatcher", () => {
         {
           route: "/api/app",
           type: "route",
+        },
+      ]);
+
+      const helloRoute = staticRouteMatcher("/api/hello");
+      expect(helloRoute).toEqual([
+        {
+          route: "/api/hello",
+          type: "page",
         },
       ]);
     });
