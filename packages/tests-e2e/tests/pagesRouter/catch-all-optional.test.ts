@@ -26,6 +26,6 @@ test.describe("Catch-all optional route in root should work", () => {
     const response = await request.get("/api/hello");
     expect(response.status()).toBe(200);
     const body = await response.json();
-    expect(body).toEqual({ hello: "world" });
+    expect(body).toEqual({ hello: "OpenNext rocks!" });
   });
 });
