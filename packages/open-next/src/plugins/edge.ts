@@ -15,6 +15,7 @@ import {
   loadFunctionsConfigManifest,
   loadHtmlPages,
   loadMiddlewareManifest,
+  loadPagesManifest,
   loadPrerenderManifest,
   loadRoutesManifest,
 } from "../adapters/config/util.js";
@@ -166,6 +167,7 @@ ${contents}
           const AppPathsManifest = loadAppPathsManifest(nextDir);
           const AppPathRoutesManifest = loadAppPathRoutesManifest(nextDir);
           const FunctionsConfigManifest = loadFunctionsConfigManifest(nextDir);
+          const PagesManifest = loadPagesManifest(nextDir);
 
           const contents = `
   import path from "node:path";
@@ -190,6 +192,7 @@ ${contents}
   export const AppPathsManifest = ${JSON.stringify(AppPathsManifest)};
   export const AppPathRoutesManifest = ${JSON.stringify(AppPathRoutesManifest)};
   export const FunctionsConfigManifest = ${JSON.stringify(FunctionsConfigManifest)};
+  export const PagesManifest = ${JSON.stringify(PagesManifest)};
 
 
   process.env.NEXT_BUILD_ID = BuildId;
