@@ -1,5 +1,11 @@
 # open-next
 
+## 3.6.4
+
+### Patch Changes
+
+- [#881](https://github.com/opennextjs/opennextjs-aws/pull/881) [`4f146cc049dffe2ee847de78ebe3d2d910fa8ec9`](https://github.com/opennextjs/opennextjs-aws/commit/4f146cc049dffe2ee847de78ebe3d2d910fa8ec9) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(edge): inline PagesManifest in edge bundle
+
 ## 3.6.3
 
 ### Patch Changes
