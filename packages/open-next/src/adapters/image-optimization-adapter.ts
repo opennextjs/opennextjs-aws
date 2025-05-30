@@ -115,9 +115,42 @@ export async function defaultHandler(
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
     error("Failed to optimize image", e);
+    
+    // Determine appropriate status code based on error
+    let statusCode = 500; // Default to 500 for unknown errors
+    let errorMessage = "Internal server error";
+    
+    // Check if error has HTTP status information
+    if (e && typeof e === 'object') {
+      if ('statusCode' in e && typeof e.statusCode === 'number') {
+        statusCode = e.statusCode;
+        errorMessage = `HTTP Error: ${statusCode}`;
+      } else if ('code' in e) {
+        const code = e.code as string;
+        if (code === 'ENOTFOUND' || code === 'ECONNREFUSED') {
+          statusCode = 404;
+          errorMessage = `Image not found: ${e.message}`;
+        }
+      }
+      
+      if (e.message && typeof e.message === 'string') {
+        // Try to extract status codes from error messages
+        if (e.message.includes('403') || e.message.includes('Access Denied')) {
+          statusCode = 403;
+          errorMessage = `Access denied: ${e.message}`;
+        } else if (e.message.includes('404') || e.message.includes('Not Found')) {
+          statusCode = 404;
+          errorMessage = `Image not found: ${e.message}`;
+        } else {
+          errorMessage = e.message;
+        }
+      }
+    }
+    
     return buildFailureResponse(
-      "Internal server error",
+      errorMessage,
       options?.streamCreator,
+      statusCode
     );
   }
 }
@@ -255,7 +288,46 @@ async function downloadHandler(
   try {
     // Case 1: remote image URL => download the image from the URL
     if (url.href.toLowerCase().match(/^https?:\/\//)) {
-      pipeRes(https.get(url), res);
+      const request = https.get(url, (response) => {
+        // Check for HTTP error status codes
+        if (response.statusCode && response.statusCode >= 400) {
+          error(`Failed to get image: HTTP ${response.statusCode}`);
+          res.statusCode = response.statusCode;
+          res.end();
+          return;
+        }
+        // IncomingMessage is a Readable stream, not a Writable
+        // We need to pipe it directly to the response
+        response.pipe(res)
+          .once("close", () => {
+            if (!res.headersSent) {
+              res.statusCode = 200;
+            }
+            res.end();
+          })
+          .once("error", (pipeErr) => {
+            error("Failed to get image during piping", pipeErr);
+            if (!res.headersSent) {
+              res.statusCode = 400;
+            }
+            res.end();
+          });
+      });
+      
+      request.on('error', (err: NodeJS.ErrnoException) => {
+        error("Failed to get image", err);
+        // Handle common network errors
+        if (err && typeof err === 'object' && 'code' in err) {
+          if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+            res.statusCode = 404;
+          } else {
+            res.statusCode = 400;
+          }
+        } else {
+          res.statusCode = 400;
+        }
+        res.end();
+      });
     }
     // Case 2: local image => download the image from S3
     else {
