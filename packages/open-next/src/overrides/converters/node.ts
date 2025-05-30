@@ -30,6 +30,14 @@ const converter: Converter = {
       `${req.protocol ? req.protocol : "http"}://${extractHostFromHeaders(headers)}${req.url}`,
     );
     const query = getQueryFromSearchParams(url.searchParams);
+
+    if (req.protocol === "http" && url.hostname === "localhost") {
+      // This is used internally by Next.js during redirects in server actions. We need to set it to the origin of the request.
+      process.env.__NEXT_PRIVATE_ORIGIN = url.origin;
+      // This is to make `next-auth` and other libraries that rely on this header to work locally out of the box.
+      headers["x-forwarded-proto"] = req.protocol;
+    }
+
     return {
       type: "core",
       method: req.method ?? "GET",
