@@ -35,8 +35,9 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       ),
     );
 
-    // This is to make libraries (i.e next-auth) that rely on this header to work out of the box in `opennextjs-cloudflare preview`.
-    if (url.protocol.slice(0, -1) === "http" && url.hostname === "localhost") {
+    // This is to make libraries (e.g. next-auth) that rely on this header to work out of the box in `opennextjs-cloudflare preview`.
+    // See https://github.com/nextauthjs/next-auth/blob/main/packages/core/src/lib/utils/env.ts#L95-L96
+    if (url.protocol.startsWith("http") && url.hostname === "localhost") {
       headers["x-forwarded-proto"] = "http";
     }
 
