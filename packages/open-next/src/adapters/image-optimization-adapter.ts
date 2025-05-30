@@ -115,30 +115,33 @@ export async function defaultHandler(
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
     error("Failed to optimize image", e);
-    
+
     // Determine appropriate status code based on error
     let statusCode = 500; // Default to 500 for unknown errors
     let errorMessage = "Internal server error";
-    
+
     // Check if error has HTTP status information
-    if (e && typeof e === 'object') {
-      if ('statusCode' in e && typeof e.statusCode === 'number') {
+    if (e && typeof e === "object") {
+      if ("statusCode" in e && typeof e.statusCode === "number") {
         statusCode = e.statusCode;
         errorMessage = `HTTP Error: ${statusCode}`;
-      } else if ('code' in e) {
+      } else if ("code" in e) {
         const code = e.code as string;
-        if (code === 'ENOTFOUND' || code === 'ECONNREFUSED') {
+        if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
           statusCode = 404;
           errorMessage = `Image not found: ${e.message}`;
         }
       }
-      
-      if (e.message && typeof e.message === 'string') {
+
+      if (e.message && typeof e.message === "string") {
         // Try to extract status codes from error messages
-        if (e.message.includes('403') || e.message.includes('Access Denied')) {
+        if (e.message.includes("403") || e.message.includes("Access Denied")) {
           statusCode = 403;
           errorMessage = `Access denied: ${e.message}`;
-        } else if (e.message.includes('404') || e.message.includes('Not Found')) {
+        } else if (
+          e.message.includes("404") ||
+          e.message.includes("Not Found")
+        ) {
           statusCode = 404;
           errorMessage = `Image not found: ${e.message}`;
         } else {
@@ -146,11 +149,11 @@ export async function defaultHandler(
         }
       }
     }
-    
+
     return buildFailureResponse(
       errorMessage,
       options?.streamCreator,
-      statusCode
+      statusCode,
     );
   }
 }
@@ -298,7 +301,8 @@ async function downloadHandler(
         }
         // IncomingMessage is a Readable stream, not a Writable
         // We need to pipe it directly to the response
-        response.pipe(res)
+        response
+          .pipe(res)
           .once("close", () => {
             if (!res.headersSent) {
               res.statusCode = 200;
@@ -313,12 +317,12 @@ async function downloadHandler(
             res.end();
           });
       });
-      
-      request.on('error', (err: NodeJS.ErrnoException) => {
+
+      request.on("error", (err: NodeJS.ErrnoException) => {
         error("Failed to get image", err);
         // Handle common network errors
-        if (err && typeof err === 'object' && 'code' in err) {
-          if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED') {
+        if (err && typeof err === "object" && "code" in err) {
+          if (err.code === "ENOTFOUND" || err.code === "ECONNREFUSED") {
             res.statusCode = 404;
           } else {
             res.statusCode = 400;
