@@ -30,6 +30,7 @@ const converter: Converter = {
       `${req.protocol ? req.protocol : "http"}://${extractHostFromHeaders(headers)}${req.url}`,
     );
     const query = getQueryFromSearchParams(url.searchParams);
+
     return {
       type: "core",
       method: req.method ?? "GET",
