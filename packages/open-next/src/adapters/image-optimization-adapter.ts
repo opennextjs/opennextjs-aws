@@ -28,6 +28,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
+import { IgnorableError } from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -114,10 +115,56 @@ export async function defaultHandler(
     );
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    error("Failed to optimize image", e);
+    // Determine if this is a client error (4xx) or server error (5xx)
+    let statusCode = 500; // Default to 500 for unknown errors
+    const isClientError =
+      e &&
+      typeof e === "object" &&
+      (("statusCode" in e &&
+        typeof e.statusCode === "number" &&
+        e.statusCode >= 400 &&
+        e.statusCode < 500) ||
+        e.code === "ENOTFOUND" ||
+        e.code === "ECONNREFUSED" ||
+        (e.message &&
+          (e.message.includes("403") ||
+            e.message.includes("404") ||
+            e.message.includes("Access Denied") ||
+            e.message.includes("Not Found"))));
+
+    // Only log actual server errors as errors, log client errors as debug
+    if (isClientError) {
+      debug("Client error in image optimization", e);
+    } else {
+      error("Failed to optimize image", e);
+    }
+
+    // Determine appropriate status code based on error type
+    if (e && typeof e === "object") {
+      if ("statusCode" in e && typeof e.statusCode === "number") {
+        statusCode = e.statusCode;
+      } else if ("code" in e) {
+        const code = e.code as string;
+        if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
+          statusCode = 404;
+        }
+      } else if (e.message) {
+        if (e.message.includes("403") || e.message.includes("Access Denied")) {
+          statusCode = 403;
+        } else if (
+          e.message.includes("404") ||
+          e.message.includes("Not Found")
+        ) {
+          statusCode = 404;
+        }
+      }
+    }
+
+    // Pass through the original error message from Next.js
     return buildFailureResponse(
-      "Internal server error",
+      e.message || "Internal server error",
       options?.streamCreator,
+      statusCode,
     );
   }
 }
@@ -255,7 +302,54 @@ async function downloadHandler(
   try {
     // Case 1: remote image URL => download the image from the URL
     if (url.href.toLowerCase().match(/^https?:\/\//)) {
-      pipeRes(https.get(url), res);
+      const request = https.get(url, (response) => {
+        // Check for HTTP error status codes
+        if (response.statusCode && response.statusCode >= 400) {
+          error(`Failed to get image: HTTP ${response.statusCode}`);
+          res.statusCode = response.statusCode;
+          res.end();
+          return;
+        }
+        // IncomingMessage is a Readable stream, not a Writable
+        // We need to pipe it directly to the response
+        response
+          .pipe(res)
+          .once("close", () => {
+            if (!res.headersSent) {
+              res.statusCode = 200;
+            }
+            res.end();
+          })
+          .once("error", (pipeErr) => {
+            error("Failed to get image during piping", pipeErr);
+            if (!res.headersSent) {
+              res.statusCode = 400;
+            }
+            res.end();
+          });
+      });
+
+      request.on("error", (err: Error & { code?: string }) => {
+        // For network errors, these are typically client errors (bad URL, etc.)
+        // so log as debug instead of error to avoid false alarms
+        const isClientError =
+          err.code === "ENOTFOUND" || err.code === "ECONNREFUSED";
+
+        if (isClientError) {
+          // Log the full error for debugging but don't expose it to the client
+          debug("Client error fetching image", {
+            code: err.code,
+            message: err.message,
+          });
+          res.statusCode = 404; // Not Found for DNS or connection errors
+        } else {
+          error("Failed to get image", err);
+          res.statusCode = 400; // Bad Request for other errors
+        }
+
+        // Don't send the error message back to the client
+        res.end();
+      });
     }
     // Case 2: local image => download the image from S3
     else {
@@ -281,6 +375,48 @@ async function downloadHandler(
       }
     }
   } catch (e: any) {
+    // Check if this is a client error (like 404, 403, etc.)
+    const isClientError =
+      e &&
+      typeof e === "object" &&
+      (("statusCode" in e &&
+        typeof e.statusCode === "number" &&
+        e.statusCode >= 400 &&
+        e.statusCode < 500) ||
+        e.code === "ENOTFOUND" ||
+        e.code === "ECONNREFUSED" ||
+        (e.message &&
+          (e.message.includes("403") ||
+            e.message.includes("404") ||
+            e.message.includes("Access Denied") ||
+            e.message.includes("Not Found"))));
+
+    if (isClientError) {
+      debug("Client error downloading image", e);
+      // Just pass through the original error to preserve Next.js's error handling
+      // but wrap it in IgnorableError to prevent it from being logged as an error
+      const clientError = new IgnorableError(
+        e.message || "Client error downloading image",
+      );
+
+      // Preserve the original status code or set an appropriate one
+      if (e && typeof e === "object") {
+        if ("statusCode" in e && typeof e.statusCode === "number") {
+          (clientError as any).statusCode = e.statusCode;
+        } else if (e.code === "ENOTFOUND" || e.code === "ECONNREFUSED") {
+          (clientError as any).statusCode = 404;
+        } else if (e.message?.includes("403")) {
+          (clientError as any).statusCode = 403;
+        } else if (e.message?.includes("404")) {
+          (clientError as any).statusCode = 404;
+        } else {
+          (clientError as any).statusCode = 400;
+        }
+      }
+
+      throw clientError;
+    }
+
     error("Failed to download image", e);
     throw e;
   }
