@@ -41,9 +41,14 @@ export function parseSetCookieHeader(
     return [];
   }
 
-  return typeof cookies === "string"
-    ? cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim())
-    : cookies;
+  if (typeof cookies === "string") {
+    // Split the cookie string on ",".
+    // Note that "," can also appear in the Expires value (i.e. `Expires=Thu, 01 June`)
+    // so we have to skip it with a negative lookbehind.
+    return cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim());
+  }
+
+  return cookies;
 }
 
 /**
