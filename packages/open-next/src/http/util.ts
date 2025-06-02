@@ -28,7 +28,13 @@ export const convertHeader = (header: http.OutgoingHttpHeader) => {
   return String(header);
 };
 
-export function parseCookies(
+/**
+ * Parses a (coma-separated) list of Set-Cookie headers
+ *
+ * @param cookies A coma-separated list of Set-Cookie headers or a list of Set-Cookie header
+ * @returns A list of Set-Cookie header
+ */
+export function parseSetCookieHeader(
   cookies: string | string[] | null | undefined,
 ): string[] {
   if (!cookies) {

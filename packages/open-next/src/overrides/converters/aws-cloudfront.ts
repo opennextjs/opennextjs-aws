@@ -7,7 +7,7 @@ import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
-import { parseCookies } from "http/util";
+import { parseSetCookieHeader } from "http/util";
 import type {
   InternalEvent,
   InternalResult,
@@ -133,10 +133,12 @@ function convertToCloudfrontHeaders(
     )
     .forEach(([key, value]) => {
       if (key === "set-cookie") {
-        cloudfrontHeaders[key] = parseCookies(`${value}`).map((cookie) => ({
-          key,
-          value: cookie,
-        }));
+        cloudfrontHeaders[key] = parseSetCookieHeader(`${value}`).map(
+          (cookie) => ({
+            key,
+            value: cookie,
+          }),
+        );
         return;
       }
 

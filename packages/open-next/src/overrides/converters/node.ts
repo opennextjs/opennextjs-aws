@@ -1,6 +1,6 @@
 import type { IncomingMessage } from "node:http";
 
-import { parseCookies } from "http/util";
+import cookieParser from "cookie";
 import type { InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
 import { extractHostFromHeaders, getQueryFromSearchParams } from "./utils.js";
@@ -30,6 +30,12 @@ const converter: Converter = {
       `${req.protocol ? req.protocol : "http"}://${extractHostFromHeaders(headers)}${req.url}`,
     );
     const query = getQueryFromSearchParams(url.searchParams);
+
+    const cookieHeader = req.headers.cookie;
+    const cookies = cookieHeader
+      ? (cookieParser.parse(cookieHeader) as Record<string, string>)
+      : {};
+
     return {
       type: "core",
       method: req.method ?? "GET",
@@ -42,12 +48,7 @@ const converter: Converter = {
         req.socket.remoteAddress ??
         "::1",
       query,
-      cookies: Object.fromEntries(
-        parseCookies(req.headers.cookie)?.map((cookie) => {
-          const [key, value] = cookie.split("=");
-          return [key, value];
-        }) ?? [],
-      ),
+      cookies,
     };
   },
   // Nothing to do here, it's streaming

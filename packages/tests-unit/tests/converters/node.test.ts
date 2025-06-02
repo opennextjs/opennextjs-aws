@@ -186,7 +186,7 @@ describe("convertFrom", () => {
         headers: {
           "content-length": "2",
           "content-type": "application/json",
-          cookie: ["foo=bar", "hello=world"],
+          cookie: "foo=bar; hello=world",
         },
         remoteAddress: "::1",
         body: Buffer.from("{}"),
@@ -201,7 +201,7 @@ describe("convertFrom", () => {
       headers: {
         "content-length": "2",
         "content-type": "application/json",
-        cookie: "foo=bar,hello=world",
+        cookie: "foo=bar; hello=world",
       },
       remoteAddress: "::1",
       body: Buffer.from("{}"),

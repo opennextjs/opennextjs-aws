@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 
-import { parseCookies } from "http/util";
+import cookieParser from "cookie";
+import { parseSetCookieHeader } from "http/util";
 import type {
   InternalEvent,
   InternalResult,
@@ -29,11 +30,11 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
     const rawPath = url.pathname;
     const method = event.method;
     const shouldHaveBody = method !== "GET" && method !== "HEAD";
-    const cookies: Record<string, string> = Object.fromEntries(
-      parseCookies(event.headers.get("cookie")).map((cookie) =>
-        cookie.split("="),
-      ),
-    );
+
+    const cookieHeader = event.headers.get("cookie");
+    const cookies = cookieHeader
+      ? (cookieParser.parse(cookieHeader) as Record<string, string>)
+      : {};
 
     return {
       type: "core",
@@ -81,7 +82,7 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       if (key === "set-cookie" && typeof value === "string") {
         // If the value is a string, we need to parse it into an array
         // This is the case for middleware direct result
-        const cookies = parseCookies(value);
+        const cookies = parseSetCookieHeader(value);
         for (const cookie of cookies) {
           headers.append(key, cookie);
         }

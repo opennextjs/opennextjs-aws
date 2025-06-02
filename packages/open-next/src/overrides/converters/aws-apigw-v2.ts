@@ -2,7 +2,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { parseCookies } from "http/util";
+import { parseSetCookieHeader } from "http/util";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
@@ -122,7 +122,7 @@ async function convertToApiGatewayProxyResultV2(
   const response: APIGatewayProxyResultV2 = {
     statusCode: result.statusCode,
     headers,
-    cookies: parseCookies(result.headers["set-cookie"]),
+    cookies: parseSetCookieHeader(result.headers["set-cookie"]),
     body,
     isBase64Encoded: result.isBase64Encoded,
   };
