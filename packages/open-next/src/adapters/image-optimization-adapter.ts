@@ -31,7 +31,7 @@ import { resolveImageLoader } from "../core/resolve.js";
 import {
   FatalError,
   IgnorableError,
-  RecoverableError,
+  type RecoverableError,
 } from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
@@ -87,7 +87,8 @@ export async function defaultHandler(
     // We return a 400 here if imageParams returns an errorMessage
     // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
     if ("errorMessage" in imageParams) {
-      const clientError = new RecoverableError(imageParams.errorMessage, 400);
+      // Use IgnorableError for client-side validation issues (logLevel 0) to prevent monitoring alerts
+      const clientError = new IgnorableError(imageParams.errorMessage, 400);
       error("Error during validation of image params", clientError);
       return buildFailureResponse(
         imageParams.errorMessage,
@@ -137,59 +138,48 @@ export async function defaultHandler(
 //////////////////////
 
 /**
- * Classifies an error and converts it to the appropriate OpenNext error type
- * with the correct status code and logging level.
+ * Classifies an error as either a client error (IgnorableError) or server error (FatalError)
+ * to ensure proper logging behavior without triggering false monitoring alerts.
+ *
+ * The primary goal is to preserve the original error information while ensuring
+ * client errors don't trigger monitoring alerts.
  */
 function classifyError(e: any): IgnorableError | RecoverableError | FatalError {
-  // Default values
-  let statusCode = 500;
-  const message = e?.message || "Internal server error";
-
   // If it's already an OpenNext error, return it directly
   if (e && typeof e === "object" && "__openNextInternal" in e) {
     return e;
   }
 
-  // Determine if this is a client error (4xx) or server error (5xx)
-  const isClientError =
+  // Preserve the original message
+  const message = e?.message || "Internal server error";
+
+  // Preserve the original status code if available, otherwise use a default
+  let statusCode = 500;
+  if (
     e &&
     typeof e === "object" &&
-    (("statusCode" in e &&
-      typeof e.statusCode === "number" &&
-      e.statusCode >= 400 &&
-      e.statusCode < 500) ||
-      e.code === "ENOTFOUND" ||
-      e.code === "ECONNREFUSED" ||
-      (e.message &&
-        (e.message.includes("403") ||
-          e.message.includes("404") ||
-          e.message.includes("Access Denied") ||
-          e.message.includes("Not Found"))));
-
-  // Determine appropriate status code based on error type
-  if (e && typeof e === "object") {
-    if ("statusCode" in e && typeof e.statusCode === "number") {
-      statusCode = e.statusCode;
-    } else if ("code" in e) {
-      const code = e.code as string;
-      if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-        statusCode = 404;
-      }
-    } else if (e.message) {
-      if (e.message.includes("403") || e.message.includes("Access Denied")) {
-        statusCode = 403;
-      } else if (e.message.includes("404") || e.message.includes("Not Found")) {
-        statusCode = 404;
-      }
-    }
+    "statusCode" in e &&
+    typeof e.statusCode === "number"
+  ) {
+    statusCode = e.statusCode;
   }
 
-  // Client errors (4xx) are wrapped as IgnorableError to prevent noise in monitoring
-  if (isClientError || statusCode < 500) {
+  // Simple check for client errors - anything with a 4xx status code
+  // or common error codes that indicate client issues
+  const isClientError =
+    (statusCode >= 400 && statusCode < 500) ||
+    (e &&
+      typeof e === "object" &&
+      (e.code === "ENOTFOUND" ||
+        e.code === "ECONNREFUSED" ||
+        e.code === "ETIMEDOUT"));
+
+  // Wrap client errors as IgnorableError to prevent monitoring alerts
+  if (isClientError) {
     return new IgnorableError(message, statusCode);
   }
 
-  // Server errors (5xx) are marked as FatalError to ensure proper monitoring
+  // Server errors are marked as FatalError to ensure proper monitoring
   return new FatalError(message, statusCode);
 }
 
@@ -413,49 +403,16 @@ async function downloadHandler(
       }
     }
   } catch (e: any) {
-    // Check if this is a client error (like 404, 403, etc.)
-    const isClientError =
-      e &&
-      typeof e === "object" &&
-      (("statusCode" in e &&
-        typeof e.statusCode === "number" &&
-        e.statusCode >= 400 &&
-        e.statusCode < 500) ||
-        e.code === "ENOTFOUND" ||
-        e.code === "ECONNREFUSED" ||
-        (e.message &&
-          (e.message.includes("403") ||
-            e.message.includes("404") ||
-            e.message.includes("Access Denied") ||
-            e.message.includes("Not Found"))));
+    // Use our centralized error classification function
+    const classifiedError = classifyError(e);
 
-    if (isClientError) {
-      debug("Client error downloading image", e);
-      // Just pass through the original error to preserve Next.js's error handling
-      // but wrap it in IgnorableError to prevent it from being logged as an error
-      const clientError = new IgnorableError(
-        e.message || "Client error downloading image",
-      );
+    // Log error with appropriate level based on error type
+    // This will automatically downgrade client errors to debug level
+    error("Failed to download image", classifiedError);
 
-      // Preserve the original status code or set an appropriate one
-      if (e && typeof e === "object") {
-        if ("statusCode" in e && typeof e.statusCode === "number") {
-          (clientError as any).statusCode = e.statusCode;
-        } else if (e.code === "ENOTFOUND" || e.code === "ECONNREFUSED") {
-          (clientError as any).statusCode = 404;
-        } else if (e.message?.includes("403")) {
-          (clientError as any).statusCode = 403;
-        } else if (e.message?.includes("404")) {
-          (clientError as any).statusCode = 404;
-        } else {
-          (clientError as any).statusCode = 400;
-        }
-      }
-
-      throw clientError;
-    }
-
-    error("Failed to download image", e);
-    throw e;
+    // Since we're in a middleware (adapter) called by Next.js's image optimizer,
+    // we should throw the properly classified error to let Next.js handle it appropriately
+    // The Next.js image optimizer will use the status code and normalize the error message
+    throw classifiedError;
   }
 }
