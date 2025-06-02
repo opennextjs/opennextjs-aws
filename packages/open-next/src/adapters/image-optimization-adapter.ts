@@ -28,7 +28,11 @@ import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
-import { IgnorableError } from "../utils/error.js";
+import {
+  FatalError,
+  IgnorableError,
+  RecoverableError,
+} from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -83,10 +87,8 @@ export async function defaultHandler(
     // We return a 400 here if imageParams returns an errorMessage
     // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
     if ("errorMessage" in imageParams) {
-      error(
-        "Error during validation of image params",
-        imageParams.errorMessage,
-      );
+      const clientError = new RecoverableError(imageParams.errorMessage, 400);
+      error("Error during validation of image params", clientError);
       return buildFailureResponse(
         imageParams.errorMessage,
         options?.streamCreator,
@@ -115,56 +117,17 @@ export async function defaultHandler(
     );
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    // Determine if this is a client error (4xx) or server error (5xx)
-    let statusCode = 500; // Default to 500 for unknown errors
-    const isClientError =
-      e &&
-      typeof e === "object" &&
-      (("statusCode" in e &&
-        typeof e.statusCode === "number" &&
-        e.statusCode >= 400 &&
-        e.statusCode < 500) ||
-        e.code === "ENOTFOUND" ||
-        e.code === "ECONNREFUSED" ||
-        (e.message &&
-          (e.message.includes("403") ||
-            e.message.includes("404") ||
-            e.message.includes("Access Denied") ||
-            e.message.includes("Not Found"))));
+    // Determine if this is a client error (4xx) and convert it to appropriate error type
+    const classifiedError = classifyError(e);
 
-    // Only log actual server errors as errors, log client errors as debug
-    if (isClientError) {
-      debug("Client error in image optimization", e);
-    } else {
-      error("Failed to optimize image", e);
-    }
+    // Log with the appropriate level based on the error type
+    error("Image optimization error", classifiedError);
 
-    // Determine appropriate status code based on error type
-    if (e && typeof e === "object") {
-      if ("statusCode" in e && typeof e.statusCode === "number") {
-        statusCode = e.statusCode;
-      } else if ("code" in e) {
-        const code = e.code as string;
-        if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
-          statusCode = 404;
-        }
-      } else if (e.message) {
-        if (e.message.includes("403") || e.message.includes("Access Denied")) {
-          statusCode = 403;
-        } else if (
-          e.message.includes("404") ||
-          e.message.includes("Not Found")
-        ) {
-          statusCode = 404;
-        }
-      }
-    }
-
-    // Pass through the original error message from Next.js
+    // Pass through the error message from Next.js
     return buildFailureResponse(
-      e.message || "Internal server error",
+      classifiedError.message || "Internal server error",
       options?.streamCreator,
-      statusCode,
+      classifiedError.statusCode,
     );
   }
 }
@@ -172,6 +135,63 @@ export async function defaultHandler(
 //////////////////////
 // Helper functions //
 //////////////////////
+
+/**
+ * Classifies an error and converts it to the appropriate OpenNext error type
+ * with the correct status code and logging level.
+ */
+function classifyError(e: any): IgnorableError | RecoverableError | FatalError {
+  // Default values
+  let statusCode = 500;
+  const message = e?.message || "Internal server error";
+
+  // If it's already an OpenNext error, return it directly
+  if (e && typeof e === "object" && "__openNextInternal" in e) {
+    return e;
+  }
+
+  // Determine if this is a client error (4xx) or server error (5xx)
+  const isClientError =
+    e &&
+    typeof e === "object" &&
+    (("statusCode" in e &&
+      typeof e.statusCode === "number" &&
+      e.statusCode >= 400 &&
+      e.statusCode < 500) ||
+      e.code === "ENOTFOUND" ||
+      e.code === "ECONNREFUSED" ||
+      (e.message &&
+        (e.message.includes("403") ||
+          e.message.includes("404") ||
+          e.message.includes("Access Denied") ||
+          e.message.includes("Not Found"))));
+
+  // Determine appropriate status code based on error type
+  if (e && typeof e === "object") {
+    if ("statusCode" in e && typeof e.statusCode === "number") {
+      statusCode = e.statusCode;
+    } else if ("code" in e) {
+      const code = e.code as string;
+      if (code === "ENOTFOUND" || code === "ECONNREFUSED") {
+        statusCode = 404;
+      }
+    } else if (e.message) {
+      if (e.message.includes("403") || e.message.includes("Access Denied")) {
+        statusCode = 403;
+      } else if (e.message.includes("404") || e.message.includes("Not Found")) {
+        statusCode = 404;
+      }
+    }
+  }
+
+  // Client errors (4xx) are wrapped as IgnorableError to prevent noise in monitoring
+  if (isClientError || statusCode < 500) {
+    return new IgnorableError(message, statusCode);
+  }
+
+  // Server errors (5xx) are marked as FatalError to ensure proper monitoring
+  return new FatalError(message, statusCode);
+}
 
 function validateImageParams(
   headers: OutgoingHttpHeaders,
@@ -305,11 +325,24 @@ async function downloadHandler(
       const request = https.get(url, (response) => {
         // Check for HTTP error status codes
         if (response.statusCode && response.statusCode >= 400) {
-          error(`Failed to get image: HTTP ${response.statusCode}`);
+          // Create an IgnorableError with appropriate status code
+          const clientError = new IgnorableError(
+            response.statusMessage || `HTTP error ${response.statusCode}`,
+            response.statusCode,
+          );
+
+          // Log the error using proper error logger to handle it correctly
+          error("Client error fetching image", clientError, {
+            status: response.statusCode,
+            statusText: response.statusMessage,
+            url: url.href,
+          });
+
           res.statusCode = response.statusCode;
           res.end();
           return;
         }
+
         // IncomingMessage is a Readable stream, not a Writable
         // We need to pipe it directly to the response
         response
@@ -320,8 +353,12 @@ async function downloadHandler(
             }
             res.end();
           })
-          .once("error", (pipeErr) => {
-            error("Failed to get image during piping", pipeErr);
+          .once("error", (pipeErr: Error) => {
+            const clientError = new IgnorableError(
+              `Error during image piping: ${pipeErr.message}`,
+              400,
+            );
+            error("Failed to get image during piping", clientError);
             if (!res.headersSent) {
               res.statusCode = 400;
             }
@@ -330,24 +367,25 @@ async function downloadHandler(
       });
 
       request.on("error", (err: Error & { code?: string }) => {
-        // For network errors, these are typically client errors (bad URL, etc.)
-        // so log as debug instead of error to avoid false alarms
+        // For network errors, convert to appropriate error type based on error code
         const isClientError =
           err.code === "ENOTFOUND" || err.code === "ECONNREFUSED";
+        const statusCode = isClientError ? 404 : 400;
 
-        if (isClientError) {
-          // Log the full error for debugging but don't expose it to the client
-          debug("Client error fetching image", {
-            code: err.code,
-            message: err.message,
-          });
-          res.statusCode = 404; // Not Found for DNS or connection errors
-        } else {
-          error("Failed to get image", err);
-          res.statusCode = 400; // Bad Request for other errors
-        }
+        // Create appropriate error type
+        const clientError = new IgnorableError(
+          err.message || `Error fetching image: ${err.code || "unknown error"}`,
+          statusCode,
+        );
 
-        // Don't send the error message back to the client
+        // Log with error function but it will be handled properly based on error type
+        error("Error fetching image", clientError, {
+          code: err.code,
+          message: err.message,
+          url: url.href,
+        });
+
+        res.statusCode = statusCode;
         res.end();
       });
     }
