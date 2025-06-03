@@ -28,16 +28,27 @@ export const convertHeader = (header: http.OutgoingHttpHeader) => {
   return String(header);
 };
 
-export function parseCookies(
+/**
+ * Parses a (comma-separated) list of Set-Cookie headers
+ *
+ * @param cookies A comma-separated list of Set-Cookie headers or a list of Set-Cookie headers
+ * @returns A list of Set-Cookie header
+ */
+export function parseSetCookieHeader(
   cookies: string | string[] | null | undefined,
 ): string[] {
   if (!cookies) {
     return [];
   }
 
-  return typeof cookies === "string"
-    ? cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim())
-    : cookies;
+  if (typeof cookies === "string") {
+    // Split the cookie string on ",".
+    // Note that "," can also appear in the Expires value (i.e. `Expires=Thu, 01 June`)
+    // so we have to skip it with a negative lookbehind.
+    return cookies.split(/(?<!Expires=\w+),/i).map((c) => c.trim());
+  }
+
+  return cookies;
 }
 
 /**
