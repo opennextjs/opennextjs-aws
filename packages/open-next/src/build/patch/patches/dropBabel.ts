@@ -36,7 +36,7 @@ export const patchDropBabel: CodePatcher = {
             escape: false,
           },
         ),
-        contentFilter: /runMiddleware\(/,
+        contentFilter: /runEdgeFunction\(/,
         patchCode: async ({ code }) =>
           patchCode(code, createEmptyBodyRule("runEdgeFunction")),
       },
@@ -51,7 +51,7 @@ export const patchDropBabel: CodePatcher = {
           },
         ),
         contentFilter: /error-inspect/,
-        patchCode: async ({ code }) => patchCode(code, "errorInspectRule"),
+        patchCode: async ({ code }) => patchCode(code, errorInspectRule),
       },
     },
   ],
