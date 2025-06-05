@@ -6,9 +6,9 @@
  * - drop `next/dist/server/node-environment-extensions/error-inspect.js`
  */
 
-import { getCrossPlatformPathRegex } from "utils/regex";
-import { patchCode } from "../astCodePatcher";
-import type { CodePatcher } from "../codePatcher";
+import { getCrossPlatformPathRegex } from "utils/regex.js";
+import { patchCode } from "../astCodePatcher.js";
+import type { CodePatcher } from "../codePatcher.js";
 
 export const patchDropBabel: CodePatcher = {
   name: "patch-drop-babel",
