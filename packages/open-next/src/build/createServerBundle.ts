@@ -21,15 +21,7 @@ import {
 import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
-import {
-  patchBackgroundRevalidation,
-  patchEnvVars,
-  patchFetchCacheForISR,
-  patchFetchCacheSetMissingWaitUntil,
-  patchNextServer,
-  patchUnstableCacheForISR,
-  patchUseCacheForISR,
-} from "./patch/patches/index.js";
+import * as patches from "./patch/patches/index.js";
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
@@ -207,13 +199,14 @@ async function generateBundle(
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
   await applyCodePatches(options, tracedFiles, manifests, [
-    patchFetchCacheSetMissingWaitUntil,
-    patchFetchCacheForISR,
-    patchUnstableCacheForISR,
-    patchNextServer,
-    patchEnvVars,
-    patchBackgroundRevalidation,
-    patchUseCacheForISR,
+    patches.patchFetchCacheSetMissingWaitUntil,
+    patches.patchFetchCacheForISR,
+    patches.patchUnstableCacheForISR,
+    patches.patchNextServer,
+    patches.patchEnvVars,
+    patches.patchBackgroundRevalidation,
+    patches.patchUseCacheForISR,
+    patches.patchDropBabel,
     ...additionalCodePatches,
   ]);
 
