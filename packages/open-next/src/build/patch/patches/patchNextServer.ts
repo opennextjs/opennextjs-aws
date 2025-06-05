@@ -18,9 +18,9 @@ rule:
                 inside:
                   kind: method_definition
                   any:
-                    - has: {kind: property_identifier, field: name, regex: runEdgeFunction}
-                    - has: {kind: property_identifier, field: name, regex: runMiddleware}
-                    - has: {kind: property_identifier, field: name, regex: imageOptimizer}
+                    - has: {kind: property_identifier, field: name, regex: ^runEdgeFunction$}
+                    - has: {kind: property_identifier, field: name, regex: ^runMiddleware$}
+                    - has: {kind: property_identifier, field: name, regex: ^imageOptimizer$}
             - has:
                 kind: statement_block
                 has:
@@ -36,12 +36,12 @@ rule:
   kind: statement_block
   inside:
     kind: if_statement
-    any: 
-      - has: 
+    any:
+      - has:
           kind: member_expression
           pattern: this.nextConfig.experimental.preloadEntriesOnStart
           stopBy: end
-      - has: 
+      - has:
           kind: binary_expression
           pattern: appDocumentPreloading === true
           stopBy: end
@@ -57,7 +57,7 @@ rule:
     kind: method_definition
     has:
       kind: property_identifier
-      regex: getMiddlewareManifest
+      regex: ^getMiddlewareManifest$
 fix:
   '{return null;}'
 `;
@@ -69,7 +69,7 @@ export const patchNextServer: CodePatcher = {
     {
       versions: ">=15.0.0",
       field: {
-        pathFilter: /next-server\.(js)$/,
+        pathFilter: /next-server\.js$/,
         contentFilter: /process\.env\.NEXT_MINIMAL/,
         patchCode: createPatchCode(minimalRule),
       },
@@ -78,16 +78,15 @@ export const patchNextServer: CodePatcher = {
     {
       versions: ">=15.0.0",
       field: {
-        pathFilter: /next-server\.(js)$/,
+        pathFilter: /next-server\.js$/,
         contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
         patchCode: createPatchCode(disablePreloadingRule),
       },
     },
     // Don't match edge functions in `NextServer`
     {
-      versions: ">=15.0.0",
       field: {
-        pathFilter: /next-server\.(js)$/,
+        pathFilter: /next-server\.js$/,
         contentFilter: /getMiddlewareManifest/,
         patchCode: createPatchCode(removeMiddlewareManifestRule),
       },
