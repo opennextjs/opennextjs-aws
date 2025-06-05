@@ -28,11 +28,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
-import {
-  FatalError,
-  IgnorableError,
-  type RecoverableError,
-} from "../utils/error.js";
+import { IgnorableError } from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -87,9 +83,10 @@ export async function defaultHandler(
     // We return a 400 here if imageParams returns an errorMessage
     // https://github.com/vercel/next.js/blob/512d8283054407ab92b2583ecce3b253c3be7b85/packages/next/src/server/next-server.ts#L937-L941
     if ("errorMessage" in imageParams) {
-      // Use IgnorableError for client-side validation issues (logLevel 0) to prevent monitoring alerts
-      const clientError = new IgnorableError(imageParams.errorMessage, 400);
-      error("Error during validation of image params", clientError);
+      error(
+        "Error during validation of image params",
+        imageParams.errorMessage,
+      );
       return buildFailureResponse(
         imageParams.errorMessage,
         options?.streamCreator,
@@ -118,17 +115,19 @@ export async function defaultHandler(
     );
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    // Determine if this is a client error (4xx) and convert it to appropriate error type
-    const classifiedError = classifyError(e);
+    // All image-related errors should be treated as client errors
+    // Extract status code from error or default to 400 Bad Request
+    const statusCode = e.statusCode || 400;
+    const errorMessage = e.message || "Failed to process image request";
 
-    // Log with the appropriate level based on the error type
-    error("Image optimization error", classifiedError);
+    // Create an IgnorableError for proper monitoring classification
+    const clientError = new IgnorableError(errorMessage, statusCode);
+    error("Failed to optimize image", clientError);
 
-    // Pass through the error message from Next.js
     return buildFailureResponse(
-      classifiedError.message || "Internal server error",
+      errorMessage,
       options?.streamCreator,
-      classifiedError.statusCode,
+      statusCode, // Use the appropriate status code (preserving original when available)
     );
   }
 }
@@ -136,52 +135,6 @@ export async function defaultHandler(
 //////////////////////
 // Helper functions //
 //////////////////////
-
-/**
- * Classifies an error as either a client error (IgnorableError) or server error (FatalError)
- * to ensure proper logging behavior without triggering false monitoring alerts.
- *
- * The primary goal is to preserve the original error information while ensuring
- * client errors don't trigger monitoring alerts.
- */
-function classifyError(e: any): IgnorableError | RecoverableError | FatalError {
-  // If it's already an OpenNext error, return it directly
-  if (e && typeof e === "object" && "__openNextInternal" in e) {
-    return e;
-  }
-
-  // Preserve the original message
-  const message = e?.message || "Internal server error";
-
-  // Preserve the original status code if available, otherwise use a default
-  let statusCode = 500;
-  if (
-    e &&
-    typeof e === "object" &&
-    "statusCode" in e &&
-    typeof e.statusCode === "number"
-  ) {
-    statusCode = e.statusCode;
-  }
-
-  // Simple check for client errors - anything with a 4xx status code
-  // or common error codes that indicate client issues
-  const isClientError =
-    (statusCode >= 400 && statusCode < 500) ||
-    (e &&
-      typeof e === "object" &&
-      (e.code === "ENOTFOUND" ||
-        e.code === "ECONNREFUSED" ||
-        e.code === "ETIMEDOUT"));
-
-  // Wrap client errors as IgnorableError to prevent monitoring alerts
-  if (isClientError) {
-    return new IgnorableError(message, statusCode);
-  }
-
-  // Server errors are marked as FatalError to ensure proper monitoring
-  return new FatalError(message, statusCode);
-}
 
 function validateImageParams(
   headers: OutgoingHttpHeaders,
@@ -295,124 +248,140 @@ async function downloadHandler(
   // directly.
   debug("downloadHandler url", url);
 
-  // Reads the output from the Writable and writes to the response
-  const pipeRes = (w: Writable, res: ServerResponse) => {
-    w.pipe(res)
+  /**
+   * Helper function to handle image errors consistently with appropriate response
+   * @param e The error object
+   * @param res The server response object
+   * @param isInternalImage Whether the error is from an internal image (S3) or external image
+   */
+  function handleImageError(
+    e: any,
+    res: ServerResponse,
+    isInternalImage: boolean,
+  ) {
+    let originalStatus = e.statusCode || e.$metadata?.httpStatusCode || 500;
+    let message = e.message || "Failed to process image request";
+
+    // Special handling for S3 ListBucket permission errors
+    // AWS SDK v3 nests error details deeply within the error object
+    const isListBucketError =
+      (message.includes("s3:ListBucket") && message.includes("AccessDenied")) ||
+      e.error?.message?.includes("s3:ListBucket") ||
+      (e.Code === "AccessDenied" && e.Message?.includes("s3:ListBucket"));
+
+    if (isListBucketError) {
+      message = "Image not found or access denied";
+      // For S3 ListBucket errors, ensure we're using 403 (the actual AWS error)
+      if (originalStatus === 500 && e.$metadata?.httpStatusCode === 403) {
+        originalStatus = 403;
+      }
+
+      // Log using IgnorableError to classify as client error
+      const clientError = new IgnorableError(message, originalStatus);
+      error("S3 ListBucket permission error", clientError);
+    } else {
+      // Log all other errors as client errors
+      const clientError = new IgnorableError(message, originalStatus);
+      error("Failed to process image", clientError);
+    }
+
+    // For external images, throw if not ListBucket error
+    // Next.js will preserve the status code for external images
+    if (!isInternalImage && !isListBucketError) {
+      const formattedError = new Error(message);
+      // @ts-ignore: Add statusCode property to Error
+      formattedError.statusCode = originalStatus >= 500 ? 400 : originalStatus;
+      throw formattedError;
+    }
+
+    // Different handling for internal vs external images
+    const finalStatus = originalStatus >= 500 ? 400 : originalStatus;
+    res.statusCode = finalStatus;
+
+    // For internal images, we want to trigger Next.js's "internal response invalid" message
+    if (isInternalImage) {
+      // For internal images, don't set Content-Type to trigger Next.js's default error handling
+      // This should result in "url parameter is valid but internal response is invalid"
+
+      // Still include error details in headers for debugging only
+      const errorMessage = isListBucketError ? "Access denied" : message;
+      res.setHeader("x-nextjs-internal-error", errorMessage);
+      res.end();
+    } else {
+      // For external images, maintain existing behavior with text/plain
+      res.setHeader("Content-Type", "text/plain");
+
+      if (isListBucketError) {
+        res.end("Access denied");
+      } else {
+        res.end(message);
+      }
+    }
+  }
+
+  // Pipes data from a writable stream to the server response
+  function pipeStream(
+    stream: Writable,
+    res: ServerResponse,
+    isInternalImage: boolean,
+  ) {
+    stream
+      .pipe(res)
       .once("close", () => {
         res.statusCode = 200;
         res.end();
       })
       .once("error", (err) => {
-        error("Failed to get image", err);
-        res.statusCode = 400;
-        res.end();
+        error("Error streaming image data", err);
+        handleImageError(err, res, isInternalImage);
       });
-  };
+  }
 
+  // Main handler logic with clearer error paths
   try {
-    // Case 1: remote image URL => download the image from the URL
+    // EXTERNAL IMAGE HANDLING
     if (url.href.toLowerCase().match(/^https?:\/\//)) {
-      const request = https.get(url, (response) => {
-        // Check for HTTP error status codes
-        if (response.statusCode && response.statusCode >= 400) {
-          // Create an IgnorableError with appropriate status code
-          const clientError = new IgnorableError(
-            response.statusMessage || `HTTP error ${response.statusCode}`,
-            response.statusCode,
-          );
-
-          // Log the error using proper error logger to handle it correctly
-          error("Client error fetching image", clientError, {
-            status: response.statusCode,
-            statusText: response.statusMessage,
-            url: url.href,
-          });
-
-          res.statusCode = response.statusCode;
-          res.end();
-          return;
-        }
-
-        // IncomingMessage is a Readable stream, not a Writable
-        // We need to pipe it directly to the response
-        response
-          .pipe(res)
-          .once("close", () => {
-            if (!res.headersSent) {
-              res.statusCode = 200;
-            }
-            res.end();
-          })
-          .once("error", (pipeErr: Error) => {
-            const clientError = new IgnorableError(
-              `Error during image piping: ${pipeErr.message}`,
-              400,
-            );
-            error("Failed to get image during piping", clientError);
-            if (!res.headersSent) {
-              res.statusCode = 400;
-            }
-            res.end();
-          });
-      });
-
-      request.on("error", (err: Error & { code?: string }) => {
-        // For network errors, convert to appropriate error type based on error code
-        const isClientError =
-          err.code === "ENOTFOUND" || err.code === "ECONNREFUSED";
-        const statusCode = isClientError ? 404 : 400;
-
-        // Create appropriate error type
-        const clientError = new IgnorableError(
-          err.message || `Error fetching image: ${err.code || "unknown error"}`,
-          statusCode,
-        );
-
-        // Log with error function but it will be handled properly based on error type
-        error("Error fetching image", clientError, {
-          code: err.code,
-          message: err.message,
-          url: url.href,
-        });
-
-        res.statusCode = statusCode;
-        res.end();
-      });
+      try {
+        pipeStream(https.get(url), res, false);
+      } catch (e: any) {
+        handleImageError(e, res, false);
+      }
+      return;
     }
-    // Case 2: local image => download the image from S3
-    else {
-      // Download image from S3
-      // note: S3 expects keys without leading `/`
 
+    // INTERNAL IMAGE HANDLING (S3)
+    try {
       const response = await loader.load(url.href);
 
+      // Handle empty response body
       if (!response.body) {
-        throw new Error("Empty response body from the S3 request.");
+        const message = "Empty response body from the S3 request.";
+        const clientError = new IgnorableError(message, 400);
+        error("Empty response from S3", clientError);
+
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "text/plain");
+        res.end(message);
+        return;
       }
 
-      // @ts-ignore
-      pipeRes(response.body, res);
-
-      // Respect the bucket file's content-type and cache-control
-      // imageOptimizer will use this to set the results.maxAge
+      // Set headers from the response
       if (response.contentType) {
         res.setHeader("Content-Type", response.contentType);
       }
       if (response.cacheControl) {
         res.setHeader("Cache-Control", response.cacheControl);
       }
+
+      // Stream the image to the client
+      // @ts-ignore
+      pipeStream(response.body, res, true);
+    } catch (e: any) {
+      // Direct response for all internal image errors
+      handleImageError(e, res, true);
     }
   } catch (e: any) {
-    // Use our centralized error classification function
-    const classifiedError = classifyError(e);
-
-    // Log error with appropriate level based on error type
-    // This will automatically downgrade client errors to debug level
-    error("Failed to download image", classifiedError);
-
-    // Since we're in a middleware (adapter) called by Next.js's image optimizer,
-    // we should throw the properly classified error to let Next.js handle it appropriately
-    // The Next.js image optimizer will use the status code and normalize the error message
-    throw classifiedError;
+    // Catch-all for any unexpected errors
+    handleImageError(e, res, true);
   }
 }
