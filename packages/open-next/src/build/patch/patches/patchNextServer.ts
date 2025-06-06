@@ -85,6 +85,8 @@ export const patchNextServer: CodePatcher = {
     },
     // Don't match edge functions in `NextServer`
     {
+      // Next 12 and some version of 13 use the bundled middleware/edge function
+      versions: ">=14.0.0",
       field: {
         pathFilter: /next-server\.js$/,
         contentFilter: /getMiddlewareManifest/,
