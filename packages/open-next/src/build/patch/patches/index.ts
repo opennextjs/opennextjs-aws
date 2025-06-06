@@ -7,4 +7,3 @@ export {
 } from "./patchFetchCacheISR.js";
 export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.js";
 export { patchBackgroundRevalidation } from "./patchBackgroundRevalidation.js";
-export { patchDropBabel } from "./dropBabel.js";

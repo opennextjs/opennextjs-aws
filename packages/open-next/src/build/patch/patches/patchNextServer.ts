@@ -1,36 +1,8 @@
+import { getCrossPlatformPathRegex } from "utils/regex.js";
 import { createPatchCode } from "../astCodePatcher.js";
 import type { CodePatcher } from "../codePatcher.js";
 
-// This rule will replace the `NEXT_MINIMAL` env variable with true in multiple places to avoid executing unwanted path (i.e. next middleware, edge functions and image optimization)
-export const minimalRule = `
-rule:
-  kind: member_expression
-  pattern: process.env.NEXT_MINIMAL
-  any:
-    - inside:
-        kind: parenthesized_expression
-        stopBy: end
-        inside:
-          kind: if_statement
-          any:
-            - inside:
-                kind: statement_block
-                inside:
-                  kind: method_definition
-                  any:
-                    - has: {kind: property_identifier, field: name, regex: ^runEdgeFunction$}
-                    - has: {kind: property_identifier, field: name, regex: ^runMiddleware$}
-                    - has: {kind: property_identifier, field: name, regex: ^imageOptimizer$}
-            - has:
-                kind: statement_block
-                has:
-                  kind: expression_statement
-                  pattern: res.statusCode = 400;
-fix:
-  'true'
-`;
-
-// This rule will disable the background preloading of route done by NextServer by default during the creation of NextServer
+// Disable the background preloading of route done by NextServer by default during the creation of NextServer
 export const disablePreloadingRule = `
 rule:
   kind: statement_block
@@ -49,7 +21,7 @@ fix:
   '{}'
 `;
 
-// This rule is mostly for splitted edge functions so that we don't try to match them on the other non edge functions
+// Mostly for splitted edge functions so that we don't try to match them on the other non edge functions
 export const removeMiddlewareManifestRule = `
 rule:
   kind: statement_block
@@ -62,23 +34,93 @@ fix:
   '{return null;}'
 `;
 
+/**
+ * Swaps the body for a throwing implementation
+ *
+ * @param methodName The name of the method
+ * @returns A rule to replace the body with a `throw`
+ */
+export function createEmptyBodyRule(methodName: string) {
+  return `
+rule:
+  pattern:
+    selector: method_definition
+    context: "class { async ${methodName}($$$PARAMS) { $$$_ } }"
+fix: |-
+  async ${methodName}($$$PARAMS) {
+    throw new Error("${methodName} should not be called with OpenNext");
+  }
+`;
+}
+
+/**
+ * Drops `require("./node-environment-extensions/error-inspect");`
+ */
+export const errorInspectRule = `
+rule:
+  pattern: require("./node-environment-extensions/error-inspect");
+fix: |-
+  // Removed by OpenNext
+  // require("./node-environment-extensions/error-inspect");
+`;
+
+const pathFilter = getCrossPlatformPathRegex(
+  String.raw`/next/dist/server/next-server\.js$`,
+  {
+    escape: false,
+  },
+);
+
+/**
+ * Patches to avoid pulling babel (~4MB).
+ *
+ * Details:
+ * - empty `NextServer#runMiddleware` and `NextServer#runEdgeFunction` that are not used
+ * - drop `next/dist/server/node-environment-extensions/error-inspect.js`
+ */
+const babelPatches = [
+  // Empty the body of `NextServer#runMiddleware`
+  {
+    field: {
+      pathFilter,
+      contentFilter: /runMiddleware\(/,
+      patchCode: createPatchCode(createEmptyBodyRule("runMiddleware")),
+    },
+  },
+  // Empty the body of `NextServer#runEdgeFunction`
+  {
+    field: {
+      pathFilter,
+      contentFilter: /runEdgeFunction\(/,
+      patchCode: createPatchCode(createEmptyBodyRule("runEdgeFunction")),
+    },
+  },
+  // Drop `error-inspect` that pulls babel
+  {
+    field: {
+      pathFilter,
+      contentFilter: /error-inspect/,
+      patchCode: createPatchCode(errorInspectRule),
+    },
+  },
+];
+
 export const patchNextServer: CodePatcher = {
   name: "patch-next-server",
   patches: [
-    // Skip executing next middleware, edge functions and image optimization inside NextServer
+    // Empty the body of `NextServer#imageOptimizer` - unused in OpenNext
     {
-      versions: ">=15.0.0",
       field: {
-        pathFilter: /next-server\.js$/,
-        contentFilter: /process\.env\.NEXT_MINIMAL/,
-        patchCode: createPatchCode(minimalRule),
+        pathFilter,
+        contentFilter: /imageOptimizer\(/,
+        patchCode: createPatchCode(createEmptyBodyRule("imageOptimizer")),
       },
     },
-    // Disable Next background preloading done at creation of `NetxServer`
+    // Disable Next background preloading done at creation of `NextServer`
     {
       versions: ">=15.0.0",
       field: {
-        pathFilter: /next-server\.js$/,
+        pathFilter,
         contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
         patchCode: createPatchCode(disablePreloadingRule),
       },
@@ -88,10 +130,11 @@ export const patchNextServer: CodePatcher = {
       // Next 12 and some version of 13 use the bundled middleware/edge function
       versions: ">=14.0.0",
       field: {
-        pathFilter: /next-server\.js$/,
+        pathFilter,
         contentFilter: /getMiddlewareManifest/,
         patchCode: createPatchCode(removeMiddlewareManifestRule),
       },
     },
+    ...babelPatches,
   ],
 };
