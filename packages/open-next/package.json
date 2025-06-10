@@ -59,7 +59,6 @@
     "@types/aws-lambda": "^8.10.109",
     "@types/express": "5.0.0",
     "@types/node": "catalog:",
-    "diff": "^8.0.2",
     "tsc-alias": "^1.8.8",
     "typescript": "catalog:"
   },
