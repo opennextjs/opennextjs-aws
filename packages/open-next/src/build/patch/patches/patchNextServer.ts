@@ -118,7 +118,7 @@ export const patchNextServer: CodePatcher = {
     },
     // Disable Next background preloading done at creation of `NextServer`
     {
-      versions: ">=15.0.0",
+      versions: ">=14.0.0",
       field: {
         pathFilter,
         contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
