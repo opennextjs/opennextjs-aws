@@ -1,5 +1,11 @@
 # open-next
 
+## 3.6.6
+
+### Patch Changes
+
+- [#896](https://github.com/opennextjs/opennextjs-aws/pull/896) [`7c99feb3141f1286d6d731ce4a1d53032705434c`](https://github.com/opennextjs/opennextjs-aws/commit/7c99feb3141f1286d6d731ce4a1d53032705434c) Thanks [@vicb](https://github.com/vicb)! - Disable background route preloading for Next >= 14
+
 ## 3.6.5
 
 ### Patch Changes
