@@ -598,18 +598,19 @@ describe("fixDataPage", () => {
   });
 
   it("should remove json extension from data requests (with base path) and add __nextDataReq to query", () => {
-    NextConfig.basePath = "/base";
+    const mockBasePath = "/base";
+    NextConfig.basePath = mockBasePath;
 
     const event = createEvent({
-      url: "https://on/base/_next/data/abc/test/file.json?hello=world",
+      url: `https://on${mockBasePath}/_next/data/abc/test/file.json?hello=world`,
     });
 
     const response = fixDataPage(event, "abc");
 
     expect(response).toEqual({
       ...event,
-      rawPath: "/test/file",
-      url: "https://on/test/file?hello=world&__nextDataReq=1",
+      rawPath: `${mockBasePath}/test/file`,
+      url: `https://on${mockBasePath}/test/file?hello=world&__nextDataReq=1`,
     });
 
     NextConfig.basePath = undefined;
