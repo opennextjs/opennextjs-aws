@@ -2,6 +2,7 @@ import url from "node:url";
 
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -359,6 +360,14 @@ File ${serverPath} does not exist
       .filter((file) => file.endsWith(".html"))
       .forEach((file) => copyStaticFile(`server/${file}`));
   }
+
+  // Copy .next/static/css from standalone to output dir
+  // needed for optimizeCss feature to work
+  cpSync(
+    path.join(standaloneNextDir, "static", "css"),
+    path.join(outputNextDir, "static", "css"),
+    { recursive: true },
+  );
 
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 
