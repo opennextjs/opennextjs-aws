@@ -381,8 +381,8 @@ export function fixDataPage(
   buildId: string,
 ): InternalEvent | InternalResult {
   const { rawPath, query } = internalEvent;
-  const dataPattern = `${NextConfig.basePath ?? ""}/_next/data/${buildId}`;
-
+  const basePath = NextConfig.basePath ?? "";
+  const dataPattern = `${basePath}/_next/data/${buildId}`;
   // Return 404 for data requests that don't match the buildId
   if (rawPath.startsWith("/_next/data") && !rawPath.startsWith(dataPattern)) {
     return {
@@ -397,9 +397,9 @@ export function fixDataPage(
   }
 
   if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
-    const newPath = rawPath
+    const newPath = `${basePath}${rawPath
       .slice(dataPattern.length, -".json".length)
-      .replace(/^\/index$/, "/");
+      .replace(/^\/index$/, "/")}`;
     query.__nextDataReq = "1";
 
     return {
