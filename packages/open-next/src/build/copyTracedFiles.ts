@@ -332,17 +332,17 @@ File ${serverPath} does not exist
       );
     }
   };
+
+  const manifests = getManifests(standaloneNextDir);
+  const { config, prerenderManifest, pagesManifest } = manifests;
+
   // Get all the static files - Should be only for pages dir
   // Ideally we would filter only those that might get accessed in this specific functions
   // Maybe even move this to s3 directly
   if (hasPageDir) {
     // First we get truly static files - i.e. pages without getStaticProps
-    const staticFiles: Array<string> = Object.values(
-      loadPagesManifest(standaloneNextDir),
-    );
+    const staticFiles: Array<string> = Object.values(pagesManifest);
     // Then we need to get all fallback: true dynamic routes html
-    const prerenderManifest = loadPrerenderManifest(standaloneNextDir);
-    const config = loadConfig(standaloneNextDir);
     const locales = config.i18n?.locales;
     Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
       if (typeof route.fallback === "string") {
@@ -361,13 +361,9 @@ File ${serverPath} does not exist
       .forEach((file) => copyStaticFile(`server/${file}`));
   }
 
-  const manifests = getManifests(standaloneNextDir);
-
-  const { optimizeCss } = manifests.config.experimental;
-
   // Copy .next/static/css from standalone to output dir
   // needed for optimizeCss feature to work
-  if (optimizeCss) {
+  if (config.experimental.optimizeCss) {
     cpSync(
       path.join(standaloneNextDir, "static", "css"),
       path.join(outputNextDir, "static", "css"),
