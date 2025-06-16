@@ -82,6 +82,7 @@ export interface NextConfig {
   experimental: {
     serverActions?: boolean;
     appDir?: boolean;
+    optimizeCss?: boolean;
   };
   images: ImageConfig;
   poweredByHeader?: boolean;

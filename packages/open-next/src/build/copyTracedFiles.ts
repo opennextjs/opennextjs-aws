@@ -361,19 +361,25 @@ File ${serverPath} does not exist
       .forEach((file) => copyStaticFile(`server/${file}`));
   }
 
+  const manifests = getManifests(standaloneNextDir);
+
+  const { optimizeCss } = manifests.config.experimental;
+
   // Copy .next/static/css from standalone to output dir
   // needed for optimizeCss feature to work
-  cpSync(
-    path.join(standaloneNextDir, "static", "css"),
-    path.join(outputNextDir, "static", "css"),
-    { recursive: true },
-  );
+  if (optimizeCss) {
+    cpSync(
+      path.join(standaloneNextDir, "static", "css"),
+      path.join(outputNextDir, "static", "css"),
+      { recursive: true },
+    );
+  }
 
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 
   return {
     tracedFiles,
     nodePackages,
-    manifests: getManifests(standaloneNextDir),
+    manifests,
   };
 }
