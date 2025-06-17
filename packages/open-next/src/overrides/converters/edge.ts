@@ -15,7 +15,7 @@ declare global {
   var __dangerous_ON_edge_converter_returns_request: boolean | undefined;
 }
 
-const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
 const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
   convertFrom: async (event: Request) => {
