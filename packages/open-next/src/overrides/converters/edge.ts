@@ -15,6 +15,9 @@ declare global {
   var __dangerous_ON_edge_converter_returns_request: boolean | undefined;
 }
 
+// https://fetch.spec.whatwg.org/#statuses
+const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
+
 const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
   convertFrom: async (event: Request) => {
     const url = new URL(event.url);
@@ -97,7 +100,12 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       }
     }
 
-    return new Response(result.body as ReadableStream, {
+    // We should not return a body for statusCode's that doesn't allow bodies
+    const body = NULL_BODY_STATUSES.has(result.statusCode)
+      ? null
+      : (result.body as ReadableStream);
+
+    return new Response(body, {
       status: result.statusCode,
       headers,
     });
