@@ -15,6 +15,7 @@ declare global {
   var __dangerous_ON_edge_converter_returns_request: boolean | undefined;
 }
 
+// https://fetch.spec.whatwg.org/#statuses
 const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
 const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
