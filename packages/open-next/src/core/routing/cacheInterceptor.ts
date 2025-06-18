@@ -119,7 +119,8 @@ async function generateResult(
   );
   return {
     type: "core",
-    statusCode: 200,
+    // sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
+    statusCode: cachedValue.meta?.status ?? 200,
     body: toReadableStream(body, false),
     isBase64Encoded: false,
     headers: {
