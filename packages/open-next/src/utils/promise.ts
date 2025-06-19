@@ -1,5 +1,6 @@
 import type { WaitUntil } from "types/open-next";
 import { debug, error } from "../adapters/logger";
+import type { OriginalTagCacheWriteInput } from "types/overrides";
 
 /**
  * A `Promise.withResolvers` implementation that exposes the `resolve` and
@@ -119,6 +120,7 @@ export function runWithOpenNextRequestContext<T>(
       pendingPromiseRunner: new DetachedPromiseRunner(),
       isISRRevalidation,
       waitUntil,
+      pendingTagToWrite: new Map<string, string | OriginalTagCacheWriteInput>(),
     },
     async () => {
       provideNextAfterProvider();

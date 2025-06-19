@@ -27,6 +27,7 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
+import { executeTagCacheWrite } from "utils/cache";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -209,6 +210,10 @@ export async function openNextHandler(
         body,
         isBase64Encoded,
       };
+
+      // Last thing we do is to write the tags to the tag cache if we are in the main function
+      // This is done inside a pending promise runner so that it can be awaited
+      executeTagCacheWrite();
 
       return internalResult;
     },

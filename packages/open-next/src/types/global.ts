@@ -4,6 +4,7 @@ import type { OutgoingHttpHeaders } from "node:http";
 import type {
   CDNInvalidationHandler,
   IncrementalCache,
+  OriginalTagCacheWriteInput,
   ProxyExternalRequest,
   Queue,
   TagCache,
@@ -63,6 +64,8 @@ interface OpenNextRequestContext {
   // Last modified time of the page (used in main functions, only available for ISR/SSG).
   lastModified?: number;
   waitUntil?: WaitUntil;
+  /** We use this to deduplicate write of the tags - It's a string if the tag cache is in NextMode */
+  pendingTagToWrite: Map<string, string | OriginalTagCacheWriteInput>;
 }
 
 declare global {

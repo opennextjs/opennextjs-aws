@@ -1,4 +1,8 @@
-import type { CacheValue, WithLastModified } from "types/overrides";
+import type {
+  CacheValue,
+  OriginalTagCacheWriteInput,
+  WithLastModified,
+} from "types/overrides";
 
 export async function hasBeenRevalidated(
   key: string,
@@ -37,5 +41,41 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
     return value.meta?.headers?.["x-next-cache-tags"]?.split(",") ?? [];
   } catch (e) {
     return [];
+  }
+}
+
+export function executeTagCacheWrite() {
+  const store = globalThis.__openNextAls.getStore();
+  if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
+    return;
+  }
+  const tagCache = globalThis.tagCache;
+  const tagsToWrite = Array.from(store.pendingTagToWrite.values());
+
+  store.pendingPromiseRunner.add(tagCache.writeTags(tagsToWrite as any));
+}
+
+export function addTagToWrite(
+  tags: (string | OriginalTagCacheWriteInput)[],
+): void {
+  const store = globalThis.__openNextAls.getStore();
+  if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
+    return;
+  }
+  for (const t of tags) {
+    if (typeof t === "string") {
+      store.pendingTagToWrite.set(t, t);
+    } else {
+      store.pendingTagToWrite.set(
+        // The primary key is only the path and the tag, not the revalidatedAt
+        JSON.stringify({
+          tag: t.tag,
+          path: t.path,
+        }),
+        {
+          ...t,
+        },
+      );
+    }
   }
 }
