@@ -39,6 +39,12 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       ? (cookieParser.parse(cookieHeader) as Record<string, string>)
       : {};
 
+    // This is to make libraries (e.g. next-auth) that rely on this header to work out of the box in `opennextjs-cloudflare preview`.
+    // See https://github.com/nextauthjs/next-auth/blob/main/packages/core/src/lib/utils/env.ts#L95-L96
+    if (url.hostname === "localhost") {
+      headers["x-forwarded-proto"] = url.protocol.slice(0, -1); // Remove the trailing ':'
+    }
+
     return {
       type: "core",
       method,
