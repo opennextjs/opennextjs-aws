@@ -1,6 +1,6 @@
 {
   "name": "app-pages-router",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "private": true,
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
