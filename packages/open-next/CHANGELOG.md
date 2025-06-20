@@ -1,5 +1,23 @@
 # open-next
 
+## 3.6.6
+
+### Patch Changes
+
+- [#896](https://github.com/opennextjs/opennextjs-aws/pull/896) [`7c99feb3141f1286d6d731ce4a1d53032705434c`](https://github.com/opennextjs/opennextjs-aws/commit/7c99feb3141f1286d6d731ce4a1d53032705434c) Thanks [@vicb](https://github.com/vicb)! - Disable background route preloading for Next >= 14
+
+- [#905](https://github.com/opennextjs/opennextjs-aws/pull/905) [`f46bc000387467dff2753eeac4cab1d1c9a1389c`](https://github.com/opennextjs/opennextjs-aws/commit/f46bc000387467dff2753eeac4cab1d1c9a1389c) Thanks [@chiakaiming](https://github.com/chiakaiming)! - fix dataRoutes omitting basePath in page router (#897)
+
+- [#883](https://github.com/opennextjs/opennextjs-aws/pull/883) [`622230101ee8916422ed65d0fb326d816a9ea1bc`](https://github.com/opennextjs/opennextjs-aws/commit/622230101ee8916422ed65d0fb326d816a9ea1bc) Thanks [@makepanic](https://github.com/makepanic)! - fix: move cache assets instead of copying them
+
+- [#906](https://github.com/opennextjs/opennextjs-aws/pull/906) [`c5421facd6246b9a653b3cff3c00629362084555`](https://github.com/opennextjs/opennextjs-aws/commit/c5421facd6246b9a653b3cff3c00629362084555) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(edge-converter): Ensure null body status codes dont return a body
+
+- [#907](https://github.com/opennextjs/opennextjs-aws/pull/907) [`fc14edeb3c38f0307a7d81e8197fd0c9f16be261`](https://github.com/opennextjs/opennextjs-aws/commit/fc14edeb3c38f0307a7d81e8197fd0c9f16be261) Thanks [@conico974](https://github.com/conico974)! - Fix incorrect status code being sent from interceptor
+
+- [#904](https://github.com/opennextjs/opennextjs-aws/pull/904) [`075be1e53dcbd4253e5700ddec872e3354ea6d06`](https://github.com/opennextjs/opennextjs-aws/commit/075be1e53dcbd4253e5700ddec872e3354ea6d06) Thanks [@artabr](https://github.com/artabr)! - - add css files to server bundle for optimizeCss feature to work
+
+  - load all manifests and configs in copyTracedFiles in one place once
+
 ## 3.6.5
 
 ### Patch Changes
