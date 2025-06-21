@@ -3,9 +3,16 @@ import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
+const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
+
 export default {
   async get(cacheKey: string) {
     try {
+      // We first check if we have a pending write for this cache key
+      // If we do, we return the pending promise instead of fetching the cache
+      if (pendingWritePromiseMap.has(cacheKey)) {
+        return pendingWritePromiseMap.get(cacheKey);
+      }
       const result = await globalThis.incrementalCache.get(
         cacheKey,
         "composable",
@@ -49,7 +56,10 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const entry = await pendingEntry;
+    pendingWritePromiseMap.set(cacheKey, pendingEntry);
+    const entry = await pendingEntry.finally(() => {
+      pendingWritePromiseMap.delete(cacheKey);
+    });
     const valueToStore = await fromReadableStream(entry.value);
     await globalThis.incrementalCache.set(
       cacheKey,
