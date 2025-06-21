@@ -63,6 +63,8 @@ interface OpenNextRequestContext {
   // Last modified time of the page (used in main functions, only available for ISR/SSG).
   lastModified?: number;
   waitUntil?: WaitUntil;
+  /** We use this to deduplicate write of the tags*/
+  writtenTags: Set<string>;
 }
 
 declare global {

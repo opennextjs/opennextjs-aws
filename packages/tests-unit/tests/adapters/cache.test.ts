@@ -56,6 +56,7 @@ describe("CacheHandler", () => {
           resolve: vi.fn(),
         }),
       },
+      writtenTags: new Set(),
     }),
   };
 

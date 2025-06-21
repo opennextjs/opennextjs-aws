@@ -119,6 +119,7 @@ export function runWithOpenNextRequestContext<T>(
       pendingPromiseRunner: new DetachedPromiseRunner(),
       isISRRevalidation,
       waitUntil,
+      writtenTags: new Set<string>(),
     },
     async () => {
       provideNextAfterProvider();

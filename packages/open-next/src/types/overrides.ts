@@ -144,6 +144,12 @@ export type NextModeTagCache = BaseTagCache & {
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
 };
 
+export interface OriginalTagCacheWriteInput {
+  tag: string;
+  path: string;
+  revalidatedAt?: number;
+}
+
 /**
  * On get :
 We just check for the cache key in the tag cache. If it has been revalidated we just return null, otherwise we continue
@@ -168,9 +174,7 @@ export type OriginalTagCache = BaseTagCache & {
   getByTag(tag: string): Promise<string[]>;
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
-  writeTags(
-    tags: { tag: string; path: string; revalidatedAt?: number }[],
-  ): Promise<void>;
+  writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;
