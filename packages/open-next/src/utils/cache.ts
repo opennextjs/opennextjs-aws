@@ -44,38 +44,38 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   }
 }
 
-export function executeTagCacheWrite() {
-  const store = globalThis.__openNextAls.getStore();
-  if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
-    return;
+function getTagKey(tag: string | OriginalTagCacheWriteInput): string {
+  if (typeof tag === "string") {
+    return tag;
   }
-  const tagCache = globalThis.tagCache;
-  const tagsToWrite = Array.from(store.pendingTagToWrite.values());
-
-  store.pendingPromiseRunner.add(tagCache.writeTags(tagsToWrite as any));
+  return JSON.stringify({
+    tag: tag.tag,
+    path: tag.path,
+  });
 }
 
-export function addTagToWrite(
+export async function writeTags(
   tags: (string | OriginalTagCacheWriteInput)[],
-): void {
+): Promise<void> {
   const store = globalThis.__openNextAls.getStore();
+  console.log("Writing tags", tags, store);
   if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
     return;
   }
-  for (const t of tags) {
-    if (typeof t === "string") {
-      store.pendingTagToWrite.set(t, t);
-    } else {
-      store.pendingTagToWrite.set(
-        // The primary key is only the path and the tag, not the revalidatedAt
-        JSON.stringify({
-          tag: t.tag,
-          path: t.path,
-        }),
-        {
-          ...t,
-        },
-      );
+  const tagsToWrite = tags.filter((t) => {
+    const tagKey = getTagKey(t);
+    const shouldWrite = !store.writtenTags.has(tagKey);
+    // We preemptively add the tag to the writtenTags set
+    // to avoid writing the same tag multiple times in the same request
+    if (shouldWrite) {
+      store.writtenTags.add(tagKey);
     }
+    return shouldWrite;
+  });
+  if (tagsToWrite.length === 0) {
+    return;
   }
+
+  // Here we know that we have the correct type
+  await globalThis.tagCache.writeTags(tagsToWrite as any);
 }

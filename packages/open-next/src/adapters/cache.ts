@@ -3,11 +3,7 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import {
-  addTagToWrite,
-  getTagsFromValue,
-  hasBeenRevalidated,
-} from "utils/cache";
+import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
@@ -330,7 +326,7 @@ export default class Cache {
       if (globalThis.tagCache.mode === "nextMode") {
         const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
 
-        addTagToWrite(_tags);
+        await writeTags(_tags);
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
@@ -382,7 +378,7 @@ export default class Cache {
         }
 
         // Update all keys with the given tag with revalidatedAt set to now
-        addTagToWrite(toInsert);
+        await writeTags(toInsert);
 
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`
@@ -446,7 +442,7 @@ export default class Cache {
     const storedTags = await globalThis.tagCache.getByPath(key);
     const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
     if (tagsToWrite.length > 0) {
-      addTagToWrite(
+      await writeTags(
         tagsToWrite.map((tag) => ({
           path: key,
           tag: tag,

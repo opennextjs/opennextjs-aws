@@ -1,7 +1,7 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
+import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
-import { addTagToWrite } from "utils/cache";
 
 export default {
   async get(cacheKey: string) {
@@ -63,7 +63,7 @@ export default {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
-        addTagToWrite(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
+        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
       }
     }
   },
@@ -82,7 +82,7 @@ export default {
   },
   async expireTags(...tags: string[]) {
     if (globalThis.tagCache.mode === "nextMode") {
-      return addTagToWrite(tags);
+      return writeTags(tags);
     }
     const tagCache = globalThis.tagCache;
     const revalidatedAt = Date.now();
@@ -103,7 +103,7 @@ export default {
     for (const entry of pathsToUpdate.flat()) {
       setToWrite.add(entry);
     }
-    addTagToWrite(Array.from(setToWrite));
+    await writeTags(Array.from(setToWrite));
   },
 
   // This one is necessary for older versions of next
