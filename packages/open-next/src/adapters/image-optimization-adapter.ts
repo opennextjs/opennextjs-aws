@@ -169,6 +169,11 @@ function buildSuccessResponse(
     Vary: "Accept",
     "Content-Type": result.contentType,
     "Cache-Control": `public,max-age=${result.maxAge},immutable`,
+    "Content-Disposition":
+      nextConfig.images.contentDispositionType ?? "attachment",
+    "Content-Security-Policy":
+      nextConfig.images.contentSecurityPolicy ??
+      "script-src 'none'; frame-src 'none'; sandbox;",
   };
   debug("result", result);
   if (etag) {
