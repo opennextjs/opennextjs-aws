@@ -1,10 +1,18 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
+import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
+
+const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
 
 export default {
   async get(cacheKey: string) {
     try {
+      // We first check if we have a pending write for this cache key
+      // If we do, we return the pending promise instead of fetching the cache
+      if (pendingWritePromiseMap.has(cacheKey)) {
+        return pendingWritePromiseMap.get(cacheKey);
+      }
       const result = await globalThis.incrementalCache.get(
         cacheKey,
         "composable",
@@ -48,7 +56,10 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const entry = await pendingEntry;
+    pendingWritePromiseMap.set(cacheKey, pendingEntry);
+    const entry = await pendingEntry.finally(() => {
+      pendingWritePromiseMap.delete(cacheKey);
+    });
     const valueToStore = await fromReadableStream(entry.value);
     await globalThis.incrementalCache.set(
       cacheKey,
@@ -62,9 +73,7 @@ export default {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
-        await globalThis.tagCache.writeTags(
-          tagsToWrite.map((tag) => ({ tag, path: cacheKey })),
-        );
+        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
       }
     }
   },
@@ -83,7 +92,7 @@ export default {
   },
   async expireTags(...tags: string[]) {
     if (globalThis.tagCache.mode === "nextMode") {
-      return globalThis.tagCache.writeTags(tags);
+      return writeTags(tags);
     }
     const tagCache = globalThis.tagCache;
     const revalidatedAt = Date.now();
@@ -104,7 +113,7 @@ export default {
     for (const entry of pathsToUpdate.flat()) {
       setToWrite.add(entry);
     }
-    await globalThis.tagCache.writeTags(Array.from(setToWrite));
+    await writeTags(Array.from(setToWrite));
   },
 
   // This one is necessary for older versions of next

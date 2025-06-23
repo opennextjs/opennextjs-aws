@@ -1,4 +1,9 @@
-import type { CacheValue, WithLastModified } from "types/overrides";
+import type {
+  CacheValue,
+  OriginalTagCacheWriteInput,
+  WithLastModified,
+} from "types/overrides";
+import { debug } from "../adapters/logger";
 
 export async function hasBeenRevalidated(
   key: string,
@@ -38,4 +43,40 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   } catch (e) {
     return [];
   }
+}
+
+function getTagKey(tag: string | OriginalTagCacheWriteInput): string {
+  if (typeof tag === "string") {
+    return tag;
+  }
+  return JSON.stringify({
+    tag: tag.tag,
+    path: tag.path,
+  });
+}
+
+export async function writeTags(
+  tags: (string | OriginalTagCacheWriteInput)[],
+): Promise<void> {
+  const store = globalThis.__openNextAls.getStore();
+  debug("Writing tags", tags, store);
+  if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
+    return;
+  }
+  const tagsToWrite = tags.filter((t) => {
+    const tagKey = getTagKey(t);
+    const shouldWrite = !store.writtenTags.has(tagKey);
+    // We preemptively add the tag to the writtenTags set
+    // to avoid writing the same tag multiple times in the same request
+    if (shouldWrite) {
+      store.writtenTags.add(tagKey);
+    }
+    return shouldWrite;
+  });
+  if (tagsToWrite.length === 0) {
+    return;
+  }
+
+  // Here we know that we have the correct type
+  await globalThis.tagCache.writeTags(tagsToWrite as any);
 }
