@@ -6,18 +6,10 @@ export function AppRouter({ stack }) {
     path: "../app-router",
     environment: {
       OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE: "true",
+      // We want to always add the request ID header
+      OPEN_NEXT_REQUEST_ID_HEADER: "true",
     },
   });
-  // const site = new NextjsSite(stack, "approuter", {
-  //   path: "../app-router",
-  //   buildCommand: "npm run openbuild",
-  //   bind: [],
-  //   environment: {},
-  //   timeout: "20 seconds",
-  //   experimental: {
-  //     streaming: true,
-  //   },
-  // });
 
   stack.addOutputs({
     url: `https://${site.distribution.domainName}`,

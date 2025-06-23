@@ -24,4 +24,7 @@ test("Headers", async ({ page }) => {
   // Both these headers should not be present cause poweredByHeader is false in appRouter
   expect(headers["x-powered-by"]).toBeFalsy();
   expect(headers["x-opennext"]).toBeFalsy();
+
+  // Request ID header should be set
+  expect(headers["x-opennext-requestid"]).not.toBeFalsy();
 });
