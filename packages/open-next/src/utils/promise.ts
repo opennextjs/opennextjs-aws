@@ -105,17 +105,19 @@ export function runWithOpenNextRequestContext<T>(
   {
     isISRRevalidation,
     waitUntil,
+    requestId = Math.random().toString(36),
   }: {
     // Whether we are in ISR revalidation
     isISRRevalidation: boolean;
     // Extends the liftetime of the runtime after the response is returned.
     waitUntil?: WaitUntil;
+    requestId?: string;
   },
   fn: () => Promise<T>,
 ): Promise<T> {
   return globalThis.__openNextAls.run(
     {
-      requestId: Math.random().toString(36),
+      requestId,
       pendingPromiseRunner: new DetachedPromiseRunner(),
       isISRRevalidation,
       waitUntil,

@@ -9,6 +9,7 @@ import type { OpenNextHandlerOptions } from "types/overrides";
 import { NextConfig } from "../adapters/config";
 import { createGenericHandler } from "../core/createGenericHandler";
 import { convertBodyToReadableStream } from "../core/routing/util";
+import { INTERNAL_EVENT_REQUEST_ID } from "../core/routingHandler";
 
 globalThis.__openNextAls = new AsyncLocalStorage();
 
@@ -18,9 +19,13 @@ const defaultHandler = async (
 ): Promise<InternalResult> => {
   globalThis.isEdgeRuntime = true;
 
+  const requestId = globalThis.openNextConfig.middleware?.external
+    ? internalEvent.headers[INTERNAL_EVENT_REQUEST_ID]
+    : Math.random().toString(36);
+
   // We run everything in the async local storage context so that it is available in edge runtime functions
   return runWithOpenNextRequestContext(
-    { isISRRevalidation: false, waitUntil: options?.waitUntil },
+    { isISRRevalidation: false, waitUntil: options?.waitUntil, requestId },
     async () => {
       // @ts-expect-error - This is bundled
       const handler = await import("./middleware.mjs");

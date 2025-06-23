@@ -17,6 +17,7 @@ import {
 } from "../core/resolve";
 import { constructNextUrl } from "../core/routing/util";
 import routingHandler, {
+  INTERNAL_EVENT_REQUEST_ID,
   INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
 } from "../core/routingHandler";
@@ -50,11 +51,14 @@ const defaultHandler = async (
   );
   //#endOverride
 
+  const requestId = Math.random().toString(36);
+
   // We run everything in the async local storage context so that it is available in the external middleware
   return runWithOpenNextRequestContext(
     {
       isISRRevalidation: internalEvent.headers["x-isr"] === "1",
       waitUntil: options?.waitUntil,
+      requestId,
     },
     async () => {
       const result = await routingHandler(internalEvent);
@@ -74,6 +78,7 @@ const defaultHandler = async (
                 [INTERNAL_HEADER_RESOLVED_ROUTES]: JSON.stringify(
                   result.resolvedRoutes,
                 ),
+                [INTERNAL_EVENT_REQUEST_ID]: requestId,
               },
             },
             isExternalRewrite: result.isExternalRewrite,
@@ -91,6 +96,10 @@ const defaultHandler = async (
             type: "middleware",
             internalEvent: {
               ...result.internalEvent,
+              headers: {
+                ...result.internalEvent.headers,
+                [INTERNAL_EVENT_REQUEST_ID]: requestId,
+              },
               rawPath: "/500",
               url: constructNextUrl(result.internalEvent.url, "/500"),
               method: "GET",
@@ -105,6 +114,7 @@ const defaultHandler = async (
         }
       }
 
+      result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
       debug("Middleware response", result);
       return result;
     },

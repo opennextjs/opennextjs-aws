@@ -21,6 +21,7 @@ import {
   createServerResponse,
 } from "./routing/util";
 import routingHandler, {
+  INTERNAL_EVENT_REQUEST_ID,
   INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
@@ -40,11 +41,18 @@ export async function openNextHandler(
   options?: OpenNextHandlerOptions,
 ): Promise<InternalResult> {
   const initialHeaders = internalEvent.headers;
+  // We only use the requestId header if we are using an external middleware
+  // This is to ensure that no one can spoof the requestId
+  // When using an external middleware, we always assume that headers cannot be spoofed
+  const requestId = globalThis.openNextConfig.middleware?.external
+    ? internalEvent.headers[INTERNAL_EVENT_REQUEST_ID]
+    : Math.random().toString(36);
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
     {
       isISRRevalidation: initialHeaders["x-isr"] === "1",
       waitUntil: options?.waitUntil,
+      requestId,
     },
     async () => {
       await globalThis.__next_route_preloader("waitUntil");
