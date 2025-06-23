@@ -281,6 +281,8 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   }
   if (globalThis.openNextDebug) {
     headers["X-OpenNext-Version"] = globalThis.openNextVersion;
+  }
+  if (process.env.OPEN_NEXT_REQUEST_ID_HEADER || globalThis.openNextDebug) {
     headers["X-OpenNext-RequestId"] =
       globalThis.__openNextAls.getStore()?.requestId;
   }
