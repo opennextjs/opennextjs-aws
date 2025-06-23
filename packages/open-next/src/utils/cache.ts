@@ -3,6 +3,7 @@ import type {
   OriginalTagCacheWriteInput,
   WithLastModified,
 } from "types/overrides";
+import { debug } from "../adapters/logger";
 
 export async function hasBeenRevalidated(
   key: string,
@@ -58,7 +59,7 @@ export async function writeTags(
   tags: (string | OriginalTagCacheWriteInput)[],
 ): Promise<void> {
   const store = globalThis.__openNextAls.getStore();
-  console.log("Writing tags", tags, store);
+  debug("Writing tags", tags, store);
   if (!store || globalThis.openNextConfig.dangerous?.disableTagCache) {
     return;
   }
