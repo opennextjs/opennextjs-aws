@@ -13,6 +13,9 @@ import { generateMessageGroupId } from "./queue";
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
 
+const VARY_HEADER =
+  "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch";
+
 async function computeCacheControl(
   path: string,
   body: string,
@@ -127,6 +130,7 @@ async function generateResult(
       ...cacheControl,
       "content-type": type,
       ...cachedValue.meta?.headers,
+      vary: VARY_HEADER,
     },
   };
 }
