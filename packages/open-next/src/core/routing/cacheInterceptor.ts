@@ -20,6 +20,7 @@ const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
  * This value can be found in the routes manifest, under `rsc.varyHeader`.
  * They recompute it here in Next:
  * https://github.com/vercel/next.js/blob/c5bf5bb4c8b01b1befbbfa7ad97a97476ee9d0d7/packages/next/src/server/base-server.ts#L2011
+ * Also see this PR: https://github.com/vercel/next.js/pull/79426
  */
 const VARY_HEADER =
   "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch";
