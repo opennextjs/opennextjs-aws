@@ -15,7 +15,7 @@ const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
 
 /*
  * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
- * This can especially happen when theres a redirect in the middleware as the `_rsc` query parameter is not visible there.
+ * This can especially happen when there's a redirect in the middleware as the `_rsc` query parameter is not visible there.
  * So it will get dropped during the redirect, which results in the RSC response being cached instead of the actual HTML on the path `/`.
  * This value can be found in the routes manifest, under `rsc.varyHeader`.
  * They recompute it here in Next:
