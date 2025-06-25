@@ -13,6 +13,11 @@ import { generateMessageGroupId } from "./queue";
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
 
+/*
+ * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
+ * This can especially happen when theres a redirect in the middleware as the `_rsc` query parameter is not visible there.
+ * So it will get dropped during the redirect, which results in the RSC response being cached instead of the actual HTML on the path `/`.
+ */
 const VARY_HEADER =
   "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch";
 
