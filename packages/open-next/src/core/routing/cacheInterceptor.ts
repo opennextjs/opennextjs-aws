@@ -17,6 +17,9 @@ const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
  * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
  * This can especially happen when theres a redirect in the middleware as the `_rsc` query parameter is not visible there.
  * So it will get dropped during the redirect, which results in the RSC response being cached instead of the actual HTML on the path `/`.
+ * This value can be found in the routes manifest.
+ * They recompute it here in Next:
+ * https://github.com/vercel/next.js/blob/c5bf5bb4c8b01b1befbbfa7ad97a97476ee9d0d7/packages/next/src/server/base-server.ts#L2011
  */
 const VARY_HEADER =
   "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch";
