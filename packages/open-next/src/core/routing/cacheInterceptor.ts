@@ -23,7 +23,7 @@ const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
  * Also see this PR: https://github.com/vercel/next.js/pull/79426
  */
 const VARY_HEADER =
-  "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch";
+  "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url";
 
 async function computeCacheControl(
   path: string,
