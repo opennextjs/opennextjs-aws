@@ -117,6 +117,20 @@ export async function resolveOriginResolver(
 }
 
 /**
+ * @returns
+ * @__PURE__
+ */
+export async function resolveAssetResolver(
+  assetResolver: RemoveUndefined<OpenNextConfig["middleware"]>["assetResolver"],
+) {
+  if (typeof assetResolver === "function") {
+    return assetResolver();
+  }
+  const m_1 = await import("../overrides/assetResolver/dummy.js");
+  return m_1.default;
+}
+
+/**
  * @__PURE__
  */
 export async function resolveWarmerInvoke(

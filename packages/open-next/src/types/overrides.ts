@@ -31,6 +31,27 @@ export interface Queue {
   name: string;
 }
 
+/**
+ * Resolves assets in the routing layer.
+ */
+export interface AssetResolver {
+  // TODO: add onCatchAllRoute, called when a catchAllRoute matches as it could potentially match an asset
+  // onCatchAllRoute
+
+  /**
+   * Called when no matching route is found.
+   *
+   * @param event The internal event from the routing layer
+   * @returns - `Promise<InternalEvent>` replaces the internal event in the routing layer
+   *          - `Promise<InternalResult>` will get the routing layer to return the result, i.e. an asset
+   *          - `Promise<undefined> | undefined` does not change the routing default behavior of returning a 404
+   */
+  onRouteNotFound(
+    event: InternalEvent,
+  ): Promise<InternalEvent | InternalResult | undefined> | undefined;
+  name: string;
+}
+
 // Incremental cache
 
 export type CachedFile =

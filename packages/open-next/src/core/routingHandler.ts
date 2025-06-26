@@ -12,6 +12,7 @@ import type {
   RoutingResult,
 } from "types/open-next";
 
+import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
@@ -64,6 +65,7 @@ function applyMiddlewareHeaders(
 
 export default async function routingHandler(
   event: InternalEvent,
+  { assetResolver }: { assetResolver?: AssetResolver } = {},
 ): Promise<InternalResult | RoutingResult> {
   try {
     // Add Next geo headers
@@ -89,10 +91,12 @@ export default async function routingHandler(
 
     const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
 
-    let internalEvent = fixDataPage(event, BuildId);
-    if ("statusCode" in internalEvent) {
-      return internalEvent;
+    const internalEventOrResult = fixDataPage(event, BuildId);
+    if ("statusCode" in internalEventOrResult) {
+      return internalEventOrResult;
     }
+
+    let internalEvent: InternalEvent | InternalResult = internalEventOrResult;
 
     const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
     if (redirect) {
@@ -105,21 +109,20 @@ export default async function routingHandler(
       return redirect;
     }
 
-    const eventOrResult = await handleMiddleware(
+    const middlewareEventOrResult = await handleMiddleware(
       internalEvent,
       // We need to pass the initial search without any decoding
       // TODO: we'd need to refactor InternalEvent to include the initial querystring directly
       // Should be done in another PR because it is a breaking change
       new URL(event.url).search,
     );
-    const isResult = "statusCode" in eventOrResult;
-    if (isResult) {
-      return eventOrResult;
+    if ("statusCode" in middlewareEventOrResult) {
+      return middlewareEventOrResult;
     }
-    const middlewareResponseHeaders = eventOrResult.responseHeaders;
-    let isExternalRewrite = eventOrResult.isExternalRewrite ?? false;
-    // internalEvent is `InternalEvent | MiddlewareEvent`
-    internalEvent = eventOrResult;
+
+    const middlewareResponseHeaders = middlewareEventOrResult.responseHeaders;
+    let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
+    internalEvent = middlewareEventOrResult;
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
@@ -184,7 +187,22 @@ export default async function routingHandler(
         dynamicRouteMatcher(internalEvent.rawPath).length > 0
       )
     ) {
-      internalEvent = {
+      const assetEventOrResult =
+        await assetResolver?.onRouteNotFound(internalEvent);
+
+      if (assetEventOrResult && "statusCode" in assetEventOrResult) {
+        applyMiddlewareHeaders(
+          assetEventOrResult.headers,
+          {
+            ...middlewareResponseHeaders,
+            ...nextHeaders,
+          },
+          false,
+        );
+        return assetEventOrResult;
+      }
+
+      internalEvent = assetEventOrResult ?? {
         ...internalEvent,
         rawPath: "/404",
         url: constructNextUrl(internalEvent.url, "/404"),

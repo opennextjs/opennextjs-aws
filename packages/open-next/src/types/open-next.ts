@@ -3,6 +3,7 @@ import type { ReadableStream } from "node:stream/web";
 import type { Writable } from "node:stream";
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type {
+  AssetResolver,
   CDNInvalidationHandler,
   Converter,
   ImageLoader,
@@ -186,6 +187,9 @@ export type IncludedWarmer = "aws-lambda" | "dummy";
 export type IncludedProxyExternalRequest = "node" | "fetch" | "dummy";
 
 export type IncludedCDNInvalidationHandler = "cloudfront" | "dummy";
+
+export type IncludedAssetResolver = "dummy";
+
 export interface DefaultOverrideOptions<
   E extends BaseEventOrResult = InternalEvent,
   R extends BaseEventOrResult = InternalResult,
@@ -396,6 +400,13 @@ export interface OpenNextConfig {
     originResolver?:
       | IncludedOriginResolver
       | LazyLoadedOverride<OriginResolver>;
+
+    /**
+     * The assetResolver is used to resolve assets in the routing layer.
+     *
+     * @default "dummy"
+     */
+    assetResolver?: IncludedAssetResolver | LazyLoadedOverride<AssetResolver>;
   };
 
   /**
