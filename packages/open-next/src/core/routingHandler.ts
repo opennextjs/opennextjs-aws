@@ -48,24 +48,31 @@ const geoHeaderToNextHeader = {
   "x-open-next-longitude": "x-vercel-ip-longitude",
 };
 
+/**
+ * Adds the middleware headers to an event or result.
+ *
+ * @param eventOrResult
+ * @param middlewareHeaders
+ */
 function applyMiddlewareHeaders(
-  eventHeaders: Record<string, string | string[]>,
+  eventOrResult: InternalEvent | InternalResult,
   middlewareHeaders: Record<string, string | string[] | undefined>,
-  setPrefix = true,
 ) {
-  const keyPrefix = setPrefix ? MIDDLEWARE_HEADER_PREFIX : "";
+  // Use the `MIDDLEWARE_HEADER_PREFIX` prefix for events, they will be processed by the request handler later.
+  // Results do not go through the request handler and should not be prefixed.
+  const isResult = isInternalResult(eventOrResult);
+  const headers = eventOrResult.headers;
+  const keyPrefix = isResult ? "" : MIDDLEWARE_HEADER_PREFIX;
   Object.entries(middlewareHeaders).forEach(([key, value]) => {
     if (value) {
-      eventHeaders[keyPrefix + key] = Array.isArray(value)
-        ? value.join(",")
-        : value;
+      headers[keyPrefix + key] = Array.isArray(value) ? value.join(",") : value;
     }
   });
 }
 
 export default async function routingHandler(
   event: InternalEvent,
-  { assetResolver }: { assetResolver?: AssetResolver } = {},
+  { assetResolver }: { assetResolver?: AssetResolver },
 ): Promise<InternalResult | RoutingResult> {
   try {
     // Add Next geo headers
@@ -89,16 +96,17 @@ export default async function routingHandler(
       }
     }
 
-    const nextHeaders = getNextConfigHeaders(event, ConfigHeaders);
+    // Headers from the Next config and middleware (the latest are applied further down).
+    let headers: Record<string, string | string[] | undefined> =
+      getNextConfigHeaders(event, ConfigHeaders);
 
-    const internalEventOrResult = fixDataPage(event, BuildId);
-    if ("statusCode" in internalEventOrResult) {
-      return internalEventOrResult;
+    let eventOrResult = fixDataPage(event, BuildId);
+
+    if (isInternalResult(eventOrResult)) {
+      return eventOrResult;
     }
 
-    let internalEvent: InternalEvent | InternalResult = internalEventOrResult;
-
-    const redirect = handleRedirects(internalEvent, RoutesManifest.redirects);
+    const redirect = handleRedirects(eventOrResult, RoutesManifest.redirects);
     if (redirect) {
       // We need to encode the value in the Location header to make sure it is valid according to RFC
       // https://stackoverflow.com/a/7654605/16587222
@@ -110,40 +118,61 @@ export default async function routingHandler(
     }
 
     const middlewareEventOrResult = await handleMiddleware(
-      internalEvent,
+      eventOrResult,
       // We need to pass the initial search without any decoding
       // TODO: we'd need to refactor InternalEvent to include the initial querystring directly
       // Should be done in another PR because it is a breaking change
       new URL(event.url).search,
     );
-    if ("statusCode" in middlewareEventOrResult) {
+    if (isInternalResult(middlewareEventOrResult)) {
       return middlewareEventOrResult;
     }
 
-    const middlewareResponseHeaders = middlewareEventOrResult.responseHeaders;
+    headers = {
+      ...middlewareEventOrResult.responseHeaders,
+      ...headers,
+    };
     let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
-    internalEvent = middlewareEventOrResult;
+    eventOrResult = middlewareEventOrResult;
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
-      const beforeRewrites = handleRewrites(
-        internalEvent,
+      const beforeRewrite = handleRewrites(
+        eventOrResult,
         RoutesManifest.rewrites.beforeFiles,
       );
-      internalEvent = beforeRewrites.internalEvent;
-      isExternalRewrite = beforeRewrites.isExternalRewrite;
+      eventOrResult = beforeRewrite.internalEvent;
+      isExternalRewrite = beforeRewrite.isExternalRewrite;
+      // Check for matching public files after `beforeFiles` rewrites
+      if (!isExternalRewrite) {
+        const assetResult =
+          await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+        if (assetResult) {
+          applyMiddlewareHeaders(assetResult, headers);
+          return assetResult;
+        }
+      }
     }
-    const foundStaticRoute = staticRouteMatcher(internalEvent.rawPath);
+    const foundStaticRoute = staticRouteMatcher(eventOrResult.rawPath);
     const isStaticRoute = !isExternalRewrite && foundStaticRoute.length > 0;
 
     if (!(isStaticRoute || isExternalRewrite)) {
       // Second rewrite to be applied
-      const afterRewrites = handleRewrites(
-        internalEvent,
+      const afterRewrite = handleRewrites(
+        eventOrResult,
         RoutesManifest.rewrites.afterFiles,
       );
-      internalEvent = afterRewrites.internalEvent;
-      isExternalRewrite = afterRewrites.isExternalRewrite;
+      eventOrResult = afterRewrite.internalEvent;
+      isExternalRewrite = afterRewrite.isExternalRewrite;
+      // Check for matching public files after `afterFiles` rewrites
+      if (!isExternalRewrite) {
+        const assetResult =
+          await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+        if (assetResult) {
+          applyMiddlewareHeaders(assetResult, headers);
+          return assetResult;
+        }
+      }
     }
 
     let isISR = false;
@@ -151,27 +180,27 @@ export default async function routingHandler(
     // We can skip it if its an external rewrite
     if (!isExternalRewrite) {
       const fallbackResult = handleFallbackFalse(
-        internalEvent,
+        eventOrResult,
         PrerenderManifest,
       );
-      internalEvent = fallbackResult.event;
+      eventOrResult = fallbackResult.event;
       isISR = fallbackResult.isISR;
     }
 
-    const foundDynamicRoute = dynamicRouteMatcher(internalEvent.rawPath);
+    const foundDynamicRoute = dynamicRouteMatcher(eventOrResult.rawPath);
     const isDynamicRoute = !isExternalRewrite && foundDynamicRoute.length > 0;
 
     if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
       // Fallback rewrite to be applied
       const fallbackRewrites = handleRewrites(
-        internalEvent,
+        eventOrResult,
         RoutesManifest.rewrites.fallback,
       );
-      internalEvent = fallbackRewrites.internalEvent;
+      eventOrResult = fallbackRewrites.internalEvent;
       isExternalRewrite = fallbackRewrites.isExternalRewrite;
     }
 
-    const isNextImageRoute = internalEvent.rawPath.startsWith("/_next/image");
+    const isNextImageRoute = eventOrResult.rawPath.startsWith("/_next/image");
 
     const isRouteFoundBeforeAllRewrites =
       isStaticRoute || isDynamicRoute || isExternalRewrite;
@@ -183,31 +212,24 @@ export default async function routingHandler(
         isRouteFoundBeforeAllRewrites ||
         isNextImageRoute ||
         // We need to check again once all rewrites have been applied
-        staticRouteMatcher(internalEvent.rawPath).length > 0 ||
-        dynamicRouteMatcher(internalEvent.rawPath).length > 0
+        staticRouteMatcher(eventOrResult.rawPath).length > 0 ||
+        dynamicRouteMatcher(eventOrResult.rawPath).length > 0
       )
     ) {
-      const assetEventOrResult =
-        await assetResolver?.onRouteNotFound(internalEvent);
-
-      if (assetEventOrResult && "statusCode" in assetEventOrResult) {
-        applyMiddlewareHeaders(
-          assetEventOrResult.headers,
-          {
-            ...middlewareResponseHeaders,
-            ...nextHeaders,
-          },
-          false,
-        );
-        return assetEventOrResult;
+      // Check for matching public file when no routes are matched
+      const assetResult =
+        await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+      if (assetResult) {
+        applyMiddlewareHeaders(assetResult, headers);
+        return assetResult;
       }
 
-      internalEvent = assetEventOrResult ?? {
-        ...internalEvent,
+      eventOrResult = {
+        ...eventOrResult,
         rawPath: "/404",
-        url: constructNextUrl(internalEvent.url, "/404"),
+        url: constructNextUrl(eventOrResult.url, "/404"),
         headers: {
-          ...internalEvent.headers,
+          ...eventOrResult.headers,
           "x-middleware-response-cache-control":
             "private, no-cache, no-store, max-age=0, must-revalidate",
         },
@@ -216,28 +238,27 @@ export default async function routingHandler(
 
     if (
       globalThis.openNextConfig.dangerous?.enableCacheInterception &&
-      !("statusCode" in internalEvent)
+      !isInternalResult(eventOrResult)
     ) {
       debug("Cache interception enabled");
-      internalEvent = await cacheInterceptor(internalEvent);
-      if ("statusCode" in internalEvent) {
-        applyMiddlewareHeaders(
-          internalEvent.headers,
-          {
-            ...middlewareResponseHeaders,
-            ...nextHeaders,
-          },
-          false,
-        );
-        return internalEvent;
+      eventOrResult = await cacheInterceptor(eventOrResult);
+      if (isInternalResult(eventOrResult)) {
+        applyMiddlewareHeaders(eventOrResult, headers);
+        return eventOrResult;
       }
     }
 
+    // Check for matching public file when some routes are matched
+    // An asset could override a dynamic route.
+    const assetResult =
+      await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+    if (assetResult) {
+      applyMiddlewareHeaders(assetResult, headers);
+      return assetResult;
+    }
+
     // We apply the headers from the middleware response last
-    applyMiddlewareHeaders(internalEvent.headers, {
-      ...middlewareResponseHeaders,
-      ...nextHeaders,
-    });
+    applyMiddlewareHeaders(eventOrResult, headers);
 
     const resolvedRoutes: ResolvedRoute[] = [
       ...foundStaticRoute,
@@ -247,14 +268,14 @@ export default async function routingHandler(
     debug("resolvedRoutes", resolvedRoutes);
 
     return {
-      internalEvent,
+      internalEvent: eventOrResult,
       isExternalRewrite,
       origin: false,
       isISR,
       resolvedRoutes,
       initialURL: event.url,
       locale: NextConfig.i18n
-        ? detectLocale(internalEvent, NextConfig.i18n)
+        ? detectLocale(eventOrResult, NextConfig.i18n)
         : undefined,
     };
   } catch (e) {
@@ -283,4 +304,14 @@ export default async function routingHandler(
         : undefined,
     };
   }
+}
+
+/**
+ * @param eventOrResult
+ * @returns Whether the event is an instance of `InternalResult`
+ */
+function isInternalResult(
+  eventOrResult: InternalEvent | InternalResult,
+): eventOrResult is InternalResult {
+  return eventOrResult != null && "statusCode" in eventOrResult;
 }
