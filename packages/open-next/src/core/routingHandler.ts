@@ -250,11 +250,13 @@ export default async function routingHandler(
 
     // Check for matching public file when some routes are matched
     // An asset could override a dynamic route.
-    const assetResult =
-      await assetResolver?.getMaybeAssetResult?.(eventOrResult);
-    if (assetResult) {
-      applyMiddlewareHeaders(assetResult, headers);
-      return assetResult;
+    if (!isExternalRewrite) {
+      const assetResult =
+        await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+      if (assetResult) {
+        applyMiddlewareHeaders(assetResult, headers);
+        return assetResult;
+      }
     }
 
     // We apply the headers from the middleware response last
