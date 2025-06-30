@@ -37,7 +37,16 @@ export interface Queue {
 export interface AssetResolver {
   name: string;
 
-  getMaybeAssetResult?: (
+  /**
+   * Called by the routing layer to check for a matching static asset.
+   *
+   * The method is called at multiple places in the routing layer, as described at
+   * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+   *
+   * @param event
+   * @returns an `InternalResult` when an asset is found a the path from the event, undefined otherwise.
+   */
+  maybeGetAssetResult?: (
     event: InternalEvent,
   ) => Promise<InternalResult | undefined> | undefined;
 }

@@ -146,7 +146,7 @@ export default async function routingHandler(
       // Check for matching public files after `beforeFiles` rewrites
       if (!isExternalRewrite) {
         const assetResult =
-          await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+          await assetResolver?.maybeGetAssetResult?.(eventOrResult);
         if (assetResult) {
           applyMiddlewareHeaders(assetResult, headers);
           return assetResult;
@@ -167,7 +167,7 @@ export default async function routingHandler(
       // Check for matching public files after `afterFiles` rewrites
       if (!isExternalRewrite) {
         const assetResult =
-          await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+          await assetResolver?.maybeGetAssetResult?.(eventOrResult);
         if (assetResult) {
           applyMiddlewareHeaders(assetResult, headers);
           return assetResult;
@@ -218,7 +218,7 @@ export default async function routingHandler(
     ) {
       // Check for matching public file when no routes are matched
       const assetResult =
-        await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+        await assetResolver?.maybeGetAssetResult?.(eventOrResult);
       if (assetResult) {
         applyMiddlewareHeaders(assetResult, headers);
         return assetResult;
@@ -252,7 +252,7 @@ export default async function routingHandler(
     // An asset could override a dynamic route.
     if (!isExternalRewrite) {
       const assetResult =
-        await assetResolver?.getMaybeAssetResult?.(eventOrResult);
+        await assetResolver?.maybeGetAssetResult?.(eventOrResult);
       if (assetResult) {
         applyMiddlewareHeaders(assetResult, headers);
         return assetResult;
