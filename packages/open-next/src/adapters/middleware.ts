@@ -9,6 +9,7 @@ import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { createGenericHandler } from "../core/createGenericHandler";
 import {
+  resolveAssetResolver,
   resolveIncrementalCache,
   resolveOriginResolver,
   resolveProxyRequest,
@@ -29,25 +30,22 @@ const defaultHandler = async (
   internalEvent: InternalEvent,
   options?: OpenNextHandlerOptions,
 ): Promise<InternalResult | MiddlewareResult> => {
-  const originResolver = await resolveOriginResolver(
-    globalThis.openNextConfig.middleware?.originResolver,
-  );
+  const config = globalThis.openNextConfig.middleware;
+  const originResolver = await resolveOriginResolver(config?.originResolver);
 
   const externalRequestProxy = await resolveProxyRequest(
-    globalThis.openNextConfig.middleware?.override?.proxyExternalRequest,
+    config?.override?.proxyExternalRequest,
   );
+
+  const assetResolver = await resolveAssetResolver(config?.assetResolver);
 
   //#override includeCacheInMiddleware
-  globalThis.tagCache = await resolveTagCache(
-    globalThis.openNextConfig.middleware?.override?.tagCache,
-  );
+  globalThis.tagCache = await resolveTagCache(config?.override?.tagCache);
 
-  globalThis.queue = await resolveQueue(
-    globalThis.openNextConfig.middleware?.override?.queue,
-  );
+  globalThis.queue = await resolveQueue(config?.override?.queue);
 
   globalThis.incrementalCache = await resolveIncrementalCache(
-    globalThis.openNextConfig.middleware?.override?.incrementalCache,
+    config?.override?.incrementalCache,
   );
   //#endOverride
 
@@ -61,7 +59,7 @@ const defaultHandler = async (
       requestId,
     },
     async () => {
-      const result = await routingHandler(internalEvent);
+      const result = await routingHandler(internalEvent, { assetResolver });
       if ("internalEvent" in result) {
         debug("Middleware intercepted event", internalEvent);
         if (!result.isExternalRewrite) {

@@ -2,6 +2,7 @@ import type { AsyncLocalStorage } from "node:async_hooks";
 import type { OutgoingHttpHeaders } from "node:http";
 
 import type {
+  AssetResolver,
   CDNInvalidationHandler,
   IncrementalCache,
   ProxyExternalRequest,
@@ -213,6 +214,13 @@ declare global {
    * Defined in `createMainHandler`
    */
   var cdnInvalidationHandler: CDNInvalidationHandler;
+
+  /**
+   * The function called to resolve assets.
+   * Available in main functions
+   * Defined in `createMainHandler` when the middleware is internal
+   */
+  var assetResolver: AssetResolver | undefined;
 
   /**
    * A function to preload the routes.

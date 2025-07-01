@@ -4,6 +4,7 @@ import { debug } from "../adapters/logger";
 import { generateUniqueId } from "../adapters/util";
 import { openNextHandler } from "./requestHandler";
 import {
+  resolveAssetResolver,
   resolveCdnInvalidation,
   resolveConverter,
   resolveIncrementalCache,
@@ -37,6 +38,12 @@ export async function createMainHandler() {
   );
 
   globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
+
+  if (config.middleware?.external !== true) {
+    globalThis.assetResolver = await resolveAssetResolver(
+      globalThis.openNextConfig.middleware?.assetResolver,
+    );
+  }
 
   globalThis.proxyExternalRequest = await resolveProxyRequest(
     thisFunction.override?.proxyExternalRequest,

@@ -80,7 +80,9 @@ export async function openNextHandler(
       };
 
       //#override withRouting
-      routingResult = await routingHandler(internalEvent);
+      routingResult = await routingHandler(internalEvent, {
+        assetResolver: globalThis.assetResolver,
+      });
       //#endOverride
 
       const headers =

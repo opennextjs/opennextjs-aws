@@ -31,6 +31,23 @@ export interface Queue {
   name: string;
 }
 
+/**
+ * Resolves assets in the routing layer.
+ */
+export interface AssetResolver {
+  name: string;
+
+  /**
+   * Called by the routing layer to check for a matching static asset.
+   *
+   * @param event
+   * @returns an `InternalResult` when an asset is found a the path from the event, undefined otherwise.
+   */
+  maybeGetAssetResult?: (
+    event: InternalEvent,
+  ) => Promise<InternalResult | undefined> | undefined;
+}
+
 // Incremental cache
 
 export type CachedFile =

@@ -170,6 +170,11 @@ export function getNextConfigHeaders(
   return requestHeaders;
 }
 
+/**
+ * TODO: This method currently only check for the first match.
+ *       It should check for all matches for `beforeFiles` and `afterFiles` rewrite
+ *       See https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+ */
 export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
