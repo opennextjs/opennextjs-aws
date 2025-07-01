@@ -1,5 +1,17 @@
 # open-next
 
+## 3.7.0
+
+### Minor Changes
+
+- [#917](https://github.com/opennextjs/opennextjs-aws/pull/917) [`60848d97c37b868bd6d8f43f1ccd634d422083b7`](https://github.com/opennextjs/opennextjs-aws/commit/60848d97c37b868bd6d8f43f1ccd634d422083b7) Thanks [@vicb](https://github.com/vicb)! - Add an asset resolver
+
+### Patch Changes
+
+- [#916](https://github.com/opennextjs/opennextjs-aws/pull/916) [`f2c86cabcc16f0503c51b0ffd3063400fa682458`](https://github.com/opennextjs/opennextjs-aws/commit/f2c86cabcc16f0503c51b0ffd3063400fa682458) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: add vary header to cache interceptor
+
+- [#914](https://github.com/opennextjs/opennextjs-aws/pull/914) [`7d60df5cbd5819975dbda69e65146ca73538608a`](https://github.com/opennextjs/opennextjs-aws/commit/7d60df5cbd5819975dbda69e65146ca73538608a) Thanks [@conico974](https://github.com/conico974)! - add the OPEN_NEXT_REQUEST_ID_HEADER env variable that allow to always have the request id header
+
 ## 3.6.6
 
 ### Patch Changes
