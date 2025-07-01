@@ -144,6 +144,9 @@ export default async function routingHandler(
       eventOrResult = beforeRewrite.internalEvent;
       isExternalRewrite = beforeRewrite.isExternalRewrite;
       // Check for matching public files after `beforeFiles` rewrites
+      // See:
+      // - https://nextjs.org/docs/app/api-reference/file-conventions/middleware#execution-order
+      // - https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
       if (!isExternalRewrite) {
         const assetResult =
           await assetResolver?.maybeGetAssetResult?.(eventOrResult);
@@ -164,15 +167,6 @@ export default async function routingHandler(
       );
       eventOrResult = afterRewrite.internalEvent;
       isExternalRewrite = afterRewrite.isExternalRewrite;
-      // Check for matching public files after `afterFiles` rewrites
-      if (!isExternalRewrite) {
-        const assetResult =
-          await assetResolver?.maybeGetAssetResult?.(eventOrResult);
-        if (assetResult) {
-          applyMiddlewareHeaders(assetResult, headers);
-          return assetResult;
-        }
-      }
     }
 
     let isISR = false;
@@ -216,14 +210,6 @@ export default async function routingHandler(
         dynamicRouteMatcher(eventOrResult.rawPath).length > 0
       )
     ) {
-      // Check for matching public file when no routes are matched
-      const assetResult =
-        await assetResolver?.maybeGetAssetResult?.(eventOrResult);
-      if (assetResult) {
-        applyMiddlewareHeaders(assetResult, headers);
-        return assetResult;
-      }
-
       eventOrResult = {
         ...eventOrResult,
         rawPath: "/404",
@@ -245,17 +231,6 @@ export default async function routingHandler(
       if (isInternalResult(eventOrResult)) {
         applyMiddlewareHeaders(eventOrResult, headers);
         return eventOrResult;
-      }
-    }
-
-    // Check for matching public file when some routes are matched
-    // An asset could override a dynamic route.
-    if (!isExternalRewrite) {
-      const assetResult =
-        await assetResolver?.maybeGetAssetResult?.(eventOrResult);
-      if (assetResult) {
-        applyMiddlewareHeaders(assetResult, headers);
-        return assetResult;
       }
     }
 
