@@ -96,7 +96,7 @@ export default async function routingHandler(
       }
     }
 
-    // Headers from the Next config and middleware (the latest are applied further down).
+    // Headers from the Next config and middleware (the later are applied further down).
     let headers: Record<string, string | string[] | undefined> =
       getNextConfigHeaders(event, ConfigHeaders);
 
