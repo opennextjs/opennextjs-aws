@@ -80,3 +80,19 @@ export async function writeTags(
   // Here we know that we have the correct type
   await globalThis.tagCache.writeTags(tagsToWrite as any);
 }
+
+export function createCacheKey(key: string, isDataCache: boolean): string {
+  // We always prepend the build ID to the cache key for ISR/SSG cache entry
+  // For data cache, we only prepend the build ID if the persistentDataCache is not enabled
+  const shouldPrependBuildId =
+    globalThis.openNextConfig.dangerous?.persistentDataCache !== true ||
+    !isDataCache;
+  if (shouldPrependBuildId) {
+    // If we don't have a build ID, we just return the key as is
+    if (!process.env.NEXT_BUILD_ID) {
+      return key;
+    }
+    return `${process.env.NEXT_BUILD_ID}/${key}`;
+  }
+  return key;
+}
