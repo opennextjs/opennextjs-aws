@@ -4,10 +4,33 @@ import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
 const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
+/**
+ * Get the cache key for a composable entry.
+ * Composable cache keys are a special cases as they are a stringified version of a tuple composed of a representation of the BUILD_ID and the actual key.
+ * @param key The composable cache key
+ * @returns The composable cache key.
+ */
+function getComposableCacheKey(key: string): string {
+  try {
+    const shouldPrependBuildId =
+      globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
+    if (shouldPrependBuildId) {
+      return key;
+    }
+    const [_buildId, ...rest] = JSON.parse(key);
+    return JSON.stringify([...rest]);
+  } catch (e) {
+    debug("Error while parsing composable cache key", e);
+    // If we fail to parse the key, we just return it as is
+    // This is not ideal, but we don't want to crash the application
+    return key;
+  }
+}
 
 export default {
-  async get(cacheKey: string) {
+  async get(key: string) {
     try {
+      const cacheKey = getComposableCacheKey(key);
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
       if (pendingWritePromiseMap.has(cacheKey)) {
@@ -55,7 +78,8 @@ export default {
     }
   },
 
-  async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
+  async set(key: string, pendingEntry: Promise<ComposableCacheEntry>) {
+    const cacheKey = getComposableCacheKey(key);
     pendingWritePromiseMap.set(cacheKey, pendingEntry);
     const entry = await pendingEntry.finally(() => {
       pendingWritePromiseMap.delete(cacheKey);

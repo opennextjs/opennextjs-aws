@@ -4,7 +4,11 @@ import { vi } from "vitest";
 
 declare global {
   var openNextConfig: {
-    dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
+    dangerous: {
+      disableIncrementalCache?: boolean;
+      disableTagCache?: boolean;
+      persistentDataCache?: boolean;
+    };
   };
   var isNextAfter15: boolean;
 }

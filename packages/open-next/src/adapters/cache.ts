@@ -3,7 +3,12 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
+import {
+  createCacheKey,
+  getTagsFromValue,
+  hasBeenRevalidated,
+  writeTags,
+} from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
@@ -31,7 +36,7 @@ function isFetchCache(
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
-    key: string,
+    baseKey: string,
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
     options?:
       | boolean
@@ -49,7 +54,9 @@ export default class Cache {
 
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
-    return isFetchCache(options)
+    const isDataCache = isFetchCache(options);
+    const key = createCacheKey(baseKey, isDataCache);
+    return isDataCache
       ? this.getFetchCache(key, softTags, tags)
       : this.getIncrementalCache(key);
   }
@@ -191,13 +198,14 @@ export default class Cache {
   }
 
   async set(
-    key: string,
+    baseKey: string,
     data?: IncrementalCacheValue,
     ctx?: IncrementalCacheContext,
   ): Promise<void> {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
+    const key = createCacheKey(baseKey, data?.kind === "FETCH");
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__openNextAls
@@ -205,6 +213,7 @@ export default class Cache {
       ?.pendingPromiseRunner.withResolvers<void>();
     try {
       if (data === null || data === undefined) {
+        // only case where we delete the cache is for ISR/SSG cache
         await globalThis.incrementalCache.delete(key);
       } else {
         const revalidate = this.extractRevalidateForSet(ctx);
