@@ -1,5 +1,5 @@
-import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { createCacheKey } from "@opennextjs/aws/utils/cache.js";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 describe("createCacheKey", () => {
   const originalEnv = process.env;
