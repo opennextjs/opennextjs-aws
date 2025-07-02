@@ -55,15 +55,15 @@ export default class Cache {
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
     const isDataCache = isFetchCache(options);
-    const key = createCacheKey(baseKey, isDataCache);
     return isDataCache
-      ? this.getFetchCache(key, softTags, tags)
-      : this.getIncrementalCache(key);
+      ? this.getFetchCache(baseKey, softTags, tags)
+      : this.getIncrementalCache(baseKey);
   }
 
-  async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
-    debug("get fetch cache", { key, softTags, tags });
+  async getFetchCache(baseKey: string, softTags?: string[], tags?: string[]) {
+    debug("get fetch cache", { baseKey, softTags, tags });
     try {
+      const key = createCacheKey(baseKey, true);
       const cachedEntry = await globalThis.incrementalCache.get(key, "fetch");
 
       if (cachedEntry?.value === undefined) return null;
@@ -71,7 +71,7 @@ export default class Cache {
       const _tags = [...(tags ?? []), ...(softTags ?? [])];
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
-        key,
+        baseKey,
         _tags,
         cachedEntry,
       );
@@ -112,8 +112,11 @@ export default class Cache {
     }
   }
 
-  async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
+  async getIncrementalCache(
+    baseKey: string,
+  ): Promise<CacheHandlerValue | null> {
     try {
+      const key = createCacheKey(baseKey, false);
       const cachedEntry = await globalThis.incrementalCache.get(key, "cache");
 
       if (!cachedEntry?.value) {
@@ -126,7 +129,7 @@ export default class Cache {
       const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
-        key,
+        baseKey,
         tags,
         cachedEntry,
       );
@@ -311,7 +314,7 @@ export default class Cache {
         }
       }
 
-      await this.updateTagsOnSet(key, data, ctx);
+      await this.updateTagsOnSet(baseKey, data, ctx);
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
