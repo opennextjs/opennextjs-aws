@@ -364,9 +364,12 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         { type: "route", body: "{}", meta: { status: 200, headers: {} } },
-        "cache",
       );
     });
 
@@ -381,13 +384,16 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         {
           type: "route",
           body: Buffer.from("{}").toString("base64"),
           meta: { status: 200, headers: { "content-type": "image/png" } },
         },
-        "cache",
       );
     });
 
@@ -401,13 +407,16 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         {
           type: "page",
           html: "<html></html>",
           json: {},
         },
-        "cache",
       );
     });
 
@@ -421,14 +430,17 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         {
           type: "app",
           html: "<html></html>",
           rsc: "rsc",
           meta: { status: 200, headers: {} },
         },
-        "cache",
       );
     });
 
@@ -442,14 +454,17 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         {
           type: "app",
           html: "<html></html>",
           rsc: "rsc",
           meta: { status: 200, headers: {} },
         },
-        "cache",
       );
     });
 
@@ -467,7 +482,11 @@ describe("CacheHandler", () => {
       });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "fetch",
+          buildId: "undefined-build-id",
+        },
         {
           kind: "FETCH",
           data: {
@@ -479,7 +498,6 @@ describe("CacheHandler", () => {
           },
           revalidate: 60,
         },
-        "fetch",
       );
     });
 
@@ -487,12 +505,15 @@ describe("CacheHandler", () => {
       await cache.set("key", { kind: "REDIRECT", props: {} });
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "key",
+        {
+          baseKey: "key",
+          cacheType: "cache",
+          buildId: "undefined-build-id",
+        },
         {
           type: "redirect",
           props: {},
         },
-        "cache",
       );
     });
 
