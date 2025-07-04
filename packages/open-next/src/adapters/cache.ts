@@ -55,8 +55,7 @@ export default class Cache {
 
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
-    const isDataCache = isFetchCache(options);
-    return isDataCache
+    return isFetchCache(options)
       ? this.getFetchCache(baseKey, softTags, tags)
       : this.getIncrementalCache(baseKey);
   }

@@ -33,9 +33,8 @@ const awsFetch = async (key: string, options: RequestInit) => {
 };
 
 function buildS3Key(key: CacheKey) {
-  const { CACHE_BUCKET_KEY_PREFIX } = process.env;
   return path.posix.join(
-    CACHE_BUCKET_KEY_PREFIX ?? "",
+    process.env.CACHE_BUCKET_KEY_PREFIX ?? "",
     key.cacheType === "fetch" ? "__fetch" : "",
     key.cacheType === "fetch"
       ? key.baseKey

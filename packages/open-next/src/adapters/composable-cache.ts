@@ -2,7 +2,7 @@ import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheKey } from "types/overrides";
 import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
-import { debug } from "./logger";
+import { debug, warn } from "./logger";
 
 const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
 /**
@@ -22,7 +22,7 @@ function getComposableCacheKey(key: string): CacheKey<"composable"> {
       baseKey: JSON.stringify(rest),
     } as CacheKey<"composable">;
   } catch (e) {
-    debug("Error while parsing composable cache key", e);
+    warn("Error while parsing composable cache key", e);
     // If we fail to parse the key, we just return it as is
     // This is not ideal, but we don't want to crash the application
     return {
