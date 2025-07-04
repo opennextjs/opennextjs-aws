@@ -1,5 +1,6 @@
 import type {
   CacheEntryType,
+  CacheKey,
   CacheValue,
   IncrementalCache,
 } from "types/overrides";
@@ -40,8 +41,8 @@ const awsFetch = (body: RequestInit["body"], type: "get" | "set" = "get") => {
   );
 };
 
-const buildDynamoKey = (key: string) => {
-  return `__meta_${key}`;
+const buildDynamoKey = (key: CacheKey<CacheEntryType>) => {
+  return `__meta_${key.buildId ? `${key.buildId}_` : ""}${key.baseKey}`;
 };
 
 /**
@@ -54,11 +55,10 @@ const buildDynamoKey = (key: string) => {
 const multiTierCache: IncrementalCache = {
   name: "multi-tier-ddb-s3",
   async get<CacheType extends CacheEntryType = "cache">(
-    key: string,
-    isFetch?: CacheType,
+    key: CacheKey<CacheType>,
   ) {
     // First we check the local cache
-    const localCacheEntry = localCache.get(key) as
+    const localCacheEntry = localCache.get(key.baseKey) as
       | {
           value: CacheValue<CacheType>;
           lastModified: number;
@@ -86,7 +86,7 @@ const multiTierCache: IncrementalCache = {
           const data = await result.json();
           const hasBeenDeleted = data.Item?.deleted?.BOOL;
           if (hasBeenDeleted) {
-            localCache.delete(key);
+            localCache.delete(key.baseKey);
             return { value: undefined, lastModified: 0 };
           }
           // If the metadata is older than the local cache, we can use the local cache
@@ -103,9 +103,9 @@ const multiTierCache: IncrementalCache = {
         debug("Failed to get metadata from ddb", e);
       }
     }
-    const result = await S3Cache.get(key, isFetch);
+    const result = await S3Cache.get(key);
     if (result?.value) {
-      localCache.set(key, {
+      localCache.set(key.baseKey, {
         value: result.value,
         lastModified: result.lastModified ?? Date.now(),
       });
@@ -116,9 +116,9 @@ const multiTierCache: IncrementalCache = {
   // Both for set and delete we choose to do the write to S3 first and then to DynamoDB
   // Which means that if it fails in DynamoDB, instance that don't have local cache will work as expected.
   // But instance that have local cache will have a stale cache until the next working set or delete.
-  async set(key, value, isFetch) {
+  async set(key, value) {
     const revalidatedAt = Date.now();
-    await S3Cache.set(key, value, isFetch);
+    await S3Cache.set(key, value);
     await awsFetch(
       JSON.stringify({
         TableName: process.env.CACHE_DYNAMO_TABLE,
@@ -130,7 +130,7 @@ const multiTierCache: IncrementalCache = {
       }),
       "set",
     );
-    localCache.set(key, {
+    localCache.set(key.baseKey, {
       value,
       lastModified: revalidatedAt,
     });
@@ -148,7 +148,7 @@ const multiTierCache: IncrementalCache = {
       }),
       "set",
     );
-    localCache.delete(key);
+    localCache.delete(key.baseKey);
   },
 };
 

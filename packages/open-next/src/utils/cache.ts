@@ -1,4 +1,6 @@
 import type {
+  CacheEntryType,
+  CacheKey,
   CacheValue,
   OriginalTagCacheWriteInput,
   WithLastModified,
@@ -81,18 +83,33 @@ export async function writeTags(
   await globalThis.tagCache.writeTags(tagsToWrite as any);
 }
 
-export function createCacheKey(key: string, isDataCache: boolean): string {
+export function createCacheKey<CacheType extends CacheEntryType>({
+  key,
+  type,
+}: { key: string; type: CacheType }): CacheKey<CacheType> {
   // We always prepend the build ID to the cache key for ISR/SSG cache entry
   // For data cache, we only prepend the build ID if the persistentDataCache is not enabled
   const shouldPrependBuildId =
-    globalThis.openNextConfig.dangerous?.persistentDataCache !== true ||
-    !isDataCache;
-  if (shouldPrependBuildId) {
-    // If we don't have a build ID, we just return the key as is
-    if (!process.env.NEXT_BUILD_ID) {
-      return key;
-    }
-    return `${process.env.NEXT_BUILD_ID}/${key}`;
+    globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
+  const buildId = process.env.NEXT_BUILD_ID ?? "undefined-build-id";
+  // ISR/SSG cache entry should always have a build ID
+  if (type === "cache") {
+    return {
+      cacheType: "cache",
+      buildId,
+      baseKey: key,
+    } as CacheKey<CacheType>;
   }
-  return key;
+  if (shouldPrependBuildId) {
+    return {
+      cacheType: type,
+      buildId,
+      baseKey: key,
+    };
+  }
+  return {
+    cacheType: type,
+    buildId: undefined,
+    baseKey: key,
+  } as CacheKey<CacheType>;
 }
