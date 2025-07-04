@@ -117,6 +117,10 @@ export type CacheValue<CacheType extends CacheEntryType> =
 export type CacheKey<CacheType extends CacheEntryType = CacheEntryType> = {
   cacheType: CacheType;
   buildId: CacheType extends "cache" ? string : string | undefined;
+  /**
+   * The base key is the main identifier for the cache entry.
+   * It never depends on the build ID, and is used to identify the cache entry.
+   */
   baseKey: string;
 };
 
