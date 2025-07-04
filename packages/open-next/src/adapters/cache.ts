@@ -3,6 +3,7 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
+import type { CacheKey } from "types/overrides";
 import {
   createCacheKey,
   getTagsFromValue,
@@ -63,8 +64,8 @@ export default class Cache {
   async getFetchCache(baseKey: string, softTags?: string[], tags?: string[]) {
     debug("get fetch cache", { baseKey, softTags, tags });
     try {
-      const key = createCacheKey(baseKey, true);
-      const cachedEntry = await globalThis.incrementalCache.get(key, "fetch");
+      const key = createCacheKey({ key: baseKey, type: "fetch" });
+      const cachedEntry = await globalThis.incrementalCache.get(key);
 
       if (cachedEntry?.value === undefined) return null;
 
@@ -116,8 +117,11 @@ export default class Cache {
     baseKey: string,
   ): Promise<CacheHandlerValue | null> {
     try {
-      const key = createCacheKey(baseKey, false);
-      const cachedEntry = await globalThis.incrementalCache.get(key, "cache");
+      const key = createCacheKey({
+        key: baseKey,
+        type: "cache",
+      });
+      const cachedEntry = await globalThis.incrementalCache.get(key);
 
       if (!cachedEntry?.value) {
         return null;
@@ -208,7 +212,11 @@ export default class Cache {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
-    const key = createCacheKey(baseKey, data?.kind === "FETCH");
+    const key = createCacheKey({
+      key: baseKey,
+      type: data?.kind === "FETCH" ? "fetch" : "cache",
+    });
+    debug("Setting cache", { key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__openNextAls
@@ -217,30 +225,26 @@ export default class Cache {
     try {
       if (data === null || data === undefined) {
         // only case where we delete the cache is for ISR/SSG cache
-        await globalThis.incrementalCache.delete(key);
+        await globalThis.incrementalCache.delete(key as CacheKey<"cache">);
       } else {
         const revalidate = this.extractRevalidateForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
             const { body, status, headers } = data;
-            await globalThis.incrementalCache.set(
-              key,
-              {
-                type: "route",
-                body: body.toString(
-                  isBinaryContentType(String(headers["content-type"]))
-                    ? "base64"
-                    : "utf8",
-                ),
-                meta: {
-                  status,
-                  headers,
-                },
-                revalidate,
+            await globalThis.incrementalCache.set(key, {
+              type: "route",
+              body: body.toString(
+                isBinaryContentType(String(headers["content-type"]))
+                  ? "base64"
+                  : "utf8",
+              ),
+              meta: {
+                status,
+                headers,
               },
-              "cache",
-            );
+              revalidate,
+            });
             break;
           }
           case "PAGE":
@@ -248,65 +252,49 @@ export default class Cache {
             const { html, pageData, status, headers } = data;
             const isAppPath = typeof pageData === "string";
             if (isAppPath) {
-              await globalThis.incrementalCache.set(
-                key,
-                {
-                  type: "app",
-                  html,
-                  rsc: pageData,
-                  meta: {
-                    status,
-                    headers,
-                  },
-                  revalidate,
-                },
-                "cache",
-              );
-            } else {
-              await globalThis.incrementalCache.set(
-                key,
-                {
-                  type: "page",
-                  html,
-                  json: pageData,
-                  revalidate,
-                },
-                "cache",
-              );
-            }
-            break;
-          }
-          case "APP_PAGE": {
-            const { html, rscData, headers, status } = data;
-            await globalThis.incrementalCache.set(
-              key,
-              {
+              await globalThis.incrementalCache.set(key, {
                 type: "app",
                 html,
-                rsc: rscData.toString("utf8"),
+                rsc: pageData,
                 meta: {
                   status,
                   headers,
                 },
                 revalidate,
+              });
+            } else {
+              await globalThis.incrementalCache.set(key, {
+                type: "page",
+                html,
+                json: pageData,
+                revalidate,
+              });
+            }
+            break;
+          }
+          case "APP_PAGE": {
+            const { html, rscData, headers, status } = data;
+            await globalThis.incrementalCache.set(key, {
+              type: "app",
+              html,
+              rsc: rscData.toString("utf8"),
+              meta: {
+                status,
+                headers,
               },
-              "cache",
-            );
+              revalidate,
+            });
             break;
           }
           case "FETCH":
-            await globalThis.incrementalCache.set(key, data, "fetch");
+            await globalThis.incrementalCache.set(key, data);
             break;
           case "REDIRECT":
-            await globalThis.incrementalCache.set(
-              key,
-              {
-                type: "redirect",
-                props: data.props,
-                revalidate,
-              },
-              "cache",
-            );
+            await globalThis.incrementalCache.set(key, {
+              type: "redirect",
+              props: data.props,
+              revalidate,
+            });
             break;
           case "IMAGE":
             // Not implemented
