@@ -22,23 +22,23 @@ describe("createCacheKey", () => {
     globalThis.openNextConfig = originalGlobalThis.openNextConfig;
   });
 
-  test("prepends build ID for non-data cache entries", () => {
+  test("have a defined build id for non-data cache entries", () => {
     process.env.NEXT_BUILD_ID = "test-build-id";
     const key = "test-key";
 
-    const result = createCacheKey(key, false);
+    const result = createCacheKey({ key, type: "cache" });
 
-    expect(result).toBe("test-build-id/test-key");
+    expect(result.buildId).toBe("test-build-id");
   });
 
-  test("prepends build ID for data cache when persistentDataCache is not enabled", () => {
+  test("have a defined build id for data cache when persistentDataCache is not enabled", () => {
     process.env.NEXT_BUILD_ID = "test-build-id";
     globalThis.openNextConfig.dangerous.persistentDataCache = false;
     const key = "test-key";
 
-    const result = createCacheKey(key, true);
+    const result = createCacheKey({ key, type: "fetch" });
 
-    expect(result).toBe("test-build-id/test-key");
+    expect(result.buildId).toBe("test-build-id");
   });
 
   test("does not prepend build ID for data cache when persistentDataCache is enabled", () => {
@@ -46,17 +46,17 @@ describe("createCacheKey", () => {
     globalThis.openNextConfig.dangerous.persistentDataCache = true;
     const key = "test-key";
 
-    const result = createCacheKey(key, true);
+    const result = createCacheKey({ key, type: "fetch" });
 
-    expect(result).toBe("test-key");
+    expect(result.buildId).toBeUndefined();
   });
 
   test("handles missing build ID", () => {
     process.env.NEXT_BUILD_ID = undefined;
     const key = "test-key";
 
-    const result = createCacheKey(key, false);
+    const result = createCacheKey({ key, type: "fetch" });
 
-    expect(result).toBe("test-key");
+    expect(result.buildId).toBeUndefined();
   });
 });
