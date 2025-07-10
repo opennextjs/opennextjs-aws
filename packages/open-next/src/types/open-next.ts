@@ -363,20 +363,24 @@ export interface SplittedFunctionOptions extends FunctionOptions {
   patterns: string[];
 }
 
-export interface OpenNextConfig {
-  default: FunctionOptions;
-  functions?: Record<string, SplittedFunctionOptions>;
-
+/**
+ * MiddlewareConfig that applies to both external and internal middlewares
+ *
+ * Note: this type is internal and included in both `ExternalMiddlewareConfig` and `InternalMiddlewareConfig`
+ */
+type CommonMiddlewareConfig = {
   /**
-   * Override the default middleware
-   * If you set this options, the middleware need to be deployed separately.
-   * It supports both edge and node runtime.
-   * @default undefined
+   * The assetResolver is used to resolve assets in the routing layer.
+   *
+   * @default "dummy"
    */
-  middleware?: DefaultFunctionOptions & {
-    //We force the middleware to be a function
-    external: true;
+  assetResolver?: IncludedAssetResolver | LazyLoadedOverride<AssetResolver>;
+};
 
+/** MiddlewareConfig that applies to external middlewares only */
+export type ExternalMiddlewareConfig = DefaultFunctionOptions &
+  CommonMiddlewareConfig & {
+    external: true;
     /**
      * The runtime used by next for the middleware.
      * @default "edge"
@@ -400,14 +404,24 @@ export interface OpenNextConfig {
     originResolver?:
       | IncludedOriginResolver
       | LazyLoadedOverride<OriginResolver>;
-
-    /**
-     * The assetResolver is used to resolve assets in the routing layer.
-     *
-     * @default "dummy"
-     */
-    assetResolver?: IncludedAssetResolver | LazyLoadedOverride<AssetResolver>;
   };
+
+/** MiddlewareConfig that applies to internal middlewares only */
+export type InternalMiddlewareConfig = {
+  external: false;
+} & CommonMiddlewareConfig;
+
+export interface OpenNextConfig {
+  default: FunctionOptions;
+  functions?: Record<string, SplittedFunctionOptions>;
+
+  /**
+   * Override the default middleware
+   * When `external` is true, the middleware need to be deployed separately.
+   * It supports both edge and node runtime.
+   * @default undefined - Which is equivalent to `external: false`
+   */
+  middleware?: ExternalMiddlewareConfig | InternalMiddlewareConfig;
 
   /**
    * Override the default warmer

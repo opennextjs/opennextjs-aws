@@ -1,4 +1,5 @@
 import type {
+  ExternalMiddlewareConfig,
   InternalEvent,
   InternalResult,
   MiddlewareResult,
@@ -30,22 +31,30 @@ const defaultHandler = async (
   internalEvent: InternalEvent,
   options?: OpenNextHandlerOptions,
 ): Promise<InternalResult | MiddlewareResult> => {
-  const config = globalThis.openNextConfig.middleware;
-  const originResolver = await resolveOriginResolver(config?.originResolver);
-
-  const externalRequestProxy = await resolveProxyRequest(
-    config?.override?.proxyExternalRequest,
+  // We know that the middleware is external when this adapter is used
+  const middlewareConfig = globalThis.openNextConfig
+    .middleware as ExternalMiddlewareConfig;
+  const originResolver = await resolveOriginResolver(
+    middlewareConfig?.originResolver,
   );
 
-  const assetResolver = await resolveAssetResolver(config?.assetResolver);
+  const externalRequestProxy = await resolveProxyRequest(
+    middlewareConfig?.override?.proxyExternalRequest,
+  );
+
+  const assetResolver = await resolveAssetResolver(
+    middlewareConfig?.assetResolver,
+  );
 
   //#override includeCacheInMiddleware
-  globalThis.tagCache = await resolveTagCache(config?.override?.tagCache);
+  globalThis.tagCache = await resolveTagCache(
+    middlewareConfig?.override?.tagCache,
+  );
 
-  globalThis.queue = await resolveQueue(config?.override?.queue);
+  globalThis.queue = await resolveQueue(middlewareConfig?.override?.queue);
 
   globalThis.incrementalCache = await resolveIncrementalCache(
-    config?.override?.incrementalCache,
+    middlewareConfig?.override?.incrementalCache,
   );
   //#endOverride
 
