@@ -109,7 +109,9 @@ export function validateConfig(config: OpenNextConfig) {
     );
   }
   validateFunctionOptions(config.imageOptimization ?? {});
-  validateFunctionOptions(config.middleware ?? {});
+  if (config.middleware?.external === true) {
+    validateFunctionOptions(config.middleware ?? {});
+  }
   //@ts-expect-error - Revalidate custom wrapper type is different
   validateFunctionOptions(config.revalidate ?? {});
   //@ts-expect-error - Warmer custom wrapper type is different

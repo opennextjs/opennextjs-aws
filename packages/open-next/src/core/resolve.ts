@@ -1,6 +1,7 @@
 import type {
   BaseEventOrResult,
   DefaultOverrideOptions,
+  ExternalMiddlewareConfig,
   InternalEvent,
   InternalResult,
   OpenNextConfig,
@@ -105,9 +106,7 @@ export async function resolveImageLoader(
  * @__PURE__
  */
 export async function resolveOriginResolver(
-  originResolver: RemoveUndefined<
-    OpenNextConfig["middleware"]
-  >["originResolver"],
+  originResolver: RemoveUndefined<ExternalMiddlewareConfig>["originResolver"],
 ) {
   if (typeof originResolver === "function") {
     return originResolver();

@@ -3,6 +3,7 @@ import path from "node:path";
 import type {
   BaseOverride,
   DefaultOverrideOptions,
+  ExternalMiddlewareConfig,
   FunctionOptions,
   LazyLoadedOverride,
   OverrideOptions,
@@ -164,14 +165,16 @@ export async function generateOutput(options: BuildOptions) {
   const edgeFunctions: OpenNextOutput["edgeFunctions"] = {};
   const isExternalMiddleware = config.middleware?.external ?? false;
   if (isExternalMiddleware) {
+    const middlewareConfig = options.config
+      .middleware as ExternalMiddlewareConfig;
     edgeFunctions.middleware = {
       bundle: ".open-next/middleware",
       handler: "handler.handler",
       pathResolver: await extractOverrideName(
         "pattern-env",
-        config.middleware!.originResolver,
+        middlewareConfig.originResolver,
       ),
-      ...(await extractOverrideFn(config.middleware?.override)),
+      ...(await extractOverrideFn(middlewareConfig.override)),
     };
   }
   // Add edge functions
