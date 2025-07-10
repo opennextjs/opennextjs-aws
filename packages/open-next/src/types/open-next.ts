@@ -419,7 +419,7 @@ export interface OpenNextConfig {
    * Override the default middleware
    * When `external` is true, the middleware need to be deployed separately.
    * It supports both edge and node runtime.
-   * @default undefined
+   * @default undefined - Which is equivalent to `external: false`
    */
   middleware?: ExternalMiddlewareConfig | InternalMiddlewareConfig;
 
