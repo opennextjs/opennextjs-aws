@@ -2,8 +2,7 @@
 import path from "node:path";
 
 import { AwsClient } from "aws4fetch";
-import type { Extension } from "types/cache";
-import type { IncrementalCache } from "types/overrides";
+import type { CacheKey, IncrementalCache } from "types/overrides";
 import { IgnorableError, RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
@@ -33,19 +32,19 @@ const awsFetch = async (key: string, options: RequestInit) => {
   return customFetchClient(client)(url, options);
 };
 
-function buildS3Key(key: string, extension: Extension) {
-  const { CACHE_BUCKET_KEY_PREFIX, NEXT_BUILD_ID } = process.env;
+function buildS3Key(key: CacheKey) {
   return path.posix.join(
-    CACHE_BUCKET_KEY_PREFIX ?? "",
-    extension === "fetch" ? "__fetch" : "",
-    NEXT_BUILD_ID ?? "",
-    extension === "fetch" ? key : `${key}.${extension}`,
+    process.env.CACHE_BUCKET_KEY_PREFIX ?? "",
+    key.cacheType === "fetch" ? "__fetch" : "",
+    key.cacheType === "fetch"
+      ? key.baseKey
+      : `${key.buildId ? `${key.buildId}/` : ""}${key.baseKey}.${key.cacheType}`,
   );
 }
 
 const incrementalCache: IncrementalCache = {
-  async get(key, cacheType) {
-    const result = await awsFetch(buildS3Key(key, cacheType ?? "cache"), {
+  async get(key) {
+    const result = await awsFetch(buildS3Key(key), {
       method: "GET",
     });
 
@@ -63,8 +62,8 @@ const incrementalCache: IncrementalCache = {
       ).getTime(),
     };
   },
-  async set(key, value, cacheType): Promise<void> {
-    const response = await awsFetch(buildS3Key(key, cacheType ?? "cache"), {
+  async set(key, value): Promise<void> {
+    const response = await awsFetch(buildS3Key(key), {
       method: "PUT",
       body: JSON.stringify(value),
     });
@@ -73,7 +72,7 @@ const incrementalCache: IncrementalCache = {
     }
   },
   async delete(key): Promise<void> {
-    const response = await awsFetch(buildS3Key(key, "cache"), {
+    const response = await awsFetch(buildS3Key(key), {
       method: "DELETE",
     });
     if (response.status !== 204) {
