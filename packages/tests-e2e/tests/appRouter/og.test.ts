@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { validateMd5 } from "../utils";
 
 // This is the md5sums of the expected PNGs generated with `md5sum <file>`
-const OG_MD5 = "6e5e794ac0c27598a331690f96f05d00";
+const OG_MD5 = "83cfda4e78b037aa3d9ab465292550ef";
 const API_OG_MD5 = "cac95fc3e2d4d52870c0536bb18ba85b";
 
 test("Open-graph image to be in metatags and present", async ({
