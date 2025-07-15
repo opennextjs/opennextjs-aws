@@ -361,6 +361,15 @@ export interface SplittedFunctionOptions extends FunctionOptions {
    * @default []
    */
   patterns: string[];
+
+
+  /**
+   * Additional inject code for the function.
+   * This is used to inject code into the function.
+   * Used when code needs to be directly injected into the banner section during esbuild. Should be used with caution.
+   * @default undefined
+   */
+  additionalInject?: string;
 }
 
 /**
