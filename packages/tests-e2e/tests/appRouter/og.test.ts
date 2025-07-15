@@ -3,7 +3,7 @@ import { validateMd5 } from "../utils";
 
 // This is the md5sums of the expected PNGs generated with `md5sum <file>`
 const OG_MD5 = "83cfda4e78b037aa3d9ab465292550ef";
-const API_OG_MD5 = "cac95fc3e2d4d52870c0536bb18ba85b";
+const API_OG_MD5 = "6a22b4ff74e0dd8c377e2640dafe3e40";
 
 test("Open-graph image to be in metatags and present", async ({
   page,
