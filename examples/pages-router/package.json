@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
+    "openbuild:local": "node ../../packages/open-next/dist/index.js build --config-path open-next.config.local.ts",
     "dev": "next dev --turbopack --port 3002",
     "build": "next build",
     "start": "next start --port 3002",
