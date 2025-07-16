@@ -18,6 +18,7 @@ import {
   constructNextUrl,
   convertRes,
   convertToQuery,
+  convertToQueryString,
   createServerResponse,
 } from "./routing/util";
 import routingHandler, {
@@ -266,6 +267,12 @@ async function processRequest(
     //#endOverride
 
     // Next Server
+    // TODO: only enable this on Next 15.4+
+    const reqUrl = new URL(routingResult.initialURL);
+    // We need to set the pathname to the data request path
+    req.url = reqUrl.pathname + convertToQueryString(routingResult.internalEvent.query);
+    // We need to set the headers to the request metadata
+    
     await requestHandler(requestMetadata)(req, res);
   } catch (e: any) {
     // This might fail when using bundled next, importing won't do the trick either
