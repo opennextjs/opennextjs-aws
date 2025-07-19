@@ -241,7 +241,8 @@ async function processRequest(
   // and `router-server` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-server.ts
   const initialURL = new URL(
     // We always assume that only the routing layer can set this header.
-    routingResult.internalEvent.headers[INTERNAL_HEADER_INITIAL_URL] ?? routingResult.initialURL
+    routingResult.internalEvent.headers[INTERNAL_HEADER_INITIAL_URL] ??
+      routingResult.initialURL,
   );
   let invokeStatus: number | undefined;
   if (routingResult.internalEvent.rawPath === "/500") {
@@ -273,9 +274,11 @@ async function processRequest(
     // TODO: only enable this on Next 15.4+
     // We need to set the pathname to the data request path
     //#override setInitialURL
-    req.url = initialURL.pathname + convertToQueryString(routingResult.internalEvent.query);
+    req.url =
+      initialURL.pathname +
+      convertToQueryString(routingResult.internalEvent.query);
     //#endOverride
-    
+
     await requestHandler(requestMetadata)(req, res);
   } catch (e: any) {
     // This might fail when using bundled next, importing won't do the trick either

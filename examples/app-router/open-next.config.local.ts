@@ -1,5 +1,5 @@
 import type { OpenNextConfig } from "@opennextjs/aws/types/open-next.js";
- 
+
 export default {
   default: {
     override: {
@@ -10,7 +10,7 @@ export default {
       tagCache: "dummy",
     },
   },
- 
+
   imageOptimization: {
     override: {
       wrapper: "dummy",
@@ -18,7 +18,7 @@ export default {
     },
     loader: "fs-dev",
   },
- 
+
   // You can override the build command here so that you don't have to rebuild next every time you make a change
   //buildCommand: "echo 'No build command'",
 } satisfies OpenNextConfig;
