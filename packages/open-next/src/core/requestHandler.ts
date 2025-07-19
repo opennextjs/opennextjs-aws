@@ -239,7 +239,10 @@ async function processRequest(
   // Here we try to apply as much request metadata as possible
   // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-utils/resolve-routes.ts
   // and `router-server` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-server.ts
-  const initialURL = new URL(routingResult.initialURL);
+  const initialURL = new URL(
+    // We always assume that only the routing layer can set this header.
+    routingResult.internalEvent.headers[INTERNAL_HEADER_INITIAL_URL] ?? routingResult.initialURL
+  );
   let invokeStatus: number | undefined;
   if (routingResult.internalEvent.rawPath === "/500") {
     invokeStatus = 500;
@@ -268,10 +271,10 @@ async function processRequest(
 
     // Next Server
     // TODO: only enable this on Next 15.4+
-    const reqUrl = new URL(routingResult.initialURL);
     // We need to set the pathname to the data request path
-    req.url = reqUrl.pathname + convertToQueryString(routingResult.internalEvent.query);
-    // We need to set the headers to the request metadata
+    //#override setInitialURL
+    req.url = initialURL.pathname + convertToQueryString(routingResult.internalEvent.query);
+    //#endOverride
     
     await requestHandler(requestMetadata)(req, res);
   } catch (e: any) {
