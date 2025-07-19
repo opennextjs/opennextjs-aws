@@ -42,7 +42,7 @@ const awsFetch = (body: RequestInit["body"], type: "get" | "set" = "get") => {
 };
 
 const buildDynamoKey = (key: CacheKey<CacheEntryType>) => {
-  return `__meta_${key.buildId ? `${key.buildId}_` : ""}${key.baseKey}`;
+  return `__meta_${key.buildId ?? ""}_${key.baseKey}`;
 };
 
 /**

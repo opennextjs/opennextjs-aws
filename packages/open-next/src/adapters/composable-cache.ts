@@ -1,42 +1,15 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheKey } from "types/overrides";
-import { writeTags } from "utils/cache";
+import { createCacheKey, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug, warn } from "./logger";
 
 const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
-/**
- * Get the cache key for a composable entry.
- * Composable cache keys are a special cases as they are a stringified version of a tuple composed of a representation of the BUILD_ID and the actual key.
- * @param key The composable cache key
- * @returns The composable cache key.
- */
-function getComposableCacheKey(key: string): CacheKey<"composable"> {
-  try {
-    const shouldPrependBuildId =
-      globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
-    const [_buildId, ...rest] = JSON.parse(key);
-    return {
-      cacheType: "composable",
-      buildId: shouldPrependBuildId ? _buildId : undefined,
-      baseKey: JSON.stringify(rest),
-    } as CacheKey<"composable">;
-  } catch (e) {
-    warn("Error while parsing composable cache key", e);
-    // If we fail to parse the key, we just return it as is
-    // This is not ideal, but we don't want to crash the application
-    return {
-      cacheType: "composable",
-      buildId: process.env.NEXT_BUILD_ID ?? "undefined-build-id",
-      baseKey: key,
-    };
-  }
-}
 
 export default {
   async get(key: string) {
     try {
-      const cacheKey = getComposableCacheKey(key);
+      const cacheKey = createCacheKey({ key, type: "composable" });
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
       if (pendingWritePromiseMap.has(cacheKey.baseKey)) {
@@ -82,7 +55,7 @@ export default {
   },
 
   async set(key: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const cacheKey = getComposableCacheKey(key);
+    const cacheKey = createCacheKey({ key, type: "composable" });
     pendingWritePromiseMap.set(cacheKey.baseKey, pendingEntry);
     const entry = await pendingEntry.finally(() => {
       pendingWritePromiseMap.delete(cacheKey.baseKey);

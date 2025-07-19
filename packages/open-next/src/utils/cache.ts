@@ -5,7 +5,7 @@ import type {
   OriginalTagCacheWriteInput,
   WithLastModified,
 } from "types/overrides";
-import { debug } from "../adapters/logger";
+import { debug, warn } from "../adapters/logger";
 
 export async function hasBeenRevalidated(
   key: string,
@@ -99,6 +99,18 @@ export function createCacheKey<CacheType extends CacheEntryType>({
       buildId,
       baseKey: key,
     } as CacheKey<CacheType>;
+  }
+  let baseKey = key;
+  if (type === "composable") {
+    try {
+      const [_buildId, ...rest] = JSON.parse(key);
+      baseKey = JSON.stringify(rest);
+    } catch (e) {
+      warn("Error while parsing composable cache key", e);
+      // If we fail to parse the key, we just return it as is
+      // This is not ideal, but we don't want to crash the application
+      baseKey = key;  
+    }
   }
   if (shouldPrependBuildId) {
     return {
