@@ -6,7 +6,7 @@ const OG_MD5 = "83cfda4e78b037aa3d9ab465292550ef";
 const API_OG_MD5 = "6a22b4ff74e0dd8c377e2640dafe3e40";
 
 // We skip this test for now until Next fixes https://github.com/vercel/next.js/issues/81655
-test.skip("Open-graph image to be in metatags and present", async ({
+test("Open-graph image to be in metatags and present", async ({
   page,
   request,
 }) => {
