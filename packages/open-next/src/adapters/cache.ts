@@ -6,6 +6,7 @@ import type {
 import type { CacheKey } from "types/overrides";
 import {
   createCacheKey,
+  createTagKey,
   getTagsFromValue,
   hasBeenRevalidated,
   writeTags,
@@ -71,7 +72,7 @@ export default class Cache {
       const _tags = [...(tags ?? []), ...(softTags ?? [])];
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
-        baseKey,
+        key,
         _tags,
         cachedEntry,
       );
@@ -90,7 +91,7 @@ export default class Cache {
         );
         if (path) {
           const hasPathBeenUpdated = await hasBeenRevalidated(
-            path.replace("_N_T_/", ""),
+            createCacheKey({key: path.replace("_N_T_/", ""), type: "cache"}),
             [],
             cachedEntry,
           );
@@ -132,7 +133,7 @@ export default class Cache {
       const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = await hasBeenRevalidated(
-        baseKey,
+        key,
         tags,
         cachedEntry,
       );
@@ -323,7 +324,7 @@ export default class Cache {
 
     try {
       if (globalThis.tagCache.mode === "nextMode") {
-        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags.map(createTagKey))) ?? [];
 
         await writeTags(_tags);
         if (paths.length > 0) {
@@ -349,7 +350,7 @@ export default class Cache {
       for (const tag of _tags) {
         debug("revalidateTag", tag);
         // Find all keys with the given tag
-        const paths = await globalThis.tagCache.getByTag(tag);
+        const paths = await globalThis.tagCache.getByTag(createTagKey(tag));
         debug("Items", paths);
         const toInsert = paths.map((path) => ({
           path,
@@ -360,11 +361,11 @@ export default class Cache {
         if (tag.startsWith("_N_T_/")) {
           for (const path of paths) {
             // We need to find all hard tags for a given path
-            const _tags = await globalThis.tagCache.getByPath(path);
+            const _tags = await globalThis.tagCache.getByPath(createTagKey(path));
             const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
-              const _paths = await globalThis.tagCache.getByTag(hardTag);
+              const _paths = await globalThis.tagCache.getByTag(createTagKey(hardTag));
               debug({ hardTag, _paths });
               toInsert.push(
                 ..._paths.map((path) => ({
@@ -377,7 +378,10 @@ export default class Cache {
         }
 
         // Update all keys with the given tag with revalidatedAt set to now
-        await writeTags(toInsert);
+        await writeTags(toInsert.map((t) => ({
+          path: createTagKey(t.path),
+          tag: createTagKey(t.tag),
+        })));
 
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`
@@ -438,13 +442,13 @@ export default class Cache {
 
     // Get all tags stored in dynamodb for the given key
     // If any of the derived tags are not stored in dynamodb for the given key, write them
-    const storedTags = await globalThis.tagCache.getByPath(key);
+    const storedTags = await globalThis.tagCache.getByPath(createTagKey(key));
     const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
     if (tagsToWrite.length > 0) {
       await writeTags(
         tagsToWrite.map((tag) => ({
-          path: key,
-          tag: tag,
+          path: createTagKey(key),
+          tag: createTagKey(tag),
           // In case the tags are not there we just need to create them
           // but we don't want them to return from `getLastModified` as they are not stale
           revalidatedAt: 1,

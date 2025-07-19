@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { TagCache } from "types/overrides";
+import type { TagCache, TagKey } from "types/overrides";
 import { getMonorepoRelativePath } from "utils/normalize-path";
 
 const tagFile = path.join(
@@ -19,20 +19,20 @@ let tags = JSON.parse(tagContent) as {
 const tagCache: TagCache = {
   name: "fs-dev",
   mode: "original",
-  getByPath: async (path: string) => {
+  getByPath: async (path: TagKey) => {
     return tags
-      .filter((tagPathMapping) => tagPathMapping.path.S === path)
+      .filter((tagPathMapping) => tagPathMapping.path.S === path.baseKey)
       .map((tag) => tag.tag.S);
   },
-  getByTag: async (tag: string) => {
+  getByTag: async (tag: TagKey) => {
     return tags
-      .filter((tagPathMapping) => tagPathMapping.tag.S === tag)
+      .filter((tagPathMapping) => tagPathMapping.tag.S === tag.baseKey)
       .map((tag) => tag.path.S);
   },
-  getLastModified: async (path: string, lastModified?: number) => {
+  getLastModified: async (path: TagKey, lastModified?: number) => {
     const revalidatedTags = tags.filter(
       (tagPathMapping) =>
-        tagPathMapping.path.S === path &&
+        tagPathMapping.path.S === path.baseKey &&
         Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0),
     );
     return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
@@ -46,8 +46,8 @@ const tagCache: TagCache = {
     );
     tags = unchangedTags.concat(
       newTags.map((tag) => ({
-        tag: { S: tag.tag },
-        path: { S: tag.path },
+        tag: { S: tag.tag.baseKey },
+        path: { S: tag.path.baseKey },
         revalidatedAt: { N: String(tag.revalidatedAt ?? 1) },
       })),
     );

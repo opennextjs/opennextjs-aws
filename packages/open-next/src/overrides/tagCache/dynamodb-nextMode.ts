@@ -1,4 +1,4 @@
-import type { NextModeTagCache } from "types/overrides";
+import type { NextModeTagCache, TagKey } from "types/overrides";
 
 import { AwsClient } from "aws4fetch";
 import { RecoverableError } from "utils/error";
@@ -49,17 +49,14 @@ const awsFetch = (
   );
 };
 
-function buildDynamoKey(key: string) {
-  const { NEXT_BUILD_ID } = process.env;
-  // FIXME: We should probably use something else than path.join here
-  // this could transform some fetch cache key into a valid path
-  return path.posix.join(NEXT_BUILD_ID ?? "", "_tag", key);
+function buildDynamoKey(key: TagKey) {
+  return `${key.buildId ?? ""}_${key.baseKey}`;
 }
 
 // We use the same key for both path and tag
 // That's mostly for compatibility reason so that it's easier to use this with existing infra
 // FIXME: Allow a simpler object without an unnecessary path key
-function buildDynamoObject(tag: string, revalidatedAt?: number) {
+function buildDynamoObject(tag: TagKey, revalidatedAt?: number) {
   return {
     path: { S: buildDynamoKey(tag) },
     tag: { S: buildDynamoKey(tag) },
@@ -71,11 +68,11 @@ function buildDynamoObject(tag: string, revalidatedAt?: number) {
 export default {
   name: "ddb-nextMode",
   mode: "nextMode",
-  getLastRevalidated: async (tags: string[]) => {
+  getLastRevalidated: async (tags: TagKey[]) => {
     // Not supported for now
     return 0;
   },
-  hasBeenRevalidated: async (tags: string[], lastModified?: number) => {
+  hasBeenRevalidated: async (tags: TagKey[], lastModified?: number) => {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
       return false;
     }
@@ -117,7 +114,7 @@ export default {
     debug("retrieved tags", revalidatedTags);
     return revalidatedTags.length > 0;
   },
-  writeTags: async (tags: string[]) => {
+  writeTags: async (tags: TagKey[]) => {
     try {
       const { CACHE_DYNAMO_TABLE } = process.env;
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {

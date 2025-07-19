@@ -2,7 +2,7 @@
 import path from "node:path";
 
 import { AwsClient } from "aws4fetch";
-import type { TagCache } from "types/overrides";
+import type { TagCache, TagKey } from "types/overrides";
 import { RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
 
@@ -50,17 +50,14 @@ const awsFetch = (
   );
 };
 
-function buildDynamoKey(key: string) {
-  const { NEXT_BUILD_ID } = process.env;
-  // FIXME: We should probably use something else than path.join here
-  // this could transform some fetch cache key into a valid path
-  return path.posix.join(NEXT_BUILD_ID ?? "", key);
+function buildDynamoKey(key: TagKey) {
+  return `${key.buildId ?? ""}_${key.baseKey}`;
 }
 
-function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
+function buildDynamoObject(path: TagKey, tag: TagKey, revalidatedAt?: number) {
   return {
     path: { S: buildDynamoKey(path) },
-    tag: { S: buildDynamoKey(tags) },
+    tag: { S: buildDynamoKey(tag) },
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
   };
 }

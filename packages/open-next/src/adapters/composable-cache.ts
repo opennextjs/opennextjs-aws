@@ -1,6 +1,6 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import type { CacheKey } from "types/overrides";
-import { createCacheKey, writeTags } from "utils/cache";
+import type { CacheKey, TagKey } from "types/overrides";
+import { createCacheKey, createTagKey, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug, warn } from "./logger";
 
@@ -28,7 +28,7 @@ export default {
         result.value.tags.length > 0
       ) {
         const hasBeenRevalidated = await globalThis.tagCache.hasBeenRevalidated(
-          result.value.tags,
+          result.value.tags.map(createTagKey),
           result.lastModified,
         );
         if (hasBeenRevalidated) return undefined;
@@ -38,7 +38,7 @@ export default {
       ) {
         const hasBeenRevalidated =
           (await globalThis.tagCache.getLastModified(
-            cacheKey.baseKey,
+            cacheKey,
             result.lastModified,
           )) === -1;
         if (hasBeenRevalidated) return undefined;
@@ -66,11 +66,11 @@ export default {
       value: valueToStore,
     });
     if (globalThis.tagCache.mode === "original") {
-      const storedTags = await globalThis.tagCache.getByPath(cacheKey.baseKey);
+      const storedTags = await globalThis.tagCache.getByPath(cacheKey);
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
         await writeTags(
-          tagsToWrite.map((tag) => ({ tag, path: cacheKey.baseKey })),
+          tagsToWrite.map((tag) => ({ tag: createTagKey(tag), path: createTagKey(cacheKey.baseKey) })),
         );
       }
     }
@@ -82,7 +82,7 @@ export default {
   },
   async getExpiration(...tags: string[]) {
     if (globalThis.tagCache.mode === "nextMode") {
-      return globalThis.tagCache.getLastRevalidated(tags);
+      return globalThis.tagCache.getLastRevalidated(tags.map(createTagKey));
     }
     // We always return 0 here, original tag cache are handled directly in the get part
     // TODO: We need to test this more, i'm not entirely sure that this is working as expected
@@ -98,16 +98,16 @@ export default {
     // We need to find all paths linked to to these tags
     const pathsToUpdate = await Promise.all(
       tags.map(async (tag) => {
-        const paths = await tagCache.getByTag(tag);
+        const paths = await tagCache.getByTag(createTagKey(tag));
         return paths.map((path) => ({
-          path,
-          tag,
+          path: createTagKey(path),
+          tag: createTagKey(tag),
           revalidatedAt,
         }));
       }),
     );
     // We need to deduplicate paths, we use a set for that
-    const setToWrite = new Set<{ path: string; tag: string }>();
+    const setToWrite = new Set<{ path: TagKey; tag: TagKey; revalidatedAt: number }>();
     for (const entry of pathsToUpdate.flat()) {
       setToWrite.add(entry);
     }

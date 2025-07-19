@@ -3,12 +3,13 @@ import type {
   CacheKey,
   CacheValue,
   OriginalTagCacheWriteInput,
+  TagKey,
   WithLastModified,
 } from "types/overrides";
 import { debug, warn } from "../adapters/logger";
 
 export async function hasBeenRevalidated(
-  key: string,
+  key: CacheKey,
   tags: string[],
   cacheEntry: WithLastModified<CacheValue<any>>,
 ): Promise<boolean> {
@@ -25,7 +26,10 @@ export async function hasBeenRevalidated(
   }
   const lastModified = cacheEntry.lastModified ?? Date.now();
   if (globalThis.tagCache.mode === "nextMode") {
-    return await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
+    return await globalThis.tagCache.hasBeenRevalidated(tags.map(t => ({
+      baseKey: t,
+      buildId: key.buildId,
+    })), lastModified);
   }
   // TODO: refactor this, we should introduce a new method in the tagCache interface so that both implementations use hasBeenRevalidated
   const _lastModified = await globalThis.tagCache.getLastModified(
@@ -87,9 +91,9 @@ export function createCacheKey<CacheType extends CacheEntryType>({
   key,
   type,
 }: { key: string; type: CacheType }): CacheKey<CacheType> {
-  // We always prepend the build ID to the cache key for ISR/SSG cache entry
-  // For data cache, we only prepend the build ID if the persistentDataCache is not enabled
-  const shouldPrependBuildId =
+  // We always provide the build ID to the cache key for ISR/SSG cache entry
+  // For data cache, we only provide the build ID if the persistentDataCache is not enabled
+  const shouldProvideBuildId =
     globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
   const buildId = process.env.NEXT_BUILD_ID ?? "undefined-build-id";
   // ISR/SSG cache entry should always have a build ID
@@ -112,7 +116,7 @@ export function createCacheKey<CacheType extends CacheEntryType>({
       baseKey = key;  
     }
   }
-  if (shouldPrependBuildId) {
+  if (shouldProvideBuildId) {
     return {
       cacheType: type,
       buildId,
@@ -124,4 +128,15 @@ export function createCacheKey<CacheType extends CacheEntryType>({
     buildId: undefined,
     baseKey: key,
   } as CacheKey<CacheType>;
+}
+
+export function createTagKey(tag: string): TagKey {
+  const shouldProvideBuildId =
+    globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
+  // We always prepend the build ID to the tag key
+  const buildId = process.env.NEXT_BUILD_ID ?? "undefined-build-id";
+  return {
+    buildId: shouldProvideBuildId ? buildId : undefined,
+    baseKey: tag,
+  };
 }

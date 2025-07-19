@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveTagCache } from "../core/resolve.js";
+import { createTagKey } from "utils/cache.js";
 
 const PHYSICAL_RESOURCE_ID = "dynamodb-cache" as const;
 
@@ -60,8 +61,8 @@ async function insert(
   const data: DataType[] = JSON.parse(file);
 
   const parsedData = data.map((item) => ({
-    tag: item.tag.S,
-    path: item.path.S,
+    tag: createTagKey(item.tag.S),
+    path: createTagKey(item.path.S),
     revalidatedAt: Number.parseInt(item.revalidatedAt.N),
   }));
 

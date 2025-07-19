@@ -226,7 +226,7 @@ export async function cacheInterceptor(
       if (cachedData.value?.type === "app") {
         const tags = getTagsFromValue(cachedData.value);
         const _hasBeenRevalidated = await hasBeenRevalidated(
-          localizedPath,
+          createCacheKey({ key: localizedPath, type: "cache" }),
           tags,
           cachedData,
         );
