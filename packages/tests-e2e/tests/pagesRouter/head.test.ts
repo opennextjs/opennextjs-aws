@@ -6,8 +6,7 @@ test.describe("next/head", () => {
     const title = await page.title();
     expect(title).toBe("OpenNext head");
   });
-  // We skip this test for now until Next fixes https://github.com/vercel/next.js/issues/81655
-  test.skip("should have the correct meta tags", async ({ page }) => {
+  test("should have the correct meta tags", async ({ page }) => {
     await page.goto("/head");
     const ogTitle = await page
       .locator('meta[property="og:title"]')
