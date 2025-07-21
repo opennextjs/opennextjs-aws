@@ -243,6 +243,12 @@ async function generateBundle(
     "15.2.0",
   );
 
+  const isAfter154 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "15.4.0",
+  );
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const updater = new ContentUpdater(options);
@@ -260,6 +266,7 @@ async function generateBundle(
         ...(disableRouting ? ["withRouting"] : []),
         ...(isAfter142 ? ["patchAsyncStorage"] : []),
         ...(isAfter141 ? ["appendPrefetch"] : []),
+        ...(isAfter154 ? [] : ["setInitialURL"]),
       ],
     }),
     openNextReplacementPlugin({
