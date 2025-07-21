@@ -243,9 +243,9 @@ async function generateBundle(
     "15.2.0",
   );
 
-  const isBefore154 = buildHelper.compareSemver(
+  const isAfter154 = buildHelper.compareSemver(
     options.nextVersion,
-    "<",
+    ">=",
     "15.4.0",
   );
 
@@ -266,7 +266,7 @@ async function generateBundle(
         ...(disableRouting ? ["withRouting"] : []),
         ...(isAfter142 ? ["patchAsyncStorage"] : []),
         ...(isAfter141 ? ["appendPrefetch"] : []),
-        ...(isBefore154 ? ["setInitialURL"] : []),
+        ...(isAfter154 ? [] : ["setInitialURL"]),
       ],
     }),
     openNextReplacementPlugin({
