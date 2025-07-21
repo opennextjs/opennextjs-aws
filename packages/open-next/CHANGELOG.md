@@ -1,5 +1,13 @@
 # open-next
 
+## 3.7.1
+
+### Patch Changes
+
+- [#922](https://github.com/opennextjs/opennextjs-aws/pull/922) [`d7d3966e13c1c42d03da1eacad91961ebb3f45ac`](https://github.com/opennextjs/opennextjs-aws/commit/d7d3966e13c1c42d03da1eacad91961ebb3f45ac) Thanks [@vicb](https://github.com/vicb)! - fix: middleware configuration type
+
+- [#928](https://github.com/opennextjs/opennextjs-aws/pull/928) [`071d94ee5ad8484b349669d73d09cdc1cc8a3a19`](https://github.com/opennextjs/opennextjs-aws/commit/071d94ee5ad8484b349669d73d09cdc1cc8a3a19) Thanks [@conico974](https://github.com/conico974)! - Fix for Next 15.4+
+
 ## 3.7.0
 
 ### Minor Changes
