@@ -8,10 +8,7 @@ import { readFile } from "node:fs/promises";
 
 import type { OnLoadArgs, OnLoadOptions, Plugin, PluginBuild } from "esbuild";
 import type { BuildOptions } from "../build/helper";
-import {
-  type VersionedField,
-  extractVersionedField,
-} from "../build/patch/codePatcher.js";
+import { type Versions, isVersionInRange } from "../build/patch/codePatcher.js";
 
 export type * from "esbuild";
 
@@ -31,7 +28,11 @@ export type OnUpdateOptions = OnLoadOptions & {
   contentFilter: RegExp;
 };
 
-export type Updater = OnUpdateOptions & { callback: Callback };
+export type Updater = OnUpdateOptions & {
+  callback: Callback;
+  // Restrict the patch to this Next version range
+  versions?: Versions;
+};
 
 export class ContentUpdater {
   updaters = new Map<string, Updater[]>();
@@ -44,21 +45,19 @@ export class ContentUpdater {
    * The callbacks are called in order of registration.
    *
    * @param name The name of the plugin (must be unique).
-   * @param updater A versioned field with the callback and `OnUpdateOptions`.
+   * @param updaters A list of code updaters
    * @returns A noop ESBuild plugin.
    */
-  updateContent(
-    name: string,
-    versionedUpdaters: VersionedField<Updater>[],
-  ): Plugin {
+  updateContent(name: string, updaters: Updater[]): Plugin {
     if (this.updaters.has(name)) {
       throw new Error(`Plugin "${name}" already registered`);
     }
-    const updaters = extractVersionedField(
-      versionedUpdaters,
-      this.buildOptions.nextVersion,
+    this.updaters.set(
+      name,
+      updaters.filter(({ versions }) =>
+        isVersionInRange(this.buildOptions.nextVersion, versions),
+      ),
     );
-    this.updaters.set(name, updaters);
     return {
       name,
       setup() {},

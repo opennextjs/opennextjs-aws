@@ -81,27 +81,21 @@ const pathFilter = getCrossPlatformPathRegex(
 const babelPatches = [
   // Empty the body of `NextServer#runMiddleware`
   {
-    field: {
-      pathFilter,
-      contentFilter: /runMiddleware\(/,
-      patchCode: createPatchCode(createEmptyBodyRule("runMiddleware")),
-    },
+    pathFilter,
+    contentFilter: /runMiddleware\(/,
+    patchCode: createPatchCode(createEmptyBodyRule("runMiddleware")),
   },
   // Empty the body of `NextServer#runEdgeFunction`
   {
-    field: {
-      pathFilter,
-      contentFilter: /runEdgeFunction\(/,
-      patchCode: createPatchCode(createEmptyBodyRule("runEdgeFunction")),
-    },
+    pathFilter,
+    contentFilter: /runEdgeFunction\(/,
+    patchCode: createPatchCode(createEmptyBodyRule("runEdgeFunction")),
   },
   // Drop `error-inspect` that pulls babel
   {
-    field: {
-      pathFilter,
-      contentFilter: /error-inspect/,
-      patchCode: createPatchCode(errorInspectRule),
-    },
+    pathFilter,
+    contentFilter: /error-inspect/,
+    patchCode: createPatchCode(errorInspectRule),
   },
 ];
 
@@ -110,30 +104,24 @@ export const patchNextServer: CodePatcher = {
   patches: [
     // Empty the body of `NextServer#imageOptimizer` - unused in OpenNext
     {
-      field: {
-        pathFilter,
-        contentFilter: /imageOptimizer\(/,
-        patchCode: createPatchCode(createEmptyBodyRule("imageOptimizer")),
-      },
+      pathFilter,
+      contentFilter: /imageOptimizer\(/,
+      patchCode: createPatchCode(createEmptyBodyRule("imageOptimizer")),
     },
     // Disable Next background preloading done at creation of `NextServer`
     {
       versions: ">=14.0.0",
-      field: {
-        pathFilter,
-        contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
-        patchCode: createPatchCode(disablePreloadingRule),
-      },
+      pathFilter,
+      contentFilter: /this\.nextConfig\.experimental\.preloadEntriesOnStart/,
+      patchCode: createPatchCode(disablePreloadingRule),
     },
     // Don't match edge functions in `NextServer`
     {
       // Next 12 and some version of 13 use the bundled middleware/edge function
       versions: ">=14.0.0",
-      field: {
-        pathFilter,
-        contentFilter: /getMiddlewareManifest/,
-        patchCode: createPatchCode(removeMiddlewareManifestRule),
-      },
+      pathFilter,
+      contentFilter: /getMiddlewareManifest/,
+      patchCode: createPatchCode(removeMiddlewareManifestRule),
     },
     ...babelPatches,
   ],

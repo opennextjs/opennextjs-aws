@@ -3,19 +3,18 @@ import logger from "../../logger.js";
 import type { getManifests } from "../copyTracedFiles.js";
 import * as buildHelper from "../helper.js";
 
-type Versions =
+/**
+ * Accepted formats:
+ * - `">=16.0.0"`
+ * - `"<=16.0.0"`
+ * - `">=16.0.0 <=17.0.0"`
+ *
+ * **Be careful with spaces**
+ */
+export type Versions =
   | `>=${number}.${number}.${number} <=${number}.${number}.${number}`
   | `>=${number}.${number}.${number}`
   | `<=${number}.${number}.${number}`;
-export interface VersionedField<T> {
-  /**
-   * The versions of Next.js that this field should be used for
-   * Should be in the format `">=16.0.0 <=17.0.0"` or `">=16.0.0"` or `"<=17.0.0"`
-   * **Be careful with spaces**
-   */
-  versions?: Versions;
-  field: T;
-}
 
 export type PatchCodeFn = (args: {
   /**
@@ -40,11 +39,13 @@ interface IndividualPatch {
   pathFilter: RegExp;
   contentFilter?: RegExp;
   patchCode: PatchCodeFn;
+  // Only apply the patch to specific versions of Next.js
+  versions?: Versions;
 }
 
 export interface CodePatcher {
   name: string;
-  patches: IndividualPatch | VersionedField<IndividualPatch>[];
+  patches: IndividualPatch[];
 }
 
 export function parseVersions(versions?: Versions): {
@@ -92,48 +93,30 @@ export function parseVersions(versions?: Versions): {
   };
 }
 
-export function extractVersionedField<T>(
-  fields: VersionedField<T>[],
+/**
+ * Check whether the version is in the range
+ *
+ * @param version A semver version
+ * @param versionRange A version range
+ * @returns whether the version satisfies the range
+ */
+export function isVersionInRange(
   version: string,
-): T[] {
-  const result: T[] = [];
+  versionRange?: Versions,
+): boolean {
+  const { before, after } = parseVersions(versionRange);
 
-  for (const field of fields) {
-    // No versions specified, the patch always apply
-    if (!field.versions) {
-      result.push(field.field);
-      continue;
-    }
+  let inRange = true;
 
-    const { before, after } = parseVersions(field.versions);
-
-    // range
-    if (before && after) {
-      if (
-        buildHelper.compareSemver(version, "<=", before) &&
-        buildHelper.compareSemver(version, ">=", after)
-      ) {
-        result.push(field.field);
-      }
-      continue;
-    }
-
-    // before only
-    if (before) {
-      if (buildHelper.compareSemver(version, "<=", before)) {
-        result.push(field.field);
-      }
-      continue;
-    }
-
-    // after only
-    if (after) {
-      if (buildHelper.compareSemver(version, ">=", after)) {
-        result.push(field.field);
-      }
-    }
+  if (before) {
+    inRange &&= buildHelper.compareSemver(version, "<=", before);
   }
-  return result;
+
+  if (after) {
+    inRange &&= buildHelper.compareSemver(version, ">=", after);
+  }
+
+  return inRange;
 }
 
 export async function applyCodePatches(
@@ -142,19 +125,17 @@ export async function applyCodePatches(
   manifests: ReturnType<typeof getManifests>,
   codePatcher: CodePatcher[],
 ) {
-  const nextVersion = buildOptions.nextVersion;
   logger.time("Applying code patches");
 
   // We first filter against the version
   // We also flatten the array of patches so that we get both the name and all the necessary patches
-  const patchesToApply = codePatcher.flatMap(({ name, patches }) =>
-    Array.isArray(patches)
-      ? extractVersionedField(patches, nextVersion).map((patch) => ({
-          name,
-          patch,
-        }))
-      : [{ name, patch: patches }],
-  );
+  const patchesToApply = codePatcher.flatMap(({ name, patches }) => {
+    return patches
+      .filter(({ versions }) =>
+        isVersionInRange(buildOptions.nextVersion, versions),
+      )
+      .map((patch) => ({ patch, name }));
+  });
 
   await Promise.all(
     tracedFiles.map(async (filePath) => {

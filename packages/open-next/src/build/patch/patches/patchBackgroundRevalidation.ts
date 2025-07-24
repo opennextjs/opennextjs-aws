@@ -21,10 +21,8 @@ export const patchBackgroundRevalidation = {
     {
       // TODO: test for earlier versions of Next
       versions: ">=14.1.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex("server/response-cache/index.js"),
-        patchCode: createPatchCode(rule),
-      },
+      pathFilter: getCrossPlatformPathRegex("server/response-cache/index.js"),
+      patchCode: createPatchCode(rule),
     },
   ],
 } satisfies CodePatcher;
