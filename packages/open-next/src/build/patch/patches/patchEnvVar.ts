@@ -27,32 +27,24 @@ export const patchEnvVars: CodePatcher = {
     // This patch will set the `NEXT_RUNTIME` env var to "node" to avoid loading unnecessary edge deps at runtime
     {
       versions: ">=15.0.0",
-      field: {
-        pathFilter: /module\.compiled\.js$/,
-        contentFilter: /process\.env\.NEXT_RUNTIME/,
-        patchCode: createPatchCode(envVarRuleCreator("NEXT_RUNTIME", '"node"')),
-      },
+      pathFilter: /module\.compiled\.js$/,
+      contentFilter: /process\.env\.NEXT_RUNTIME/,
+      patchCode: createPatchCode(envVarRuleCreator("NEXT_RUNTIME", '"node"')),
     },
     // This patch will set `NODE_ENV` to production to avoid loading unnecessary dev deps at runtime
     {
       versions: ">=15.0.0",
-      field: {
-        pathFilter:
-          /(module\.compiled|react\/index|react\/jsx-runtime|react-dom\/index)\.js$/,
-        contentFilter: /process\.env\.NODE_ENV/,
-        patchCode: createPatchCode(
-          envVarRuleCreator("NODE_ENV", '"production"'),
-        ),
-      },
+      pathFilter:
+        /(module\.compiled|react\/index|react\/jsx-runtime|react-dom\/index)\.js$/,
+      contentFilter: /process\.env\.NODE_ENV/,
+      patchCode: createPatchCode(envVarRuleCreator("NODE_ENV", '"production"')),
     },
     // This patch will set `TURBOPACK` env to false to avoid loading turbopack related deps at runtime
     {
       versions: ">=15.0.0",
-      field: {
-        pathFilter: /module\.compiled\.js$/,
-        contentFilter: /process\.env\.TURBOPACK/,
-        patchCode: createPatchCode(envVarRuleCreator("TURBOPACK", "false")),
-      },
+      pathFilter: /module\.compiled\.js$/,
+      contentFilter: /process\.env\.TURBOPACK/,
+      patchCode: createPatchCode(envVarRuleCreator("TURBOPACK", "false")),
     },
   ],
 };

@@ -11,7 +11,7 @@ rule:
     kind: ternary_expression
     all:
       - has: {kind: 'null'}
-      - has: 
+      - has:
           kind: await_expression
           has:
             kind: call_expression
@@ -51,7 +51,7 @@ rule:
       kind: statement_block
       has:
         kind: variable_declarator
-        has: 
+        has:
           kind: await_expression
           has:
             kind: call_expression
@@ -84,13 +84,13 @@ rule:
   pattern: $STORE_OR_CACHE.isOnDemandRevalidate
   inside:
     kind: binary_expression
-    has: 
+    has:
       kind: member_expression
       pattern: $STORE_OR_CACHE.isDraftMode
     inside:
       kind: if_statement
       stopBy: end
-      has: 
+      has:
         kind: return_statement
         any:
           - has:
@@ -106,14 +106,12 @@ export const patchFetchCacheForISR: CodePatcher = {
   patches: [
     {
       versions: ">=14.0.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$`,
-          { escape: false },
-        ),
-        contentFilter: /\.isOnDemandRevalidate/,
-        patchCode: createPatchCode(fetchRule, Lang.JavaScript),
-      },
+      pathFilter: getCrossPlatformPathRegex(
+        String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$`,
+        { escape: false },
+      ),
+      contentFilter: /\.isOnDemandRevalidate/,
+      patchCode: createPatchCode(fetchRule, Lang.JavaScript),
     },
   ],
 };
@@ -123,14 +121,12 @@ export const patchUnstableCacheForISR: CodePatcher = {
   patches: [
     {
       versions: ">=14.2.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|spec-extension/unstable-cache\.js)$`,
-          { escape: false },
-        ),
-        contentFilter: /\.isOnDemandRevalidate/,
-        patchCode: createPatchCode(unstable_cacheRule, Lang.JavaScript),
-      },
+      pathFilter: getCrossPlatformPathRegex(
+        String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|spec-extension/unstable-cache\.js)$`,
+        { escape: false },
+      ),
+      contentFilter: /\.isOnDemandRevalidate/,
+      patchCode: createPatchCode(unstable_cacheRule, Lang.JavaScript),
     },
   ],
 };
@@ -140,14 +136,12 @@ export const patchUseCacheForISR: CodePatcher = {
   patches: [
     {
       versions: ">=15.3.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`(server/chunks/.*\.js|\.runtime\..*\.js|use-cache/use-cache-wrapper\.js)$`,
-          { escape: false },
-        ),
-        contentFilter: /\.isOnDemandRevalidate/,
-        patchCode: createPatchCode(useCacheRule, Lang.JavaScript),
-      },
+      pathFilter: getCrossPlatformPathRegex(
+        String.raw`(server/chunks/.*\.js|\.runtime\..*\.js|use-cache/use-cache-wrapper\.js)$`,
+        { escape: false },
+      ),
+      contentFilter: /\.isOnDemandRevalidate/,
+      patchCode: createPatchCode(useCacheRule, Lang.JavaScript),
     },
   ],
 };

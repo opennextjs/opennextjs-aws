@@ -29,14 +29,12 @@ export const patchFetchCacheSetMissingWaitUntil: CodePatcher = {
   patches: [
     {
       versions: ">=15.0.0",
-      field: {
-        pathFilter: getCrossPlatformPathRegex(
-          String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$`,
-          { escape: false },
-        ),
-        contentFilter: /arrayBuffer\(\)\s*\.then/,
-        patchCode: createPatchCode(rule),
-      },
+      pathFilter: getCrossPlatformPathRegex(
+        String.raw`(server/chunks/.*\.js|.*\.runtime\..*\.js|patch-fetch\.js)$`,
+        { escape: false },
+      ),
+      contentFilter: /arrayBuffer\(\)\s*\.then/,
+      patchCode: createPatchCode(rule),
     },
   ],
 };
