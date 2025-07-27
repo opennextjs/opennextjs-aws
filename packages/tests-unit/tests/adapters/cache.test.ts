@@ -562,13 +562,22 @@ describe("CacheHandler", () => {
       globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
       await cache.revalidateTag("tag");
 
-      expect(globalThis.tagCache.getByTag).toHaveBeenCalledWith("tag");
+      expect(globalThis.tagCache.getByTag).toHaveBeenCalledWith({
+        baseKey: "tag",
+        buildId: "undefined-build-id",
+      });
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
-          path: "/path",
-          tag: "tag",
+          path: {
+            baseKey: "/path",
+            buildId: "undefined-build-id",
+          },
+          tag: {
+            baseKey: "tag",
+            buildId: "undefined-build-id",
+          },
         },
       ]);
     });
@@ -581,8 +590,14 @@ describe("CacheHandler", () => {
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
-          path: "/path",
-          tag: "_N_T_/path",
+          path: {
+            baseKey: "/path",
+            buildId: "undefined-build-id",
+          },
+          tag: {
+            baseKey: "_N_T_/path",
+            buildId: "undefined-build-id",
+          },
         },
       ]);
 
@@ -596,8 +611,14 @@ describe("CacheHandler", () => {
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
-          path: "123456",
-          tag: "tag",
+          path: {
+            baseKey: "123456",
+            buildId: "undefined-build-id",
+          },
+          tag: {
+            baseKey: "tag",
+            buildId: "undefined-build-id",
+          },
         },
       ]);
 
