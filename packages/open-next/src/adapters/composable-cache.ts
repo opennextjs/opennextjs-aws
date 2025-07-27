@@ -1,8 +1,8 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import type { CacheKey, TagKey } from "types/overrides";
+import type { TagKey } from "types/overrides";
 import { createCacheKey, createTagKey, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
-import { debug, warn } from "./logger";
+import { debug } from "./logger";
 
 const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
 
@@ -70,7 +70,10 @@ export default {
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
         await writeTags(
-          tagsToWrite.map((tag) => ({ tag: createTagKey(tag), path: createTagKey(cacheKey.baseKey) })),
+          tagsToWrite.map((tag) => ({
+            tag: createTagKey(tag),
+            path: createTagKey(cacheKey.baseKey),
+          })),
         );
       }
     }
@@ -107,7 +110,11 @@ export default {
       }),
     );
     // We need to deduplicate paths, we use a set for that
-    const setToWrite = new Set<{ path: TagKey; tag: TagKey; revalidatedAt: number }>();
+    const setToWrite = new Set<{
+      path: TagKey;
+      tag: TagKey;
+      revalidatedAt: number;
+    }>();
     for (const entry of pathsToUpdate.flat()) {
       setToWrite.add(entry);
     }

@@ -91,7 +91,7 @@ export default class Cache {
         );
         if (path) {
           const hasPathBeenUpdated = await hasBeenRevalidated(
-            createCacheKey({key: path.replace("_N_T_/", ""), type: "cache"}),
+            createCacheKey({ key: path.replace("_N_T_/", ""), type: "cache" }),
             [],
             cachedEntry,
           );
@@ -324,7 +324,10 @@ export default class Cache {
 
     try {
       if (globalThis.tagCache.mode === "nextMode") {
-        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags.map(createTagKey))) ?? [];
+        const paths =
+          (await globalThis.tagCache.getPathsByTags?.(
+            _tags.map(createTagKey),
+          )) ?? [];
 
         await writeTags(_tags);
         if (paths.length > 0) {
@@ -361,11 +364,15 @@ export default class Cache {
         if (tag.startsWith("_N_T_/")) {
           for (const path of paths) {
             // We need to find all hard tags for a given path
-            const _tags = await globalThis.tagCache.getByPath(createTagKey(path));
+            const _tags = await globalThis.tagCache.getByPath(
+              createTagKey(path),
+            );
             const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
-              const _paths = await globalThis.tagCache.getByTag(createTagKey(hardTag));
+              const _paths = await globalThis.tagCache.getByTag(
+                createTagKey(hardTag),
+              );
               debug({ hardTag, _paths });
               toInsert.push(
                 ..._paths.map((path) => ({
@@ -378,10 +385,12 @@ export default class Cache {
         }
 
         // Update all keys with the given tag with revalidatedAt set to now
-        await writeTags(toInsert.map((t) => ({
-          path: createTagKey(t.path),
-          tag: createTagKey(t.tag),
-        })));
+        await writeTags(
+          toInsert.map((t) => ({
+            path: createTagKey(t.path),
+            tag: createTagKey(t.tag),
+          })),
+        );
 
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 
+import { createTagKey } from "utils/cache.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveTagCache } from "../core/resolve.js";
-import { createTagKey } from "utils/cache.js";
 
 const PHYSICAL_RESOURCE_ID = "dynamodb-cache" as const;
 

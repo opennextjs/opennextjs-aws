@@ -3,8 +3,6 @@ import type { NextModeTagCache, TagKey } from "types/overrides";
 import { AwsClient } from "aws4fetch";
 import { RecoverableError } from "utils/error";
 import { customFetchClient } from "utils/fetch";
-
-import path from "node:path";
 import { debug, error } from "../../adapters/logger";
 import { chunk, parseNumberFromEnv } from "../../adapters/util";
 import {

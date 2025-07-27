@@ -26,10 +26,13 @@ export async function hasBeenRevalidated(
   }
   const lastModified = cacheEntry.lastModified ?? Date.now();
   if (globalThis.tagCache.mode === "nextMode") {
-    return await globalThis.tagCache.hasBeenRevalidated(tags.map(t => ({
-      baseKey: t,
-      buildId: key.buildId,
-    })), lastModified);
+    return await globalThis.tagCache.hasBeenRevalidated(
+      tags.map((t) => ({
+        baseKey: t,
+        buildId: key.buildId,
+      })),
+      lastModified,
+    );
   }
   // TODO: refactor this, we should introduce a new method in the tagCache interface so that both implementations use hasBeenRevalidated
   const _lastModified = await globalThis.tagCache.getLastModified(
@@ -113,7 +116,7 @@ export function createCacheKey<CacheType extends CacheEntryType>({
       warn("Error while parsing composable cache key", e);
       // If we fail to parse the key, we just return it as is
       // This is not ideal, but we don't want to crash the application
-      baseKey = key;  
+      baseKey = key;
     }
   }
   if (shouldProvideBuildId) {

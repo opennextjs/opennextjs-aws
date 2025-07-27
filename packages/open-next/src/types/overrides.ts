@@ -112,7 +112,7 @@ export type CacheValue<CacheType extends CacheEntryType> =
 export type TagKey = {
   baseKey: string;
   buildId?: string;
-}
+};
 
 /**
  * Represents a cache key used in the incremental cache.

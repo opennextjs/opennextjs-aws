@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import type { DynamoDBClientConfig } from "@aws-sdk/client-dynamodb";
 import {
   BatchWriteItemCommand,

@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import path from "node:path";
-
 import { AwsClient } from "aws4fetch";
 import type { TagCache, TagKey } from "types/overrides";
 import { RecoverableError } from "utils/error";
