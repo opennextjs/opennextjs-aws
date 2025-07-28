@@ -327,6 +327,7 @@ async function tryRenderError(
   res: OpenNextNodeResponse,
   internalEvent: InternalEvent,
 ) {
+  const statusCode = type === "404" ? 404 : 500;
   try {
     const _req = new IncomingMessage({
       method: "GET",
@@ -338,14 +339,13 @@ async function tryRenderError(
     // By setting this it will allow us to bypass and directly render the 404 or 500 page
     const requestMetadata = {
       // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
-      invokePath: type === "404" ? "/404" : "/500",
-      invokeStatus: type === "404" ? 404 : 500,
+      invokePath: `/${statusCode}`,
+      invokeStatus: statusCode,
       middlewareInvoke: false,
     };
     await requestHandler(requestMetadata)(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
-    const statusCode = type === "404" ? 404 : 500;
     res.statusCode = statusCode;
     res.setHeader("Content-Type", "application/json");
     res.end(
