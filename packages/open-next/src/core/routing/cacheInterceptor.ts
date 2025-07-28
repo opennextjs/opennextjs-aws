@@ -185,6 +185,17 @@ export async function cacheInterceptor(
     Boolean(event.headers["x-prerender-revalidate"])
   )
     return event;
+
+  // Check for Next.js preview mode cookies
+  const cookies = event.headers.cookie || "";
+  const hasPreviewData =
+    cookies.includes("__prerender_bypass") ||
+    cookies.includes("__next_preview_data");
+
+  if (hasPreviewData) {
+    debug("Preview mode detected, passing through to handler");
+    return event;
+  }
   // We localize the path in case i18n is enabled
   let localizedPath = localizePath(event);
   // If using basePath we need to remove it from the path
