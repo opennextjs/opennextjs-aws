@@ -52,7 +52,7 @@ export function installDependencies(
     );
 
     // This is a workaround for Node `22.17.0` and `22.17.1`
-    // Can remove these lines when this is fixed upstream: https://github.com/nodejs/node/issues/59168
+    // https://github.com/nodejs/node/issues/59168
     const nodeVersion = process.version;
     if (nodeVersion === "v22.17.0" || nodeVersion === "v22.17.1") {
       const tempBinDir = path.join(tempInstallDir, "node_modules", ".bin");
