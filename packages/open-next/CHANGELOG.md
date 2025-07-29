@@ -1,5 +1,21 @@
 # open-next
 
+## 3.7.2
+
+### Patch Changes
+
+- [#931](https://github.com/opennextjs/opennextjs-aws/pull/931) [`c48ac9565863706486f796a75aaecdd27aebd551`](https://github.com/opennextjs/opennextjs-aws/commit/c48ac9565863706486f796a75aaecdd27aebd551) Thanks [@vicb](https://github.com/vicb)! - refactor the CodePatcher
+
+- [#934](https://github.com/opennextjs/opennextjs-aws/pull/934) [`bfde44ebbe65677f8e577ed6b798f82979d4778b`](https://github.com/opennextjs/opennextjs-aws/commit/bfde44ebbe65677f8e577ed6b798f82979d4778b) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Workaround for broken symlink dereferencing in Node 22.17.0 and 22.17.1
+
+  The `dereference: true` option in `fs.cpSync()` is broken on version 22.17.0 and 22.17.1. This fix will do it manually for the binaries in `node_modules/.bin`.
+
+  Issue in Node: https://github.com/nodejs/node/issues/59168
+
+- [#935](https://github.com/opennextjs/opennextjs-aws/pull/935) [`3b234952504ab108dd921a899c67e5bd895c38b4`](https://github.com/opennextjs/opennextjs-aws/commit/3b234952504ab108dd921a899c67e5bd895c38b4) Thanks [@conico974](https://github.com/conico974)! - Fix preview mode in cache interceptor
+
+- [#938](https://github.com/opennextjs/opennextjs-aws/pull/938) [`af6e752efacd56dec03640ccab32cee590322f8c`](https://github.com/opennextjs/opennextjs-aws/commit/af6e752efacd56dec03640ccab32cee590322f8c) Thanks [@jonkwheeler](https://github.com/jonkwheeler)! - set the correct 500 status code on internal server error
+
 ## 3.7.1
 
 ### Patch Changes
