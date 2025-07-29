@@ -48,9 +48,36 @@ export function installDependencies(
     fs.cpSync(
       path.join(tempInstallDir, "node_modules"),
       path.join(outputDir, "node_modules"),
-
       { recursive: true, force: true, dereference: true },
     );
+
+    // This is a workaround for Node `22.17.0` and `22.17.1`
+    // https://github.com/nodejs/node/issues/59168
+    const nodeVersion = process.version;
+    if (nodeVersion === "v22.17.0" || nodeVersion === "v22.17.1") {
+      const tempBinDir = path.join(tempInstallDir, "node_modules", ".bin");
+      const outputBinDir = path.join(outputDir, "node_modules", ".bin");
+
+      for (const fileName of fs.readdirSync(tempBinDir)) {
+        const symlinkPath = path.join(tempBinDir, fileName);
+        const stat = fs.lstatSync(symlinkPath);
+
+        if (stat.isSymbolicLink()) {
+          const linkTarget = fs.readlinkSync(symlinkPath);
+          const realFilePath = path.resolve(tempBinDir, linkTarget);
+
+          const outputFilePath = path.join(outputBinDir, fileName);
+
+          if (fs.existsSync(outputFilePath)) {
+            fs.unlinkSync(outputFilePath);
+          }
+
+          fs.copyFileSync(realFilePath, outputFilePath);
+          fs.chmodSync(outputFilePath, "755");
+          logger.debug(`Replaced symlink ${fileName} with actual file`);
+        }
+      }
+    }
 
     // Cleanup tempDir
     fs.rmSync(tempInstallDir, { recursive: true, force: true });
