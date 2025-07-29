@@ -345,6 +345,7 @@ async function tryRenderError(
     await requestHandler(requestMetadata)(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
+    res.statusCode = 500;
     res.setHeader("Content-Type", "application/json");
     res.end(
       JSON.stringify(
