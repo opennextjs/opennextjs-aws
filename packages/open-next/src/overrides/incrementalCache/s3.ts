@@ -7,18 +7,13 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import type { Extension } from "types/cache";
-import type { IncrementalCache } from "types/overrides";
+import type { CacheKey, IncrementalCache } from "types/overrides";
 
 import { awsLogger } from "../../adapters/logger";
 import { parseNumberFromEnv } from "../../adapters/util";
 
-const {
-  CACHE_BUCKET_REGION,
-  CACHE_BUCKET_KEY_PREFIX,
-  NEXT_BUILD_ID,
-  CACHE_BUCKET_NAME,
-} = process.env;
+const { CACHE_BUCKET_REGION, CACHE_BUCKET_KEY_PREFIX, CACHE_BUCKET_NAME } =
+  process.env;
 
 function parseS3ClientConfigFromEnv(): S3ClientConfig {
   return {
@@ -30,21 +25,20 @@ function parseS3ClientConfigFromEnv(): S3ClientConfig {
 
 const s3Client = new S3Client(parseS3ClientConfigFromEnv());
 
-function buildS3Key(key: string, extension: Extension) {
+function buildS3Key(key: CacheKey) {
   return path.posix.join(
     CACHE_BUCKET_KEY_PREFIX ?? "",
-    extension === "fetch" ? "__fetch" : "",
-    NEXT_BUILD_ID ?? "",
-    extension === "fetch" ? key : `${key}.${extension}`,
+    key.cacheType === "fetch" ? "__fetch" : "",
+    `${key.buildId ? `${key.buildId}/` : ""}${key.baseKey}.${key.cacheType}`,
   );
 }
 
 const incrementalCache: IncrementalCache = {
-  async get(key, cacheType) {
+  async get(key) {
     const result = await s3Client.send(
       new GetObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
-        Key: buildS3Key(key, cacheType ?? "cache"),
+        Key: buildS3Key(key),
       }),
     );
 
@@ -56,11 +50,11 @@ const incrementalCache: IncrementalCache = {
       lastModified: result.LastModified?.getTime(),
     };
   },
-  async set(key, value, cacheType): Promise<void> {
+  async set(key, value): Promise<void> {
     await s3Client.send(
       new PutObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
-        Key: buildS3Key(key, cacheType ?? "cache"),
+        Key: buildS3Key(key),
         Body: JSON.stringify(value),
       }),
     );
@@ -69,7 +63,7 @@ const incrementalCache: IncrementalCache = {
     await s3Client.send(
       new DeleteObjectCommand({
         Bucket: CACHE_BUCKET_NAME,
-        Key: buildS3Key(key, "cache"),
+        Key: buildS3Key(key),
       }),
     );
   },

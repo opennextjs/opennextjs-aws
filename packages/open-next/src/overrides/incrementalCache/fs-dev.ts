@@ -1,11 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import type { IncrementalCache } from "types/overrides.js";
+import type { CacheKey, IncrementalCache } from "types/overrides.js";
 import { getMonorepoRelativePath } from "utils/normalize-path";
 
-const buildId = process.env.NEXT_BUILD_ID;
-const basePath = path.join(getMonorepoRelativePath(), `cache/${buildId}`);
+const basePath = path.join(getMonorepoRelativePath(), "cache");
 
 const getCacheKey = (key: string) => {
   return path.join(basePath, `${key}.cache`);
@@ -13,24 +12,26 @@ const getCacheKey = (key: string) => {
 
 const cache: IncrementalCache = {
   name: "fs-dev",
-  get: async (key: string) => {
-    const fileData = await fs.readFile(getCacheKey(key), "utf-8");
+  get: async (cacheKey: CacheKey) => {
+    // This cache is always shared across build (the build id is not used)
+    const { baseKey } = cacheKey;
+    const fileData = await fs.readFile(getCacheKey(baseKey), "utf-8");
     const data = JSON.parse(fileData);
-    const { mtime } = await fs.stat(getCacheKey(key));
+    const { mtime } = await fs.stat(getCacheKey(baseKey));
     return {
       value: data,
       lastModified: mtime.getTime(),
     };
   },
-  set: async (key, value, isFetch) => {
+  set: async ({ baseKey }, value) => {
     const data = JSON.stringify(value);
-    const cacheKey = getCacheKey(key);
+    const cacheKey = getCacheKey(baseKey);
     // We need to create the directory before writing the file
     await fs.mkdir(path.dirname(cacheKey), { recursive: true });
     await fs.writeFile(cacheKey, data);
   },
-  delete: async (key) => {
-    await fs.rm(getCacheKey(key));
+  delete: async ({ baseKey }) => {
+    await fs.rm(getCacheKey(baseKey));
   },
 };
 
