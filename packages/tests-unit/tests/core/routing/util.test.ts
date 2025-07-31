@@ -17,6 +17,7 @@ import {
   getUrlParts,
   invalidateCDNOnRequest,
   isExternal,
+  normalizeLocationHeader,
   revalidateIfRequired,
   unescapeRegex,
 } from "@opennextjs/aws/core/routing/util.js";
@@ -874,5 +875,68 @@ describe("constructNextUrl", () => {
     vi.spyOn(NextConfig, "basePath", "get").mockReturnValue("/base");
     const result = constructNextUrl("http://localhost", "/path");
     expect(result).toBe("http://localhost/base/path");
+  });
+});
+
+describe("normalizeLocationHeader", () => {
+  it("should normalize relative location header", () => {
+    const result = normalizeLocationHeader(
+      "http://localhost:3000/path",
+      "http://localhost:3000",
+    );
+    expect(result).toBe("/path");
+  });
+
+  it("should not change absolute location header", () => {
+    const result = normalizeLocationHeader(
+      "https://opennext.js.org/aws",
+      "http://localhost:3000",
+    );
+    expect(result).toBe("https://opennext.js.org/aws");
+  });
+
+  it("should normalize relative location with query parameters", () => {
+    const result = normalizeLocationHeader(
+      "http://localhost:3000/path?query=1",
+      "http://localhost:3000",
+    );
+    expect(result).toBe("/path?query=1");
+  });
+
+  it("should normalize and encode special characters in location header", () => {
+    const result = normalizeLocationHeader(
+      "http://localhost:3000/about?query=æøå!&",
+      "http://localhost:3000",
+      true,
+    );
+    expect(result).toBe("/about?query=%C3%A6%C3%B8%C3%A5!");
+  });
+
+  it("should normalize and respect already encoded characters in location header", () => {
+    const result = normalizeLocationHeader(
+      "http://localhost:3000/path?query=test%2F%2F",
+      "http://localhost:3000",
+      true,
+    );
+    expect(result).toBe("/path?query=test%2F%2F");
+  });
+
+  it("should preserve multiple query parameters in location header", () => {
+    const result = normalizeLocationHeader(
+      "http://localhost:3000/path?query1=value1&query2=value2&query1=value3&query2=value4&random=randomvalue",
+      "http://localhost:3000",
+      true,
+    );
+    expect(result).toBe(
+      "/path?query1=value1&query1=value3&query2=value2&query2=value4&random=randomvalue",
+    );
+  });
+
+  it("should return absolute URL correctly when the base URL is different", () => {
+    const result = normalizeLocationHeader(
+      "https://example.com/path?query=1",
+      "http://localhost:3000",
+    );
+    expect(result).toBe("https://example.com/path?query=1");
   });
 });

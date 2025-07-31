@@ -15,6 +15,7 @@ import {
   convertBodyToReadableStream,
   getMiddlewareMatch,
   isExternal,
+  normalizeLocationHeader,
 } from "./util.js";
 
 const middlewareManifest = MiddlewareManifest;
@@ -24,6 +25,8 @@ const middleMatch = getMiddlewareMatch(
   middlewareManifest,
   functionsConfigManifest,
 );
+
+const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 
 type MiddlewareEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;
@@ -132,6 +135,11 @@ export async function handleMiddleware(
         resHeaders[key] = resHeaders[key]
           ? [...resHeaders[key], value]
           : [value];
+      } else if (
+        REDIRECTS.has(statusCode) &&
+        key.toLowerCase() === "location"
+      ) {
+        resHeaders[key] = normalizeLocationHeader(value, internalEvent.url);
       } else {
         resHeaders[key] = value;
       }

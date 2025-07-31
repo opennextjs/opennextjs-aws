@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { OutgoingHttpHeaders } from "node:http";
+import { parse as parseQs, stringify as stringifyQs } from "node:querystring";
 import { Readable } from "node:stream";
 
 import { BuildId, HtmlPages, NextConfig } from "config/index.js";
@@ -436,4 +437,45 @@ export async function invalidateCDNOnRequest(
       },
     ]);
   }
+}
+
+/**
+ * Normalizes the Location header to either be a relative path or a full URL.
+ * If the Location header is relative to the origin, it will return a relative path.
+ * If it is an absolute URL, it will return the full URL.
+ * Redirects from Next config query parameters are encoded using `stringifyQs`
+ * Redirects from the middleware the query parameters are not encoded.
+ *
+ * @param location The Location header value
+ * @param baseUrl The base URL to use for relative paths (i.e the original request URL)
+ * @param encodeQuery Optional flag to indicate if query parameters should be encoded in the Location header
+ * @returns An absolute or relative Location header value
+ */
+export function normalizeLocationHeader(
+  location: string,
+  baseUrl: string,
+  encodeQuery = false,
+): string {
+  if (!URL.canParse(location)) {
+    // If the location is not a valid URL, return it as-is
+    return location;
+  }
+
+  const locationURL = new URL(location);
+  const origin = new URL(baseUrl).origin;
+
+  // Redirects from the middleware do not encode the query parameters
+  let search = locationURL.search;
+  // If encodeQuery is true, we need to encode the query parameters
+  // This is used for redirects from Next config
+  // We could have used URLSearchParams, but that doesn't match what Next does.
+  if (encodeQuery) {
+    search = search ? `?${stringifyQs(parseQs(search.slice(1)))}` : "";
+  }
+  const href = `${locationURL.origin}${locationURL.pathname}${search}${locationURL.hash}`;
+  // The URL is relative if the origin is the same as the base URL's origin
+  if (locationURL.origin === origin) {
+    return href.slice(origin.length);
+  }
+  return href;
 }
