@@ -28,7 +28,7 @@ import {
   dynamicRouteMatcher,
   staticRouteMatcher,
 } from "./routing/routeMatcher";
-import { constructNextUrl } from "./routing/util";
+import { constructNextUrl, normalizeLocationHeader } from "./routing/util";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
@@ -110,13 +110,13 @@ export default async function routingHandler(
     if (redirect) {
       // We need to encode the value in the Location header to make sure it is valid according to RFC
       // https://stackoverflow.com/a/7654605/16587222
-      redirect.headers.Location = new URL(
+      redirect.headers.Location = normalizeLocationHeader(
         redirect.headers.Location as string,
-      ).href;
+        event.url,
+      );
       debug("redirect", redirect);
       return redirect;
     }
-
     const middlewareEventOrResult = await handleMiddleware(
       eventOrResult,
       // We need to pass the initial search without any decoding
