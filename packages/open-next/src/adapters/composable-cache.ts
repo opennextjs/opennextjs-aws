@@ -1,9 +1,13 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
+import type { CacheValue } from "types/overrides";
 import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
-const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
+const pendingWritePromiseMap = new Map<
+  string,
+  Promise<CacheValue<"composable">>
+>();
 
 export default {
   async get(cacheKey: string) {
@@ -11,7 +15,11 @@ export default {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
       if (pendingWritePromiseMap.has(cacheKey)) {
-        return pendingWritePromiseMap.get(cacheKey);
+        const stored = pendingWritePromiseMap.get(cacheKey)!;
+        return stored.then((entry) => ({
+          ...entry,
+          value: toReadableStream(entry.value),
+        }));
       }
       const result = await globalThis.incrementalCache.get(
         cacheKey,
@@ -56,16 +64,20 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    pendingWritePromiseMap.set(cacheKey, pendingEntry);
-    const entry = await pendingEntry.finally(() => {
+    const promiseEntry = pendingEntry.then(async (entry) => ({
+      ...entry,
+      value: await fromReadableStream(entry.value),
+    }));
+    pendingWritePromiseMap.set(cacheKey, promiseEntry);
+
+    const entry = await promiseEntry.finally(() => {
       pendingWritePromiseMap.delete(cacheKey);
     });
-    const valueToStore = await fromReadableStream(entry.value);
     await globalThis.incrementalCache.set(
       cacheKey,
       {
         ...entry,
-        value: valueToStore,
+        value: entry.value,
       },
       "composable",
     );
