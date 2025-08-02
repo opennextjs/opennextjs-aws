@@ -449,21 +449,25 @@ export async function invalidateCDNOnRequest(
  * @returns An encoded absolute or relative Location header value
  */
 export function normalizeLocationHeader(location: string, url: string): string {
-  const locationUrl = new URL(location);
-  const host = new URL(url).host;
-
-  // Encode the search parameters to ensure they are valid according to RFC
-  const encodedSearch = locationUrl.searchParams.toString()
+  try {
+    const locationUrl = new URL(location);
+    const host = new URL(url).host;
+    
+    // Encode the search parameters to ensure they are valid according to RFC
+    const encodedSearch = locationUrl.searchParams.toString()
     ? `?${locationUrl.searchParams.toString()}`
     : "";
-  const href =
+    const href =
     locationUrl.origin +
     locationUrl.pathname +
     encodedSearch +
     locationUrl.hash;
-  if (locationUrl.host === host) {
-    // If the location is relative to the host
-    return href.replace(locationUrl.origin, "");
+    if (locationUrl.host === host) {
+      // If the location is relative to the host
+      return href.replace(locationUrl.origin, "");
+    }
+    return href;
+  } catch {
+    return location;
   }
-  return href;
 }
