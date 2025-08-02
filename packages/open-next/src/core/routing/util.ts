@@ -437,3 +437,37 @@ export async function invalidateCDNOnRequest(
     ]);
   }
 }
+
+/**
+ * Normalizes the Location header to either be a relative path or a full URL.
+ * If the Location header is relative to the host, it will return a relative path.
+ * If it is an absolute URL, it will return the full URL.
+ * Both cases will ensure that the Location value is properly encoded according to RFC
+ *
+ * @param location The Location header value
+ * @param url The original request URL
+ * @returns An encoded absolute or relative Location header value
+ */
+export function normalizeLocationHeader(location: string, url: string): string {
+  try {
+    const locationUrl = new URL(location);
+    const host = new URL(url).host;
+
+    // Encode the search parameters to ensure they are valid according to RFC
+    const encodedSearch = locationUrl.searchParams.toString()
+      ? `?${locationUrl.searchParams.toString()}`
+      : "";
+    const href =
+      locationUrl.origin +
+      locationUrl.pathname +
+      encodedSearch +
+      locationUrl.hash;
+    if (locationUrl.host === host) {
+      // If the location is relative to the host
+      return href.replace(locationUrl.origin, "");
+    }
+    return href;
+  } catch {
+    return location;
+  }
+}

@@ -15,6 +15,7 @@ import {
   convertBodyToReadableStream,
   getMiddlewareMatch,
   isExternal,
+  normalizeLocationHeader,
 } from "./util.js";
 
 const middlewareManifest = MiddlewareManifest;
@@ -94,6 +95,15 @@ export async function handleMiddleware(
     url,
     body: convertBodyToReadableStream(internalEvent.method, internalEvent.body),
   } as unknown as Request);
+  if (result.headers.has("Location")) {
+    result.headers.set(
+      "Location",
+      normalizeLocationHeader(
+        result.headers.get("Location") as string,
+        internalEvent.url,
+      ),
+    );
+  }
   const statusCode = result.status;
 
   /* Apply override headers from middleware
