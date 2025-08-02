@@ -442,11 +442,11 @@ export async function invalidateCDNOnRequest(
  * Normalizes the Location header to either be a relative path or a full URL.
  * If the Location header is relative to the host, it will return a relative path.
  * If it is an absolute URL, it will return the full URL.
- * Both cases will ensure that the URL is properly encoded according to RFC
+ * Both cases will ensure that the Location value is properly encoded according to RFC
  *
  * @param location The Location header value
  * @param url The original request URL
- * @returns A normalized Location header value
+ * @returns An encoded absolute or relative Location header value
  */
 export function normalizeLocationHeader(location: string, url: string): string {
   const locationUrl = new URL(location);
