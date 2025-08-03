@@ -79,6 +79,16 @@ export interface DangerousOptions {
   headersAndCookiesPriority?: (
     event: InternalEvent,
   ) => "middleware" | "handler";
+
+  /**
+   * Persist data cache between deployments.
+   * Next.js claims that the data cache is persistent (not true for `use cache` and it depends on how you build/deploy otherwise).
+   * By default, every entry will be prepended with the BUILD_ID, when enabled it will not.
+   * This means that the data cache will be persistent between deployments.
+   * This is useful in a lot of cases, but be aware that it could cause issues, especially with `use cache` or `unstable_cache` (Some external change may not be reflected in the key, leading to stale data)
+   * @default false
+   */
+  persistentDataCache?: boolean;
 }
 
 export type BaseOverride = {

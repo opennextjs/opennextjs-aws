@@ -1,22 +1,21 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import { writeTags } from "utils/cache";
+import type { TagKey } from "types/overrides";
+import { createCacheKey, createTagKey, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
 const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
 
 export default {
-  async get(cacheKey: string) {
+  async get(key: string) {
     try {
+      const cacheKey = createCacheKey({ key, type: "composable" });
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
-      if (pendingWritePromiseMap.has(cacheKey)) {
-        return pendingWritePromiseMap.get(cacheKey);
+      if (pendingWritePromiseMap.has(cacheKey.baseKey)) {
+        return pendingWritePromiseMap.get(cacheKey.baseKey);
       }
-      const result = await globalThis.incrementalCache.get(
-        cacheKey,
-        "composable",
-      );
+      const result = await globalThis.incrementalCache.get(cacheKey);
       if (!result?.value?.value) {
         return undefined;
       }
@@ -29,7 +28,7 @@ export default {
         result.value.tags.length > 0
       ) {
         const hasBeenRevalidated = await globalThis.tagCache.hasBeenRevalidated(
-          result.value.tags,
+          result.value.tags.map(createTagKey),
           result.lastModified,
         );
         if (hasBeenRevalidated) return undefined;
@@ -55,25 +54,27 @@ export default {
     }
   },
 
-  async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    pendingWritePromiseMap.set(cacheKey, pendingEntry);
+  async set(key: string, pendingEntry: Promise<ComposableCacheEntry>) {
+    const cacheKey = createCacheKey({ key, type: "composable" });
+    pendingWritePromiseMap.set(cacheKey.baseKey, pendingEntry);
     const entry = await pendingEntry.finally(() => {
-      pendingWritePromiseMap.delete(cacheKey);
+      pendingWritePromiseMap.delete(cacheKey.baseKey);
     });
     const valueToStore = await fromReadableStream(entry.value);
-    await globalThis.incrementalCache.set(
-      cacheKey,
-      {
-        ...entry,
-        value: valueToStore,
-      },
-      "composable",
-    );
+    await globalThis.incrementalCache.set(cacheKey, {
+      ...entry,
+      value: valueToStore,
+    });
     if (globalThis.tagCache.mode === "original") {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
-        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
+        await writeTags(
+          tagsToWrite.map((tag) => ({
+            tag: createTagKey(tag),
+            path: createTagKey(cacheKey.baseKey),
+          })),
+        );
       }
     }
   },
@@ -84,7 +85,7 @@ export default {
   },
   async getExpiration(...tags: string[]) {
     if (globalThis.tagCache.mode === "nextMode") {
-      return globalThis.tagCache.getLastRevalidated(tags);
+      return globalThis.tagCache.getLastRevalidated(tags.map(createTagKey));
     }
     // We always return 0 here, original tag cache are handled directly in the get part
     // TODO: We need to test this more, i'm not entirely sure that this is working as expected
@@ -100,16 +101,20 @@ export default {
     // We need to find all paths linked to to these tags
     const pathsToUpdate = await Promise.all(
       tags.map(async (tag) => {
-        const paths = await tagCache.getByTag(tag);
+        const paths = await tagCache.getByTag(createTagKey(tag));
         return paths.map((path) => ({
-          path,
-          tag,
+          path: createTagKey(path),
+          tag: createTagKey(tag),
           revalidatedAt,
         }));
       }),
     );
     // We need to deduplicate paths, we use a set for that
-    const setToWrite = new Set<{ path: string; tag: string }>();
+    const setToWrite = new Set<{
+      path: TagKey;
+      tag: TagKey;
+      revalidatedAt: number;
+    }>();
     for (const entry of pathsToUpdate.flat()) {
       setToWrite.add(entry);
     }

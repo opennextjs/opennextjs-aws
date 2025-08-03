@@ -1,4 +1,4 @@
-import type { TagCache } from "types/overrides";
+import type { TagCache, TagKey } from "types/overrides";
 
 // We don't want to throw error on this one because we might use it when we don't need tag cache
 const dummyTagCache: TagCache = {
@@ -10,7 +10,7 @@ const dummyTagCache: TagCache = {
   getByTag: async () => {
     return [];
   },
-  getLastModified: async (_: string, lastModified) => {
+  getLastModified: async (_: TagKey, lastModified) => {
     return lastModified ?? Date.now();
   },
   writeTags: async () => {

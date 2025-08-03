@@ -5,7 +5,11 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
-import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
+import {
+  createCacheKey,
+  getTagsFromValue,
+  hasBeenRevalidated,
+} from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
@@ -219,7 +223,10 @@ export async function cacheInterceptor(
   if (isISR) {
     try {
       const cachedData = await globalThis.incrementalCache.get(
-        localizedPath ?? "/index",
+        createCacheKey({
+          key: localizedPath ?? "/index",
+          type: "cache",
+        }),
       );
       debug("cached data in interceptor", cachedData);
 
@@ -230,7 +237,7 @@ export async function cacheInterceptor(
       if (cachedData.value?.type === "app") {
         const tags = getTagsFromValue(cachedData.value);
         const _hasBeenRevalidated = await hasBeenRevalidated(
-          localizedPath,
+          createCacheKey({ key: localizedPath, type: "cache" }),
           tags,
           cachedData,
         );

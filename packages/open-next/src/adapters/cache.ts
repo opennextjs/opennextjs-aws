@@ -3,7 +3,14 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
+import type { CacheKey } from "types/overrides";
+import {
+  createCacheKey,
+  createTagKey,
+  getTagsFromValue,
+  hasBeenRevalidated,
+  writeTags,
+} from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
@@ -31,7 +38,7 @@ function isFetchCache(
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
-    key: string,
+    baseKey: string,
     // fetchCache is for next 13.5 and above, kindHint is for next 14 and above and boolean is for earlier versions
     options?:
       | boolean
@@ -50,14 +57,15 @@ export default class Cache {
     const softTags = typeof options === "object" ? options.softTags : [];
     const tags = typeof options === "object" ? options.tags : [];
     return isFetchCache(options)
-      ? this.getFetchCache(key, softTags, tags)
-      : this.getIncrementalCache(key);
+      ? this.getFetchCache(baseKey, softTags, tags)
+      : this.getIncrementalCache(baseKey);
   }
 
-  async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
-    debug("get fetch cache", { key, softTags, tags });
+  async getFetchCache(baseKey: string, softTags?: string[], tags?: string[]) {
+    debug("get fetch cache", { baseKey, softTags, tags });
     try {
-      const cachedEntry = await globalThis.incrementalCache.get(key, "fetch");
+      const key = createCacheKey({ key: baseKey, type: "fetch" });
+      const cachedEntry = await globalThis.incrementalCache.get(key);
 
       if (cachedEntry?.value === undefined) return null;
 
@@ -83,7 +91,7 @@ export default class Cache {
         );
         if (path) {
           const hasPathBeenUpdated = await hasBeenRevalidated(
-            path.replace("_N_T_/", ""),
+            createCacheKey({ key: path.replace("_N_T_/", ""), type: "cache" }),
             [],
             cachedEntry,
           );
@@ -105,9 +113,15 @@ export default class Cache {
     }
   }
 
-  async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
+  async getIncrementalCache(
+    baseKey: string,
+  ): Promise<CacheHandlerValue | null> {
     try {
-      const cachedEntry = await globalThis.incrementalCache.get(key, "cache");
+      const key = createCacheKey({
+        key: baseKey,
+        type: "cache",
+      });
+      const cachedEntry = await globalThis.incrementalCache.get(key);
 
       if (!cachedEntry?.value) {
         return null;
@@ -191,13 +205,18 @@ export default class Cache {
   }
 
   async set(
-    key: string,
+    baseKey: string,
     data?: IncrementalCacheValue,
     ctx?: IncrementalCacheContext,
   ): Promise<void> {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
+    const key = createCacheKey({
+      key: baseKey,
+      type: data?.kind === "FETCH" ? "fetch" : "cache",
+    });
+    debug("Setting cache", { key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__openNextAls
@@ -205,30 +224,27 @@ export default class Cache {
       ?.pendingPromiseRunner.withResolvers<void>();
     try {
       if (data === null || data === undefined) {
-        await globalThis.incrementalCache.delete(key);
+        // only case where we delete the cache is for ISR/SSG cache
+        await globalThis.incrementalCache.delete(key as CacheKey<"cache">);
       } else {
         const revalidate = this.extractRevalidateForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
             const { body, status, headers } = data;
-            await globalThis.incrementalCache.set(
-              key,
-              {
-                type: "route",
-                body: body.toString(
-                  isBinaryContentType(String(headers["content-type"]))
-                    ? "base64"
-                    : "utf8",
-                ),
-                meta: {
-                  status,
-                  headers,
-                },
-                revalidate,
+            await globalThis.incrementalCache.set(key, {
+              type: "route",
+              body: body.toString(
+                isBinaryContentType(String(headers["content-type"]))
+                  ? "base64"
+                  : "utf8",
+              ),
+              meta: {
+                status,
+                headers,
               },
-              "cache",
-            );
+              revalidate,
+            });
             break;
           }
           case "PAGE":
@@ -236,65 +252,49 @@ export default class Cache {
             const { html, pageData, status, headers } = data;
             const isAppPath = typeof pageData === "string";
             if (isAppPath) {
-              await globalThis.incrementalCache.set(
-                key,
-                {
-                  type: "app",
-                  html,
-                  rsc: pageData,
-                  meta: {
-                    status,
-                    headers,
-                  },
-                  revalidate,
-                },
-                "cache",
-              );
-            } else {
-              await globalThis.incrementalCache.set(
-                key,
-                {
-                  type: "page",
-                  html,
-                  json: pageData,
-                  revalidate,
-                },
-                "cache",
-              );
-            }
-            break;
-          }
-          case "APP_PAGE": {
-            const { html, rscData, headers, status } = data;
-            await globalThis.incrementalCache.set(
-              key,
-              {
+              await globalThis.incrementalCache.set(key, {
                 type: "app",
                 html,
-                rsc: rscData.toString("utf8"),
+                rsc: pageData,
                 meta: {
                   status,
                   headers,
                 },
                 revalidate,
+              });
+            } else {
+              await globalThis.incrementalCache.set(key, {
+                type: "page",
+                html,
+                json: pageData,
+                revalidate,
+              });
+            }
+            break;
+          }
+          case "APP_PAGE": {
+            const { html, rscData, headers, status } = data;
+            await globalThis.incrementalCache.set(key, {
+              type: "app",
+              html,
+              rsc: rscData.toString("utf8"),
+              meta: {
+                status,
+                headers,
               },
-              "cache",
-            );
+              revalidate,
+            });
             break;
           }
           case "FETCH":
-            await globalThis.incrementalCache.set(key, data, "fetch");
+            await globalThis.incrementalCache.set(key, data);
             break;
           case "REDIRECT":
-            await globalThis.incrementalCache.set(
-              key,
-              {
-                type: "redirect",
-                props: data.props,
-                revalidate,
-              },
-              "cache",
-            );
+            await globalThis.incrementalCache.set(key, {
+              type: "redirect",
+              props: data.props,
+              revalidate,
+            });
             break;
           case "IMAGE":
             // Not implemented
@@ -302,7 +302,7 @@ export default class Cache {
         }
       }
 
-      await this.updateTagsOnSet(key, data, ctx);
+      await this.updateTagsOnSet(baseKey, data, ctx);
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
@@ -324,7 +324,10 @@ export default class Cache {
 
     try {
       if (globalThis.tagCache.mode === "nextMode") {
-        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+        const paths =
+          (await globalThis.tagCache.getPathsByTags?.(
+            _tags.map(createTagKey),
+          )) ?? [];
 
         await writeTags(_tags);
         if (paths.length > 0) {
@@ -350,7 +353,7 @@ export default class Cache {
       for (const tag of _tags) {
         debug("revalidateTag", tag);
         // Find all keys with the given tag
-        const paths = await globalThis.tagCache.getByTag(tag);
+        const paths = await globalThis.tagCache.getByTag(createTagKey(tag));
         debug("Items", paths);
         const toInsert = paths.map((path) => ({
           path,
@@ -361,11 +364,15 @@ export default class Cache {
         if (tag.startsWith("_N_T_/")) {
           for (const path of paths) {
             // We need to find all hard tags for a given path
-            const _tags = await globalThis.tagCache.getByPath(path);
+            const _tags = await globalThis.tagCache.getByPath(
+              createTagKey(path),
+            );
             const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
-              const _paths = await globalThis.tagCache.getByTag(hardTag);
+              const _paths = await globalThis.tagCache.getByTag(
+                createTagKey(hardTag),
+              );
               debug({ hardTag, _paths });
               toInsert.push(
                 ..._paths.map((path) => ({
@@ -378,7 +385,12 @@ export default class Cache {
         }
 
         // Update all keys with the given tag with revalidatedAt set to now
-        await writeTags(toInsert);
+        await writeTags(
+          toInsert.map((t) => ({
+            path: createTagKey(t.path),
+            tag: createTagKey(t.tag),
+          })),
+        );
 
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`
@@ -439,13 +451,13 @@ export default class Cache {
 
     // Get all tags stored in dynamodb for the given key
     // If any of the derived tags are not stored in dynamodb for the given key, write them
-    const storedTags = await globalThis.tagCache.getByPath(key);
+    const storedTags = await globalThis.tagCache.getByPath(createTagKey(key));
     const tagsToWrite = derivedTags.filter((tag) => !storedTags.includes(tag));
     if (tagsToWrite.length > 0) {
       await writeTags(
         tagsToWrite.map((tag) => ({
-          path: key,
-          tag: tag,
+          path: createTagKey(key),
+          tag: createTagKey(tag),
           // In case the tags are not there we just need to create them
           // but we don't want them to return from `getLastModified` as they are not stale
           revalidatedAt: 1,

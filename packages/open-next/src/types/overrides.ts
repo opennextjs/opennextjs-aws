@@ -109,17 +109,35 @@ export type CacheValue<CacheType extends CacheEntryType> =
     revalidate?: number | false;
   };
 
+export type TagKey = {
+  baseKey: string;
+  buildId?: string;
+};
+
+/**
+ * Represents a cache key used in the incremental cache.
+ * Depending on the `dangerous.persistentDataCache` setting, the key may include the build ID.
+ * If `persistentDataCache` is enabled, the key will not include the build ID for data cache entries
+ */
+export type CacheKey<CacheType extends CacheEntryType = CacheEntryType> = {
+  cacheType: CacheType;
+  buildId: CacheType extends "cache" ? string : string | undefined;
+  /**
+   * The base key is the main identifier for the cache entry.
+   * It never depends on the build ID, and is used to identify the cache entry.
+   */
+  baseKey: string;
+};
+
 export type IncrementalCache = {
   get<CacheType extends CacheEntryType = "cache">(
-    key: string,
-    cacheType?: CacheType,
+    key: CacheKey<CacheType>,
   ): Promise<WithLastModified<CacheValue<CacheType>> | null>;
   set<CacheType extends CacheEntryType = "cache">(
-    key: string,
+    key: CacheKey<CacheType>,
     value: CacheValue<CacheType>,
-    isFetch?: CacheType,
   ): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete(key: CacheKey<"cache">): Promise<void>;
   name: string;
 };
 
@@ -153,17 +171,17 @@ Cons :
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
   // Necessary for the composable cache
-  getLastRevalidated(tags: string[]): Promise<number>;
-  hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
-  writeTags(tags: string[]): Promise<void>;
+  getLastRevalidated(tags: TagKey[]): Promise<number>;
+  hasBeenRevalidated(tags: TagKey[], lastModified?: number): Promise<boolean>;
+  writeTags(tags: TagKey[]): Promise<void>;
   // Optional method to get paths by tags
   // It is used to automatically invalidate paths in the CDN
-  getPathsByTags?: (tags: string[]) => Promise<string[]>;
+  getPathsByTags?: (tags: TagKey[]) => Promise<string[]>;
 };
 
 export interface OriginalTagCacheWriteInput {
-  tag: string;
-  path: string;
+  tag: TagKey;
+  path: TagKey;
   revalidatedAt?: number;
 }
 
@@ -188,9 +206,9 @@ Cons :
  */
 export type OriginalTagCache = BaseTagCache & {
   mode?: "original";
-  getByTag(tag: string): Promise<string[]>;
-  getByPath(path: string): Promise<string[]>;
-  getLastModified(path: string, lastModified?: number): Promise<number>;
+  getByTag(tag: TagKey): Promise<string[]>;
+  getByPath(path: TagKey): Promise<string[]>;
+  getLastModified(path: TagKey, lastModified?: number): Promise<number>;
   writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
 };
 

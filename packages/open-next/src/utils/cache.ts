@@ -1,12 +1,15 @@
 import type {
+  CacheEntryType,
+  CacheKey,
   CacheValue,
   OriginalTagCacheWriteInput,
+  TagKey,
   WithLastModified,
 } from "types/overrides";
-import { debug } from "../adapters/logger";
+import { debug, warn } from "../adapters/logger";
 
 export async function hasBeenRevalidated(
-  key: string,
+  key: CacheKey,
   tags: string[],
   cacheEntry: WithLastModified<CacheValue<any>>,
 ): Promise<boolean> {
@@ -23,7 +26,13 @@ export async function hasBeenRevalidated(
   }
   const lastModified = cacheEntry.lastModified ?? Date.now();
   if (globalThis.tagCache.mode === "nextMode") {
-    return await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
+    return await globalThis.tagCache.hasBeenRevalidated(
+      tags.map((t) => ({
+        baseKey: t,
+        buildId: key.buildId,
+      })),
+      lastModified,
+    );
   }
   // TODO: refactor this, we should introduce a new method in the tagCache interface so that both implementations use hasBeenRevalidated
   const _lastModified = await globalThis.tagCache.getLastModified(
@@ -79,4 +88,58 @@ export async function writeTags(
 
   // Here we know that we have the correct type
   await globalThis.tagCache.writeTags(tagsToWrite as any);
+}
+
+export function createCacheKey<CacheType extends CacheEntryType>({
+  key,
+  type,
+}: { key: string; type: CacheType }): CacheKey<CacheType> {
+  // We always provide the build ID to the cache key for ISR/SSG cache entry
+  // For data cache, we only provide the build ID if the persistentDataCache is not enabled
+  const shouldProvideBuildId =
+    globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
+  const buildId = process.env.NEXT_BUILD_ID ?? "undefined-build-id";
+  // ISR/SSG cache entry should always have a build ID
+  if (type === "cache") {
+    return {
+      cacheType: "cache",
+      buildId,
+      baseKey: key,
+    } as CacheKey<CacheType>;
+  }
+  let baseKey = key;
+  if (type === "composable") {
+    try {
+      const [_buildId, ...rest] = JSON.parse(key);
+      baseKey = JSON.stringify(rest);
+    } catch (e) {
+      warn("Error while parsing composable cache key", e);
+      // If we fail to parse the key, we just return it as is
+      // This is not ideal, but we don't want to crash the application
+      baseKey = key;
+    }
+  }
+  if (shouldProvideBuildId) {
+    return {
+      cacheType: type,
+      buildId,
+      baseKey: key,
+    };
+  }
+  return {
+    cacheType: type,
+    buildId: undefined,
+    baseKey: key,
+  } as CacheKey<CacheType>;
+}
+
+export function createTagKey(tag: string): TagKey {
+  const shouldProvideBuildId =
+    globalThis.openNextConfig.dangerous?.persistentDataCache !== true;
+  // We always prepend the build ID to the tag key
+  const buildId = process.env.NEXT_BUILD_ID ?? "undefined-build-id";
+  return {
+    buildId: shouldProvideBuildId ? buildId : undefined,
+    baseKey: tag,
+  };
 }
