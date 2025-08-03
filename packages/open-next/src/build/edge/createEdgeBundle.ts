@@ -220,7 +220,6 @@ export async function generateEdgeBundle(
     additionalExternals: options.config.edgeExternals,
     name,
     additionalPlugins,
-    additionalInject: fnOptions.additionalInject,
   });
 }
 
