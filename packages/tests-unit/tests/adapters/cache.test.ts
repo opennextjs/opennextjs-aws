@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import Cache, {SOFT_TAG_PREFIX} from "@opennextjs/aws/adapters/cache.js";
+import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
 import { vi } from "vitest";
 
 declare global {

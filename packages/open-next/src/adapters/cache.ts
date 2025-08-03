@@ -362,7 +362,9 @@ export default class Cache {
           for (const path of paths) {
             // We need to find all hard tags for a given path
             const _tags = await globalThis.tagCache.getByPath(path);
-            const hardTags = _tags.filter((t) => !t.startsWith(SOFT_TAG_PREFIX));
+            const hardTags = _tags.filter(
+              (t) => !t.startsWith(SOFT_TAG_PREFIX),
+            );
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
               const _paths = await globalThis.tagCache.getByTag(hardTag);
