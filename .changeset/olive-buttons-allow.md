@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-fix: Propogate the status code in middleware rewrites
+fix: Propagate the status code in middleware rewrites
