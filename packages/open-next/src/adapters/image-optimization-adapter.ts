@@ -28,7 +28,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
-import { IgnorableError } from "../utils/error.js";
+import { FatalError, IgnorableError } from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -258,39 +258,18 @@ async function downloadHandler(
     res: ServerResponse,
     isInternalImage: boolean,
   ) {
-    let originalStatus = e.statusCode || e.$metadata?.httpStatusCode || 500;
-    let message = e.message || "Failed to process image request";
+    const originalStatus = e.statusCode || e.$metadata?.httpStatusCode || 500;
+    const message = e.message || "Failed to process image request";
 
-    // Special handling for S3 ListBucket permission errors
-    // AWS SDK v3 nests error details deeply within the error object
-    const isListBucketError =
-      (message.includes("s3:ListBucket") && message.includes("AccessDenied")) ||
-      e.error?.message?.includes("s3:ListBucket") ||
-      (e.Code === "AccessDenied" && e.Message?.includes("s3:ListBucket"));
+    // Log all other errors as client errors
+    const clientError = new IgnorableError(message, originalStatus);
+    error("Failed to process image", clientError);
 
-    if (isListBucketError) {
-      message = "Image not found or access denied";
-      // For S3 ListBucket errors, ensure we're using 403 (the actual AWS error)
-      if (originalStatus === 500 && e.$metadata?.httpStatusCode === 403) {
-        originalStatus = 403;
-      }
-
-      // Log using IgnorableError to classify as client error
-      const clientError = new IgnorableError(message, originalStatus);
-      error("S3 ListBucket permission error", clientError);
-    } else {
-      // Log all other errors as client errors
-      const clientError = new IgnorableError(message, originalStatus);
-      error("Failed to process image", clientError);
-    }
-
-    // For external images, throw if not ListBucket error
+    // For external images we throw with the status code
     // Next.js will preserve the status code for external images
-    if (!isInternalImage && !isListBucketError) {
-      const formattedError = new Error(message);
-      // @ts-ignore: Add statusCode property to Error
-      formattedError.statusCode = originalStatus >= 500 ? 400 : originalStatus;
-      throw formattedError;
+    if (!isInternalImage) {
+      const statusCode = originalStatus >= 500 ? 400 : originalStatus;
+      throw new FatalError(message, statusCode);
     }
 
     // Different handling for internal vs external images
@@ -303,18 +282,15 @@ async function downloadHandler(
       // This should result in "url parameter is valid but internal response is invalid"
 
       // Still include error details in headers for debugging only
-      const errorMessage = isListBucketError ? "Access denied" : message;
-      res.setHeader("x-nextjs-internal-error", errorMessage);
+      res.setHeader("x-nextjs-internal-error", message);
       res.end();
     } else {
       // For external images, maintain existing behavior with text/plain
       res.setHeader("Content-Type", "text/plain");
 
-      if (isListBucketError) {
-        res.end("Access denied");
-      } else {
-        res.end(message);
-      }
+      // We should **never** send the error message to the client
+      // This is to prevent leaking sensitive information
+      res.end("Failed to process image request");
     }
   }
 
