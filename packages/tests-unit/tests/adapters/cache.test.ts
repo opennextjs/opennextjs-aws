@@ -531,6 +531,8 @@ describe("CacheHandler", () => {
       await cache.revalidateTag("tag");
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
+      // Reset the config
+      globalThis.openNextConfig.dangerous.disableTagCache = false;
     });
 
     it("Should call tagCache.writeTags", async () => {
@@ -619,6 +621,201 @@ describe("CacheHandler", () => {
       ]);
       // Reset the getPathsByTags
       globalThis.tagCache.getPathsByTags = undefined;
+    });
+  });
+
+  describe("shouldBypassTagCache", () => {
+    describe("fetch cache", () => {
+      it("Should bypass tag cache validation when shouldBypassTagCache is true", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            kind: "FETCH",
+            data: {
+              headers: {},
+              body: "{}",
+              url: "https://example.com",
+              status: 200,
+            },
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: true,
+        });
+
+        const result = await cache.get("key", {
+          kind: "FETCH",
+          tags: ["tag1"],
+        });
+
+        expect(getFetchCacheSpy).toHaveBeenCalled();
+        expect(tagCache.getLastModified).not.toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).not.toHaveBeenCalled();
+        expect(result).not.toBeNull();
+        expect(result?.value).toEqual({
+          kind: "FETCH",
+          data: {
+            headers: {},
+            body: "{}",
+            url: "https://example.com",
+            status: 200,
+          },
+        });
+      });
+
+      it("Should not bypass tag cache validation when shouldBypassTagCache is false", async () => {
+        globalThis.tagCache.mode = "nextMode";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            kind: "FETCH",
+            data: {
+              headers: {},
+              body: "{}",
+              url: "https://example.com",
+              status: 200,
+            },
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: false,
+        });
+
+        const result = await cache.get("key", {
+          kind: "FETCH",
+          tags: ["tag1"],
+        });
+
+        expect(getFetchCacheSpy).toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
+        expect(result).not.toBeNull();
+      });
+
+      it("Should not bypass tag cache validation when shouldBypassTagCache is undefined", async () => {
+        globalThis.tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            kind: "FETCH",
+            data: {
+              headers: {},
+              body: "{}",
+              url: "https://example.com",
+              status: 200,
+            },
+          },
+          lastModified: Date.now(),
+          // shouldBypassTagCache not set
+        });
+
+        const result = await cache.get("key", {
+          kind: "FETCH",
+          tags: ["tag1"],
+        });
+
+        expect(getFetchCacheSpy).toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
+        expect(result).not.toBeNull();
+      });
+
+      it("Should bypass path validation when shouldBypassTagCache is true for soft tags", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            kind: "FETCH",
+            data: {
+              headers: {},
+              body: "{}",
+              url: "https://example.com",
+              status: 200,
+            },
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: true,
+        });
+
+        const result = await cache.get("key", {
+          kind: "FETCH",
+          softTags: ["_N_T_/path"],
+        });
+
+        expect(getFetchCacheSpy).toHaveBeenCalled();
+        expect(tagCache.getLastModified).not.toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).not.toHaveBeenCalled();
+        expect(result).not.toBeNull();
+      });
+    });
+
+    describe("incremental cache", () => {
+      it("Should bypass tag cache validation when shouldBypassTagCache is true", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "route",
+            body: "{}",
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: true,
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(tagCache.getLastModified).not.toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).not.toHaveBeenCalled();
+        expect(result).not.toBeNull();
+        expect(result?.value?.kind).toEqual("ROUTE");
+      });
+
+      it("Should not bypass tag cache validation when shouldBypassTagCache is false", async () => {
+        globalThis.tagCache.mode = "nextMode";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "route",
+            body: "{}",
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: false,
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
+        expect(result).not.toBeNull();
+      });
+
+      it("Should return null when tag cache indicates revalidation and shouldBypassTagCache is false", async () => {
+        globalThis.tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "route",
+            body: "{}",
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: false,
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
+        expect(result).toBeNull();
+      });
+
+      it("Should return value when tag cache indicates revalidation but shouldBypassTagCache is true", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "route",
+            body: "{}",
+          },
+          lastModified: Date.now(),
+          shouldBypassTagCache: true,
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(tagCache.getLastModified).not.toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).not.toHaveBeenCalled();
+        expect(result).not.toBeNull();
+        expect(result?.value?.kind).toEqual("ROUTE");
+      });
     });
   });
 });
