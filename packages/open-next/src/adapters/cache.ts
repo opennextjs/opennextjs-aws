@@ -63,7 +63,7 @@ export default class Cache {
 
       const _tags = [...(tags ?? []), ...(softTags ?? [])];
       const _lastModified = cachedEntry.lastModified ?? Date.now();
-      const _hasBeenRevalidated = await hasBeenRevalidated(
+      const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache ? false : await hasBeenRevalidated(
         key,
         _tags,
         cachedEntry,
@@ -82,7 +82,7 @@ export default class Cache {
             !tag.endsWith("page"),
         );
         if (path) {
-          const hasPathBeenUpdated = await hasBeenRevalidated(
+          const hasPathBeenUpdated = cachedEntry.shouldBypassTagCache ? false : await hasBeenRevalidated(
             path.replace("_N_T_/", ""),
             [],
             cachedEntry,
@@ -118,7 +118,7 @@ export default class Cache {
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
-      const _hasBeenRevalidated = await hasBeenRevalidated(
+      const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache ? false : await hasBeenRevalidated(
         key,
         tags,
         cachedEntry,
