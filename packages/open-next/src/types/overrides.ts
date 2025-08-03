@@ -93,6 +93,11 @@ export type CachedFetchValue = {
 export type WithLastModified<T> = {
   lastModified?: number;
   value?: T;
+  /**
+   * If set to true, we will not check the tag cache for this entry.
+   * `revalidateTag` and `revalidatePath` may not work as expected.
+   */
+  shouldBypassTagCache?: boolean;
 };
 
 export type CacheEntryType = Extension;

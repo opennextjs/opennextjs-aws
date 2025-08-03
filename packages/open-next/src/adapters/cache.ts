@@ -7,6 +7,8 @@ import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
+export const SOFT_TAG_PREFIX = "_N_T_/";
+
 function isFetchCache(
   options?:
     | boolean
@@ -63,11 +65,9 @@ export default class Cache {
 
       const _tags = [...(tags ?? []), ...(softTags ?? [])];
       const _lastModified = cachedEntry.lastModified ?? Date.now();
-      const _hasBeenRevalidated = await hasBeenRevalidated(
-        key,
-        _tags,
-        cachedEntry,
-      );
+      const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
+        ? false
+        : await hasBeenRevalidated(key, _tags, cachedEntry);
 
       if (_hasBeenRevalidated) return null;
 
@@ -77,16 +77,18 @@ export default class Cache {
         // Then we need to find the path for the given key
         const path = softTags?.find(
           (tag) =>
-            tag.startsWith("_N_T_/") &&
+            tag.startsWith(SOFT_TAG_PREFIX) &&
             !tag.endsWith("layout") &&
             !tag.endsWith("page"),
         );
         if (path) {
-          const hasPathBeenUpdated = await hasBeenRevalidated(
-            path.replace("_N_T_/", ""),
-            [],
-            cachedEntry,
-          );
+          const hasPathBeenUpdated = cachedEntry.shouldBypassTagCache
+            ? false
+            : await hasBeenRevalidated(
+                path.replace(SOFT_TAG_PREFIX, ""),
+                [],
+                cachedEntry,
+              );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
             return null;
@@ -118,11 +120,9 @@ export default class Cache {
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
       const _lastModified = cachedEntry.lastModified ?? Date.now();
-      const _hasBeenRevalidated = await hasBeenRevalidated(
-        key,
-        tags,
-        cachedEntry,
-      );
+      const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
+        ? false
+        : await hasBeenRevalidated(key, tags, cachedEntry);
       if (_hasBeenRevalidated) return null;
 
       const store = globalThis.__openNextAls.getStore();
@@ -358,11 +358,13 @@ export default class Cache {
         }));
 
         // If the tag is a soft tag, we should also revalidate the hard tags
-        if (tag.startsWith("_N_T_/")) {
+        if (tag.startsWith(SOFT_TAG_PREFIX)) {
           for (const path of paths) {
             // We need to find all hard tags for a given path
             const _tags = await globalThis.tagCache.getByPath(path);
-            const hardTags = _tags.filter((t) => !t.startsWith("_N_T_/"));
+            const hardTags = _tags.filter(
+              (t) => !t.startsWith(SOFT_TAG_PREFIX),
+            );
             // For every hard tag, we need to find all paths and revalidate them
             for (const hardTag of hardTags) {
               const _paths = await globalThis.tagCache.getByTag(hardTag);
@@ -386,7 +388,7 @@ export default class Cache {
           new Set(
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
-              .filter((t) => t.tag.startsWith("_N_T_/"))
+              .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
               .map((t) => `/${t.path}`),
           ),
         );

@@ -28,20 +28,23 @@ export default {
         globalThis.tagCache.mode === "nextMode" &&
         result.value.tags.length > 0
       ) {
-        const hasBeenRevalidated = await globalThis.tagCache.hasBeenRevalidated(
-          result.value.tags,
-          result.lastModified,
-        );
+        const hasBeenRevalidated = result.shouldBypassTagCache
+          ? false
+          : await globalThis.tagCache.hasBeenRevalidated(
+              result.value.tags,
+              result.lastModified,
+            );
         if (hasBeenRevalidated) return undefined;
       } else if (
         globalThis.tagCache.mode === "original" ||
         globalThis.tagCache.mode === undefined
       ) {
-        const hasBeenRevalidated =
-          (await globalThis.tagCache.getLastModified(
-            cacheKey,
-            result.lastModified,
-          )) === -1;
+        const hasBeenRevalidated = result.shouldBypassTagCache
+          ? false
+          : (await globalThis.tagCache.getLastModified(
+              cacheKey,
+              result.lastModified,
+            )) === -1;
         if (hasBeenRevalidated) return undefined;
       }
 
