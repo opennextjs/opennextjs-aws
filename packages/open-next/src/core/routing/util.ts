@@ -413,6 +413,7 @@ export function createServerResponse(
     },
     responseStream,
     headers,
+    routingResult.rewriteStatusCode,
   );
 }
 

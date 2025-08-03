@@ -71,8 +71,12 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     private onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
     private streamCreator?: StreamCreator,
     private initialHeaders?: OutgoingHttpHeaders,
+    statusCode?: number,
   ) {
     super();
+    if (statusCode !== undefined) {
+      this.statusCode = statusCode;
+    }
   }
 
   // Necessary for next 12

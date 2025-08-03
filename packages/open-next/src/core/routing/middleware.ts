@@ -28,6 +28,7 @@ const middleMatch = getMiddlewareMatch(
 type MiddlewareEvent = InternalEvent & {
   responseHeaders?: Record<string, string | string[]>;
   isExternalRewrite?: boolean;
+  rewriteStatusCode?: number;
 };
 
 type Middleware = (request: Request) => Response | Promise<Response>;
@@ -189,5 +190,6 @@ export async function handleMiddleware(
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
     isExternalRewrite,
+    rewriteStatusCode: statusCode,
   } satisfies MiddlewareEvent;
 }

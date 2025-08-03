@@ -20,6 +20,7 @@ import {
 import { constructNextUrl } from "../core/routing/util";
 import routingHandler, {
   INTERNAL_EVENT_REQUEST_ID,
+  INTERNAL_HEADER_REWRITE_STATUS_CODE,
   INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
 } from "../core/routingHandler";
@@ -86,6 +87,9 @@ const defaultHandler = async (
                   result.resolvedRoutes,
                 ),
                 [INTERNAL_EVENT_REQUEST_ID]: requestId,
+                [INTERNAL_HEADER_REWRITE_STATUS_CODE]: String(
+                  result.rewriteStatusCode,
+                ),
               },
             },
             isExternalRewrite: result.isExternalRewrite,

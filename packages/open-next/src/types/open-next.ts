@@ -37,6 +37,7 @@ export type InternalResult = {
   headers: Record<string, string | string[]>;
   body: ReadableStream;
   isBase64Encoded: boolean;
+  rewriteStatusCode?: number;
 } & BaseEventOrResult<"core">;
 
 export interface StreamCreator {
@@ -151,6 +152,7 @@ export interface RoutingResult {
 
   // The resolved route after applying rewrites, if used with an external middleware will be defined in x-opennext-resolved-routes header as a json encoded array
   resolvedRoutes: ResolvedRoute[];
+  rewriteStatusCode?: number;
 }
 
 export interface MiddlewareResult

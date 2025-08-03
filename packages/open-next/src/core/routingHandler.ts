@@ -36,6 +36,7 @@ export const INTERNAL_HEADER_PREFIX = "x-opennext-";
 export const INTERNAL_HEADER_INITIAL_URL = `${INTERNAL_HEADER_PREFIX}initial-url`;
 export const INTERNAL_HEADER_LOCALE = `${INTERNAL_HEADER_PREFIX}locale`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
+export const INTERNAL_HEADER_REWRITE_STATUS_CODE = `${INTERNAL_HEADER_PREFIX}rewrite-status-code`;
 export const INTERNAL_EVENT_REQUEST_ID = `${INTERNAL_HEADER_PREFIX}request-id`;
 
 // Geolocation headers starting from Nextjs 15
@@ -254,6 +255,7 @@ export default async function routingHandler(
       locale: NextConfig.i18n
         ? detectLocale(eventOrResult, NextConfig.i18n)
         : undefined,
+      rewriteStatusCode: middlewareEventOrResult.rewriteStatusCode,
     };
   } catch (e) {
     error("Error in routingHandler", e);
