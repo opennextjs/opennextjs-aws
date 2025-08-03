@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import Cache from "@opennextjs/aws/adapters/cache.js";
+import Cache, {SOFT_TAG_PREFIX} from "@opennextjs/aws/adapters/cache.js";
 import { vi } from "vitest";
 
 declare global {
@@ -553,13 +553,13 @@ describe("CacheHandler", () => {
     it("Should call invalidateCdnHandler.invalidatePaths", async () => {
       globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
       globalThis.tagCache.getByPath.mockResolvedValueOnce([]);
-      await cache.revalidateTag("_N_T_/path");
+      await cache.revalidateTag(`${SOFT_TAG_PREFIX}path`);
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           path: "/path",
-          tag: "_N_T_/path",
+          tag: `${SOFT_TAG_PREFIX}path`,
         },
       ]);
 
@@ -731,7 +731,7 @@ describe("CacheHandler", () => {
 
         const result = await cache.get("key", {
           kind: "FETCH",
-          softTags: ["_N_T_/path"],
+          softTags: [`${SOFT_TAG_PREFIX}path`],
         });
 
         expect(getFetchCacheSpy).toHaveBeenCalled();
