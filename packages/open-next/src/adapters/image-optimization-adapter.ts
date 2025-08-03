@@ -115,7 +115,6 @@ export async function defaultHandler(
     );
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    // All image-related errors should be treated as client errors
     // Extract status code from error or default to 400 Bad Request
     const statusCode = e.statusCode || 400;
     const errorMessage = e.message || "Failed to process image request";
@@ -339,7 +338,7 @@ async function downloadHandler(
 
   // Main handler logic with clearer error paths
   try {
-    // EXTERNAL IMAGE HANDLING
+    // remote image URL => download the image from the URL
     if (url.href.toLowerCase().match(/^https?:\/\//)) {
       try {
         pipeStream(https.get(url), res, false);
@@ -349,7 +348,7 @@ async function downloadHandler(
       return;
     }
 
-    // INTERNAL IMAGE HANDLING (S3)
+    // local image => download the image from the provided ImageLoader (default is S3)
     try {
       const response = await loader.load(url.href);
 
@@ -357,7 +356,7 @@ async function downloadHandler(
       if (!response.body) {
         const message = "Empty response body from the S3 request.";
         const clientError = new IgnorableError(message, 400);
-        error("Empty response from S3", clientError);
+        error("Empty response from ImageLoader", clientError);
 
         res.statusCode = 400;
         res.setHeader("Content-Type", "text/plain");
