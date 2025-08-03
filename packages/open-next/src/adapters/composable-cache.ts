@@ -15,11 +15,13 @@ export default {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
       if (pendingWritePromiseMap.has(cacheKey)) {
-        const stored = pendingWritePromiseMap.get(cacheKey)!;
-        return stored.then((entry) => ({
-          ...entry,
-          value: toReadableStream(entry.value),
-        }));
+        const stored = pendingWritePromiseMap.get(cacheKey);
+        if (stored) {
+          return stored.then((entry) => ({
+            ...entry,
+            value: toReadableStream(entry.value),
+          }));
+        }
       }
       const result = await globalThis.incrementalCache.get(
         cacheKey,

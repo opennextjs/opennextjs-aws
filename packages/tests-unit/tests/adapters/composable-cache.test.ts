@@ -47,7 +47,7 @@ describe("Composable cache handler", () => {
     invalidatePaths: vi.fn(),
   };
   globalThis.cdnInvalidationHandler = invalidateCdnHandler;
-  let writtenTags = new Set();
+  const writtenTags = new Set();
 
   globalThis.__openNextAls = {
     getStore: () => ({
@@ -209,7 +209,7 @@ describe("Composable cache handler", () => {
 
   describe("set", () => {
     beforeEach(() => {
-      writtenTags = new Set();
+      writtenTags.clear();
     });
 
     it("should set cache entry and handle tags in original mode", async () => {
@@ -359,7 +359,7 @@ describe("Composable cache handler", () => {
 
   describe("expireTags", () => {
     beforeEach(() => {
-      writtenTags = new Set();
+      writtenTags.clear();
     });
     it("should write tags directly in nextMode", async () => {
       tagCache.mode = "nextMode";
