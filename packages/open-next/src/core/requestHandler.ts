@@ -23,6 +23,7 @@ import {
 } from "./routing/util";
 import routingHandler, {
   INTERNAL_EVENT_REQUEST_ID,
+  INTERNAL_HEADER_REWRITE_STATUS_CODE,
   INTERNAL_HEADER_INITIAL_URL,
   INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
@@ -69,6 +70,9 @@ export async function openNextHandler(
         resolvedRoutes: initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES]
           ? JSON.parse(initialHeaders[INTERNAL_HEADER_RESOLVED_ROUTES])
           : ([] as ResolvedRoute[]),
+        rewriteStatusCode: Number.parseInt(
+          initialHeaders[INTERNAL_HEADER_REWRITE_STATUS_CODE],
+        ),
       };
 
       let routingResult: InternalResult | RoutingResult = {
