@@ -74,7 +74,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     statusCode?: number,
   ) {
     super();
-    if (statusCode !== undefined) {
+    // We only set the status code if it is not a NaN and it is a number
+    if (!Number.isNaN(statusCode) && typeof statusCode === "number") {
       this.statusCode = statusCode;
     }
   }
