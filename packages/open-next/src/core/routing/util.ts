@@ -464,13 +464,11 @@ export function normalizeLocationHeader(
   const locationURL = new URL(location);
   const origin = new URL(baseUrl).origin;
 
-  // Redirects from the middleware do not encode the query parameters
   let search = locationURL.search;
   // If encodeQuery is true, we need to encode the query parameters
-  // This is used for redirects from Next config
   // We could have used URLSearchParams, but that doesn't match what Next does.
-  if (encodeQuery) {
-    search = search ? `?${stringifyQs(parseQs(search.slice(1)))}` : "";
+  if (encodeQuery && search) {
+    search = `?${stringifyQs(parseQs(search.slice(1)))}`;
   }
   const href = `${locationURL.origin}${locationURL.pathname}${search}${locationURL.hash}`;
   // The URL is relative if the origin is the same as the base URL's origin
