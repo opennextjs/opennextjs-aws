@@ -28,6 +28,12 @@ export function middleware(request: NextRequest) {
     const u = new URL("https://opennext.js.org/share.png");
     return NextResponse.rewrite(u);
   }
+  if (path === "/rewrite-status-code") {
+    const u = new URL("/rewrite-destination", `${protocol}://${host}`);
+    return NextResponse.rewrite(u, {
+      status: 403,
+    });
+  }
   if (path === "/cookies") {
     const res = NextResponse.next();
     res.cookies.set("foo", "bar");
