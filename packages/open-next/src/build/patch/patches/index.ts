@@ -7,3 +7,4 @@ export {
 } from "./patchFetchCacheISR.js";
 export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.js";
 export { patchBackgroundRevalidation } from "./patchBackgroundRevalidation.js";
+export { patchNodeEnvironment } from "./patchNodeEnvironment.js";
