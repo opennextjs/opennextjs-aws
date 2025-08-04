@@ -1,5 +1,11 @@
 # open-next
 
+## 3.7.4
+
+### Patch Changes
+
+- [#945](https://github.com/opennextjs/opennextjs-aws/pull/945) [`75a31ddfc203a5e8fb33c7aa9bf87c92de783709`](https://github.com/opennextjs/opennextjs-aws/commit/75a31ddfc203a5e8fb33c7aa9bf87c92de783709) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Validate statusCode is number and not NaN in OpenNextNodeResponse constructor
+
 ## 3.7.3
 
 ### Patch Changes
