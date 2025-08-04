@@ -1,4 +1,3 @@
-import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher";
 import { rule } from "@opennextjs/aws/build/patch/patches/patchNodeEnvironment";
 import { computePatchDiff } from "./util.js";
 
@@ -22,12 +21,8 @@ if (process.env.NODE_ENV === 'development') {
 
 //# sourceMappingURL=node-environment.js.map`;
   expect(
-        computePatchDiff(
-          "node-environment.js",
-          code,
-          rule,
-        ),
-      ).toMatchInlineSnapshot(`
+    computePatchDiff("node-environment.js", code, rule),
+  ).toMatchInlineSnapshot(`
         "Index: node-environment.js
         ===================================================================
         --- node-environment.js
