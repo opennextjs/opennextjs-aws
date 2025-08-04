@@ -32,3 +32,12 @@ test("Middleware Rewrite External Image", async ({ page }) => {
     expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
   });
 });
+
+test("Middleware Rewrite Status Code", async ({ page }) => {
+  await page.goto("/rewrite-status-code");
+  const el = page.getByText("Rewritten Destination", { exact: true });
+  await expect(el).toBeVisible();
+  page.on("response", async (response) => {
+    expect(response.status()).toBe(403);
+  });
+});
