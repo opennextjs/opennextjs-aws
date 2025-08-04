@@ -1,5 +1,27 @@
 # open-next
 
+## 3.7.3
+
+### Patch Changes
+
+- [#887](https://github.com/opennextjs/opennextjs-aws/pull/887) [`352e4b28130f8a349d02904d9754d299a4deedf4`](https://github.com/opennextjs/opennextjs-aws/commit/352e4b28130f8a349d02904d9754d299a4deedf4) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(expres-dev): Ensure x-forwarded-proto and \_\_NEXT_PRIVATE_ORIGIN is set
+
+- [#926](https://github.com/opennextjs/opennextjs-aws/pull/926) [`075cc96512c77b62e5f0087d7b4c5b46fbba00bc`](https://github.com/opennextjs/opennextjs-aws/commit/075cc96512c77b62e5f0087d7b4c5b46fbba00bc) Thanks [@psyrenpark](https://github.com/psyrenpark)! - Fix output for edge-functions
+
+- [#941](https://github.com/opennextjs/opennextjs-aws/pull/941) [`9b0c021cf2c65984945dd965677f233221eae429`](https://github.com/opennextjs/opennextjs-aws/commit/9b0c021cf2c65984945dd965677f233221eae429) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Normalize the Location header in redirects
+
+  Normalizes the Location header to either be a relative path or a full URL.
+  If the Location header is relative to the host, it will return a relative path.
+  If it is an absolute URL, it will return the full URL.
+  We want to match the behavior of `next start`.
+  Query parameters in redirects from Next Config are encoded, but from the middleware they are not touched.
+
+- [#942](https://github.com/opennextjs/opennextjs-aws/pull/942) [`70febbc5ae92083b1dd01a2e4aa262e5b716603e`](https://github.com/opennextjs/opennextjs-aws/commit/70febbc5ae92083b1dd01a2e4aa262e5b716603e) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Propagate the status code in middleware rewrites
+
+- [#944](https://github.com/opennextjs/opennextjs-aws/pull/944) [`b9635d09500c6638a1cfaa8b4a0622c1fc957727`](https://github.com/opennextjs/opennextjs-aws/commit/b9635d09500c6638a1cfaa8b4a0622c1fc957727) Thanks [@conico974](https://github.com/conico974)! - Add a new option to bypass checking the tag cache from an incremental cache get
+
+- [#939](https://github.com/opennextjs/opennextjs-aws/pull/939) [`521346b73a36d6109dc56cdbde00feebd3805a1c`](https://github.com/opennextjs/opennextjs-aws/commit/521346b73a36d6109dc56cdbde00feebd3805a1c) Thanks [@conico974](https://github.com/conico974)! - fix locked readable stream in the composable cache
+
 ## 3.7.2
 
 ### Patch Changes
