@@ -75,7 +75,13 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   ) {
     super();
     // We only set the status code if it is not a NaN and it is a number
-    if (Number.isInteger(statusCode)) {
+    // Only allow status codes between 100 and 599 https://httpwg.org/specs/rfc9110.html#status.codes
+    if (
+      statusCode &&
+      Number.isInteger(statusCode) &&
+      statusCode >= 100 &&
+      statusCode <= 599
+    ) {
       this.statusCode = statusCode;
     }
   }
