@@ -27,7 +27,7 @@ export const patchNodeEnvironment: CodePatcher = {
         },
       ),
       contentFilter: /error-inspect/,
-      patchCode: createPatchCode(rule, Lang.JavaScript),
+      patchCode: createPatchCode(rule),
       versions: ">=15.0.0",
     },
   ],
