@@ -1,5 +1,11 @@
 # open-next
 
+## 3.7.5
+
+### Patch Changes
+
+- [#948](https://github.com/opennextjs/opennextjs-aws/pull/948) [`042dfd91c5f4e7d1485755402c074abd25acfb8e`](https://github.com/opennextjs/opennextjs-aws/commit/042dfd91c5f4e7d1485755402c074abd25acfb8e) Thanks [@sommeeeer](https://github.com/sommeeeer)! - add(patches): Drop babel from getting pulled in by node-environment
+
 ## 3.7.4
 
 ### Patch Changes
