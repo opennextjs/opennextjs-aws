@@ -2,7 +2,6 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
   createEmptyBodyRule,
   disablePreloadingRule,
-  errorInspectRule,
   removeMiddlewareManifestRule,
 } from "@opennextjs/aws/build/patch/patches/patchNextServer.js";
 import { describe, it } from "vitest";
@@ -942,42 +941,6 @@ class NextNodeServer extends _baseserver.default {
                      throw Object.defineProperty(new Error('invariant: imageOptimizer should not be called in minimal mode'), "__NEXT_ERROR_CODE", {
         "
       `);
-    });
-
-    test("Error Inspect", () => {
-      const code = `
-// This file should be imported before any others. It sets up the environment
-// for later imports to work properly.
-"use strict";
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-require("./node-environment-baseline");
-require("./node-environment-extensions/error-inspect");
-require("./node-environment-extensions/random");
-require("./node-environment-extensions/date");
-require("./node-environment-extensions/web-crypto");
-require("./node-environment-extensions/node-crypto");
-//# sourceMappingURL=node-environment.js.map
-}`;
-
-      expect(patchCode(code, errorInspectRule)).toMatchInlineSnapshot(`
-      "// This file should be imported before any others. It sets up the environment
-      // for later imports to work properly.
-      "use strict";
-      Object.defineProperty(exports, "__esModule", {
-          value: true
-      });
-      require("./node-environment-baseline");
-      // Removed by OpenNext
-      // require("./node-environment-extensions/error-inspect");
-      require("./node-environment-extensions/random");
-      require("./node-environment-extensions/date");
-      require("./node-environment-extensions/web-crypto");
-      require("./node-environment-extensions/node-crypto");
-      //# sourceMappingURL=node-environment.js.map
-      }"
-    `);
     });
   });
 });

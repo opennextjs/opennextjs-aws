@@ -53,17 +53,6 @@ fix: |-
 `;
 }
 
-/**
- * Drops `require("./node-environment-extensions/error-inspect");`
- */
-export const errorInspectRule = `
-rule:
-  pattern: require("./node-environment-extensions/error-inspect");
-fix: |-
-  // Removed by OpenNext
-  // require("./node-environment-extensions/error-inspect");
-`;
-
 const pathFilter = getCrossPlatformPathRegex(
   String.raw`/next/dist/server/next-server\.js$`,
   {
@@ -90,12 +79,6 @@ const babelPatches = [
     pathFilter,
     contentFilter: /runEdgeFunction\(/,
     patchCode: createPatchCode(createEmptyBodyRule("runEdgeFunction")),
-  },
-  // Drop `error-inspect` that pulls babel
-  {
-    pathFilter,
-    contentFilter: /error-inspect/,
-    patchCode: createPatchCode(errorInspectRule),
   },
 ];
 
