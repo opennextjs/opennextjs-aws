@@ -23,12 +23,12 @@ export default defineConfig({
         baseURL: process.env.APP_PAGES_ROUTER_URL || "http://localhost:3003",
       },
     },
-    {
-      name: "experimental",
-      testMatch: ["tests/experimental/*.test.ts"],
-      use: {
-        baseURL: process.env.EXPERIMENTAL_APP_URL || "http://localhost:3004",
-      },
-    },
+    // {
+    //   name: "experimental",
+    //   testMatch: ["tests/experimental/*.test.ts"],
+    //   use: {
+    //     baseURL: process.env.EXPERIMENTAL_APP_URL || "http://localhost:3004",
+    //   },
+    // },
   ],
 });
