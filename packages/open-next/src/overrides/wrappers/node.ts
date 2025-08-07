@@ -8,7 +8,7 @@ import { debug, error } from "../../adapters/logger";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
-    
+
     let onCloseCallback: (() => void) | undefined;
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
