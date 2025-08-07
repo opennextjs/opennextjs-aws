@@ -8,6 +8,8 @@ import { debug, error } from "../../adapters/logger";
 const wrapper: WrapperHandler = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
+    
+    let onCloseCallback: (() => void) | undefined;
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
@@ -15,14 +17,26 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         res.flushHeaders();
         return res;
       },
+      onClose: (callback) => {
+        onCloseCallback = callback;
+      },
     };
+
+    res.on("close", () => {
+      if (onCloseCallback) {
+        onCloseCallback();
+      }
+    });
+
     if (internalEvent.rawPath === "/__health") {
       res.writeHead(200, {
         "Content-Type": "text/plain",
       });
       res.end("OK");
     } else {
-      await handler(internalEvent, { streamCreator });
+      await handler(internalEvent, {
+        streamCreator,
+      });
     }
   });
 
