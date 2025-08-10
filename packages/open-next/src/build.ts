@@ -53,11 +53,11 @@ export async function build(
   // Build Next.js app
   printHeader("Building Next.js app");
   setStandaloneBuildMode(options);
+  buildHelper.initOutputDir(options);
   buildNextjsApp(options);
 
   // Generate deployable bundle
   printHeader("Generating bundle");
-  buildHelper.initOutputDir(options);
 
   // Compile cache.ts
   compileCache(options);
