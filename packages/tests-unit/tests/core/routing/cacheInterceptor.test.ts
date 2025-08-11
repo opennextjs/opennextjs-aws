@@ -278,4 +278,159 @@ describe("cacheInterceptor", () => {
 
     expect(result).toEqual(event);
   });
+
+  it("should retrieve route content from cache with text content", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    const routeBody = JSON.stringify({ message: "Hello from API" });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "route",
+        body: routeBody,
+        meta: {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+        revalidate: 300,
+      },
+      lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const body = await fromReadableStream(result.body);
+    expect(body).toEqual(routeBody);
+    expect(result).toEqual(
+      expect.objectContaining({
+        type: "core",
+        statusCode: 200,
+        isBase64Encoded: false,
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=300, stale-while-revalidate=2592000",
+          "content-type": "application/json",
+          etag: expect.any(String),
+          "x-opennext-cache": "HIT",
+          vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url",
+        }),
+      }),
+    );
+  });
+
+  it("should retrieve route content from cache with binary content", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    const routeBody = "randomBinaryData";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "route",
+        body: routeBody,
+        meta: {
+          status: 200,
+          headers: {
+            "content-type": "image/png",
+          },
+        },
+        revalidate: false,
+      },
+      lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const body = await fromReadableStream(result.body, true);
+    expect(body).toEqual(routeBody);
+    expect(result).toEqual(
+      expect.objectContaining({
+        type: "core",
+        statusCode: 200,
+        isBase64Encoded: true,
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=31536000, stale-while-revalidate=2592000",
+          "content-type": "image/png",
+          etag: expect.any(String),
+          "x-opennext-cache": "HIT",
+          vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url",
+        }),
+      }),
+    );
+  });
+
+  it("should retrieve route content from stale cache", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    const routeBody = "API response";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "route",
+        body: routeBody,
+        meta: {
+          status: 201,
+          headers: {
+            "content-type": "text/plain",
+            "custom-header": "custom-value",
+          },
+        },
+        revalidate: 60,
+      },
+      lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const body = await fromReadableStream(result.body);
+    expect(body).toEqual(routeBody);
+    expect(result).toEqual(
+      expect.objectContaining({
+        type: "core",
+        statusCode: 201,
+        isBase64Encoded: false,
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=1, stale-while-revalidate=2592000",
+          "content-type": "text/plain",
+          "custom-header": "custom-value",
+          etag: expect.any(String),
+          "x-opennext-cache": "STALE",
+          vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url",
+        }),
+      }),
+    );
+  });
+
+  it("should retrieve route content with default status code when meta is missing", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    const routeBody = "Simple response";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "route",
+        body: routeBody,
+        revalidate: false,
+      },
+      lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const body = await fromReadableStream(result.body);
+    expect(body).toEqual(routeBody);
+    expect(result).toEqual(
+      expect.objectContaining({
+        type: "core",
+        statusCode: 200,
+        isBase64Encoded: false,
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=31536000, stale-while-revalidate=2592000",
+          etag: expect.any(String),
+          "x-opennext-cache": "HIT",
+          vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url",
+        }),
+      }),
+    );
+  });
 });
