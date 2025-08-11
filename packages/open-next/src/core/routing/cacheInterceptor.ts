@@ -5,11 +5,11 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
+import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
-import { isBinaryContentType } from "utils/binary";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
@@ -278,7 +278,9 @@ export async function cacheInterceptor(
             cachedData.lastModified,
           );
 
-          const isBinary = isBinaryContentType(String(cachedData.value.meta?.headers?.["content-type"]));
+          const isBinary = isBinaryContentType(
+            String(cachedData.value.meta?.headers?.["content-type"]),
+          );
 
           return {
             type: "core",
