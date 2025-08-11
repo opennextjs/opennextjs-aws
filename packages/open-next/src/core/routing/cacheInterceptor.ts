@@ -5,6 +5,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
+import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
@@ -266,6 +267,31 @@ export async function cacheInterceptor(
               ...cacheControl,
             },
             isBase64Encoded: false,
+          };
+        }
+        case "route": {
+          const cacheControl = await computeCacheControl(
+            localizedPath,
+            cachedData.value.body,
+            host,
+            cachedData.value.revalidate,
+            cachedData.lastModified,
+          );
+
+          const isBinary = isBinaryContentType(
+            String(cachedData.value.meta?.headers?.["content-type"]),
+          );
+
+          return {
+            type: "core",
+            statusCode: cachedData.value.meta?.status ?? 200,
+            body: toReadableStream(cachedData.value.body, isBinary),
+            headers: {
+              ...cacheControl,
+              ...cachedData.value.meta?.headers,
+              vary: VARY_HEADER,
+            },
+            isBase64Encoded: isBinary,
           };
         }
         default:
