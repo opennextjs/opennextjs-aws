@@ -9,6 +9,7 @@ import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
+import { isBinaryContentType } from "utils/binary";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
@@ -266,6 +267,29 @@ export async function cacheInterceptor(
               ...cacheControl,
             },
             isBase64Encoded: false,
+          };
+        }
+        case "route": {
+          const cacheControl = await computeCacheControl(
+            localizedPath,
+            cachedData.value.body,
+            host,
+            cachedData.value.revalidate,
+            cachedData.lastModified,
+          );
+
+          const isBinary = isBinaryContentType(String(cachedData.value.meta?.headers?.["content-type"]));
+
+          return {
+            type: "core",
+            statusCode: cachedData.value.meta?.status ?? 200,
+            body: toReadableStream(cachedData.value.body, isBinary),
+            headers: {
+              ...cacheControl,
+              ...cachedData.value.meta?.headers,
+              vary: VARY_HEADER,
+            },
+            isBase64Encoded: isBinary,
           };
         }
         default:
