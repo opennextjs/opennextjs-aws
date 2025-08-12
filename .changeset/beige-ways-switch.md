@@ -4,7 +4,7 @@
 
 chore: Exclude more packages
 
-Added a debug to determine which packages that gets excluded from the final bundle's `node_modules`. Will skip these packages now aswell:
+Will skip these packages now aswell:
 
 - "typescript"
 - "next/dist/compiled/babel"
