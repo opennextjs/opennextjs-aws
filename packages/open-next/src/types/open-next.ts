@@ -49,8 +49,7 @@ export interface StreamCreator {
   // Just to fix an issue with aws lambda streaming with empty body
   onWrite?: () => void;
   onFinish?: (length: number) => void;
-  // This is called when the wrappers response is closed, i.e. when the client disconnects
-  onClose?: (callback: () => void) => void;
+  abortSignal?: AbortSignal;
 }
 
 export type WaitUntil = (promise: Promise<void>) => void;

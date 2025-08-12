@@ -66,6 +66,9 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
 
         return Writable.fromWeb(writable);
       },
+      // For some reason the signal from `request` here did not work.
+      // @ts-expect-error This is defined in init from cloudflare
+      abortSignal: globalThis[Symbol.for("__cloudflare-context__")].signal,
     };
 
     ctx.waitUntil(

@@ -87,8 +87,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
 
     // We want to destroy this response when the original response is closed. (i.e when the client disconnects)
     // This is to support `request.signal.onabort` in route handlers
-    if (streamCreator?.onClose) {
-      streamCreator.onClose(() => {
+    if (streamCreator?.abortSignal) {
+      streamCreator.abortSignal.addEventListener("abort", () => {
         this.destroy();
       });
     }

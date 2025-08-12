@@ -9,7 +9,8 @@ const wrapper: WrapperHandler = async (handler, converter) => {
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
 
-    let onCloseCallback: (() => void) | undefined;
+    const abortController = new AbortController();
+
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
@@ -17,15 +18,11 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         res.flushHeaders();
         return res;
       },
-      onClose: (callback) => {
-        onCloseCallback = callback;
-      },
+      abortSignal: abortController.signal,
     };
 
     res.on("close", () => {
-      if (onCloseCallback) {
-        onCloseCallback();
-      }
+      abortController.abort();
     });
 
     if (internalEvent.rawPath === "/__health") {
