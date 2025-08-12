@@ -2,6 +2,6 @@
 "@opennextjs/aws": patch
 ---
 
-fix(dev-overrides): Add automatic response cleanup via onClose callback
+fix: Add automatic response cleanup via AbortSignal
 
-This changes will make `request.signal.onabort` work in route handlers for `node` and `express-dev` wrappers.
+These changes will make `request.signal.onabort` work in route handlers for `node`, `cloudflare-node` and `express-dev` wrappers.
