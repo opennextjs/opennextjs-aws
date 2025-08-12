@@ -45,8 +45,8 @@ const EXCLUDED_PACKAGES = [
   "next/dist/compiled/amphtml-validator",
 ];
 
-function isExcluded(srcPath: string): string | undefined {
-  return EXCLUDED_PACKAGES.find((excluded) =>
+function isExcluded(srcPath: string): boolean {
+  return EXCLUDED_PACKAGES.some((excluded) =>
     srcPath.match(getCrossPlatformPathRegex(`/node_modules/${excluded}/`)),
   );
 }
@@ -254,17 +254,10 @@ File ${serverPath} does not exist
 
   // Only files that are actually copied
   const tracedFiles: string[] = [];
-  // Packages that are excluded and not copied
-  const excludedPackages = new Set<string>();
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
     // We don't want to copy excluded packages (e.g. sharp)
-    const excluded = isExcluded(from);
-    if (excluded) {
-      if (excluded && !excludedPackages.has(excluded)) {
-        logger.debug("Skipping excluded package:", excluded);
-        excludedPackages.add(excluded);
-      }
+    if (isExcluded(from)) {
       return;
     }
     tracedFiles.push(to);
