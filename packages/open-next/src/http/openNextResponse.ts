@@ -85,6 +85,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       this.statusCode = statusCode;
     }
 
+    // https://github.com/vercel/next.js/blob/ea08bf2/packages/next/src/server/web/spec-extension/adapters/next-request.ts#L46-L54
     // We want to destroy this response when the original response/request is closed. (i.e when the client disconnects)
     // This is to support `request.signal.onabort` in route handlers
     streamCreator?.abortSignal?.addEventListener("abort", () => {
