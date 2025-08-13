@@ -49,6 +49,7 @@ export interface StreamCreator {
   // Just to fix an issue with aws lambda streaming with empty body
   onWrite?: () => void;
   onFinish?: (length: number) => void;
+  abortSignal?: AbortSignal;
 }
 
 export type WaitUntil = (promise: Promise<void>) => void;

@@ -16,9 +16,9 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     request: Request,
     env: Record<string, string>,
     ctx: any,
+    abortSignal: AbortSignal,
   ): Promise<Response> => {
     globalThis.process = process;
-
     // Set the environment variables
     // Cloudflare suggests to not override the process.env object but instead apply the values to it
     for (const [key, value] of Object.entries(env)) {
@@ -66,6 +66,10 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
 
         return Writable.fromWeb(writable);
       },
+      // This is for passing along the original abort signal from the initial Request you retrieve in your worker
+      // Ensures that the response we pass to NextServer is aborted if the request is aborted
+      // By doing this `request.signal.onabort` will work in route handlers
+      abortSignal: abortSignal,
     };
 
     ctx.waitUntil(

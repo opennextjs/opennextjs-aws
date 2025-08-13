@@ -41,6 +41,9 @@ const wrapper: WrapperHandler = async (handler, converter) => {
       req.headers["x-forwarded-proto"] = req.protocol;
     }
     const internalEvent = await converter.convertFrom(req);
+
+    const abortController = new AbortController();
+
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
@@ -49,7 +52,13 @@ const wrapper: WrapperHandler = async (handler, converter) => {
         return res;
       },
       onFinish: () => {},
+      abortSignal: abortController.signal,
     };
+
+    res.on("close", () => {
+      abortController.abort();
+    });
+
     await handler(internalEvent, { streamCreator });
   });
 
