@@ -7,7 +7,7 @@ import type { InstallOptions } from "types/open-next";
 
 import logger from "../logger.js";
 
-const AFFECTED_NODE_VERSIONS = ["22.17.0", "22.17.1", "22.18.0"];
+const AFFECTED_NODE_VERSIONS = ["v22.17.0", "v22.17.1", "v22.18.0"];
 
 export function installDependencies(
   outputDir: string,
