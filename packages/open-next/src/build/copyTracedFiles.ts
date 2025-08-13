@@ -39,9 +39,13 @@ const EXCLUDED_PACKAGES = [
   // This seems to be only in Next 15
   // Some of sharp deps are under the @img scope
   "@img",
+  "typescript",
+  "next/dist/compiled/babel",
+  "next/dist/compiled/babel-packages",
+  "next/dist/compiled/amphtml-validator",
 ];
 
-function isExcluded(srcPath: string) {
+function isExcluded(srcPath: string): boolean {
   return EXCLUDED_PACKAGES.some((excluded) =>
     srcPath.match(getCrossPlatformPathRegex(`/node_modules/${excluded}/`)),
   );
@@ -250,10 +254,9 @@ File ${serverPath} does not exist
 
   // Only files that are actually copied
   const tracedFiles: string[] = [];
-
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
-    // We don't want to copy excluded packages (i.e sharp)
+    // We don't want to copy excluded packages (e.g. sharp)
     if (isExcluded(from)) {
       return;
     }
