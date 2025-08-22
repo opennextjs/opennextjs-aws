@@ -7,6 +7,8 @@ import type { InstallOptions } from "types/open-next";
 
 import logger from "../logger.js";
 
+const AFFECTED_NODE_VERSIONS = ["22.17.0", "22.17.1", "22.18.0"];
+
 export function installDependencies(
   outputDir: string,
   installOptions?: InstallOptions,
@@ -53,8 +55,8 @@ export function installDependencies(
 
     // This is a workaround for Node `22.17.0` and `22.17.1`
     // https://github.com/nodejs/node/issues/59168
-    const nodeVersion = process.version;
-    if (nodeVersion === "v22.17.0" || nodeVersion === "v22.17.1") {
+    const nodeVersion = process.versions.node;
+    if (AFFECTED_NODE_VERSIONS.includes(nodeVersion)) {
       const tempBinDir = path.join(tempInstallDir, "node_modules", ".bin");
       const outputBinDir = path.join(outputDir, "node_modules", ".bin");
 
