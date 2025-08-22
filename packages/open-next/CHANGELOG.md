@@ -1,5 +1,30 @@
 # open-next
 
+## 3.7.5
+
+### Patch Changes
+
+- [#950](https://github.com/opennextjs/opennextjs-aws/pull/950) [`58789c9018a2e2d2404b334b4e21bea8fd3e949f`](https://github.com/opennextjs/opennextjs-aws/commit/58789c9018a2e2d2404b334b4e21bea8fd3e949f) Thanks [@sommeeeer](https://github.com/sommeeeer)! - chore: Exclude more packages
+
+  Will skip these packages now aswell:
+
+  - "typescript"
+  - "next/dist/compiled/babel"
+  - "next/dist/compiled/babel-packages"
+  - "next/dist/compiled/amphtml-validator"
+
+- [#952](https://github.com/opennextjs/opennextjs-aws/pull/952) [`551dc85ec6f6e7ccb209ecc957c2c19b4ce1e6f6`](https://github.com/opennextjs/opennextjs-aws/commit/551dc85ec6f6e7ccb209ecc957c2c19b4ce1e6f6) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Add automatic response cleanup via AbortSignal
+
+  These changes will make `request.signal.onabort` work in route handlers for `node`, `cloudflare-node` and `express-dev` wrappers.
+
+- [#955](https://github.com/opennextjs/opennextjs-aws/pull/955) [`5bf7a7b42f8aad2f7385bd4c2f905abc260db963`](https://github.com/opennextjs/opennextjs-aws/commit/5bf7a7b42f8aad2f7385bd4c2f905abc260db963) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(build): Add 22.18.0 to affected nodeVersion in dereference symlink workaround"
+
+- [#954](https://github.com/opennextjs/opennextjs-aws/pull/954) [`99d89098fb8626357da87886099ff900af5b339e`](https://github.com/opennextjs/opennextjs-aws/commit/99d89098fb8626357da87886099ff900af5b339e) Thanks [@conico974](https://github.com/conico974)! - add support for route type in cache interceptor
+
+- [#953](https://github.com/opennextjs/opennextjs-aws/pull/953) [`0d57c115a9568db9d13e766f184497198d8fc1b1`](https://github.com/opennextjs/opennextjs-aws/commit/0d57c115a9568db9d13e766f184497198d8fc1b1) Thanks [@szcharlesji](https://github.com/szcharlesji)! - Clean output directory before `next build`
+
+- [#948](https://github.com/opennextjs/opennextjs-aws/pull/948) [`042dfd91c5f4e7d1485755402c074abd25acfb8e`](https://github.com/opennextjs/opennextjs-aws/commit/042dfd91c5f4e7d1485755402c074abd25acfb8e) Thanks [@sommeeeer](https://github.com/sommeeeer)! - add(patches): Drop babel from getting pulled in by node-environment
+
 ## 3.7.4
 
 ### Patch Changes
