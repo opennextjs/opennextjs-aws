@@ -6,6 +6,7 @@ import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
 import * as buildHelper from "./helper.js";
+import { safeJsonParse } from "utils/safe-json-parse.js";
 
 /**
  * Copy the static assets to the output folder
@@ -159,14 +160,14 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   // Generate cache file
   Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
     const cacheFileMeta = files.meta
-      ? JSON.parse(fs.readFileSync(files.meta, "utf8"))
+      ? safeJsonParse(fs.readFileSync(files.meta, "utf8"))
       : undefined;
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
       meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
       json: files.json
-        ? JSON.parse(fs.readFileSync(files.json, "utf8"))
+        ? safeJsonParse(fs.readFileSync(files.json, "utf8"))
         : undefined,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
       body: files.body
@@ -203,7 +204,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
       () => true,
       ({ absolutePath, relativePath }) => {
         const fileContent = fs.readFileSync(absolutePath, "utf8");
-        const fileData = JSON.parse(fileContent);
+        const fileData = safeJsonParse(fileContent);
         fileData?.tags?.forEach((tag: string) => {
           metaFiles.push({
             tag: { S: path.posix.join(buildId, tag) },
@@ -227,8 +228,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
           absolutePath.endsWith(".meta") && !isFileSkipped(relativePath),
         ({ absolutePath, relativePath }) => {
           const fileContent = fs.readFileSync(absolutePath, "utf8");
-          const fileData = JSON.parse(fileContent);
-          if (fileData.headers?.["x-next-cache-tags"]) {
+          const fileData = safeJsonParse(fileContent);
+          if (fileData?.headers?.["x-next-cache-tags"]) {
             fileData.headers["x-next-cache-tags"]
               .split(",")
               .forEach((tag: string) => {
