@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -7,18 +5,30 @@ export const dynamic = "force-dynamic";
 
 // This endpoint simulates an on demand revalidation request
 export async function GET(request: NextRequest) {
-  const cwd = process.cwd();
-  const prerenderManifest = await fs.readFile(
-    path.join(cwd, ".next/prerender-manifest.json"),
-    "utf-8",
-  );
-  const manifest = JSON.parse(prerenderManifest);
+  let manifest: { preview: { previewModeId: string } };
+  // This fails at build time when next.js tries to evaluate the route
+  try {
+    const prerenderManifest = await import(
+      // @ts-expect-error
+      /* webpackIgnore: true */ "../../../../prerender-manifest.json",
+      { with: { type: "json" } }
+    );
+    manifest = prerenderManifest.default;
+  } catch (e) {
+    console.error(e);
+    return new Response(null, { status: 500 });
+  }
+
   const previewId = manifest.preview.previewModeId;
 
-  const result = await fetch(`https://${request.headers.get("host")}/isr`, {
-    headers: { "x-prerender-revalidate": previewId },
-    method: "HEAD",
-  });
+  const host = request.headers.get("host") ?? "localhost:3001";
+  const result = await fetch(
+    `http${host?.includes("localhost") ? "" : "s"}://${host}/isr`,
+    {
+      headers: { "x-prerender-revalidate": previewId },
+      method: "HEAD",
+    },
+  );
 
   return NextResponse.json({
     status: 200,
