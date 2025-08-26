@@ -228,7 +228,10 @@ export async function cacheInterceptor(
         return event;
       }
       // We need to check the tag cache now
-      if (cachedData.value?.type === "app") {
+      if (
+        cachedData.value?.type === "app" ||
+        cachedData.value?.type === "route"
+      ) {
         const tags = getTagsFromValue(cachedData.value);
         const _hasBeenRevalidated = await hasBeenRevalidated(
           localizedPath,

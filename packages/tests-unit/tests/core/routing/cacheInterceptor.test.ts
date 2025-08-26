@@ -153,7 +153,7 @@ describe("cacheInterceptor", () => {
     );
   });
 
-  it("should take no action when tagCache lasModified is -1", async () => {
+  it("should take no action when tagCache lasModified is -1 for app type", async () => {
     const event = createEvent({
       url: "/albums",
     });
@@ -167,6 +167,25 @@ describe("cacheInterceptor", () => {
 
     const result = await cacheInterceptor(event);
 
+    expect(result).toEqual(event);
+  });
+
+  it("should take no action when tagCache lasModified is -1 for route type", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+
+    const body = "route";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "route",
+        body: body,
+        revalidate: false,
+      },
+      lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+    });
+    tagCache.getLastModified.mockResolvedValueOnce(-1);
+    const result = await cacheInterceptor(event);
     expect(result).toEqual(event);
   });
 
@@ -263,7 +282,7 @@ describe("cacheInterceptor", () => {
     );
   });
 
-  it("should take no action when cache returns unrecoginsed type", async () => {
+  it("should take no action when cache returns unrecognized type", async () => {
     const event = createEvent({
       url: "/albums",
     });
