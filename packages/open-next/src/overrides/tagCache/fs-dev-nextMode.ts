@@ -64,7 +64,7 @@ export default {
       globalThis.openNextConfig.dangerous?.disableTagCache ||
       tagsToWrite.length === 0
     ) {
-      return Promise.resolve();
+      return;
     }
 
     debug("writeTags", { tags: tagsToWrite });
@@ -84,7 +84,5 @@ export default {
     fs.writeFileSync(tagFile, JSON.stringify(tags));
 
     debug("writeTags completed, written", newTagObjects.length, "tags");
-
-    return Promise.resolve();
   },
 } satisfies NextModeTagCache;
