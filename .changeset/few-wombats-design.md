@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-fix(express-dev): Disable x-powered-by header
+add(dev-overrides): In memory tagCache with nextMode
