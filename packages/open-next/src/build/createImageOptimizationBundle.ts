@@ -116,7 +116,7 @@ export async function createImageOptimizationBundle(
     outputPath,
     config.imageOptimization?.install ?? {
       packages: [`sharp@${sharpVersion}`],
-      arch: "arm64",
+      arch: config.imageOptimization?.loader === "fs-dev" ? undefined : "arm64",
       nodeVersion: "18",
       libc: "glibc",
     },
