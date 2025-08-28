@@ -15,10 +15,13 @@ export async function GET(request: NextRequest) {
   const manifest = JSON.parse(prerenderManifest);
   const previewId = manifest.preview.previewModeId;
 
-  const result = await fetch(`https://${request.headers.get("host")}/isr`, {
-    headers: { "x-prerender-revalidate": previewId },
-    method: "HEAD",
-  });
+  const result = await fetch(
+    `${request.headers.get("x-forwarded-proto") ?? "https"}://${request.headers.get("host")}/isr`,
+    {
+      headers: { "x-prerender-revalidate": previewId },
+      method: "HEAD",
+    },
+  );
 
   return NextResponse.json({
     status: 200,
