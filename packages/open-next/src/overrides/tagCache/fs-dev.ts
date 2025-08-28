@@ -22,14 +22,6 @@ function buildKey(key: string) {
   return path.posix.join(NEXT_BUILD_ID ?? "", key);
 }
 
-function buildObject(tag: string, path: string, revalidatedAt?: number) {
-  return {
-    tag: { S: buildKey(tag) },
-    path: { S: buildKey(path) },
-    revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
-  };
-}
-
 const tagCache: TagCache = {
   name: "fs-dev",
   mode: "original",
@@ -59,9 +51,11 @@ const tagCache: TagCache = {
       ({ tag, path }) => !newTagsSet.has(`${tag.S}-${path.S}`),
     );
     tags = unchangedTags.concat(
-      newTags.map((item) =>
-        buildObject(item.tag, item.path, item.revalidatedAt),
-      ),
+      newTags.map((item) => ({
+        tag: { S: buildKey(item.tag) },
+        path: { S: buildKey(item.path) },
+        revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
+      })),
     );
     // Should we write to the file here?
     // fs.writeFileSync(tagFile, JSON.stringify(tags));
