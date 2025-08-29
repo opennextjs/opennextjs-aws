@@ -165,7 +165,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     const cacheJson = files.json
       ? safeParseJsonFile(fs.readFileSync(files.json, "utf8"), cacheFilePath)
       : undefined;
-    if (!cacheFileMeta || !cacheJson) {
+    if ((files.meta && !cacheFileMeta) || (files.json && !cacheJson)) {
       logger.warn(`Skipping invalid cache file: ${cacheFilePath}`);
       return;
     }
