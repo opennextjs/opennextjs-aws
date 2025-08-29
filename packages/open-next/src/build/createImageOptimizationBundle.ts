@@ -116,6 +116,7 @@ export async function createImageOptimizationBundle(
     outputPath,
     config.imageOptimization?.install ?? {
       packages: [`sharp@${sharpVersion}`],
+      // By not specifying an arch, `npm install` will choose one for us (i.e. our system one)
       arch: config.imageOptimization?.loader === "fs-dev" ? undefined : "arm64",
       nodeVersion: "18",
       libc: "glibc",
