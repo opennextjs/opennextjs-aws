@@ -3,7 +3,7 @@ import type {
   OverrideOptions,
 } from "@opennextjs/aws/types/open-next.js";
 
-const override = {
+const devOverride = {
   wrapper: "express-dev",
   converter: "node",
   incrementalCache: "fs-dev",
@@ -13,11 +13,11 @@ const override = {
 
 export default {
   default: {
-    override: override,
+    override: devOverride,
   },
   functions: {
     api: {
-      override: override,
+      override: devOverride,
       routes: ["app/api/client/route", "app/api/host/route", "pages/api/hello"],
       patterns: ["/api/*"],
     },
