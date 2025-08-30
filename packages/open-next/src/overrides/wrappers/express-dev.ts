@@ -8,6 +8,9 @@ import { getMonorepoRelativePath } from "utils/normalize-path";
 
 const wrapper: WrapperHandler = async (handler, converter) => {
   const app = express();
+  // We disable this cause we wanna use it ourself
+  // https://stackoverflow.com/a/13055495/16587222
+  app.disable("x-powered-by");
   // To serve static assets
   const basePath = NextConfig.basePath ?? "";
   app.use(
