@@ -175,6 +175,7 @@ export type IncludedTagCache =
   | "dynamodb-lite"
   | "dynamodb-nextMode"
   | "fs-dev"
+  | "fs-dev-nextMode"
   | "dummy";
 
 export type IncludedImageLoader =
