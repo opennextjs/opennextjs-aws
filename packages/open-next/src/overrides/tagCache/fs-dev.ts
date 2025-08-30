@@ -57,8 +57,6 @@ const tagCache: TagCache = {
         revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
       })),
     );
-    // Should we write to the file here?
-    // fs.writeFileSync(tagFile, JSON.stringify(tags));
   },
 };
 
