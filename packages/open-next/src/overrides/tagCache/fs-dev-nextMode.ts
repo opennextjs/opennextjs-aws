@@ -29,8 +29,8 @@ export default {
     }
 
     const hasRevalidatedTag = tags.some((tag) => {
-      const lastModifiedTime = tagsMap.get(tag);
-      return lastModifiedTime ? lastModifiedTime > (lastModified ?? 0) : false;
+      const tagRevalidatedAt = tagsMap.get(tag);
+      return tagRevalidatedAt ? tagRevalidatedAt > (lastModified ?? 0) : false;
     });
 
     debug("hasBeenRevalidated result:", hasRevalidatedTag);
