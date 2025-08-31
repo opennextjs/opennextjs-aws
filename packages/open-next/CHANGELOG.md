@@ -1,5 +1,21 @@
 # open-next
 
+## 3.7.6
+
+### Patch Changes
+
+- [#964](https://github.com/opennextjs/opennextjs-aws/pull/964) [`05e911fb0638c85ffafa3571560eaeda4f9d5506`](https://github.com/opennextjs/opennextjs-aws/commit/05e911fb0638c85ffafa3571560eaeda4f9d5506) Thanks [@sommeeeer](https://github.com/sommeeeer)! - add(dev-overrides): In memory tagCache with nextMode
+
+- [#959](https://github.com/opennextjs/opennextjs-aws/pull/959) [`31c3740ce7e7058295f2e268b7da251f8afccf5f`](https://github.com/opennextjs/opennextjs-aws/commit/31c3740ce7e7058295f2e268b7da251f8afccf5f) Thanks [@vicb](https://github.com/vicb)! - fix(cacheInterceptor): route cache handling
+
+- [#967](https://github.com/opennextjs/opennextjs-aws/pull/967) [`580fad1588f2d8edb541d19ede0510a9609ef8c3`](https://github.com/opennextjs/opennextjs-aws/commit/580fad1588f2d8edb541d19ede0510a9609ef8c3) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(dev-overrides): Make fs-dev tagCache override work with BUILD_ID
+
+- [#966](https://github.com/opennextjs/opennextjs-aws/pull/966) [`ef4948b0534828a8a2e5b67ae5473c8160b3f18b`](https://github.com/opennextjs/opennextjs-aws/commit/ef4948b0534828a8a2e5b67ae5473c8160b3f18b) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(fs-dev): Make Image optimization work locally
+
+- [#963](https://github.com/opennextjs/opennextjs-aws/pull/963) [`3b28a998f549adb1ec8e76b896d5e5b201df7f8f`](https://github.com/opennextjs/opennextjs-aws/commit/3b28a998f549adb1ec8e76b896d5e5b201df7f8f) Thanks [@grabmateusz](https://github.com/grabmateusz)! - fix: createAssets fails in case of broken JSON in fetch cache
+
+- [#965](https://github.com/opennextjs/opennextjs-aws/pull/965) [`01f8461fb215704a01980073ca9223c40c54de27`](https://github.com/opennextjs/opennextjs-aws/commit/01f8461fb215704a01980073ca9223c40c54de27) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(express-dev): Disable x-powered-by header
+
 ## 3.7.5
 
 ### Patch Changes
