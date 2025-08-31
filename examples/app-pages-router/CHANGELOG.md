@@ -1,5 +1,12 @@
 # app-pages-router
 
+## 0.1.30
+
+### Patch Changes
+
+- Updated dependencies [[`05e911fb0638c85ffafa3571560eaeda4f9d5506`](https://github.com/opennextjs/opennextjs-aws/commit/05e911fb0638c85ffafa3571560eaeda4f9d5506), [`31c3740ce7e7058295f2e268b7da251f8afccf5f`](https://github.com/opennextjs/opennextjs-aws/commit/31c3740ce7e7058295f2e268b7da251f8afccf5f), [`580fad1588f2d8edb541d19ede0510a9609ef8c3`](https://github.com/opennextjs/opennextjs-aws/commit/580fad1588f2d8edb541d19ede0510a9609ef8c3), [`ef4948b0534828a8a2e5b67ae5473c8160b3f18b`](https://github.com/opennextjs/opennextjs-aws/commit/ef4948b0534828a8a2e5b67ae5473c8160b3f18b), [`3b28a998f549adb1ec8e76b896d5e5b201df7f8f`](https://github.com/opennextjs/opennextjs-aws/commit/3b28a998f549adb1ec8e76b896d5e5b201df7f8f), [`01f8461fb215704a01980073ca9223c40c54de27`](https://github.com/opennextjs/opennextjs-aws/commit/01f8461fb215704a01980073ca9223c40c54de27)]:
+  - @opennextjs/aws@3.7.6
+
 ## 0.1.29
 
 ### Patch Changes
