@@ -114,9 +114,6 @@ importers:
       '@example/shared':
         specifier: workspace:*
         version: link:../shared
-      '@opennextjs/aws':
-        specifier: workspace:*
-        version: link:../../packages/open-next
       next:
         specifier: 'catalog:'
         version: 15.4.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -127,6 +124,9 @@ importers:
         specifier: 'catalog:'
         version: 19.0.0(react@19.0.0)
     devDependencies:
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.6
@@ -161,6 +161,9 @@ importers:
         specifier: 'catalog:'
         version: 19.0.0(react@19.0.0)
     devDependencies:
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.6
