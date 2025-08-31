@@ -7,7 +7,7 @@ export default {
       converter: "node",
       incrementalCache: "fs-dev",
       queue: "direct",
-      tagCache: "dummy",
+      tagCache: "fs-dev-nextMode",
     },
   },
 
