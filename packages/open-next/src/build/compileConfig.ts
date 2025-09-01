@@ -13,22 +13,15 @@ import { validateConfig } from "./validateConfig.js";
  *
  * The configuration is always compiled for Node.js and for the edge only if needed.
  *
- * @param baseDir Directory where to look for the configuration.
- * @param openNextConfigPath Override the default configuration when provided. Relative to baseDir.
+ * @param sourcePath Path to the configuration file.
  * @param nodeExternals Coma separated list of Externals for the Node.js compilation.
  * @param compileEdge Force compiling for the edge runtime when true
  * @return The configuration and the build directory.
  */
 export async function compileOpenNextConfig(
-  baseDir: string,
-  openNextConfigPath?: string,
+  sourcePath: string,
   { nodeExternals = "", compileEdge = false } = {},
 ) {
-  const sourcePath = path.join(
-    baseDir,
-    openNextConfigPath ?? "open-next.config.ts",
-  );
-
   const buildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
   let configPath = compileOpenNextConfigNode(
     sourcePath,
