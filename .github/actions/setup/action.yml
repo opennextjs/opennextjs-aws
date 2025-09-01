@@ -1,5 +1,5 @@
 name: Install & setup
-description: Install's node, pnpm, restores cache
+description: Install's node, pnpm, restores cache, and then installs dependencies
 
 runs:
   using: 'composite'

@@ -1,4 +1,4 @@
-name: Install dependencies & build OpenNext package
+name: Build OpenNext package
 description: Installs dependencies and builds OpenNext
 runs:
   using: 'composite'
