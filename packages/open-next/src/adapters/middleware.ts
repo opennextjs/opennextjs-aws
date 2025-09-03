@@ -125,7 +125,13 @@ const defaultHandler = async (
         }
       }
 
-      result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
+      if (process.env.OPEN_NEXT_REQUEST_ID_HEADER || globalThis.openNextDebug) {
+        result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
+      }
+
+      // Can safely delete this header here before returning as it is only used for the cache tags internally
+      delete result.headers["x-next-cache-tags"];
+
       debug("Middleware response", result);
       return result;
     },

@@ -30,6 +30,8 @@ export type InternalEvent = {
   readonly query: Record<string, string | string[]>;
   readonly cookies: Record<string, string>;
   readonly remoteAddress: string;
+  // Used for NextResponse.rewrite's status code in middleware
+  readonly rewriteStatusCode?: number;
 } & BaseEventOrResult<"core">;
 
 export type InternalResult = {
