@@ -33,9 +33,7 @@ export async function build(
   const openNextDistDir = url.fileURLToPath(new URL(".", import.meta.url));
 
   const { config, buildDir } = await compileOpenNextConfig(
-    openNextConfigPath && path.isAbsolute(openNextConfigPath)
-      ? openNextConfigPath
-      : path.join(baseDir, openNextConfigPath ?? "open-next.config.ts"),
+    path.join(baseDir, openNextConfigPath ?? "open-next.config.ts"),
     { nodeExternals },
   );
 
