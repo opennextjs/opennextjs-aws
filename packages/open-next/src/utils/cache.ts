@@ -39,7 +39,10 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   }
   // The try catch is necessary for older version of next.js that may fail on this
   try {
-    return value.meta?.headers?.["x-next-cache-tags"]?.split(",") ?? [];
+    const cacheTags =
+      value.meta?.headers?.["x-next-cache-tags"]?.split(",") ?? [];
+    delete value.meta?.headers?.["x-next-cache-tags"];
+    return cacheTags;
   } catch (e) {
     return [];
   }

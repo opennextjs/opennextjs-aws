@@ -6,7 +6,11 @@ import {
   NextConfig,
   PrerenderManifest,
 } from "config/index.js";
-import type { InternalEvent, InternalResult } from "types/open-next.js";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareEvent,
+} from "types/open-next.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
@@ -27,12 +31,6 @@ const middleMatch = getMiddlewareMatch(
 );
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
-
-type MiddlewareEvent = InternalEvent & {
-  responseHeaders?: Record<string, string | string[]>;
-  isExternalRewrite?: boolean;
-  rewriteStatusCode?: number;
-};
 
 type Middleware = (request: Request) => Response | Promise<Response>;
 type MiddlewareLoader = () => Promise<{ default: Middleware }>;
@@ -198,6 +196,7 @@ export async function handleMiddleware(
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
     isExternalRewrite,
-    rewriteStatusCode: statusCode,
+    rewriteStatusCode:
+      rewriteUrl && !isExternalRewrite ? statusCode : undefined,
   } satisfies MiddlewareEvent;
 }
