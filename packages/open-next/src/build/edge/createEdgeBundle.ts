@@ -59,7 +59,8 @@ export async function buildEdgeBundle({
 }: BuildEdgeBundleOptions) {
   const isInCloudflare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
-    return typeof overrides?.[target] === "string"
+    return typeof overrides?.[target] === "string" ||
+      typeof overrides?.[target] === "function"
       ? overrides[target]
       : undefined;
   }
