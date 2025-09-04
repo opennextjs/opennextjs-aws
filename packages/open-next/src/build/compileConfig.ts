@@ -13,7 +13,7 @@ import { validateConfig } from "./validateConfig.js";
  *
  * The configuration is always compiled for Node.js and for the edge only if needed.
  *
- * @param sourcePath Path to the configuration file.
+ * @param sourcePath Absolute path to the configuration file.
  * @param nodeExternals Coma separated list of Externals for the Node.js compilation.
  * @param compileEdge Force compiling for the edge runtime when true
  * @return The configuration and the build directory.
