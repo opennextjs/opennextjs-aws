@@ -1,7 +1,7 @@
 ---
-"@opennextjs/aws": minor
+"@opennextjs/aws": patch
 ---
 
-fix: support absolute paths for OpenNext config compilation utility
+refactor: `compileOpenNextConfig` now takes `openNextConfigPath` only and no more `baseDir`.
 
-`compileOpenNextConfig` will now support the ability to pass in either absolute or relative paths, instead of treating any input as a relative path.
+`openNextConfigPath` is now in line with fs APIs: it is either absolute or relative to the working directory (`cwd`).

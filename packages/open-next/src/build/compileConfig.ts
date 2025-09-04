@@ -13,18 +13,18 @@ import { validateConfig } from "./validateConfig.js";
  *
  * The configuration is always compiled for Node.js and for the edge only if needed.
  *
- * @param sourcePath Absolute path to the configuration file.
+ * @param openNextConfigPath Path to the configuration file. Absolute or relative to cwd.
  * @param nodeExternals Coma separated list of Externals for the Node.js compilation.
  * @param compileEdge Force compiling for the edge runtime when true
  * @return The configuration and the build directory.
  */
 export async function compileOpenNextConfig(
-  sourcePath: string,
+  openNextConfigPath: string,
   { nodeExternals = "", compileEdge = false } = {},
 ) {
   const buildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
   let configPath = compileOpenNextConfigNode(
-    sourcePath,
+    openNextConfigPath,
     buildDir,
     nodeExternals.split(","),
   );
@@ -47,7 +47,11 @@ export async function compileOpenNextConfig(
     (config.middleware?.external && config.middleware.runtime !== "node") ||
     Object.values(config.functions || {}).some((fn) => fn.runtime === "edge");
   if (usesEdgeRuntime || compileEdge) {
-    compileOpenNextConfigEdge(sourcePath, buildDir, config.edgeExternals ?? []);
+    compileOpenNextConfigEdge(
+      openNextConfigPath,
+      buildDir,
+      config.edgeExternals ?? [],
+    );
   } else {
     // Skip compiling for the edge runtime.
     logger.debug(
@@ -58,8 +62,16 @@ export async function compileOpenNextConfig(
   return { config, buildDir };
 }
 
+/**
+ * Compiles the OpenNext configuration for Node.
+ *
+ * @param openNextConfigPath Path to the configuration file. Absolute or relative to cwd.
+ * @param outputDir Folder where to output the compiled config file (`open-next.config.mjs`).
+ * @param externals List of packages that should not be bundled.
+ * @return Path to the compiled config.
+ */
 export function compileOpenNextConfigNode(
-  sourcePath: string,
+  openNextConfigPath: string,
   outputDir: string,
   externals: string[],
 ) {
@@ -67,13 +79,13 @@ export function compileOpenNextConfigNode(
   logger.debug("Compiling open-next.config.ts for Node.", outputPath);
 
   //Check if open-next.config.ts exists
-  if (!fs.existsSync(sourcePath)) {
+  if (!fs.existsSync(openNextConfigPath)) {
     //Create a simple open-next.config.mjs file
     logger.debug("Cannot find open-next.config.ts. Using default config.");
     fs.writeFileSync(outputPath, "export default { default: { } };");
   } else {
     buildSync({
-      entryPoints: [sourcePath],
+      entryPoints: [openNextConfigPath],
       outfile: outputPath,
       bundle: true,
       format: "esm",
@@ -94,8 +106,16 @@ export function compileOpenNextConfigNode(
   return outputPath;
 }
 
+/**
+ * Compiles the OpenNext configuration for Edge.
+ *
+ * @param openNextConfigPath Path to the configuration file. Absolute or relative to cwd.
+ * @param outputDir Folder where to output the compiled config file (`open-next.config.edge.mjs`).
+ * @param externals List of packages that should not be bundled.
+ * @return Path to the compiled config.
+ */
 export function compileOpenNextConfigEdge(
-  sourcePath: string,
+  openNextConfigPath: string,
   outputDir: string,
   externals: string[],
 ) {
@@ -103,7 +123,7 @@ export function compileOpenNextConfigEdge(
   logger.debug("Compiling open-next.config.ts for edge runtime.", outputPath);
 
   buildSync({
-    entryPoints: [sourcePath],
+    entryPoints: [openNextConfigPath],
     outfile: outputPath,
     bundle: true,
     format: "esm",
@@ -116,4 +136,6 @@ export function compileOpenNextConfigEdge(
       "process.env.NODE_ENV": '"production"',
     },
   });
+
+  return outputPath;
 }
