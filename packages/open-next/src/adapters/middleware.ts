@@ -129,9 +129,6 @@ const defaultHandler = async (
         result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
       }
 
-      // Can safely delete this header here before returning as it is only used for the cache tags internally
-      delete result.headers["x-next-cache-tags"];
-
       debug("Middleware response", result);
       return result;
     },
