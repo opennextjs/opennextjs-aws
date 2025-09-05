@@ -1,3 +1,4 @@
+import path from "node:path";
 import url from "node:url";
 
 import {
@@ -32,8 +33,7 @@ export async function build(
   const openNextDistDir = url.fileURLToPath(new URL(".", import.meta.url));
 
   const { config, buildDir } = await compileOpenNextConfig(
-    baseDir,
-    openNextConfigPath,
+    path.join(baseDir, openNextConfigPath ?? "open-next.config.ts"),
     { nodeExternals },
   );
 
