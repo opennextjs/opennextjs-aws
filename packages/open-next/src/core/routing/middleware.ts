@@ -198,6 +198,7 @@ export async function handleMiddleware(
     cookies: internalEvent.cookies,
     remoteAddress: internalEvent.remoteAddress,
     isExternalRewrite,
-    rewriteStatusCode: statusCode,
+    rewriteStatusCode:
+      rewriteUrl && !isExternalRewrite ? statusCode : undefined,
   } satisfies MiddlewareEvent;
 }
