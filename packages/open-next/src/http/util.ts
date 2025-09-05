@@ -12,6 +12,13 @@ export const parseHeaders = (
     if (value === undefined) {
       continue;
     }
+    // Next can return an Array for the Location header
+    // We dont want to merge that into a comma-separated string
+    // See: https://github.com/opennextjs/opennextjs-cloudflare/issues/875#issuecomment-3258248276
+    if (key.toLowerCase() === "location" && Array.isArray(value)) {
+      result[key.toLowerCase()] = value[0];
+      continue;
+    }
     result[key.toLowerCase()] = convertHeader(value);
   }
 
