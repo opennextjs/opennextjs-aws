@@ -34,13 +34,13 @@ test("Middleware Rewrite External Image", async ({ page }) => {
 });
 
 test("Middleware Rewrite Status Code", async ({ page }) => {
-page.on("response", async (response) => {
-  // Need to set up the event before navigating to the page to avoid missing it
-  // We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
-  if (response.url() === "/rewrite-status-code") {
-    expect(response.status()).toBe(403);
-  }
-});
+  page.on("response", async (response) => {
+    // Need to set up the event before navigating to the page to avoid missing it
+    // We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
+    if (response.url() === "/rewrite-status-code") {
+      expect(response.status()).toBe(403);
+    }
+  });
   await page.goto("/rewrite-status-code");
   const el = page.getByText("Rewritten Destination", { exact: true });
   await expect(el).toBeVisible();
