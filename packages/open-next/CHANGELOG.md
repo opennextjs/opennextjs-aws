@@ -1,5 +1,13 @@
 # open-next
 
+## 3.7.7
+
+### Patch Changes
+
+- [#972](https://github.com/opennextjs/opennextjs-aws/pull/972) [`3994aca53bc5e1132c4561de1d191e4288f9b75d`](https://github.com/opennextjs/opennextjs-aws/commit/3994aca53bc5e1132c4561de1d191e4288f9b75d) Thanks [@james-elicx](https://github.com/james-elicx)! - refactor: `compileOpenNextConfig` now takes `openNextConfigPath` only and no more `baseDir`.
+
+  `openNextConfigPath` is now in line with fs APIs: it is either absolute or relative to the working directory (`cwd`).
+
 ## 3.7.6
 
 ### Patch Changes
