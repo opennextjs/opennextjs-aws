@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-fix(build): Support function-valued overrides in override helper
+fix(build): Refactor fallback values to be dummy overrides in createEdgeBundle
