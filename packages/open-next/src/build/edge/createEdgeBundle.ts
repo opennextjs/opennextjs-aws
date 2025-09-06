@@ -82,9 +82,9 @@ export async function buildEdgeBundle({
             converter: override("converter") ?? defaultConverter,
             ...(includeCache
               ? {
-                  tagCache: override("tagCache") ?? "dynamodb-lite",
-                  incrementalCache: override("incrementalCache") ?? "s3-lite",
-                  queue: override("queue") ?? "sqs-lite",
+                  tagCache: override("tagCache") ?? "dummy",
+                  incrementalCache: override("incrementalCache") ?? "dummy",
+                  queue: override("queue") ?? "dummy",
                 }
               : {}),
             originResolver: override("originResolver") ?? "pattern-env",
