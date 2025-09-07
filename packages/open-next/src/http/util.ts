@@ -1,4 +1,5 @@
 import type http from "node:http";
+import logger from "../logger";
 
 export const parseHeaders = (
   headers?: http.OutgoingHttpHeader[] | http.OutgoingHttpHeaders,
@@ -25,6 +26,9 @@ export const parseHeaders = (
       if (value[0] === value[1]) {
         result[keyLower] = value[0];
       } else {
+        logger.warn(
+          "Multiple different values for Location header found. Using the last one",
+        );
         result[keyLower] = value[value.length - 1];
       }
       continue;
