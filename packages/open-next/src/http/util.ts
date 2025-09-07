@@ -12,14 +12,24 @@ export const parseHeaders = (
     if (value === undefined) {
       continue;
     }
-    // Next can return an Array for the Location header
-    // We dont want to merge that into a comma-separated string
-    // See: https://github.com/opennextjs/opennextjs-cloudflare/issues/875#issuecomment-3258248276
-    if (key.toLowerCase() === "location" && Array.isArray(value)) {
-      result[key.toLowerCase()] = value[0];
+    const keyLower = key.toLowerCase();
+    /**
+     * Next can return an Array for the Location header
+     * We dont want to merge that into a comma-separated string
+     * If they are the same just return one of them
+     * Otherwise return the last one
+     * See: https://github.com/opennextjs/opennextjs-cloudflare/issues/875#issuecomment-3258248276
+     * and https://github.com/opennextjs/opennextjs-aws/pull/977#issuecomment-3261763114
+     */
+    if (keyLower === "location" && Array.isArray(value)) {
+      if (value[0] === value[1]) {
+        result[keyLower] = value[0];
+      } else {
+        result[keyLower] = value[value.length - 1];
+      }
       continue;
     }
-    result[key.toLowerCase()] = convertHeader(value);
+    result[keyLower] = convertHeader(value);
   }
 
   return result;
