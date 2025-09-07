@@ -59,7 +59,8 @@ export async function buildEdgeBundle({
 }: BuildEdgeBundleOptions) {
   const isInCloudflare = await isEdgeRuntime(overrides);
   function override<T extends keyof Override>(target: T) {
-    return typeof overrides?.[target] === "string"
+    return typeof overrides?.[target] === "string" ||
+      typeof overrides?.[target] === "function"
       ? overrides[target]
       : undefined;
   }
@@ -82,9 +83,9 @@ export async function buildEdgeBundle({
             converter: override("converter") ?? defaultConverter,
             ...(includeCache
               ? {
-                  tagCache: override("tagCache") ?? "dummy",
-                  incrementalCache: override("incrementalCache") ?? "dummy",
-                  queue: override("queue") ?? "dummy",
+                  tagCache: override("tagCache") ?? "dynamodb-lite",
+                  incrementalCache: override("incrementalCache") ?? "s3-lite",
+                  queue: override("queue") ?? "sqs-lite",
                 }
               : {}),
             originResolver: override("originResolver") ?? "pattern-env",
