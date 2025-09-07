@@ -32,6 +32,12 @@ export type InternalEvent = {
   readonly remoteAddress: string;
 } & BaseEventOrResult<"core">;
 
+export type MiddlewareEvent = InternalEvent & {
+  responseHeaders?: Record<string, string | string[]>;
+  isExternalRewrite?: boolean;
+  rewriteStatusCode?: number;
+};
+
 export type InternalResult = {
   statusCode: number;
   headers: Record<string, string | string[]>;

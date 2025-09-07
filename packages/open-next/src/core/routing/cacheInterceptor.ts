@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 
 import { NextConfig, PrerenderManifest } from "config/index";
-import type { InternalEvent, InternalResult } from "types/open-next";
+import type {
+  InternalEvent,
+  InternalResult,
+  MiddlewareEvent,
+} from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
@@ -100,7 +104,7 @@ async function computeCacheControl(
 }
 
 async function generateResult(
-  event: InternalEvent,
+  event: MiddlewareEvent,
   localizedPath: string,
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
@@ -132,8 +136,12 @@ async function generateResult(
   );
   return {
     type: "core",
-    // sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
-    statusCode: cachedValue.meta?.status ?? 200,
+    // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
+    // Also set the status code to the rewriteStatusCode if defined
+    // This can happen in handleMiddleware in routingHandler.
+    // `NextResponse.rewrite(url, { status: xxx})
+    // The rewrite status code should take precedence over the cached one
+    statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
     body: toReadableStream(body, false),
     isBase64Encoded: false,
     headers: {
@@ -179,7 +187,7 @@ function decodePathParams(pathname: string): string {
 }
 
 export async function cacheInterceptor(
-  event: InternalEvent,
+  event: MiddlewareEvent,
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
@@ -287,7 +295,8 @@ export async function cacheInterceptor(
 
           return {
             type: "core",
-            statusCode: cachedData.value.meta?.status ?? 200,
+            statusCode:
+              event.rewriteStatusCode ?? cachedData.value.meta?.status ?? 200,
             body: toReadableStream(cachedData.value.body, isBinary),
             headers: {
               ...cacheControl,

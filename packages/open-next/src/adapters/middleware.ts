@@ -125,7 +125,10 @@ const defaultHandler = async (
         }
       }
 
-      result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
+      if (process.env.OPEN_NEXT_REQUEST_ID_HEADER || globalThis.openNextDebug) {
+        result.headers[INTERNAL_EVENT_REQUEST_ID] = requestId;
+      }
+
       debug("Middleware response", result);
       return result;
     },

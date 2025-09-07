@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
-import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
+import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
@@ -26,14 +26,14 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: InternalEvent) => event.rawPath,
+  localizePath: (event: MiddlewareEvent) => event.rawPath,
 }));
 
 type PartialEvent = Partial<
-  Omit<InternalEvent, "body" | "rawPath" | "query">
+  Omit<MiddlewareEvent, "body" | "rawPath" | "query">
 > & { body?: string };
 
-function createEvent(event: PartialEvent): InternalEvent {
+function createEvent(event: PartialEvent): MiddlewareEvent {
   const [rawPath, qs] = (event.url ?? "/").split("?", 2);
   return {
     type: "core",
@@ -45,6 +45,7 @@ function createEvent(event: PartialEvent): InternalEvent {
     query: convertFromQueryString(qs ?? ""),
     cookies: event.cookies ?? {},
     remoteAddress: event.remoteAddress ?? "::1",
+    rewriteStatusCode: event.rewriteStatusCode,
   };
 }
 
@@ -451,5 +452,73 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should return the rewrite status code when there is active cache", async () => {
+    const event = createEvent({
+      url: "/albums",
+      rewriteStatusCode: 403,
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(403);
+  });
+
+  it("should return the rewriteStatusCode if there is a cached status code", async () => {
+    const event = createEvent({
+      url: "/albums",
+      rewriteStatusCode: 203,
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+        meta: {
+          status: 404,
+        },
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(203);
+  });
+
+  it("should return the cached status code if there is one", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+        meta: {
+          status: 405,
+        },
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(405);
+  });
+
+  it("should return 200 if there is no cached status code, nor a rewriteStatusCode", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(200);
   });
 });
