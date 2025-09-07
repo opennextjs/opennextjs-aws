@@ -1,6 +1,6 @@
 {
   "name": "app-router",
-  "version": "0.1.30",
+  "version": "0.1.31",
   "private": true,
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build",
