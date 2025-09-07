@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build",
+    "openbuild:local": "node ../../packages/open-next/dist/index.js build --config-path open-next.config.local.ts",
+    "openbuild:local:start": "PORT=3004 node .open-next/server-functions/default/index.mjs",
     "dev": "next dev --turbopack --port 3004",
     "build": "next build",
     "start": "next start --port 3004",
@@ -19,6 +21,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@opennextjs/aws": "workspace:*"
   }
 }

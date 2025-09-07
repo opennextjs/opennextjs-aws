@@ -1,0 +1,9 @@
+name: Build OpenNext package
+description: Installs dependencies and builds OpenNext
+runs:
+  using: 'composite'
+  steps:
+    # Build only the @opennextjs/aws package + its monorepo dependencies
+    - name: Build
+      shell: bash
+      run: pnpm --filter @opennextjs/aws... run build

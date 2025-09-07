@@ -5,6 +5,7 @@
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build",
     "openbuild:local": "node ../../packages/open-next/dist/index.js build --config-path open-next.config.local.ts",
+    "openbuild:local:start": "PORT=3001 OPEN_NEXT_REQUEST_ID_HEADER=true node .open-next/server-functions/default/index.mjs",
     "dev": "next dev --turbopack --port 3001",
     "build": "next build",
     "start": "next start --port 3001",
@@ -13,12 +14,12 @@
   },
   "dependencies": {
     "@example/shared": "workspace:*",
-    "@opennextjs/aws": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@opennextjs/aws": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

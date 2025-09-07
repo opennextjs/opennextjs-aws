@@ -14,6 +14,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-            - uses: ./.github/actions/pnpm-setup
             - uses: ./.github/actions/lint
+            - uses: ./.github/actions/setup
             - uses: ./.github/actions/test
+            - uses: ./.github/actions/local/build
+            - uses: ./.github/actions/local/e2e
