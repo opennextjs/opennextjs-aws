@@ -13,9 +13,7 @@ describe("isExcluded", () => {
       ),
     ).toBe(true);
     expect(
-      isExcluded(
-        "/home/user/git/my-opennext-project/node_modules/sharp",
-      ),
+      isExcluded("/home/user/git/my-opennext-project/node_modules/sharp"),
     ).toBe(true);
   });
 
@@ -40,5 +38,5 @@ describe("isExcluded", () => {
         "/home/user/git/my-opennext-project/node_modules/.pnpm/other-package/4.1.3/node_modules/sharp-other",
       ),
     ).toBe(false);
-  });       
+  });
 });
