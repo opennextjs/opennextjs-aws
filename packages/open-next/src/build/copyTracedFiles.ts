@@ -50,7 +50,7 @@ export function isExcluded(srcPath: string): boolean {
     // `pnpm` can create a symbolic link that points to the pnpm store folder
     // This will live under `/node_modules/sharp`. We need to handle this in our regex
     srcPath.match(
-      getCrossPlatformPathRegex(`\/node_modules\/${excluded}(\/|$)`, {
+      getCrossPlatformPathRegex(`/node_modules/${excluded}(?:/|$)`, {
         escape: false,
       }),
     ),
