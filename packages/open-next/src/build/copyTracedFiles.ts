@@ -45,9 +45,15 @@ const EXCLUDED_PACKAGES = [
   "next/dist/compiled/amphtml-validator",
 ];
 
-function isExcluded(srcPath: string): boolean {
+export function isExcluded(srcPath: string): boolean {
   return EXCLUDED_PACKAGES.some((excluded) =>
-    srcPath.match(getCrossPlatformPathRegex(`/node_modules/${excluded}/`)),
+    // `pnpm` can create a symbolic link that points to the pnpm store folder
+    // This will live under `/node_modules/sharp`. We need to handle this in our regex
+    srcPath.match(
+      getCrossPlatformPathRegex(`\/node_modules\/${excluded}(\/|$)`, {
+        escape: false,
+      }),
+    ),
   );
 }
 
