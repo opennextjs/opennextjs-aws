@@ -10,7 +10,7 @@ import { Transform } from "node:stream";
 
 import type { StreamCreator } from "types/open-next";
 import { debug } from "../adapters/logger";
-import { parseHeaders, parseSetCookieHeader } from "./util";
+import { flattenHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 const CANNOT_BE_USED = "This cannot be used in OpenNext";
@@ -184,7 +184,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     // We need to fix the set-cookie header here
     this.headers[SET_COOKIE_HEADER] = this._cookies;
 
-    const parsedHeaders = parseHeaders(this.headers);
+    const parsedHeaders = flattenHeaders(this.headers);
 
     // We need to remove the set-cookie header from the parsed headers because
     // it does not handle multiple set-cookie headers properly
