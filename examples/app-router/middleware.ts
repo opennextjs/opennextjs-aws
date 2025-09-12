@@ -50,6 +50,11 @@ export function middleware(request: NextRequest) {
   // Response headers should show up in the client's response headers
   responseHeaders.set("response-header", "response-header");
 
+  // For dangerous.middlewareHeadersOverrideNextConfigHeaders we need to verify that middleware headers override next.config.js headers.
+  if (path === "/headers/execution-order") {
+    responseHeaders.set("e2e-headers", "middleware");
+  }
+
   // Set the cache control header with custom swr
   // For: isr.test.ts
   if (path === "/isr" && !request.headers.get("x-prerender-revalidate")) {
