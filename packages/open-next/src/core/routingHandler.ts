@@ -129,10 +129,22 @@ export default async function routingHandler(
       return middlewareEventOrResult;
     }
 
-    headers = {
-      ...middlewareEventOrResult.responseHeaders,
-      ...headers,
-    };
+    const middlewareHeadersPrioritized =
+      globalThis.openNextConfig.dangerous
+        ?.middlewareHeadersOverrideNextConfigHeaders ?? false;
+
+    if (middlewareHeadersPrioritized) {
+      headers = {
+        ...headers,
+        ...middlewareEventOrResult.responseHeaders,
+      };
+    } else {
+      headers = {
+        ...middlewareEventOrResult.responseHeaders,
+        ...headers,
+      };
+    }
+
     let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
     eventOrResult = middlewareEventOrResult;
 

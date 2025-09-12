@@ -8,6 +8,9 @@ const config = {
     },
   },
   functions: {},
+  dangerous: {
+    middlewareHeadersOverrideNextConfigHeaders: true,
+  },
   buildCommand: "npx turbo build",
 };
 
