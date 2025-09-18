@@ -1,5 +1,17 @@
 # open-next
 
+## 3.7.7
+
+### Patch Changes
+
+- [#982](https://github.com/opennextjs/opennextjs-aws/pull/982) [`3e4843680720949f8d372957a130b7bc73736dc4`](https://github.com/opennextjs/opennextjs-aws/commit/3e4843680720949f8d372957a130b7bc73736dc4) Thanks [@vicb](https://github.com/vicb)! - fix: allow bypassing the Tag Cache in the interceptor
+
+- [#975](https://github.com/opennextjs/opennextjs-aws/pull/975) [`fd95b22e60d0b405fda43b7a000f01d063538fdc`](https://github.com/opennextjs/opennextjs-aws/commit/fd95b22e60d0b405fda43b7a000f01d063538fdc) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(build): Refactor fallback values to be dummy overrides in createEdgeBundle
+
+- [#972](https://github.com/opennextjs/opennextjs-aws/pull/972) [`3994aca53bc5e1132c4561de1d191e4288f9b75d`](https://github.com/opennextjs/opennextjs-aws/commit/3994aca53bc5e1132c4561de1d191e4288f9b75d) Thanks [@james-elicx](https://github.com/james-elicx)! - refactor: `compileOpenNextConfig` now takes `openNextConfigPath` only and no more `baseDir`.
+
+  `openNextConfigPath` is now in line with fs APIs: it is either absolute or relative to the working directory (`cwd`).
+
 ## 3.7.6
 
 ### Patch Changes
