@@ -23,7 +23,6 @@ test("Middleware Rewrite", async ({ page }) => {
 });
 
 test("Middleware Rewrite External Image", async ({ page }) => {
-  await page.goto("/rewrite-external");
   page.on("response", async (response) => {
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toBe("image/png");
@@ -31,13 +30,18 @@ test("Middleware Rewrite External Image", async ({ page }) => {
     const bodyBuffer = await response.body();
     expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
   });
+  await page.goto("/rewrite-external");
 });
 
 test("Middleware Rewrite Status Code", async ({ page }) => {
+  page.on("response", async (response) => {
+    // Need to set up the event before navigating to the page to avoid missing it
+    // We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
+    if (response.url() === "/rewrite-status-code") {
+      expect(response.status()).toBe(403);
+    }
+  });
   await page.goto("/rewrite-status-code");
   const el = page.getByText("Rewritten Destination", { exact: true });
   await expect(el).toBeVisible();
-  page.on("response", async (response) => {
-    expect(response.status()).toBe(403);
-  });
 });

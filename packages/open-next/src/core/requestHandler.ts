@@ -63,7 +63,7 @@ export async function openNextHandler(
       }
       debug("internalEvent", internalEvent);
 
-      // These 2 will get overwritten by the routing handler if not using an external middleware
+      // These 3 will get overwritten by the routing handler if not using an external middleware
       const internalHeaders = {
         initialPath:
           initialHeaders[INTERNAL_HEADER_INITIAL_URL] ?? internalEvent.rawPath,
