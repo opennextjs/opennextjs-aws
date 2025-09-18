@@ -170,6 +170,23 @@ describe("cacheInterceptor", () => {
     expect(result).toEqual(event);
   });
 
+  it("should bypass the tag cache when shouldBypassTagCache is true", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+      },
+      shouldBypassTagCache: true,
+    });
+
+    await cacheInterceptor(event);
+
+    expect(tagCache.getLastModified).not.toHaveBeenCalled();
+  });
+
   it("should take no action when tagCache lasModified is -1 for route type", async () => {
     const event = createEvent({
       url: "/albums",
