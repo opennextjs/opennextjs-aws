@@ -85,7 +85,7 @@ export function installDependencies(
     fs.rmSync(tempInstallDir, { recursive: true, force: true });
     logger.info(`Dependencies installed for ${name}`);
   } catch (e: any) {
-    logger.error(e.stdout.toString());
+    logger.error(e.toString());
     logger.error("Could not install dependencies");
   }
 }
