@@ -233,11 +233,11 @@ export async function cacheInterceptor(
         cachedData.value?.type === "route"
       ) {
         const tags = getTagsFromValue(cachedData.value);
-        const _hasBeenRevalidated = await hasBeenRevalidated(
-          localizedPath,
-          tags,
-          cachedData,
-        );
+
+        const _hasBeenRevalidated = cachedData.shouldBypassTagCache
+          ? false
+          : await hasBeenRevalidated(localizedPath, tags, cachedData);
+
         if (_hasBeenRevalidated) {
           return event;
         }
