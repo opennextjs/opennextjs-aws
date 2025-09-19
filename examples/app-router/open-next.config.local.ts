@@ -11,7 +11,6 @@ export default {
     },
   },
 
-
   dangerous: {
     middlewareHeadersOverrideNextConfigHeaders: true,
   },

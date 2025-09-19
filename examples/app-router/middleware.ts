@@ -51,8 +51,9 @@ export function middleware(request: NextRequest) {
   responseHeaders.set("response-header", "response-header");
 
   // For dangerous.middlewareHeadersOverrideNextConfigHeaders we need to verify that middleware headers override next.config.js headers.
-  if (path === "/headers/execution-order") {
+  if (path === "/headers/override-from-middleware") {
     responseHeaders.set("e2e-headers", "middleware");
+    return NextResponse.json({}, { headers: responseHeaders });
   }
 
   // Set the cache control header with custom swr

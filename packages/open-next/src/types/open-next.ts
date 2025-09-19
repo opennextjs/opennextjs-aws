@@ -83,7 +83,8 @@ export interface DangerousOptions {
 
   /**
    * Configuration option to prioritize headers set via middleware over headers set via the option in the Next config.
-   * This brings OpenNext behavior inline with the documented execution order.
+   *
+   * The default will change to 'true' in v4.
    *
    * See also {@link https://nextjs.org/docs/app/api-reference/file-conventions/middleware#execution-order}
    *

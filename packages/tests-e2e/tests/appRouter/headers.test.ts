@@ -36,7 +36,7 @@ test("Headers execution order", async ({ page }) => {
   const responsePromise = page.waitForResponse((response) => {
     return response.status() === 200;
   });
-  await page.goto("/headers/execution-order");
+  await page.goto("/headers/override-from-middleware");
 
   const response = await responsePromise;
   // Response header should be set
