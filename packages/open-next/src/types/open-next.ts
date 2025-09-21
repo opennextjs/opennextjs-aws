@@ -86,6 +86,17 @@ export interface DangerousOptions {
   headersAndCookiesPriority?: (
     event: InternalEvent,
   ) => "middleware" | "handler";
+
+  /**
+   * Configuration option to prioritize headers set via middleware over headers set via the option in the Next config.
+   *
+   * The default will change to 'true' in v4.
+   *
+   * See also {@link https://nextjs.org/docs/app/api-reference/file-conventions/middleware#execution-order}
+   *
+   * @default false
+   */
+  middlewareHeadersOverrideNextConfigHeaders?: boolean;
 }
 
 export type BaseOverride = {
