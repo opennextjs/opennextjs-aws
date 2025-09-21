@@ -102,8 +102,9 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
   // When using HEAD requests, it seems that flushHeaders is not called, not sure why
   // Probably some kind of race condition
   const headers = parseHeaders(res.getFixedHeaders());
+  const contentType = headers["content-type"];
   const isBase64Encoded =
-    isBinaryContentType(headers["content-type"]) ||
+    (typeof contentType === "string" && isBinaryContentType(contentType)) ||
     !!headers["content-encoding"];
   // We cannot convert the OpenNextNodeResponse to a ReadableStream directly
   // You can look in the `aws-lambda.ts` file for some context

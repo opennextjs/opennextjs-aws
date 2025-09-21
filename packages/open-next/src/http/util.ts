@@ -3,6 +3,25 @@ import type http from "node:http";
 export const parseHeaders = (
   headers?: http.OutgoingHttpHeader[] | http.OutgoingHttpHeaders,
 ) => {
+  const result: Record<string, string | string[]> = {};
+  if (!headers) {
+    return result;
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (value === undefined) {
+      continue;
+    }
+    result[key.toLowerCase()] =
+      typeof value === "number" ? String(value) : value;
+  }
+
+  return result;
+};
+
+export const flattenHeaders = (
+  headers?: http.OutgoingHttpHeader[] | http.OutgoingHttpHeaders,
+) => {
   const result: Record<string, string> = {};
   if (!headers) {
     return result;
@@ -12,20 +31,12 @@ export const parseHeaders = (
     if (value === undefined) {
       continue;
     }
-    result[key.toLowerCase()] = convertHeader(value);
+    result[key.toLowerCase()] = Array.isArray(value)
+      ? value.join(",")
+      : String(value);
   }
 
   return result;
-};
-
-export const convertHeader = (header: http.OutgoingHttpHeader) => {
-  if (typeof header === "string") {
-    return header;
-  }
-  if (Array.isArray(header)) {
-    return header.join(",");
-  }
-  return String(header);
 };
 
 /**
