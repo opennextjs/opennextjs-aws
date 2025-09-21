@@ -16,7 +16,7 @@ jobs:
         # https://github.com/actions/checkout
         uses: actions/checkout@v4
 
-      - uses: ./.github/actions/pnpm-setup
+      - uses: ./.github/actions/setup
       - uses: ./.github/actions/lint
 
       - name: Create Release Pull Request or Publish to npm
