@@ -15,7 +15,7 @@ export const parseHeaders = (
     }
     const keyLower = key.toLowerCase();
     /**
-     * Next can return an Array for the Location header
+     * Next can return an Array for the Location header when you return null from a get in the cacheHandler on a page that has a redirect()
      * We dont want to merge that into a comma-separated string
      * If they are the same just return one of them
      * Otherwise return the last one
