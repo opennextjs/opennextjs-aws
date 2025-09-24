@@ -36,7 +36,7 @@ export function installDependencies(
       : "";
 
     const additionalArgs = installOptions.additionalArgs ?? "";
-    const installCommand = `npm install --platform=linux ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
+    const installCommand = `npm install --os=linux ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
     execSync(installCommand, {
       stdio: "pipe",
       cwd: tempInstallDir,

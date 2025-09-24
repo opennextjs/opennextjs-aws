@@ -279,7 +279,7 @@ export interface InstallOptions {
    * @example
    * ```ts
    * install: {
-   *  packages: ["sharp@0.32"]
+   *  packages: ["sharp@0.34"]
    * }
    * ```
    */
