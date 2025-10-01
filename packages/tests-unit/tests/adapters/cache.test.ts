@@ -1,6 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 
 declare global {
   var openNextConfig: {
@@ -40,6 +40,7 @@ describe("CacheHandler", () => {
       .fn()
       .mockResolvedValue(new Date("2024-01-02T00:00:00Z").getTime()),
     writeTags: vi.fn(),
+    getPathsByTags: undefined as Mock | undefined,
   };
   globalThis.tagCache = tagCache;
 
@@ -71,6 +72,8 @@ describe("CacheHandler", () => {
       },
     };
     globalThis.isNextAfter15 = false;
+    tagCache.mode = "original";
+    tagCache.getPathsByTags = undefined;
   });
 
   describe("get", () => {
@@ -147,11 +150,13 @@ describe("CacheHandler", () => {
           tagCache.mode = "nextMode";
           tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
 
-          const result = await cache.get("key", { kind: "FETCH" });
+          const result = await cache.get("key", {
+            kind: "FETCH",
+            tags: ["tag"],
+          });
           expect(getFetchCacheSpy).toHaveBeenCalled();
+          expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
           expect(result).toBeNull();
-          // Reset the tagCache mode
-          tagCache.mode = "original";
         });
 
         it("Should return null when incremental cache throws", async () => {
@@ -198,6 +203,11 @@ describe("CacheHandler", () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "route",
+            meta: {
+              headers: {
+                "x-next-cache-tags": "tag",
+              },
+            },
           },
           lastModified: Date.now(),
         });
@@ -205,9 +215,8 @@ describe("CacheHandler", () => {
         const result = await cache.get("key", { kindHint: "app" });
 
         expect(getIncrementalCache).toHaveBeenCalled();
+        expect(tagCache.hasBeenRevalidated).toHaveBeenCalled();
         expect(result).toBeNull();
-        // Reset the tagCache mode
-        tagCache.mode = "original";
       });
 
       it("Should return value when cache data type is route", async () => {
@@ -536,10 +545,10 @@ describe("CacheHandler", () => {
     });
 
     it("Should call tagCache.writeTags", async () => {
-      globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+      tagCache.getByTag.mockResolvedValueOnce(["/path"]);
       await cache.revalidateTag("tag");
 
-      expect(globalThis.tagCache.getByTag).toHaveBeenCalledWith("tag");
+      expect(tagCache.getByTag).toHaveBeenCalledWith("tag");
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
       expect(tagCache.writeTags).toHaveBeenCalledWith([
@@ -551,8 +560,8 @@ describe("CacheHandler", () => {
     });
 
     it("Should call invalidateCdnHandler.invalidatePaths", async () => {
-      globalThis.tagCache.getByTag.mockResolvedValueOnce(["/path"]);
-      globalThis.tagCache.getByPath.mockResolvedValueOnce([]);
+      tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+      tagCache.getByPath.mockResolvedValueOnce([]);
       await cache.revalidateTag(`${SOFT_TAG_PREFIX}path`);
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -567,7 +576,7 @@ describe("CacheHandler", () => {
     });
 
     it("Should not call invalidateCdnHandler.invalidatePaths for fetch cache key ", async () => {
-      globalThis.tagCache.getByTag.mockResolvedValueOnce(["123456"]);
+      tagCache.getByTag.mockResolvedValueOnce(["123456"]);
       await cache.revalidateTag("tag");
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -582,7 +591,7 @@ describe("CacheHandler", () => {
     });
 
     it("Should only call writeTags for nextMode", async () => {
-      globalThis.tagCache.mode = "nextMode";
+      tagCache.mode = "nextMode";
       await cache.revalidateTag(["tag1", "tag2"]);
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -591,7 +600,7 @@ describe("CacheHandler", () => {
     });
 
     it("Should not call writeTags when the tag list is empty for nextMode", async () => {
-      globalThis.tagCache.mode = "nextMode";
+      tagCache.mode = "nextMode";
       await cache.revalidateTag([]);
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
@@ -599,10 +608,8 @@ describe("CacheHandler", () => {
     });
 
     it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {
-      globalThis.tagCache.mode = "nextMode";
-      globalThis.tagCache.getPathsByTags = vi
-        .fn()
-        .mockResolvedValueOnce(["/path"]);
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi.fn().mockResolvedValueOnce(["/path"]);
       await cache.revalidateTag("tag");
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -619,8 +626,6 @@ describe("CacheHandler", () => {
           ],
         },
       ]);
-      // Reset the getPathsByTags
-      globalThis.tagCache.getPathsByTags = undefined;
     });
   });
 
@@ -662,7 +667,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should not bypass tag cache validation when shouldBypassTagCache is false", async () => {
-        globalThis.tagCache.mode = "nextMode";
+        tagCache.mode = "nextMode";
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             kind: "FETCH",
@@ -688,7 +693,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should not bypass tag cache validation when shouldBypassTagCache is undefined", async () => {
-        globalThis.tagCache.mode = "nextMode";
+        tagCache.mode = "nextMode";
         tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -762,11 +767,12 @@ describe("CacheHandler", () => {
       });
 
       it("Should not bypass tag cache validation when shouldBypassTagCache is false", async () => {
-        globalThis.tagCache.mode = "nextMode";
+        tagCache.mode = "nextMode";
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "route",
             body: "{}",
+            meta: { headers: { "x-next-cache-tags": "tag" } },
           },
           lastModified: Date.now(),
           shouldBypassTagCache: false,
@@ -780,12 +786,13 @@ describe("CacheHandler", () => {
       });
 
       it("Should return null when tag cache indicates revalidation and shouldBypassTagCache is false", async () => {
-        globalThis.tagCache.mode = "nextMode";
+        tagCache.mode = "nextMode";
         tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "route",
             body: "{}",
+            meta: { headers: { "x-next-cache-tags": "tag" } },
           },
           lastModified: Date.now(),
           shouldBypassTagCache: false,

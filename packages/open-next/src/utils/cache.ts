@@ -23,7 +23,9 @@ export async function hasBeenRevalidated(
   }
   const lastModified = cacheEntry.lastModified ?? Date.now();
   if (globalThis.tagCache.mode === "nextMode") {
-    return await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
+    return tags.length === 0
+      ? false
+      : await globalThis.tagCache.hasBeenRevalidated(tags, lastModified);
   }
   // TODO: refactor this, we should introduce a new method in the tagCache interface so that both implementations use hasBeenRevalidated
   const _lastModified = await globalThis.tagCache.getLastModified(
