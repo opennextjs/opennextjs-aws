@@ -34,10 +34,11 @@ test("Middleware Rewrite External Image", async ({ page }) => {
 });
 
 test("Middleware Rewrite Status Code", async ({ page }) => {
+  // Need to set up the event before navigating to the page to avoid missing it
+  // We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
   page.on("response", async (response) => {
-    // Need to set up the event before navigating to the page to avoid missing it
-    // We need to check the URL here also cause there will be multiple responses (i.e the fonts, css, js, etc)
-    if (response.url() === "/rewrite-status-code") {
+    // `response.url()` will be the full URL including the host, so we need to check the pathname
+    if (new URL(response.url()).pathname === "/rewrite-status-code") {
       expect(response.status()).toBe(403);
     }
   });
