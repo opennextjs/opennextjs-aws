@@ -1,0 +1,38 @@
+name: E2E Local
+description: Runs E2E tests locally with development overrides
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Playwright
+      uses: ./.github/actions/setup-playwright
+      
+    - name: Build examples apps with local configuration
+      shell: bash
+      run: pnpm -r openbuild:local 
+
+    # Remember to add more ports here if we add new examples app
+    - name: Start the local OpenNext servers
+      shell: bash
+      run: |
+        pnpm -r openbuild:local:start &
+        for port in 3001 3002 3003 3004; do
+          echo "Checking port $port..."
+          for attempt in {1..20}; do 
+            sleep 0.5
+            if curl --silent --fail http://localhost:$port > /dev/null; then
+              echo "Server on $port is ready"
+              break
+            fi
+            if [ $attempt -eq 20 ]; then
+              echo "Server on $port failed to start"
+              exit 1
+            fi
+            echo "Waiting for server on $port, attempt $attempt..."
+          done
+        done
+    - name: Run E2E Test locally
+      shell: bash
+      run: |
+        pnpm e2e:test
+
+    ## Do we want to report to Discord?

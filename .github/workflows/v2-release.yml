@@ -16,7 +16,7 @@ jobs:
         with:
           registry-url: "https://registry.npmjs.org"
 
-      - uses: ./.github/actions/pnpm-setup
+      - uses: ./.github/actions/setup
 
       - name: Install dependencies
         run: pnpm install
