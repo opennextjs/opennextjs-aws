@@ -1,5 +1,19 @@
 # open-next
 
+## 3.8.0
+
+### Minor Changes
+
+- [#981](https://github.com/opennextjs/opennextjs-aws/pull/981) [`23ed1df6b887526dc8b573c0ea099b4009b410ec`](https://github.com/opennextjs/opennextjs-aws/commit/23ed1df6b887526dc8b573c0ea099b4009b410ec) Thanks [@dirkdev98](https://github.com/dirkdev98)! - feat: Add option to align with Next.js execution order for headers in middleware and next.config.js
+
+### Patch Changes
+
+- [#974](https://github.com/opennextjs/opennextjs-aws/pull/974) [`e8f0f5d578ccacf909cc9f6e66eadeb0da07a6f2`](https://github.com/opennextjs/opennextjs-aws/commit/e8f0f5d578ccacf909cc9f6e66eadeb0da07a6f2) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure middleware rewrite status code is properly propagated to cache interceptor
+
+- [#988](https://github.com/opennextjs/opennextjs-aws/pull/988) [`4a1174744d871d281e452d46b7bfa276bb1343d5`](https://github.com/opennextjs/opennextjs-aws/commit/4a1174744d871d281e452d46b7bfa276bb1343d5) Thanks [@vicb](https://github.com/vicb)! - fix: bypass next tag cache when there are no tags to check
+
+- [#979](https://github.com/opennextjs/opennextjs-aws/pull/979) [`911ecd248ed4c12971d4f686ac3bb224f31b1b29`](https://github.com/opennextjs/opennextjs-aws/commit/911ecd248ed4c12971d4f686ac3bb224f31b1b29) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(build): Improve regex in copy traced files to skip symbolic links
+
 ## 3.7.7
 
 ### Patch Changes
