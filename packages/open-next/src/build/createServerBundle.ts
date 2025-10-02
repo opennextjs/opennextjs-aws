@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 
+import { createRequire } from "node:module";
 import { loadMiddlewareManifest } from "config/util.js";
 import type { Plugin } from "esbuild";
 import logger from "../logger.js";
@@ -22,6 +23,7 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import * as patches from "./patch/patches/index.js";
+const require = createRequire(import.meta.url);
 
 interface CodeCustomization {
   // These patches are meant to apply on user and next generated code
@@ -194,6 +196,7 @@ async function generateBundle(
     outputDir: outputPath,
     routes: fnOptions.routes ?? ["app/page.tsx"],
     bundledNextServer: isBundled,
+    skipServerFiles: options.config.dangerous?.useAdapterOutputs === true,
   });
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
@@ -250,6 +253,8 @@ async function generateBundle(
     "15.4.0",
   );
 
+  const useAdapterHandler = config.dangerous?.useAdapterOutputs === true;
+
   const disableRouting = isBefore13413 || config.middleware?.external;
 
   const updater = new ContentUpdater(options);
@@ -268,6 +273,7 @@ async function generateBundle(
         ...(isAfter142 ? ["patchAsyncStorage"] : []),
         ...(isAfter141 ? ["appendPrefetch"] : []),
         ...(isAfter154 ? [] : ["setInitialURL"]),
+        ...(useAdapterHandler ? ["useRequestHandler"] : ["useAdapterHandler"]),
       ],
     }),
     openNextReplacementPlugin({
@@ -281,6 +287,8 @@ async function generateBundle(
           : ["stableIncrementalCache"]),
         ...(isAfter152 ? [] : ["composableCache"]),
       ],
+      replacements: [require.resolve("../core/util.adapter.js")],
+      entireFile: useAdapterHandler,
     }),
 
     openNextResolvePlugin({
