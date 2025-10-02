@@ -14,6 +14,7 @@ import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
+import { adapterHandler } from "./routing/adapterHandler";
 import {
   constructNextUrl,
   convertRes,
@@ -208,7 +209,13 @@ export async function openNextHandler(
         options?.streamCreator,
       );
 
+      //#override useAdapterHandler
+      await adapterHandler(req, res, routingResult);
+      //#endOverride
+
+      //#override useRequestHandler
       await processRequest(req, res, routingResult);
+      //#endOverride
 
       const {
         statusCode,
@@ -254,6 +261,7 @@ async function processRequest(
   } else if (routingResult.internalEvent.rawPath === "/404") {
     invokeStatus = 404;
   }
+
   const requestMetadata = {
     isNextDataReq: routingResult.internalEvent.query.__nextDataReq === "1",
     initURL: routingResult.initialURL,
@@ -311,11 +319,12 @@ async function handleNoFallbackError(
     return;
   }
   try {
-    await requestHandler({
-      ...routingResult,
-      invokeOutput: routingResult.resolvedRoutes[index].route,
-      ...metadata,
-    })(req, res);
+    // await requestHandler({
+    //   ...routingResult,
+    //   invokeOutput: routingResult.resolvedRoutes[index].route,
+    //   ...metadata,
+    // })(req, res);
+    console.log("coucou");
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {
       await handleNoFallbackError(req, res, routingResult, metadata, index + 1);
@@ -346,7 +355,7 @@ async function tryRenderError(
       invokeStatus: type === "404" ? 404 : 500,
       middlewareInvoke: false,
     };
-    await requestHandler(requestMetadata)(_req, res);
+    // await requestHandler(requestMetadata)(_req, res);
   } catch (e) {
     error("NextJS request failed.", e);
     res.statusCode = 500;

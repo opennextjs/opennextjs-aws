@@ -109,6 +109,14 @@ export interface DangerousOptions {
    * @default false
    */
   middlewareHeadersOverrideNextConfigHeaders?: boolean;
+
+  /**
+   * Whether to use the outputs from Next.js adapter API.
+   * This is a very experimental feature as it may not be stabilized in Next.js yet.
+   * This will be the default in the future once Next.js adapter API is stabilized.
+   * @default false
+   */
+  useAdapterOutputs?: boolean;
 }
 
 export type BaseOverride = {

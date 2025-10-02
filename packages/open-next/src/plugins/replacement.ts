@@ -10,6 +10,7 @@ export interface IPluginSettings {
   replacements?: string[];
   deletes?: string[];
   name?: string;
+  entireFile?: boolean;
 }
 
 const overridePattern = /\/\/#override (\w+)\n([\s\S]*?)\n\/\/#endOverride/gm;
@@ -47,6 +48,8 @@ const importPattern = /\/\/#import([\s\S]*?)\n\/\/#endImport/gm;
  * @param opts.replacements - list of files used to replace the imports/overrides in the target
  *                          - the path is absolute
  * @param opts.deletes - list of ids to delete from the target
+ * @param opts.entireFile - whether to replace the entire file or just specific blocks.
+ * @param opts.name - name of the plugin
  * @returns
  */
 export function openNextReplacementPlugin({
@@ -54,11 +57,22 @@ export function openNextReplacementPlugin({
   replacements,
   deletes,
   name,
+  entireFile,
 }: IPluginSettings): Plugin {
   return {
     name: name ?? "opennext",
     setup(build) {
       build.onLoad({ filter: target }, async (args) => {
+        if (entireFile) {
+          if (replacements?.length !== 1) {
+            throw new Error(
+              "When using entireFile option, exactly one replacement file must be provided",
+            );
+          }
+          const contents = await readFile(replacements[0], "utf-8");
+          return { contents };
+        }
+
         let contents = await readFile(args.path, "utf-8");
 
         await Promise.all([
