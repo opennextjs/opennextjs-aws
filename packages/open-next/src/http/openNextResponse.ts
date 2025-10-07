@@ -282,6 +282,14 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     return Buffer.concat(this._chunks);
   }
 
+  getBodyLength(): number {
+    let size = 0;
+    for (const chunk of this._chunks) {
+      size += chunk.length;
+    }
+    return size;
+  }
+
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
     this._chunks.push(Buffer.from(chunk, encoding));
     this.push(chunk, encoding);
@@ -310,7 +318,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     globalThis.__openNextAls
       ?.getStore()
       ?.pendingPromiseRunner.add(this.onEnd(this.headers));
-    const bodyLength = this.getBody().length;
+    const bodyLength = this.getBodyLength();
     this.streamCreator?.onFinish?.(bodyLength);
 
     //This is only here because of aws broken streaming implementation.
@@ -366,8 +374,10 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   send() {
-    const body = this.getBody();
-    this.end(body);
+    for (const chunk of this._chunks) {
+      this.write(chunk);
+    }
+    this.end();
   }
 
   body(value: string) {

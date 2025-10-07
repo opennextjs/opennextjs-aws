@@ -51,6 +51,7 @@ function createResponse(res: Partial<Res>) {
     getFixedHeaders: () => res.headers ?? {},
     body: res.body ?? "",
     getBody: () => Buffer.from(res.body ?? ""),
+    _chunks: res.body ? [Buffer.from(res.body)] : [],
   };
 }
 

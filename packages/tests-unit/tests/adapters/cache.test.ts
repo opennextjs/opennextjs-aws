@@ -515,9 +515,9 @@ describe("CacheHandler", () => {
     it("Should not throw when set cache throws", async () => {
       incrementalCache.set.mockRejectedValueOnce(new Error("Error"));
 
-      expect(
-        async () => await cache.set("key", { kind: "REDIRECT", props: {} }),
-      ).not.toThrow();
+      await expect(
+        cache.set("key", { kind: "REDIRECT", props: {} }),
+      ).resolves.not.toThrow();
     });
   });
 
