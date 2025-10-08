@@ -105,14 +105,15 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
   const isBase64Encoded =
     isBinaryContentType(headers["content-type"]) ||
     !!headers["content-encoding"];
+  let index = 0;
   const body = new ReadableStream({
     pull(controller) {
-      if (!res._chunks || res._chunks.length === 0) {
+      if (!res._chunks || index >= res._chunks.length) {
         controller.close();
         return;
       }
 
-      controller.enqueue(res._chunks.shift());
+      controller.enqueue(res._chunks[index++]);
     },
   });
   return {
@@ -217,13 +218,12 @@ export function convertBodyToReadableStream(
 ) {
   if (method === "GET" || method === "HEAD") return undefined;
   if (!body) return undefined;
-  const readable = new ReadableStream({
+  return new ReadableStream({
     start(controller) {
       controller.enqueue(body);
       controller.close();
     },
   });
-  return readable;
 }
 
 enum CommonHeaders {
