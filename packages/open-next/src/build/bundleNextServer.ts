@@ -54,7 +54,7 @@ export async function bundleNextServer(
     entryPoints: [entrypoint],
     bundle: true,
     platform: "node",
-    target: ["node18"],
+    target: ["node20"],
     // packages: "external",
     format: "cjs",
     external: externals,

@@ -5,10 +5,10 @@ runs:
   using: 'composite'
   steps:
     # Install nodejs. https://github.com/actions/setup-node
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v5
       with:
-        node-version: 18.x
+        node-version: 20.x
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4

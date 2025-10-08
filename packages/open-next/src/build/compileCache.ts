@@ -29,7 +29,7 @@ export function compileCache(
       external: ["next", "styled-jsx", "react", "@aws-sdk/*"],
       entryPoints: [path.join(options.openNextDistDir, "adapters", "cache.js")],
       outfile: compiledCacheFile,
-      target: ["node18"],
+      target: ["node20"],
       format,
       banner: {
         js: [
@@ -59,7 +59,7 @@ export function compileCache(
         path.join(options.openNextDistDir, "adapters", "composable-cache.js"),
       ],
       outfile: compiledComposableCacheFile,
-      target: ["node18"],
+      target: ["node20"],
       format,
       banner: {
         js: [
