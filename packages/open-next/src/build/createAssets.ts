@@ -89,7 +89,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
 
   const dotNextPath = path.join(
     appBuildOutputPath,
-    ".next/standalone",
+    options.config.dangerous?.useAdapterOutputs ? "" : ".next/standalone",
     packagePath,
   );
 
