@@ -56,6 +56,18 @@ export interface StreamCreator {
   onWrite?: () => void;
   onFinish?: (length: number) => void;
   abortSignal?: AbortSignal;
+  /**
+   * Normally there is no need to retain the chunks that have been pushed to the response stream.
+   *
+   * However some implementations use a fake `StreamCreator` and expect the chunks to be retained.
+   * When your stream controller implementation doesn't need to retain the chunk, you can set this
+   * to `false` to reduce memory usage.
+   *
+   * @see https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/src/overrides/wrappers/aws-lambda.ts
+   *
+   * @default true for backward compatibility.
+   */
+  retainChunks?: boolean;
 }
 
 export type WaitUntil = (promise: Promise<void>) => void;

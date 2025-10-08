@@ -287,8 +287,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
     const buffer = Buffer.from(chunk, encoding);
     this.bodyLength += buffer.length;
-    if (!this.streamCreator) {
-      // Do not keep chunks around for streamed responses
+    if (this.streamCreator?.retainChunks !== false) {
+      // Avoid keeping chunks around when the `StreamCreator` supports it to save memory
       this._chunks.push(buffer);
     }
     this.push(chunk, encoding);
