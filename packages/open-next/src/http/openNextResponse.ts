@@ -291,7 +291,10 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
-    this._chunks.push(Buffer.from(chunk, encoding));
+    if (!this.streamCreator) {
+      // Do not keep chunks around for streamed responses
+      this._chunks.push(Buffer.from(chunk, encoding));
+    }
     this.push(chunk, encoding);
     this.streamCreator?.onWrite?.();
   }
@@ -314,7 +317,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       this.flushHeaders();
     }
     // In some cases we might not have a store i.e. for example in the image optimization function
-    // We may want to reconsider this in the future, it might be intersting to have access to this store everywhere
+    // We may want to reconsider this in the future, it might be interesting to have access to this store everywhere
     globalThis.__openNextAls
       ?.getStore()
       ?.pendingPromiseRunner.add(this.onEnd(this.headers));
