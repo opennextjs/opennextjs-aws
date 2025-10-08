@@ -105,15 +105,14 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
   const isBase64Encoded =
     isBinaryContentType(headers["content-type"]) ||
     !!headers["content-encoding"];
-  let index = 0;
   const body = new ReadableStream({
     pull(controller) {
-      if (!res._chunks || index >= res._chunks.length) {
+      if (!res._chunks || res._chunks.length === 0) {
         controller.close();
         return;
       }
 
-      controller.enqueue(res._chunks[index++]);
+      controller.enqueue(res._chunks.shift());
     },
   });
   return {
