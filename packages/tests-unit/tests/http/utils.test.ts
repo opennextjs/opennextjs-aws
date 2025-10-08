@@ -1,4 +1,9 @@
-import { parseSetCookieHeader } from "@opennextjs/aws/http/util.js";
+import type http from "node:http";
+
+import {
+  parseHeaders,
+  parseSetCookieHeader,
+} from "@opennextjs/aws/http/util.js";
 
 describe("parseSetCookieHeader", () => {
   it("returns an empty list if cookies is emptyish", () => {
@@ -41,5 +46,23 @@ describe("parseSetCookieHeader", () => {
       "cookie1=value1; HttpOnly; Secure; Path=/",
       "cookie2=value2; HttpOnly=false; Secure=True; Domain=example.com; Path=/api",
     ]);
+  });
+});
+
+describe("parseHeaders", () => {
+  it("parses headers correctly", () => {
+    const headers = parseHeaders({
+      location: ["/target", "/target"],
+      "x-custom-header": "customValue",
+      "x-multiple-values": ["value1", "value2"],
+      "x-undefined-header": undefined,
+      "x-opennext": "is-so-cool",
+    } as unknown as http.OutgoingHttpHeaders);
+    expect(headers).toEqual({
+      location: "/target",
+      "x-custom-header": "customValue",
+      "x-multiple-values": "value1,value2",
+      "x-opennext": "is-so-cool",
+    });
   });
 });

@@ -1,4 +1,5 @@
 import type http from "node:http";
+import logger from "../logger";
 
 export const parseHeaders = (
   headers?: http.OutgoingHttpHeader[] | http.OutgoingHttpHeaders,
@@ -12,7 +13,27 @@ export const parseHeaders = (
     if (value === undefined) {
       continue;
     }
-    result[key.toLowerCase()] = convertHeader(value);
+    const keyLower = key.toLowerCase();
+    /**
+     * Next can return an Array for the Location header when you return null from a get in the cacheHandler on a page that has a redirect()
+     * We dont want to merge that into a comma-separated string
+     * If they are the same just return one of them
+     * Otherwise return the last one
+     * See: https://github.com/opennextjs/opennextjs-cloudflare/issues/875#issuecomment-3258248276
+     * and https://github.com/opennextjs/opennextjs-aws/pull/977#issuecomment-3261763114
+     */
+    if (keyLower === "location" && Array.isArray(value)) {
+      if (value[0] === value[1]) {
+        result[keyLower] = value[0];
+      } else {
+        logger.warn(
+          "Multiple different values for Location header found. Using the last one",
+        );
+        result[keyLower] = value[value.length - 1];
+      }
+      continue;
+    }
+    result[keyLower] = convertHeader(value);
   }
 
   return result;
