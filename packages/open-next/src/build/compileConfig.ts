@@ -89,7 +89,7 @@ export function compileOpenNextConfigNode(
       outfile: outputPath,
       bundle: true,
       format: "esm",
-      target: ["node18"],
+      target: ["node20"],
       external: externals,
       platform: "node",
       banner: {

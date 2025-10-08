@@ -18,7 +18,7 @@ export async function compileTagCacheProvider(
         path.join(options.openNextDistDir, "adapters", "dynamo-provider.js"),
       ],
       outfile: path.join(providerPath, "index.mjs"),
-      target: ["node18"],
+      target: ["node20"],
       plugins: [
         openNextResolvePlugin({
           fnName: "initializationFunction",
