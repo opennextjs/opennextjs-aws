@@ -1,5 +1,20 @@
 # open-next
 
+## 3.8.1
+
+### Patch Changes
+
+- [#992](https://github.com/opennextjs/opennextjs-aws/pull/992) [`6a96ac8ca144720825e9066b2e2d0ab0532bf0f0`](https://github.com/opennextjs/opennextjs-aws/commit/6a96ac8ca144720825e9066b2e2d0ab0532bf0f0) Thanks [@vicb](https://github.com/vicb)! - perf(OpenNextResponse): do not store the chunks for streamed responses
+
+  There is no need to store the chunks for streamed responses.
+  Not storing the chunks allows saving memory.
+
+- [#977](https://github.com/opennextjs/opennextjs-aws/pull/977) [`784fb89d276cf53ebb080874da81f64735795df2`](https://github.com/opennextjs/opennextjs-aws/commit/784fb89d276cf53ebb080874da81f64735795df2) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Avoid merging Location header on response when its an array
+
+- [#991](https://github.com/opennextjs/opennextjs-aws/pull/991) [`c6e0005bf408a43136af30f32d20f9201d54d7e4`](https://github.com/opennextjs/opennextjs-aws/commit/c6e0005bf408a43136af30f32d20f9201d54d7e4) Thanks [@anonrig](https://github.com/anonrig)! - Improves the performance of generating responses
+
+- [#994](https://github.com/opennextjs/opennextjs-aws/pull/994) [`9c9bc1aab393d49f489544e187ca316fd3e02971`](https://github.com/opennextjs/opennextjs-aws/commit/9c9bc1aab393d49f489544e187ca316fd3e02971) Thanks [@vicb](https://github.com/vicb)! - refactor(StreamCreator): allow opting-out of retaining the chunks
+
 ## 3.8.0
 
 ### Minor Changes
