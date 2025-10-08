@@ -106,11 +106,13 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
     isBinaryContentType(headers["content-type"]) ||
     !!headers["content-encoding"];
   const body = new ReadableStream({
-    start(controller) {
-      for (const chunk of res._chunks ?? []) {
-        controller.enqueue(chunk);
+    pull(controller) {
+      if (!res._chunks || res._chunks.length === 0) {
+        controller.close();
+        return;
       }
-      controller.close();
+
+      controller.enqueue(res._chunks.shift());
     },
   });
   return {
