@@ -90,11 +90,11 @@ jobs:
         with:
           version: 9
 
-      - name: Set up NodeJS v20
-        uses: actions/setup-node@v5
+      - name: Set up NodeJS v18
+        uses: actions/setup-node@v4
         with:
           cache: pnpm # cache pnpm store
-          node-version: 20.19.5
+          node-version: 18.18.2
 
       - name: Install packages
         run: pnpm install
