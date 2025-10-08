@@ -23,6 +23,8 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import * as patches from "./patch/patches/index.js";
+import type { NextAdapterOutputs } from "../adapter.js";
+import { copyAdapterFiles } from "./copyAdapterFiles.js";
 const require = createRequire(import.meta.url);
 
 interface CodeCustomization {
@@ -36,6 +38,7 @@ interface CodeCustomization {
 export async function createServerBundle(
   options: buildHelper.BuildOptions,
   codeCustomization?: CodeCustomization,
+  nextOutputs?: NextAdapterOutputs  
 ) {
   const { config } = options;
   const foundRoutes = new Set<string>();
@@ -57,7 +60,7 @@ export async function createServerBundle(
     if (fnOptions.runtime === "edge") {
       await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, options, fnOptions, codeCustomization);
+      await generateBundle(name, options, fnOptions, codeCustomization, nextOutputs);
     }
   });
 
@@ -115,7 +118,7 @@ export async function createServerBundle(
     // @ts-expect-error - Those string are RouteTemplate
     routes: Array.from(remainingRoutes),
     patterns: ["*"],
-  });
+  }, codeCustomization, nextOutputs);
 }
 
 async function generateBundle(
@@ -123,6 +126,7 @@ async function generateBundle(
   options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
   codeCustomization?: CodeCustomization,
+  nextOutputs?: NextAdapterOutputs
 ) {
   const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } =
     options;
@@ -189,15 +193,26 @@ async function generateBundle(
   // Copy env files
   buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
 
+  let tracedFiles: string[] = [];
+  let manifests: any = {};
+
   // Copy all necessary traced files
-  const { tracedFiles, manifests } = await copyTracedFiles({
-    buildOutputPath: appBuildOutputPath,
-    packagePath,
-    outputDir: outputPath,
-    routes: fnOptions.routes ?? ["app/page.tsx"],
-    bundledNextServer: isBundled,
-    skipServerFiles: options.config.dangerous?.useAdapterOutputs === true,
-  });
+  if(config.dangerous?.useAdapterOutputs) {
+    tracedFiles = await copyAdapterFiles(options, name, nextOutputs!);
+    //TODO: we should load manifests here
+  } else {
+    const oldTracedFileOutput = await copyTracedFiles({
+      buildOutputPath: appBuildOutputPath,
+      packagePath,
+      outputDir: outputPath,
+      routes: fnOptions.routes ?? ["app/page.tsx"],
+      bundledNextServer: isBundled,
+      skipServerFiles: options.config.dangerous?.useAdapterOutputs === true,
+    });
+    tracedFiles = oldTracedFileOutput.tracedFiles;
+    manifests = oldTracedFileOutput.manifests;
+  }
+  
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
