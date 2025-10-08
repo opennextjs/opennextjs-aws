@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import type { OutgoingHttpHeaders } from "node:http";
 import { parse as parseQs, stringify as stringifyQs } from "node:querystring";
-import { Readable } from "node:stream";
 
 import { BuildId, HtmlPages, NextConfig } from "config/index.js";
 import type { IncomingMessage } from "http/index.js";
@@ -18,6 +17,7 @@ import type {
   StreamCreator,
 } from "types/open-next.js";
 
+import { ReadableStream } from "node:stream/web";
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
 import { localizePath } from "./i18n/index.js";
@@ -105,9 +105,16 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
   const isBase64Encoded =
     isBinaryContentType(headers["content-type"]) ||
     !!headers["content-encoding"];
-  // We cannot convert the OpenNextNodeResponse to a ReadableStream directly
-  // You can look in the `aws-lambda.ts` file for some context
-  const body = Readable.toWeb(Readable.from(res.getBody()));
+  const body = new ReadableStream({
+    pull(controller) {
+      if (!res._chunks || res._chunks.length === 0) {
+        controller.close();
+        return;
+      }
+
+      controller.enqueue(res._chunks.shift());
+    },
+  });
   return {
     type: "core",
     statusCode,
