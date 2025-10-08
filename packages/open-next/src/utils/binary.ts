@@ -60,7 +60,7 @@ const commonBinaryMimeTypes = new Set([
 ]);
 
 export function isBinaryContentType(contentType?: string | null) {
-  if (contentType == null) return false;
+  if (!contentType) return false;
 
   const value = contentType.split(";").at(0);
   if (value == null) return false;
