@@ -20,10 +20,12 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   statusCode!: number;
   statusMessage = "";
   headers: OutgoingHttpHeaders = {};
-  private _cookies: string[] = [];
-  private responseStream?: Writable;
   headersSent = false;
   _chunks: Buffer[] = [];
+
+  private _cookies: string[] = [];
+  private responseStream?: Writable;
+  private bodyLength = 0;
 
   // To comply with the ServerResponse interface :
   strictContentLength = false;
@@ -282,18 +284,12 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     return Buffer.concat(this._chunks);
   }
 
-  getBodyLength(): number {
-    let size = 0;
-    for (const chunk of this._chunks) {
-      size += chunk.length;
-    }
-    return size;
-  }
-
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
+    const buffer = Buffer.from(chunk, encoding);
+    this.bodyLength += buffer.length;
     if (!this.streamCreator) {
       // Do not keep chunks around for streamed responses
-      this._chunks.push(Buffer.from(chunk, encoding));
+      this._chunks.push(buffer);
     }
     this.push(chunk, encoding);
     this.streamCreator?.onWrite?.();
@@ -321,8 +317,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     globalThis.__openNextAls
       ?.getStore()
       ?.pendingPromiseRunner.add(this.onEnd(this.headers));
-    const bodyLength = this.getBodyLength();
-    this.streamCreator?.onFinish?.(bodyLength);
+    this.streamCreator?.onFinish?.(this.bodyLength);
 
     //This is only here because of aws broken streaming implementation.
     //Hopefully one day they will be able to give us a working streaming implementation in lambda for everyone
@@ -331,7 +326,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     //BE CAREFUL: Aws keeps rolling out broken streaming implementations even on accounts that had working ones before
     //This is not dependent on the node runtime used
     if (
-      bodyLength === 0 &&
+      this.bodyLength === 0 &&
       // We use an env variable here because not all aws account have the same behavior
       // On some aws accounts the response will hang if the body is empty
       // We are modifying the response body here, this is not a good practice
