@@ -70,6 +70,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
       // Ensures that the response we pass to NextServer is aborted if the request is aborted
       // By doing this `request.signal.onabort` will work in route handlers
       abortSignal: abortSignal,
+      // There is no need to retain the chunks that were pushed to the response stream.
+      retainChunks: false,
     };
 
     ctx.waitUntil(
