@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 
 import logger from "../logger.js";
@@ -112,12 +113,17 @@ export async function createImageOptimizationBundle(
 
   const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
 
+  // In development, we want to use the local machine settings
+  const isDev = config.imageOptimization?.loader === "fs-dev";
+
   installDependencies(
     outputPath,
     config.imageOptimization?.install ?? {
       packages: [`sharp@${sharpVersion}`],
-      // By not specifying an arch, `npm install` will choose one for us (i.e. our system one)
-      arch: config.imageOptimization?.loader === "fs-dev" ? undefined : "arm64",
+      // By not specifying an arch in dev, `npm install` will choose one for us (i.e. our system one)
+      arch: isDev ? undefined : "arm64",
+      // Use the local platform in dev
+      os: isDev ? os.platform() : "linux",
       nodeVersion: "18",
       libc: "glibc",
     },

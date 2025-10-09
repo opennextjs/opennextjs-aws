@@ -98,7 +98,28 @@ To run `OpenNext` locally:
 
 There is also a way to run OpenNext locally. You can read a guide about it [here](https://opennext.js.org/aws/contribute/local_run). Its mostly used for development/debugging purposes.
 
-### Coldstart
+## Testing
+
+You can run unit tests with
+
+```bash
+pnpm test
+```
+
+You can tun e2e locally with:
+
+```bash
+pnpm -r openbuild:local
+pnpm -r openbuild:local:start
+```
+
+And in a different shell:
+
+```bash
+pnpm e2e:test
+```
+
+## Coldstart
 
 OpenNext provide you with a warmer function that can be used to reduce cold start.
 

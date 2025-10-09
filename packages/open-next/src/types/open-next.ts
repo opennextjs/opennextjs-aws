@@ -296,18 +296,15 @@ export interface InstallOptions {
    * ```
    */
   packages: string[];
-  /**
-   * @default undefined
-   */
+  /** @default undefined */
   arch?: "x64" | "arm64";
-  /**
-   * @default undefined
-   */
+  /** @default undefined */
   nodeVersion?: string;
-  /**
-   * @default undefined
-   */
+  /** @default undefined */
   libc?: "glibc" | "musl";
+  /** @default "linux" */
+  os?: string;
+
   /**
    * @default undefined
    * Additional arguments to pass to the install command (i.e. npm install)
