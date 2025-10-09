@@ -1,20 +1,21 @@
-name: Install & setup pnpm
-description: Install's node, pnpm, restores cache
+name: Install & setup
+description: Install's node, pnpm, restores cache, and then installs dependencies
 
 runs:
   using: 'composite'
   steps:
-    # Install nodejs. https://github.com/actions/setup-node
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18.x
-
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
       with:
         version: 9
         # run_install: false
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.19.4
+        cache: "pnpm"
+        registry-url: "https://registry.npmjs.org"
 
     # Get pnpm store path so we can cache it
     - name: Get pnpm store directory
@@ -29,3 +30,7 @@ runs:
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
+          
+    - name: Install dependencies
+      run: pnpm install
+      shell: bash

@@ -34,9 +34,10 @@ export function installDependencies(
     const libcOption = installOptions.libc
       ? `--libc=${installOptions.libc}`
       : "";
+    const osOption = installOptions.os ? `--os=${installOptions.os}` : "linux";
 
     const additionalArgs = installOptions.additionalArgs ?? "";
-    const installCommand = `npm install --os=linux ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
+    const installCommand = `npm install ${osOption} ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
     execSync(installCommand, {
       stdio: "pipe",
       cwd: tempInstallDir,
