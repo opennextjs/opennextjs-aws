@@ -86,8 +86,8 @@ function getStaticAPIRoutes(): RouteDefinition[] {
   const appPathsStaticAPIRoutes = Object.values(AppPathRoutesManifest)
     .filter(
       (route) =>
-        route.startsWith("/api/") ||
-        (route === "/api" && !dynamicRoutePages.has(route)),
+        (route.startsWith("/api/") || route === "/api") &&
+        !dynamicRoutePages.has(route),
     )
     .map(createRouteDefinition);
 
