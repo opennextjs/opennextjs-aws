@@ -14,6 +14,14 @@ import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 const CANNOT_BE_USED = "This cannot be used in OpenNext";
+const ERROR_CACHE_CONTROL_HEADER =
+  "private, no-cache, no-store, max-age=0, must-revalidate";
+
+// Cache environment variable checks at module load time
+const FORCE_NON_EMPTY_RESPONSE =
+  process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true";
+const DANGEROUSLY_SET_ERROR_HEADERS =
+  process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true";
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
@@ -26,6 +34,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   private _cookies: string[] = [];
   private responseStream?: Writable;
   private bodyLength = 0;
+  private _cachedBody?: Buffer;
 
   // To comply with the ServerResponse interface :
   strictContentLength = false;
@@ -103,7 +112,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
 
   get finished() {
     return this.responseStream
-      ? this.responseStream?.writableFinished
+      ? this.responseStream.writableFinished
       : this.writableFinished;
   }
 
@@ -172,13 +181,20 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
               ...this.initialHeaders,
               ...this.headers,
             };
-      const initialCookies = parseSetCookieHeader(
-        this.initialHeaders[SET_COOKIE_HEADER]?.toString(),
-      );
-      this._cookies =
-        mergeHeadersPriority === "middleware"
-          ? [...this._cookies, ...initialCookies]
-          : [...initialCookies, ...this._cookies];
+      // Only parse initial cookies if they exist
+      const initialCookieHeader = this.initialHeaders[SET_COOKIE_HEADER];
+      if (initialCookieHeader) {
+        const initialCookies = parseSetCookieHeader(
+          initialCookieHeader.toString(),
+        );
+        if (initialCookies.length > 0) {
+          if (mergeHeadersPriority === "middleware") {
+            this._cookies.push(...initialCookies);
+          } else {
+            this._cookies.unshift(...initialCookies);
+          }
+        }
+      }
     }
     this.fixHeaders(this.headers);
     this.fixHeadersForError();
@@ -204,15 +220,29 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
 
   appendHeader(name: string, value: string | string[]): this {
     const key = name.toLowerCase();
-    if (!this.hasHeader(key)) {
-      return this.setHeader(key, value);
+    // Special handling for set-cookie header
+    if (key === SET_COOKIE_HEADER) {
+      const toAppend = Array.isArray(value) ? value : [value];
+      this._cookies.push(...toAppend);
+      this.headers[key] = this._cookies;
+      return this;
     }
-    const existingHeader = this.getHeader(key) as string | string[];
+
+    const existingHeader = this.headers[key];
+    if (existingHeader === undefined) {
+      this.headers[key] = value;
+      return this;
+    }
+
+    // Merge headers efficiently
     const toAppend = Array.isArray(value) ? value : [value];
-    const newValue = Array.isArray(existingHeader)
-      ? [...existingHeader, ...toAppend]
-      : [existingHeader, ...toAppend];
-    return this.setHeader(key, newValue);
+    if (Array.isArray(existingHeader)) {
+      existingHeader.push(...toAppend);
+      this.headers[key] = existingHeader;
+    } else {
+      this.headers[key] = [existingHeader as string, ...toAppend];
+    }
+    return this;
   }
 
   // Might be used in next page api routes
@@ -243,26 +273,21 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
         | OutgoingHttpHeader[]
         | undefined;
     }
-    const finalHeaders: OutgoingHttpHeaders = this.headers;
     if (_headers) {
       if (Array.isArray(_headers)) {
         // headers may be an Array where the keys and values are in the same list. It is not a list of tuples. So, the even-numbered offsets are key values, and the odd-numbered offsets are the associated values.
         for (let i = 0; i < _headers.length; i += 2) {
-          finalHeaders[_headers[i] as string] = _headers[i + 1] as
+          this.headers[_headers[i] as string] = _headers[i + 1] as
             | string
             | string[];
         }
       } else {
-        for (const key of Object.keys(_headers)) {
-          finalHeaders[key] = _headers[key];
-        }
+        // Use Object.assign for better performance with plain objects
+        Object.assign(this.headers, _headers);
       }
     }
 
     this.statusCode = statusCode as number;
-    if (headers) {
-      this.headers = finalHeaders;
-    }
     this.flushHeaders();
     return this;
   }
@@ -281,7 +306,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   getBody() {
-    return Buffer.concat(this._chunks);
+    this._cachedBody ??= Buffer.concat(this._chunks);
+    return this._cachedBody;
   }
 
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
@@ -290,6 +316,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     if (this.streamCreator?.retainChunks !== false) {
       // Avoid keeping chunks around when the `StreamCreator` supports it to save memory
       this._chunks.push(buffer);
+      // Invalidate cached body when new chunks are added
+      this._cachedBody = undefined;
     }
     this.push(chunk, encoding);
     this.streamCreator?.onWrite?.();
@@ -325,13 +353,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     //If not you can set the OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE env variable to true
     //BE CAREFUL: Aws keeps rolling out broken streaming implementations even on accounts that had working ones before
     //This is not dependent on the node runtime used
-    if (
-      this.bodyLength === 0 &&
-      // We use an env variable here because not all aws account have the same behavior
-      // On some aws accounts the response will hang if the body is empty
-      // We are modifying the response body here, this is not a good practice
-      process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true"
-    ) {
+    if (this.bodyLength === 0 && FORCE_NON_EMPTY_RESPONSE) {
       debug('Force writing "SOMETHING" to the response body');
       this.push("SOMETHING");
     }
@@ -404,7 +426,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   // For some reason, next returns the 500 error page with some cache-control headers
   // We need to fix that
   private fixHeadersForError() {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
+    if (DANGEROUSLY_SET_ERROR_HEADERS) {
       return;
     }
     // We only check for 404 and 500 errors
@@ -412,8 +434,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     if (this.statusCode === 404 || this.statusCode === 500) {
       // For some reason calling this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate") does not work here
       // The function is not even called, i'm probably missing something obvious
-      this.headers["cache-control"] =
-        "private, no-cache, no-store, max-age=0, must-revalidate";
+      this.headers["cache-control"] = ERROR_CACHE_CONTROL_HEADER;
     }
   }
 }
