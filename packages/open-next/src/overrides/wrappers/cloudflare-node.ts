@@ -97,7 +97,7 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
               try {
                 controller.close();
               } catch {
-                // Ignore "This ReadableStream is closed"
+                // Ignore "This ReadableStream is closed" error
               }
             }
             callback(error);
