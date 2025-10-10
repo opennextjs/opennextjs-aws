@@ -52,19 +52,53 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           responseHeaders.set("Content-Encoding", "identity");
         }
 
-        const { readable, writable } = new TransformStream({
-          transform(chunk, controller) {
-            controller.enqueue(Uint8Array.from(chunk.chunk ?? chunk));
+        // Optimize: skip ReadableStream creation for null body statuses
+        if (NULL_BODY_STATUSES.has(statusCode)) {
+          const response = new Response(null, {
+            status: statusCode,
+            headers: responseHeaders,
+          });
+          resolveResponse(response);
+
+          // Return a no-op Writable that discards all data
+          return new Writable({
+            write(chunk, encoding, callback) {
+              callback();
+            },
+          });
+        }
+
+        let controller: ReadableStreamDefaultController<Uint8Array>;
+        const readable = new ReadableStream({
+          start(c) {
+            controller = c;
           },
         });
-        const body = NULL_BODY_STATUSES.has(statusCode) ? null : readable;
-        const response = new Response(body, {
+
+        const response = new Response(readable, {
           status: statusCode,
           headers: responseHeaders,
         });
         resolveResponse(response);
 
-        return Writable.fromWeb(writable);
+        return new Writable({
+          write(chunk, encoding, callback) {
+            controller.enqueue(chunk);
+            callback();
+          },
+          final(callback) {
+            controller.close();
+            callback();
+          },
+          destroy(error, callback) {
+            if (error) {
+              controller.error(error);
+            } else {
+              controller.close();
+            }
+            callback(error);
+          },
+        });
       },
       // This is for passing along the original abort signal from the initial Request you retrieve in your worker
       // Ensures that the response we pass to NextServer is aborted if the request is aborted
