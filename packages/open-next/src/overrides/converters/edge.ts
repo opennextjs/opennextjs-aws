@@ -24,8 +24,6 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
 
     const searchParams = url.searchParams;
     const query = getQueryFromSearchParams(searchParams);
-    // Transform body into Buffer
-    const body = await event.arrayBuffer();
     const headers: Record<string, string> = {};
     event.headers.forEach((value, key) => {
       headers[key] = value;
@@ -33,6 +31,11 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
     const rawPath = url.pathname;
     const method = event.method;
     const shouldHaveBody = method !== "GET" && method !== "HEAD";
+
+    // Only read body for methods that should have one
+    const body = shouldHaveBody
+      ? Buffer.from(await event.arrayBuffer())
+      : undefined;
 
     const cookieHeader = event.headers.get("cookie");
     const cookies = cookieHeader
@@ -44,7 +47,7 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       method,
       rawPath,
       url: event.url,
-      body: shouldHaveBody ? Buffer.from(body) : undefined,
+      body,
       headers,
       remoteAddress: event.headers.get("x-forwarded-for") ?? "::1",
       query,

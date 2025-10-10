@@ -150,6 +150,7 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
  * @__PURE__
  */
 export function convertToQuery(querystring: string) {
+  if (!querystring) return {};
   const query = new URLSearchParams(querystring);
   const queryObject: Record<string, string[] | string> = {};
 
