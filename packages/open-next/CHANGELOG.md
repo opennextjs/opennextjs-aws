@@ -1,5 +1,15 @@
 # open-next
 
+## 3.8.2
+
+### Patch Changes
+
+- [#999](https://github.com/opennextjs/opennextjs-aws/pull/999) [`549d6a73c6da5aed87ab397ac59ab90c300a3fbb`](https://github.com/opennextjs/opennextjs-aws/commit/549d6a73c6da5aed87ab397ac59ab90c300a3fbb) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure os is prefixed in install deps
+
+- [#996](https://github.com/opennextjs/opennextjs-aws/pull/996) [`5f3dc4b4967879c93ee8f7d7af378d1528e346aa`](https://github.com/opennextjs/opennextjs-aws/commit/5f3dc4b4967879c93ee8f7d7af378d1528e346aa) Thanks [@anonrig](https://github.com/anonrig)! - Reduces allocations and copies of streams
+
+- [#985](https://github.com/opennextjs/opennextjs-aws/pull/985) [`9018704457345782c372d1390372e40b07c1f35c`](https://github.com/opennextjs/opennextjs-aws/commit/9018704457345782c372d1390372e40b07c1f35c) Thanks [@niklaswallerstedt](https://github.com/niklaswallerstedt)! - Update npm install command to use --os flag
+
 ## 3.8.1
 
 ### Patch Changes
