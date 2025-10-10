@@ -20,13 +20,9 @@ export async function fromReadableStream(
     return Buffer.from(chunks[0]).toString(base64 ? "base64" : "utf8");
   }
 
-  // Pre-allocate buffer with exact size to avoid reallocation
-  const buffer = Buffer.alloc(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    buffer.set(chunk, offset);
-    offset += chunk.length;
-  }
+  // Use Buffer.concat which is more efficient than manual allocation and copy
+  // It handles the allocation and copy in optimized native code
+  const buffer = Buffer.concat(chunks, totalLength);
 
   return buffer.toString(base64 ? "base64" : "utf8");
 }
