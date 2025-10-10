@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-Improve Cloudflare readable/writable streaming performance
+perf(cloudflare): optimize readable/writable piping
