@@ -1,5 +1,17 @@
 # open-next
 
+## 3.8.3
+
+### Patch Changes
+
+- [#1009](https://github.com/opennextjs/opennextjs-aws/pull/1009) [`e8f5e6671eff5ee855ef5caa20da36cfd275a9d6`](https://github.com/opennextjs/opennextjs-aws/commit/e8f5e6671eff5ee855ef5caa20da36cfd275a9d6) Thanks [@anonrig](https://github.com/anonrig)! - perf(OriginResolver): cache expensive compute
+
+- [#1006](https://github.com/opennextjs/opennextjs-aws/pull/1006) [`7c452dd0366ac941b3d0d44c498816dbb7f84bba`](https://github.com/opennextjs/opennextjs-aws/commit/7c452dd0366ac941b3d0d44c498816dbb7f84bba) Thanks [@anonrig](https://github.com/anonrig)! - perf(converters): Improve performance
+
+- [#1001](https://github.com/opennextjs/opennextjs-aws/pull/1001) [`8dd43ee07b75b102a47e1f9f62b005b5a0e54e7b`](https://github.com/opennextjs/opennextjs-aws/commit/8dd43ee07b75b102a47e1f9f62b005b5a0e54e7b) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix: Ensure dynamic routes are excluded in getStaticAPIRoutes
+
+- [#1005](https://github.com/opennextjs/opennextjs-aws/pull/1005) [`a980447ed566b652cf942b428f4c986aab1a15a6`](https://github.com/opennextjs/opennextjs-aws/commit/a980447ed566b652cf942b428f4c986aab1a15a6) Thanks [@anonrig](https://github.com/anonrig)! - perf(cloudflare): optimize readable/writable piping
+
 ## 3.8.2
 
 ### Patch Changes
