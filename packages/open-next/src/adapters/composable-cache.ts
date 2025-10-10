@@ -1,9 +1,15 @@
-import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
+import type {
+  ComposableCacheEntry,
+  ComposableCacheHandler,
+  StoredComposableCacheEntry,
+} from "types/cache";
 import { writeTags } from "utils/cache";
-import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
-const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
+const pendingWritePromiseMap = new Map<
+  string,
+  Promise<StoredComposableCacheEntry>
+>();
 
 export default {
   async get(cacheKey: string) {
@@ -11,7 +17,12 @@ export default {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
       const stored = pendingWritePromiseMap.get(cacheKey);
-      if (stored) return stored;
+      if (stored) {
+        return stored.then((val) => ({
+          ...val,
+          value: val.value.stream(),
+        }));
+      }
 
       const result = await globalThis.incrementalCache.get(
         cacheKey,
@@ -50,7 +61,7 @@ export default {
 
       return {
         ...result.value,
-        value: toReadableStream(result.value.value),
+        value: result.value.value.stream(),
       };
     } catch (e) {
       debug("Cannot read composable cache entry");
@@ -59,39 +70,36 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const teedPromise = pendingEntry.then((entry) => {
-      // Optimization: We avoid consuming and stringifying the stream here,
-      // because it creates double copies just to be discarded when this function
-      // ends. This avoids unnecessary memory usage, and reduces GC pressure.
-      const [stream1, stream2] = entry.value.tee();
-      return [
-        { ...entry, value: stream1 },
-        { ...entry, value: stream2 },
-      ] as const;
+    // Convert ReadableStream to Blob first
+    const blobPromise = pendingEntry.then(async (entry) => {
+      const reader = entry.value.getReader();
+      const chunks: Uint8Array[] = [];
+      let result: ReadableStreamReadResult<Uint8Array>;
+      while (!(result = await reader.read()).done) {
+        chunks.push(result.value);
+      }
+      reader.releaseLock();
+      return { ...entry, value: new Blob(chunks) };
     });
 
-    pendingWritePromiseMap.set(
-      cacheKey,
-      teedPromise.then(([entry]) => entry),
-    );
+    // Store a stream from the blob in the pending map for concurrent get() calls
+    pendingWritePromiseMap.set(cacheKey, blobPromise);
 
-    const [, entryForStorage] = await teedPromise.finally(() => {
-      pendingWritePromiseMap.delete(cacheKey);
-    });
+    const entryWithBlob = await blobPromise;
 
     await globalThis.incrementalCache.set(
       cacheKey,
-      {
-        ...entryForStorage,
-        value: await fromReadableStream(entryForStorage.value),
-      },
+      entryWithBlob,
       "composable",
     );
+
+    // Delete from pending map only after the write is complete
+    pendingWritePromiseMap.delete(cacheKey);
 
     if (globalThis.tagCache.mode === "original") {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
       const tagsToWrite = [];
-      for (const tag of entryForStorage.tags) {
+      for (const tag of entryWithBlob.tags) {
         if (!storedTags.includes(tag)) {
           tagsToWrite.push({ tag, path: cacheKey });
         }

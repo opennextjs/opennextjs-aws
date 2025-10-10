@@ -1,8 +1,4 @@
 import ComposableCache from "@opennextjs/aws/adapters/composable-cache";
-import {
-  fromReadableStream,
-  toReadableStream,
-} from "@opennextjs/aws/utils/stream";
 import { vi } from "vitest";
 
 describe("Composable cache handler", () => {
@@ -19,7 +15,7 @@ describe("Composable cache handler", () => {
         timestamp: Date.now(),
         expire: Date.now() + 1000,
         revalidate: 3600,
-        value: "test-value",
+        value: new Blob(["test-value"]),
       },
       lastModified: Date.now(),
     }),
@@ -132,7 +128,7 @@ describe("Composable cache handler", () => {
           type: "route",
           body: "{}",
           tags: [],
-          value: "test-value",
+          value: new Blob(["test-value"]),
         },
         lastModified: Date.now(),
       });
@@ -185,7 +181,7 @@ describe("Composable cache handler", () => {
 
     it("should return pending write promise if available", async () => {
       const pendingEntry = Promise.resolve({
-        value: toReadableStream("pending-value"),
+        value: new Blob(["pending-value"]).stream(),
         tags: ["tag1"],
         stale: 0,
         timestamp: Date.now(),
@@ -214,8 +210,9 @@ describe("Composable cache handler", () => {
 
     it("should set cache entry and handle tags in original mode", async () => {
       tagCache.mode = "original";
+      const blob = new Blob(["test-value"]);
       const entry = {
-        value: toReadableStream("test-value"),
+        value: blob.stream(),
         tags: ["tag1", "tag2"],
         stale: 0,
         timestamp: Date.now(),
@@ -229,7 +226,7 @@ describe("Composable cache handler", () => {
         "test-key",
         expect.objectContaining({
           tags: ["tag1", "tag2"],
-          value: "test-value",
+          value: expect.any(Blob),
         }),
         "composable",
       );
@@ -241,7 +238,7 @@ describe("Composable cache handler", () => {
       tagCache.getByPath.mockResolvedValueOnce(["tag1"]);
 
       const entry = {
-        value: toReadableStream("test-value"),
+        value: new Blob(["test-value"]).stream(),
         tags: ["tag1", "tag2", "tag3"],
         stale: 0,
         timestamp: Date.now(),
@@ -262,7 +259,7 @@ describe("Composable cache handler", () => {
       tagCache.getByPath.mockResolvedValueOnce(["tag1", "tag2"]);
 
       const entry = {
-        value: toReadableStream("test-value"),
+        value: new Blob(["test-value"]).stream(),
         tags: ["tag1", "tag2"],
         stale: 0,
         timestamp: Date.now(),
@@ -279,7 +276,7 @@ describe("Composable cache handler", () => {
       tagCache.mode = "nextMode";
 
       const entry = {
-        value: toReadableStream("test-value"),
+        value: new Blob(["test-value"]).stream(),
         tags: ["tag1", "tag2"],
         stale: 0,
         timestamp: Date.now(),
@@ -293,9 +290,10 @@ describe("Composable cache handler", () => {
       expect(tagCache.writeTags).not.toHaveBeenCalled();
     });
 
-    it("should convert ReadableStream to string", async () => {
+    it("should store Blob directly", async () => {
+      const blob = new Blob(["test-content"]);
       const entry = {
-        value: toReadableStream("test-content"),
+        value: blob.stream(),
         tags: ["tag1"],
         stale: 0,
         timestamp: Date.now(),
@@ -308,7 +306,7 @@ describe("Composable cache handler", () => {
       expect(incrementalCache.set).toHaveBeenCalledWith(
         "test-key",
         expect.objectContaining({
-          value: "test-content",
+          value: expect.any(Blob),
         }),
         "composable",
       );
@@ -437,8 +435,9 @@ describe("Composable cache handler", () => {
   describe("integration tests", () => {
     it("should handle complete cache lifecycle", async () => {
       // Set a cache entry
+      const blob = new Blob(["integration-test"]);
       const entry = {
-        value: toReadableStream("integration-test"),
+        value: blob.stream(),
         tags: ["integration-tag"],
         stale: 0,
         timestamp: Date.now(),
@@ -452,7 +451,7 @@ describe("Composable cache handler", () => {
       expect(incrementalCache.set).toHaveBeenCalledWith(
         "integration-key",
         expect.objectContaining({
-          value: "integration-test",
+          value: expect.any(Blob),
           tags: ["integration-tag"],
         }),
         "composable",
@@ -462,7 +461,7 @@ describe("Composable cache handler", () => {
       incrementalCache.get.mockResolvedValueOnce({
         value: {
           ...entry,
-          value: "integration-test",
+          value: blob,
         },
         lastModified: Date.now(),
       });
@@ -474,13 +473,21 @@ describe("Composable cache handler", () => {
       expect(result?.tags).toEqual(["integration-tag"]);
 
       // Convert the stream back to verify content
-      const content = await fromReadableStream(result!.value);
+      const reader = result!.value.getReader();
+      const chunks: Uint8Array[] = [];
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      while (!(readResult = await reader.read()).done) {
+        chunks.push(readResult.value);
+      }
+      const content = new TextDecoder().decode(
+        new Uint8Array(chunks.flatMap((c) => Array.from(c))),
+      );
       expect(content).toBe("integration-test");
     });
 
     it("should handle concurrent get/set operations", async () => {
       const entry1 = {
-        value: toReadableStream("concurrent-1"),
+        value: new Blob(["concurrent-1"]).stream(),
         tags: ["tag1"],
         stale: 0,
         timestamp: Date.now(),
@@ -489,7 +496,7 @@ describe("Composable cache handler", () => {
       };
 
       const entry2 = {
-        value: toReadableStream("concurrent-2"),
+        value: new Blob(["concurrent-2"]).stream(),
         tags: ["tag2"],
         stale: 0,
         timestamp: Date.now(),
@@ -513,10 +520,28 @@ describe("Composable cache handler", () => {
       expect(results[2]).toBeDefined();
       expect(results[3]).toBeDefined();
 
-      const content1 = await fromReadableStream(results[2]!.value);
+      // Convert stream 1 to text
+      const reader1 = results[2]!.value.getReader();
+      const chunks1: Uint8Array[] = [];
+      let readResult1: ReadableStreamReadResult<Uint8Array>;
+      while (!(readResult1 = await reader1.read()).done) {
+        chunks1.push(readResult1.value);
+      }
+      const content1 = new TextDecoder().decode(
+        new Uint8Array(chunks1.flatMap((c) => Array.from(c))),
+      );
       expect(content1).toBe("concurrent-1");
 
-      const content2 = await fromReadableStream(results[3]!.value);
+      // Convert stream 2 to text
+      const reader2 = results[3]!.value.getReader();
+      const chunks2: Uint8Array[] = [];
+      let readResult2: ReadableStreamReadResult<Uint8Array>;
+      while (!(readResult2 = await reader2.read()).done) {
+        chunks2.push(readResult2.value);
+      }
+      const content2 = new TextDecoder().decode(
+        new Uint8Array(chunks2.flatMap((c) => Array.from(c))),
+      );
       expect(content2).toBe("concurrent-2");
     });
   });
