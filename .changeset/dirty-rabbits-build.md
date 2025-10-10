@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-Improve performance of converters used by all adapters
+perf(converters): Improve performance
