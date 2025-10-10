@@ -8,28 +8,12 @@ import { extractHostFromHeaders, getQueryFromSearchParams } from "./utils.js";
 const converter: Converter = {
   convertFrom: async (req: IncomingMessage & { protocol?: string }) => {
     const body = await new Promise<Buffer>((resolve) => {
-      const contentLength = req.headers["content-length"];
-      const expectedLength = contentLength
-        ? Number.parseInt(contentLength, 10)
-        : undefined;
       const chunks: Uint8Array[] = [];
-      let receivedLength = 0;
-
       req.on("data", (chunk) => {
         chunks.push(chunk);
-        receivedLength += chunk.length;
       });
       req.on("end", () => {
-        // Use pre-allocated buffer if we have content-length and it matches
-        if (
-          expectedLength &&
-          receivedLength === expectedLength &&
-          chunks.length === 1
-        ) {
-          resolve(Buffer.from(chunks[0]));
-        } else {
-          resolve(Buffer.concat(chunks));
-        }
+        resolve(Buffer.concat(chunks));
       });
     });
 
