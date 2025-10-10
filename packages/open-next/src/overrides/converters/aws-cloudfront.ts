@@ -70,9 +70,10 @@ function normalizeCloudFrontRequestEventHeaders(
   const headers: Record<string, string> = {};
 
   for (const [key, values] of Object.entries(rawHeaders)) {
+    const lowerKey = key.toLowerCase();
     for (const { value } of values) {
       if (value) {
-        headers[key.toLowerCase()] = value;
+        headers[lowerKey] = value;
       }
     }
   }

@@ -64,8 +64,10 @@ function normalizeAPIGatewayProxyEventV2Headers(
     headers.cookie = cookies.join("; ");
   }
 
-  for (const [key, value] of Object.entries(rawHeaders || {})) {
-    headers[key.toLowerCase()] = value!;
+  if (rawHeaders) {
+    for (const [key, value] of Object.entries(rawHeaders)) {
+      headers[key.toLowerCase()] = value!;
+    }
   }
 
   return headers;
