@@ -152,7 +152,14 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
 export function convertToQuery(querystring: string) {
   if (!querystring) return {};
   const query = new URLSearchParams(querystring);
-  return getQueryFromIterator(query.entries());
+ const queryObject: Record<string, string[] | string> = {};
+
+  for (const key of query.keys()) {
+    const queries = query.getAll(key);
+    queryObject[key] = queries.length > 1 ? queries : queries[0];
+  }
+
+  return queryObject;
 }
 
 /**
