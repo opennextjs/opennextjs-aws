@@ -18,9 +18,6 @@ jobs:
 
       - uses: ./.github/actions/setup
 
-      - name: Install dependencies
-        run: pnpm install
-
       - name: Publish Pre-release to npm
         run: pnpm release-v2
         env:
