@@ -3,8 +3,8 @@ import type { OriginResolver } from "types/overrides";
 
 import { debug, error } from "../../adapters/logger";
 
-// Cache parsed origin and compiled patterns at module level
-let cachedOrigin: Record<string, Origin> | null = null;
+// Cache parsed origins and compiled patterns at module level
+let cachedOrigins: Record<string, Origin>;
 const cachedPatterns: Array<{
   key: string;
   patterns: string[];
@@ -12,11 +12,14 @@ const cachedPatterns: Array<{
 }> = [];
 let initialized = false;
 
-function initialize() {
+/**
+ * Initializes the cached values on the first execution
+ */
+function initializeOnce(): void {
   if (initialized) return;
 
   // Parse origin JSON once
-  cachedOrigin = JSON.parse(process.env.OPEN_NEXT_ORIGIN ?? "{}") as Record<
+  cachedOrigins = JSON.parse(process.env.OPEN_NEXT_ORIGIN ?? "{}") as Record<
     string,
     Origin
   >;
@@ -53,28 +56,25 @@ const envLoader: OriginResolver = {
   name: "env",
   resolve: async (_path: string) => {
     try {
-      initialize();
-
-      // Use cached origin
-      const origin = cachedOrigin!;
+      initializeOnce();
 
       // Test against pre-compiled patterns
       for (const { key, patterns, regexes } of cachedPatterns) {
         for (const regex of regexes) {
           if (regex.test(_path)) {
             debug("Using origin", key, patterns);
-            return origin[key];
+            return cachedOrigins[key];
           }
         }
       }
 
-      if (_path.startsWith("/_next/image") && origin.imageOptimizer) {
+      if (_path.startsWith("/_next/image") && cachedOrigins.imageOptimizer) {
         debug("Using origin", "imageOptimizer", _path);
-        return origin.imageOptimizer;
+        return cachedOrigins.imageOptimizer;
       }
-      if (origin.default) {
-        debug("Using default origin", origin.default, _path);
-        return origin.default;
+      if (cachedOrigins.default) {
+        debug("Using default origin", cachedOrigins.default, _path);
+        return cachedOrigins.default;
       }
       return false as const;
     } catch (e) {
