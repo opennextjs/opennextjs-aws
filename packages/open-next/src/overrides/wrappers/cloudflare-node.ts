@@ -41,22 +41,19 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
       }): Writable {
         const { statusCode, cookies, headers } = prelude;
 
-        const responseHeaders = new Headers(headers);
-        for (const cookie of cookies) {
-          responseHeaders.append("Set-Cookie", cookie);
-        }
+        headers["set-cookie"] = cookies.join(",");
 
         // TODO(vicb): this is a workaround to make PPR work with `wrangler dev`
         // See https://github.com/cloudflare/workers-sdk/issues/8004
         if (url.hostname === "localhost") {
-          responseHeaders.set("Content-Encoding", "identity");
+          headers["content-encoding"] = "identity";
         }
 
         // Optimize: skip ReadableStream creation for null body statuses
         if (NULL_BODY_STATUSES.has(statusCode)) {
           const response = new Response(null, {
             status: statusCode,
-            headers: responseHeaders,
+            headers,
           });
           resolveResponse(response);
 
@@ -77,7 +74,7 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
 
         const response = new Response(readable, {
           status: statusCode,
-          headers: responseHeaders,
+          headers,
         });
         resolveResponse(response);
 
