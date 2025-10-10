@@ -1,28 +1,18 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import type { CacheValue } from "types/overrides";
 import { writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
-const pendingWritePromiseMap = new Map<
-  string,
-  Promise<CacheValue<"composable">>
->();
+const pendingWritePromiseMap = new Map<string, Promise<ComposableCacheEntry>>();
 
 export default {
   async get(cacheKey: string) {
     try {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
-      if (pendingWritePromiseMap.has(cacheKey)) {
-        const stored = pendingWritePromiseMap.get(cacheKey);
-        if (stored) {
-          return stored.then((entry) => ({
-            ...entry,
-            value: toReadableStream(entry.value),
-          }));
-        }
-      }
+      const stored = pendingWritePromiseMap.get(cacheKey);
+      if (stored) return stored;
+
       const result = await globalThis.incrementalCache.get(
         cacheKey,
         "composable",
@@ -69,28 +59,45 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const promiseEntry = pendingEntry.then(async (entry) => ({
-      ...entry,
-      value: await fromReadableStream(entry.value),
-    }));
-    pendingWritePromiseMap.set(cacheKey, promiseEntry);
+    const teedPromise = pendingEntry.then((entry) => {
+      // Optimization: We avoid consuming and stringifying the stream here,
+      // because it creates double copies just to be discarded when this function
+      // ends. This avoids unnecessary memory usage, and reduces GC pressure.
+      const [stream1, stream2] = entry.value.tee();
+      return [
+        { ...entry, value: stream1 },
+        { ...entry, value: stream2 },
+      ] as const;
+    });
 
-    const entry = await promiseEntry.finally(() => {
+    pendingWritePromiseMap.set(
+      cacheKey,
+      teedPromise.then(([entry]) => entry),
+    );
+
+    const [, entryForStorage] = await teedPromise.finally(() => {
       pendingWritePromiseMap.delete(cacheKey);
     });
+
     await globalThis.incrementalCache.set(
       cacheKey,
       {
-        ...entry,
-        value: entry.value,
+        ...entryForStorage,
+        value: await fromReadableStream(entryForStorage.value),
       },
       "composable",
     );
+
     if (globalThis.tagCache.mode === "original") {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
-      const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
+      const tagsToWrite = [];
+      for (const tag of entryForStorage.tags) {
+        if (!storedTags.includes(tag)) {
+          tagsToWrite.push({ tag, path: cacheKey });
+        }
+      }
       if (tagsToWrite.length > 0) {
-        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
+        await writeTags(tagsToWrite);
       }
     }
   },
@@ -125,17 +132,14 @@ export default {
         }));
       }),
     );
-    // We need to deduplicate paths, we use a set for that
-    const setToWrite = new Set<{ path: string; tag: string }>();
+
+    const dedupeMap = new Map();
     for (const entry of pathsToUpdate.flat()) {
-      setToWrite.add(entry);
+      dedupeMap.set(`${entry.path}|${entry.tag}`, entry);
     }
-    await writeTags(Array.from(setToWrite));
+    await writeTags(Array.from(dedupeMap.values()));
   },
 
   // This one is necessary for older versions of next
-  async receiveExpiredTags(...tags: string[]) {
-    // This function does absolutely nothing
-    return;
-  },
+  async receiveExpiredTags() {},
 } satisfies ComposableCacheHandler;
