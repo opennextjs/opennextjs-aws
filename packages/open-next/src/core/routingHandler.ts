@@ -93,7 +93,8 @@ export default async function routingHandler(
         key.startsWith(INTERNAL_HEADER_PREFIX) ||
         key.startsWith(MIDDLEWARE_HEADER_PREFIX)
       ) {
-        delete event.headers[key];
+        // @ts-expect-error Assigning undefined is faster than deleting the attribute.
+        event.headers[key] = undefined;
       }
     }
 

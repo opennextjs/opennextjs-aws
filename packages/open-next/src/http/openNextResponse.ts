@@ -128,7 +128,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     if (key === SET_COOKIE_HEADER) {
       this._cookies = [];
     } else {
-      delete this.headers[key];
+      this.headers[key] = undefined;
     }
     return this;
   }
@@ -187,10 +187,6 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     this.headers[SET_COOKIE_HEADER] = this._cookies;
 
     const parsedHeaders = parseHeaders(this.headers);
-
-    // We need to remove the set-cookie header from the parsed headers because
-    // it does not handle multiple set-cookie headers properly
-    delete parsedHeaders[SET_COOKIE_HEADER];
 
     if (this.streamCreator) {
       this.responseStream = this.streamCreator?.writeHeaders({
