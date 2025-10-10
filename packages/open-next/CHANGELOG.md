@@ -1,5 +1,11 @@
 # open-next
 
+## 3.8.4
+
+### Patch Changes
+
+- [#1011](https://github.com/opennextjs/opennextjs-aws/pull/1011) [`588946f3b23371851e52294c8f4b054e88b61bf8`](https://github.com/opennextjs/opennextjs-aws/commit/588946f3b23371851e52294c8f4b054e88b61bf8) Thanks [@vicb](https://github.com/vicb)! - fix(cloudflare): ignore errors when the stream is already closed
+
 ## 3.8.3
 
 ### Patch Changes
