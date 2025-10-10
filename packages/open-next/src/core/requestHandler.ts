@@ -108,7 +108,8 @@ export async function openNextHandler(
           overwrittenResponseHeaders[key] = value;
         }
         headers[key] = value;
-        delete headers[rawKey];
+        // @ts-expect-error Setting it to undefined is faster than deleting the attribute.
+        headers[rawKey] = undefined;
       }
 
       if (
@@ -238,7 +239,7 @@ async function processRequest(
   // @ts-ignore
   // Next.js doesn't parse body if the property exists
   // https://github.com/dougmoscrop/serverless-http/issues/227
-  delete req.body;
+  req.body = undefined;
 
   // Here we try to apply as much request metadata as possible
   // We apply every metadata from `resolve-routes` https://github.com/vercel/next.js/blob/916f105b97211de50f8580f0b39c9e7c60de4886/packages/next/src/server/lib/router-utils/resolve-routes.ts
