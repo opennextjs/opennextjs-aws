@@ -11,6 +11,10 @@ import type { Writable } from "node:stream";
 import { loadBuildId, loadConfig } from "config/util.js";
 import { OpenNextNodeResponse } from "http/openNextResponse.js";
 // @ts-ignore
+import contentDisposition from "next/dist/compiled/content-disposition";
+// @ts-ignore
+import send from "next/dist/compiled/send";
+// @ts-ignore
 import { defaultConfig } from "next/dist/server/config-shared";
 import {
   ImageOptimizerCache,
@@ -112,12 +116,21 @@ export async function defaultHandler(
       nextConfig,
       downloadHandler,
     );
-    return buildSuccessResponse(result, options?.streamCreator, etag);
+    return buildSuccessResponse({
+      result,
+      streamCreator: options?.streamCreator,
+      etag,
+      url: imageParams.href,
+    });
   } catch (e: any) {
     error("Failed to optimize image", e);
+    // If `imageOptimizer` from Next throws an ImageError during optimization it will have these properties
+    const errorMessage = e.message || "Internal Server Error";
+    const statusCode = e.statusCode || 500;
     return buildFailureResponse(
-      "Internal server error",
+      errorMessage,
       options?.streamCreator,
+      statusCode,
     );
   }
 }
@@ -160,15 +173,30 @@ function computeEtag(imageParams: {
     .digest("base64");
 }
 
-function buildSuccessResponse(
-  result: any,
-  streamCreator?: StreamCreator,
-  etag?: string,
-): InternalResult {
+function buildSuccessResponse({
+  result,
+  url,
+  streamCreator,
+  etag,
+}: {
+  result: any;
+  url: string;
+  streamCreator?: StreamCreator;
+  etag?: string;
+}): InternalResult {
+  const fileName = getFileNameWithExtension(url, result.contentType);
+  const { images: imagesConfig } = nextConfig;
+
   const headers: Record<string, string> = {
     Vary: "Accept",
     "Content-Type": result.contentType,
     "Cache-Control": `public,max-age=${result.maxAge},immutable`,
+    "Content-Disposition": contentDisposition(fileName, {
+      type: imagesConfig.contentDispositionType ?? "attachment",
+    }),
+    "Content-Security-Policy":
+      imagesConfig.contentSecurityPolicy ??
+      "script-src 'none'; frame-src 'none'; sandbox;",
   };
   debug("result", result);
   if (etag) {
@@ -284,4 +312,25 @@ async function downloadHandler(
     error("Failed to download image", e);
     throw e;
   }
+}
+
+// https://github.com/vercel/next.js/blob/036b95767621d12227a7635de1f289db189db15d/packages/next/src/server/image-optimizer.ts#L842
+function getFileNameWithExtension(
+  url: string,
+  contentType: string | null,
+): string {
+  const getExtension: (contentType: string) => string | null =
+    "getExtension" in send.mime
+      ? (contentType: string) => send.mime.getExtension(contentType)
+      : (contentType: string) => (send.mime as any).extension(contentType);
+
+  const [urlWithoutQueryParams] = url.split("?", 1);
+  const fileNameWithExtension = urlWithoutQueryParams.split("/").pop();
+  if (!contentType || !fileNameWithExtension) {
+    return "image.bin";
+  }
+
+  const [fileName] = fileNameWithExtension.split(".", 1);
+  const extension = getExtension(contentType);
+  return `${fileName}.${extension}`;
 }
