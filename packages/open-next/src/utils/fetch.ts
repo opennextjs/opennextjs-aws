@@ -18,7 +18,6 @@ export function customFetchClient(client: AwsClient) {
      * This is necessary otherwise we get some error : SocketError: other side closed
      * https://github.com/nodejs/undici/issues/583#issuecomment-855384858
      */
-    const clonedResponse = response.clone();
-    return clonedResponse;
+    return response.clone();
   };
 }

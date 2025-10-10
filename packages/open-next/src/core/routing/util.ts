@@ -217,13 +217,12 @@ export function convertBodyToReadableStream(
 ) {
   if (method === "GET" || method === "HEAD") return undefined;
   if (!body) return undefined;
-  const readable = new ReadableStream({
+  return new ReadableStream({
     start(controller) {
       controller.enqueue(body);
       controller.close();
     },
   });
-  return readable;
 }
 
 enum CommonHeaders {
