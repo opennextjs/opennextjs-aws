@@ -150,15 +150,9 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
  * @__PURE__
  */
 export function convertToQuery(querystring: string) {
+  if (!querystring) return {};
   const query = new URLSearchParams(querystring);
-  const queryObject: Record<string, string[] | string> = {};
-
-  for (const key of query.keys()) {
-    const queries = query.getAll(key);
-    queryObject[key] = queries.length > 1 ? queries : queries[0];
-  }
-
-  return queryObject;
+  return getQueryFromIterator(query.entries());
 }
 
 /**
