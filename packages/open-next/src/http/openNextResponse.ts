@@ -285,13 +285,20 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   private _internalWrite(chunk: any, encoding: BufferEncoding) {
-    const buffer = Buffer.from(chunk, encoding);
+    // When encoding === 'buffer', chunk is already a Buffer
+    // and does not need to be converted again.
+    // @ts-expect-error TS2367 'encoding' can be 'buffer', but it's not in the
+    // official type definition
+    const buffer = encoding === "buffer" ? chunk : Buffer.from(chunk, encoding);
     this.bodyLength += buffer.length;
     if (this.streamCreator?.retainChunks !== false) {
       // Avoid keeping chunks around when the `StreamCreator` supports it to save memory
       this._chunks.push(buffer);
     }
-    this.push(chunk, encoding);
+    // We already have the data as a buffer, let's push it as is to avoid
+    // unnecessary additional conversion down the stream pipeline.
+    // @ts-expect-error TS2345 'buffer' is not in the official type definition
+    this.push(buffer, "buffer");
     this.streamCreator?.onWrite?.();
   }
 
