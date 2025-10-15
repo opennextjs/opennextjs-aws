@@ -1,6 +1,11 @@
 name: Install & setup
 description: Install's node, pnpm, restores cache, and then installs dependencies
 
+inputs:
+  node-version:
+    description: the version of Node.js to install
+    default: 18.x
+
 runs:
   using: 'composite'
   steps:
@@ -8,14 +13,7 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
-
-    # Ensure npm 11.5.1 or later is installed
-    # See https://docs.npmjs.com/trusted-publishers
-    # Note that pnpm publish runs npm publish
-    - name: Update npm
-      shell: bash
-      run: npm install -g npm@latest
+        node-version: ${{ inputs.node-version }}
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
