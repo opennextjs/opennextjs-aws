@@ -14,6 +14,12 @@ export const parseHeaders = (
       continue;
     }
     const keyLower = key.toLowerCase();
+    if (keyLower === "set-cookie") {
+      // We need to remove the set-cookie header from the parsed headers because
+      // it does not handle multiple set-cookie headers properly
+      continue;
+    }
+
     /**
      * Next can return an Array for the Location header when you return null from a get in the cacheHandler on a page that has a redirect()
      * We dont want to merge that into a comma-separated string
@@ -22,7 +28,7 @@ export const parseHeaders = (
      * See: https://github.com/opennextjs/opennextjs-cloudflare/issues/875#issuecomment-3258248276
      * and https://github.com/opennextjs/opennextjs-aws/pull/977#issuecomment-3261763114
      */
-    if (keyLower === "location" && Array.isArray(value)) {
+    if (Array.isArray(value) && keyLower === "location") {
       if (value[0] === value[1]) {
         result[keyLower] = value[0];
       } else {
