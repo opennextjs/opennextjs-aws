@@ -295,7 +295,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       // Avoid keeping chunks around when the `StreamCreator` supports it to save memory
       this._chunks.push(buffer);
     }
-    // We already have the data as a buffer, let's push it as is to avoid
+    // No need to pass the encoding for buffers
     // unnecessary additional conversion down the stream pipeline.
     // @ts-expect-error TS2345 'buffer' is not in the official type definition
     this.push(buffer);
