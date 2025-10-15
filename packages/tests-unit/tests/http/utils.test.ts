@@ -65,4 +65,20 @@ describe("parseHeaders", () => {
       "x-opennext": "is-so-cool",
     });
   });
+
+  it("handles location header array with a single value", () => {
+    const headers = parseHeaders({
+      location: ["/target"],
+      "x-custom-header": "customValue",
+      "x-multiple-values": ["value1", "value2"],
+      "x-undefined-header": undefined,
+      "x-opennext": "is-so-cool",
+    } as unknown as http.OutgoingHttpHeaders);
+    expect(headers).toEqual({
+      location: "/target",
+      "x-custom-header": "customValue",
+      "x-multiple-values": "value1,value2",
+      "x-opennext": "is-so-cool",
+    });
+  });
 });
