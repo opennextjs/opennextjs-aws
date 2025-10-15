@@ -25,6 +25,7 @@ jobs:
           # Ensure npm 11.5.1 or later is installed
           # See https://docs.npmjs.com/trusted-publishers
           node-version: 24
+          registry-url: "https://registry.npmjs.org"
 
       - uses: ./.github/actions/lint
 
