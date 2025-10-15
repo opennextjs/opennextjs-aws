@@ -10,6 +10,12 @@ runs:
       with:
         node-version: 18.x
 
+    # Ensure npm 11.5.1 or later is installed
+    # See https://docs.npmjs.com/trusted-publishers
+    # Note that pnpm publish runs npm publish
+    - name: Update npm
+      run: npm install -g npm@latest
+
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
       with:
