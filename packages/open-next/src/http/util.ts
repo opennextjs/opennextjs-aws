@@ -23,7 +23,7 @@ export const parseHeaders = (
      * and https://github.com/opennextjs/opennextjs-aws/pull/977#issuecomment-3261763114
      */
     if (keyLower === "location" && Array.isArray(value)) {
-      if (value[0] === value[1]) {
+      if (value.length === 1 || value[0] === value[1]) {
         result[keyLower] = value[0];
       } else {
         logger.warn(
