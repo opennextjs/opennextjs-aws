@@ -298,7 +298,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     // We already have the data as a buffer, let's push it as is to avoid
     // unnecessary additional conversion down the stream pipeline.
     // @ts-expect-error TS2345 'buffer' is not in the official type definition
-    this.push(buffer, "buffer");
+    this.push(buffer);
     this.streamCreator?.onWrite?.();
   }
 
