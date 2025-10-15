@@ -1,5 +1,11 @@
 # open-next
 
+## 3.8.5
+
+### Patch Changes
+
+- [#1013](https://github.com/opennextjs/opennextjs-aws/pull/1013) [`3e0126a7999d4bfe5d26807de176ab2711ad649c`](https://github.com/opennextjs/opennextjs-aws/commit/3e0126a7999d4bfe5d26807de176ab2711ad649c) Thanks [@jasnell](https://github.com/jasnell)! - perf: avoid unnecessary buffer copy in internalWrite
+
 ## 3.8.4
 
 ### Patch Changes
