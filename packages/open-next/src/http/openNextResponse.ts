@@ -296,7 +296,6 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       this._chunks.push(buffer);
     }
     // No need to pass the encoding for buffers
-    // @ts-expect-error TS2345 'buffer' is not in the official type definition
     this.push(buffer);
     this.streamCreator?.onWrite?.();
   }
