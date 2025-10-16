@@ -1,5 +1,11 @@
 # open-next
 
+## 3.8.6
+
+### Patch Changes
+
+- [#1016](https://github.com/opennextjs/opennextjs-aws/pull/1016) [`499de6ab46851052e6da65f28d028967b47b8212`](https://github.com/opennextjs/opennextjs-aws/commit/499de6ab46851052e6da65f28d028967b47b8212) Thanks [@donnabelsey](https://github.com/donnabelsey)! - fix: Handle location header array with a single value without emitting warning
+
 ## 3.8.5
 
 ### Patch Changes
