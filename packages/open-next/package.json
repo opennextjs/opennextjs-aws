@@ -14,7 +14,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc && tsc-alias",
-    "dev": "tsc -w"
+    "dev": "concurrently \"tsc -w\" \"tsc-alias -w\""
   },
   "exports": {
     "./*": {
@@ -59,6 +59,7 @@
     "@types/aws-lambda": "^8.10.109",
     "@types/express": "5.0.0",
     "@types/node": "catalog:",
+    "concurrently": "^9.2.1",
     "tsc-alias": "^1.8.8",
     "typescript": "catalog:"
   },
