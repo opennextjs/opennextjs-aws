@@ -6,6 +6,7 @@ import type { FunctionOptions, SplittedFunctionOptions } from "types/open-next";
 import { createRequire } from "node:module";
 import { loadMiddlewareManifest } from "config/util.js";
 import type { Plugin } from "esbuild";
+import type { NextAdapterOutputs } from "../adapter.js";
 import logger from "../logger.js";
 import { minifyAll } from "../minimize-js.js";
 import { ContentUpdater } from "../plugins/content-updater.js";
@@ -14,6 +15,7 @@ import { openNextResolvePlugin } from "../plugins/resolve.js";
 import { getCrossPlatformPathRegex } from "../utils/regex.js";
 import { bundleNextServer } from "./bundleNextServer.js";
 import { compileCache } from "./compileCache.js";
+import { copyAdapterFiles } from "./copyAdapterFiles.js";
 import { copyTracedFiles } from "./copyTracedFiles.js";
 import {
   copyMiddlewareResources,
@@ -23,8 +25,6 @@ import * as buildHelper from "./helper.js";
 import { installDependencies } from "./installDeps.js";
 import { type CodePatcher, applyCodePatches } from "./patch/codePatcher.js";
 import * as patches from "./patch/patches/index.js";
-import type { NextAdapterOutputs } from "../adapter.js";
-import { copyAdapterFiles } from "./copyAdapterFiles.js";
 const require = createRequire(import.meta.url);
 
 interface CodeCustomization {
@@ -38,7 +38,7 @@ interface CodeCustomization {
 export async function createServerBundle(
   options: buildHelper.BuildOptions,
   codeCustomization?: CodeCustomization,
-  nextOutputs?: NextAdapterOutputs  
+  nextOutputs?: NextAdapterOutputs,
 ) {
   const { config } = options;
   const foundRoutes = new Set<string>();
@@ -60,7 +60,13 @@ export async function createServerBundle(
     if (fnOptions.runtime === "edge") {
       await generateEdgeBundle(name, options, fnOptions);
     } else {
-      await generateBundle(name, options, fnOptions, codeCustomization, nextOutputs);
+      await generateBundle(
+        name,
+        options,
+        fnOptions,
+        codeCustomization,
+        nextOutputs,
+      );
     }
   });
 
@@ -113,12 +119,18 @@ export async function createServerBundle(
   }
 
   // Generate default function
-  await generateBundle("default", options, {
-    ...defaultFn,
-    // @ts-expect-error - Those string are RouteTemplate
-    routes: Array.from(remainingRoutes),
-    patterns: ["*"],
-  }, codeCustomization, nextOutputs);
+  await generateBundle(
+    "default",
+    options,
+    {
+      ...defaultFn,
+      // @ts-expect-error - Those string are RouteTemplate
+      routes: Array.from(remainingRoutes),
+      patterns: ["*"],
+    },
+    codeCustomization,
+    nextOutputs,
+  );
 }
 
 async function generateBundle(
@@ -126,7 +138,7 @@ async function generateBundle(
   options: buildHelper.BuildOptions,
   fnOptions: SplittedFunctionOptions,
   codeCustomization?: CodeCustomization,
-  nextOutputs?: NextAdapterOutputs
+  nextOutputs?: NextAdapterOutputs,
 ) {
   const { appPath, appBuildOutputPath, config, outputDir, monorepoRoot } =
     options;
@@ -197,7 +209,7 @@ async function generateBundle(
   let manifests: any = {};
 
   // Copy all necessary traced files
-  if(config.dangerous?.useAdapterOutputs) {
+  if (config.dangerous?.useAdapterOutputs) {
     tracedFiles = await copyAdapterFiles(options, name, nextOutputs!);
     //TODO: we should load manifests here
   } else {
@@ -212,7 +224,6 @@ async function generateBundle(
     tracedFiles = oldTracedFileOutput.tracedFiles;
     manifests = oldTracedFileOutput.manifests;
   }
-  
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
 
