@@ -13,6 +13,7 @@ import { createServerBundle } from "./build/createServerBundle.js";
 import { createWarmerBundle } from "./build/createWarmerBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
+import { addDebugFile } from "./debug.js";
 
 export type NextAdapterOutputs = {
   pages: any[];
@@ -83,6 +84,9 @@ export default {
   },
   async onBuildComplete(outputs) {
     console.log("OpenNext build will start now");
+
+    // TODO(vicb): save outputs
+    addDebugFile(options, "outputs.json", outputs);
 
     // Compile middleware
     await createMiddleware(options);
