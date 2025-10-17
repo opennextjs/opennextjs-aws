@@ -1,11 +1,7 @@
 import type { IncomingMessage } from "node:http";
-import {
-  AppPathRoutesManifest,
-  AppPathsManifest,
-  PagesManifest,
-} from "config/index";
+import { AppPathRoutesManifest } from "config/index";
 import type { OpenNextNodeResponse } from "http/index";
-import type { RoutingResult } from "types/open-next";
+import type { ResolvedRoute, RoutingResult } from "types/open-next";
 
 // This function will get overwritten at build time with all the routes in a switch
 // This allows the cloudflare adapter to work without having to use dynamic import
@@ -39,30 +35,27 @@ export async function adapterHandler(
   );
 
   //TODO: replace this at runtime with a version precompiled for the cloudflare adapter.
-  const pathsToTry = routingResult.resolvedRoutes.map((route) => {
-    const page = route.route;
-    const jsPage = invertedAppPathsRouteManifestMap.get(page) ?? page;
-    switch (route.type) {
-      case "app":
-      case "route":
-        return AppPathsManifest[jsPage];
-      case "page":
-        return PagesManifest[jsPage];
-      default:
-        return page;
-    }
-  });
-
-  for (const serverPath of pathsToTry) {
-    try {
-      //TODO: Do we need to handle monorepo path here ?
-      const path = `./.next/server/${serverPath}`;
-      console.log("Trying to load handler from ", path);
-      await singleRouteHandler(path, req, res);
-      //If it doesn't throw, we are done
+  const pathsToTry = routingResult.resolvedRoutes.map(async (route) => {
+    // TODO(vicb): use a cached `Record<string, string>` for faster lookup
+    const module = getHandler(route);
+    if (!module) {
       return;
+    }
+
+    try {
+      return module.handler(req, res);
+      //If it doesn't throw, we are done
     } catch {
       // I'll have to run some more tests, but in theory, we should not have anything special to do here, and we should return the 500 page here.
     }
-  }
+  });
+}
+
+// Body replaced at build time
+function getHandler(
+  route: ResolvedRoute,
+):
+  | undefined
+  | { handler: (req: IncomingMessage, res: OpenNextNodeResponse) => void } {
+  return undefined;
 }

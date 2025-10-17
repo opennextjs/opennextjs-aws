@@ -14,6 +14,8 @@ import { createWarmerBundle } from "./build/createWarmerBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
 import { addDebugFile } from "./debug.js";
+import type { ContentUpdater } from "./plugins/content-updater.js";
+import { inlineRouteHandler } from "./plugins/inlineRouteHandlers.js";
 
 export type NextAdapterOutputs = {
   pages: any[];
@@ -39,7 +41,7 @@ type NextAdapter = {
   }) => Promise<void>;
 }; //TODO: use the one provided by Next
 
-let options: buildHelper.BuildOptions;
+let buildOpts: buildHelper.BuildOptions;
 
 export default {
   name: "OpenNext",
@@ -52,15 +54,15 @@ export default {
 
     const openNextDistDir = url.fileURLToPath(new URL(".", import.meta.url));
 
-    options = buildHelper.normalizeOptions(config, openNextDistDir, buildDir);
+    buildOpts = buildHelper.normalizeOptions(config, openNextDistDir, buildDir);
 
-    buildHelper.initOutputDir(options);
+    buildHelper.initOutputDir(buildOpts);
 
-    const cache = compileCache(options);
+    const cache = compileCache(buildOpts);
 
     // We then have to copy the cache files to the .next dir so that they are available at runtime
     //TODO: use a better path, this one is temporary just to make it work
-    const tempCachePath = `${options.outputDir}/server-functions/default/.open-next/.build`;
+    const tempCachePath = `${buildOpts.outputDir}/server-functions/default/.open-next/.build`;
     fs.mkdirSync(tempCachePath, { recursive: true });
     fs.copyFileSync(cache.cache, path.join(tempCachePath, "cache.cjs"));
     fs.copyFileSync(
@@ -86,34 +88,50 @@ export default {
     console.log("OpenNext build will start now");
 
     // TODO(vicb): save outputs
-    addDebugFile(options, "outputs.json", outputs);
+    addDebugFile(buildOpts, "outputs.json", outputs);
 
     // Compile middleware
-    await createMiddleware(options);
+    await createMiddleware(buildOpts);
     console.log("Middleware created");
 
-    createStaticAssets(options);
+    createStaticAssets(buildOpts);
     console.log("Static assets created");
 
-    if (options.config.dangerous?.disableIncrementalCache !== true) {
-      const { useTagCache } = createCacheAssets(options);
+    if (buildOpts.config.dangerous?.disableIncrementalCache !== true) {
+      const { useTagCache } = createCacheAssets(buildOpts);
       console.log("Cache assets created");
       if (useTagCache) {
-        await compileTagCacheProvider(options);
+        await compileTagCacheProvider(buildOpts);
         console.log("Tag cache provider compiled");
       }
     }
 
-    await createServerBundle(options, undefined, outputs.outputs);
+    await createServerBundle(
+      buildOpts,
+      {
+        additionalPlugins: getAdditionalPluginsFactory(
+          buildOpts,
+          outputs.outputs,
+        ),
+      },
+      outputs.outputs,
+    );
 
     console.log("Server bundle created");
-    await createRevalidationBundle(options);
+    await createRevalidationBundle(buildOpts);
     console.log("Revalidation bundle created");
-    await createImageOptimizationBundle(options);
+    await createImageOptimizationBundle(buildOpts);
     console.log("Image optimization bundle created");
-    await createWarmerBundle(options);
+    await createWarmerBundle(buildOpts);
     console.log("Warmer bundle created");
-    await generateOutput(options);
+    await generateOutput(buildOpts);
     console.log("Output generated");
   },
 } satisfies NextAdapter;
+
+function getAdditionalPluginsFactory(
+  buildOpts: buildHelper.BuildOptions,
+  outputs: NextAdapterOutputs,
+) {
+  return (updater: ContentUpdater) => [inlineRouteHandler(updater, outputs)];
+}
