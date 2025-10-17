@@ -37,26 +37,26 @@ export async function adapterHandler(
   const invertedAppPathsRouteManifestMap = new Map<string, string>(
     Object.entries(AppPathRoutesManifest).map(([key, value]) => [value, key]),
   );
-  //TODO: replace this at runtime with a version precompiled for the cloudflare adapter.
-  const pathesToTry = routingResult.resolvedRoutes.map((route) => {
-    const page = route.route;
-    const jsPage = invertedAppPathsRouteManifestMap.has(page)
-      ? invertedAppPathsRouteManifestMap.get(page)!
-      : page;
-    if (route.type === "app") {
-      return AppPathsManifest[jsPage];
 
-      // biome-ignore lint/style/noUselessElse: <explanation>
-    } else if (route.type === "page") {
-      return PagesManifest[jsPage];
+  //TODO: replace this at runtime with a version precompiled for the cloudflare adapter.
+  const pathsToTry = routingResult.resolvedRoutes.map((route) => {
+    const page = route.route;
+    const jsPage = invertedAppPathsRouteManifestMap.get(page) ?? page;
+    switch (route.type) {
+      case "app":
+      case "route":
+        return AppPathsManifest[jsPage];
+      case "page":
+        return PagesManifest[jsPage];
+      default:
+        return page;
     }
-    return page;
   });
 
-  for (const p of pathesToTry) {
+  for (const serverPath of pathsToTry) {
     try {
       //TODO: Do we need to handle monorepo path here ?
-      const path = `./.next/server/${p}`;
+      const path = `./.next/server/${serverPath}`;
       console.log("Trying to load handler from ", path);
       await singleRouteHandler(path, req, res);
       //If it doesn't throw, we are done
