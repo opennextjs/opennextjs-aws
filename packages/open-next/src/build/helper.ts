@@ -157,7 +157,8 @@ export async function esbuildAsync(
     format: "esm",
     platform: "node",
     bundle: true,
-    minify,
+    // TODO(vicb): revert to `minify,`
+    minify: false,
     metafile,
     mainFields: ["module", "main"],
     sourcemap: debug ? "inline" : false,
