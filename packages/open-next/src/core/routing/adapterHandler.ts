@@ -1,23 +1,8 @@
 import type { IncomingMessage } from "node:http";
-import { AppPathRoutesManifest } from "config/index";
+// import { AppPathRoutesManifest } from "config/index";
 import type { OpenNextNodeResponse } from "http/index";
 import type { ResolvedRoute, RoutingResult } from "types/open-next";
-
-// This function will get overwritten at build time with all the routes in a switch
-// This allows the cloudflare adapter to work without having to use dynamic import
-async function singleRouteHandler(
-  jsPath: string,
-  req: IncomingMessage,
-  res: OpenNextNodeResponse,
-) {
-  //#override dynamicImportJs
-  const handler = await import(jsPath);
-  //#endOverride
-  if (handler?.default?.handler) {
-    //TODO: should we handle case where there is more than one match? Need to check that.
-    return handler.default.handler(req, res, {});
-  }
-}
+import { finished } from "node:stream/promises";
 
 /**
  * This function loads the necessary routes, and invoke the expected handler.
@@ -28,27 +13,28 @@ export async function adapterHandler(
   res: OpenNextNodeResponse,
   routingResult: RoutingResult,
 ) {
-  // We need an inverted index on `app-path-routes-manifest.json` to get the actual path of the js file.
-  // Once we have that info, we need to check `app-manifest` or `page-manifest`
-  const invertedAppPathsRouteManifestMap = new Map<string, string>(
-    Object.entries(AppPathRoutesManifest).map(([key, value]) => [value, key]),
-  );
+  let resolved = false;
 
   //TODO: replace this at runtime with a version precompiled for the cloudflare adapter.
-  const pathsToTry = routingResult.resolvedRoutes.map(async (route) => {
-    // TODO(vicb): use a cached `Record<string, string>` for faster lookup
+  for (const route of routingResult.resolvedRoutes) {
     const module = getHandler(route);
-    if (!module) {
+    if (!module || resolved) {
       return;
     }
 
     try {
-      return module.handler(req, res);
+      console.log("## adapterHandler trying route", route, req.url);
+      const result = await module.handler(req, res, {});
+      await finished(res); // Not sure this one is necessary.
+      console.log("## adapterHandler route succeeded", route);
+      resolved = true;
+      return result;
       //If it doesn't throw, we are done
     } catch {
+      console.log("## adapterHandler route failed", route);
       // I'll have to run some more tests, but in theory, we should not have anything special to do here, and we should return the 500 page here.
     }
-  });
+  }
 }
 
 // Body replaced at build time
@@ -56,6 +42,6 @@ function getHandler(
   route: ResolvedRoute,
 ):
   | undefined
-  | { handler: (req: IncomingMessage, res: OpenNextNodeResponse) => void } {
+  | { handler: (req: IncomingMessage, res: OpenNextNodeResponse, options: { waitUntil?: (promise: Promise<void>) => void }) => Promise<void> } {
   return undefined;
 }
