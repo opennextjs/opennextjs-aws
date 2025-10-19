@@ -30,15 +30,9 @@ export function inlineRouteHandler(
       ),
       contentFilter: /loadRuntimeChunkPath/,
       callback: ({ contents }) => {
-        console.log("## inlineRouteHandler patching turbopack runtime");
-        //TODO: Just using that for now, for some reason I can't make ast-grep pick that.
-        // It works in the playground, but doesn't work here.
-        const result = contents.replace(
-          "path.relative(RUNTIME_PUBLIC_PATH, '.')",
-          '"../.next"'
-        );
-        console.log("## inlineRouteHandler turbopack runtime patched", result);
-        return result;
+        const result = patchCode(contents, inlineChunksRule);
+        //TODO: Maybe find another way to do that.
+        return `${result}\n${inlineChunksFn(outputs)}`;
       },
     }
   ]);
@@ -67,4 +61,65 @@ ${Object.entries(routeToHandlerPath)
     }
 
   }`;
+}
+
+//TODO: Make this one more resilient to code changes
+const inlineChunksRule = `
+rule:
+  kind: call_expression
+  pattern: require(resolved)
+fix:
+  requireChunk(chunkPath)
+`;
+
+
+function getInlinableChunks(outputs: NextAdapterOutputs, prefix?: string) {
+  const chunks = new Set<string>();
+  for (const type of ["pages", "pagesApi", "appPages", "appRoutes"] as const) {
+    for (const { assets } of outputs[type]) {
+      for (const asset of Object.keys(assets)) {
+        if (asset.includes(".next/server/chunks/") && !asset.includes("[turbopack]_runtime.js")) {
+          chunks.add(prefix ? `${prefix}${asset}` : asset);
+        }
+      }
+    }
+  }
+  return chunks;
+}
+
+
+function inlineChunksFn(outputs: NextAdapterOutputs) {
+  // From the outputs, we extract every chunks
+  const chunks = getInlinableChunks(outputs);
+  return `
+  function requireChunk(chunk) {
+    const chunkPath = ".next/" + chunk;
+    switch(chunkPath) {
+${Array.from(chunks).map(chunk => `      case "${chunk}": return require("./${chunk}");`).join("\n")}
+      default:
+        throw new Error(\`Not found \${chunkPath}\`);
+    }
+  }
+`;
+}
+
+
+/**
+ *  Esbuild plugin to mark all chunks that we inline as external.
+ */
+export function externalChunksPlugin(outputs: NextAdapterOutputs): Plugin {
+  const chunks = getInlinableChunks(outputs, "./");
+  return {
+    name: "external-chunks",
+    setup(build) {
+      build.onResolve({ filter: /\/chunks\// }, (args) => {
+        if (chunks.has(args.path)) {
+          return {
+            path: args.path,
+            external: true,
+          };
+        }
+      });
+    },
+  };
 }
