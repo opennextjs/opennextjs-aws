@@ -343,6 +343,7 @@ async function generateBundle(
           "const require = topLevelCreateRequire(import.meta.url);",
           "import bannerUrl from 'url';",
           "const __dirname = bannerUrl.fileURLToPath(new URL('.', import.meta.url));",
+          "const __filename = bannerUrl.fileURLToPath(import.meta.url);",
           name === "default" ? "" : `globalThis.fnName = "${name}";`,
         ].join(""),
       },
