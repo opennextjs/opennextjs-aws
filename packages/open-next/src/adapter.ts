@@ -15,7 +15,10 @@ import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
 import { addDebugFile } from "./debug.js";
 import type { ContentUpdater } from "./plugins/content-updater.js";
-import { externalChunksPlugin, inlineRouteHandler } from "./plugins/inlineRouteHandlers.js";
+import {
+  externalChunksPlugin,
+  inlineRouteHandler,
+} from "./plugins/inlineRouteHandlers.js";
 
 export type NextAdapterOutputs = {
   pages: any[];
@@ -133,5 +136,8 @@ function getAdditionalPluginsFactory(
   buildOpts: buildHelper.BuildOptions,
   outputs: NextAdapterOutputs,
 ) {
-  return (updater: ContentUpdater) => [inlineRouteHandler(updater, outputs), externalChunksPlugin(outputs)];
+  return (updater: ContentUpdater) => [
+    inlineRouteHandler(updater, outputs),
+    externalChunksPlugin(outputs),
+  ];
 }

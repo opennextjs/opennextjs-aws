@@ -210,7 +210,9 @@ export async function openNextHandler(
       );
 
       //#override useAdapterHandler
-      await adapterHandler(req, res, routingResult);
+      await adapterHandler(req, res, routingResult, {
+        waitUntil: options?.waitUntil,
+      });
       //#endOverride
 
       //#override useRequestHandler

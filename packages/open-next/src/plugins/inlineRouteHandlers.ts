@@ -34,7 +34,7 @@ export function inlineRouteHandler(
         //TODO: Maybe find another way to do that.
         return `${result}\n${inlineChunksFn(outputs)}`;
       },
-    }
+    },
   ]);
 }
 
@@ -72,13 +72,15 @@ fix:
   requireChunk(chunkPath)
 `;
 
-
 function getInlinableChunks(outputs: NextAdapterOutputs, prefix?: string) {
   const chunks = new Set<string>();
   for (const type of ["pages", "pagesApi", "appPages", "appRoutes"] as const) {
     for (const { assets } of outputs[type]) {
       for (const asset of Object.keys(assets)) {
-        if (asset.includes(".next/server/chunks/") && !asset.includes("[turbopack]_runtime.js")) {
+        if (
+          asset.includes(".next/server/chunks/") &&
+          !asset.includes("[turbopack]_runtime.js")
+        ) {
           chunks.add(prefix ? `${prefix}${asset}` : asset);
         }
       }
@@ -87,7 +89,6 @@ function getInlinableChunks(outputs: NextAdapterOutputs, prefix?: string) {
   return chunks;
 }
 
-
 function inlineChunksFn(outputs: NextAdapterOutputs) {
   // From the outputs, we extract every chunks
   const chunks = getInlinableChunks(outputs);
@@ -95,14 +96,15 @@ function inlineChunksFn(outputs: NextAdapterOutputs) {
   function requireChunk(chunk) {
     const chunkPath = ".next/" + chunk;
     switch(chunkPath) {
-${Array.from(chunks).map(chunk => `      case "${chunk}": return require("./${chunk}");`).join("\n")}
+${Array.from(chunks)
+  .map((chunk) => `      case "${chunk}": return require("./${chunk}");`)
+  .join("\n")}
       default:
         throw new Error(\`Not found \${chunkPath}\`);
     }
   }
 `;
 }
-
 
 /**
  *  Esbuild plugin to mark all chunks that we inline as external.

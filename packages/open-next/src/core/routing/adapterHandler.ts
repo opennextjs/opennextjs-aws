@@ -1,8 +1,8 @@
 import type { IncomingMessage } from "node:http";
+import { finished } from "node:stream/promises";
 // import { AppPathRoutesManifest } from "config/index";
 import type { OpenNextNodeResponse } from "http/index";
-import type { ResolvedRoute, RoutingResult } from "types/open-next";
-import { finished } from "node:stream/promises";
+import type { ResolvedRoute, RoutingResult, WaitUntil } from "types/open-next";
 
 /**
  * This function loads the necessary routes, and invoke the expected handler.
@@ -12,6 +12,9 @@ export async function adapterHandler(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
   routingResult: RoutingResult,
+  options: {
+    waitUntil?: WaitUntil;
+  } = {},
 ) {
   let resolved = false;
 
@@ -24,7 +27,9 @@ export async function adapterHandler(
 
     try {
       console.log("## adapterHandler trying route", route, req.url);
-      const result = await module.handler(req, res, {});
+      const result = await module.handler(req, res, {
+        waitUntil: options.waitUntil,
+      });
       await finished(res); // Not sure this one is necessary.
       console.log("## adapterHandler route succeeded", route);
       resolved = true;
@@ -42,6 +47,12 @@ function getHandler(
   route: ResolvedRoute,
 ):
   | undefined
-  | { handler: (req: IncomingMessage, res: OpenNextNodeResponse, options: { waitUntil?: (promise: Promise<void>) => void }) => Promise<void> } {
+  | {
+      handler: (
+        req: IncomingMessage,
+        res: OpenNextNodeResponse,
+        options: { waitUntil?: (promise: Promise<void>) => void },
+      ) => Promise<void>;
+    } {
   return undefined;
 }
