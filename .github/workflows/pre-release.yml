@@ -2,11 +2,11 @@ name: Pre-release
 
 on:
   pull_request:
-    branches: [main, experimental]
+    branches: [main, experimental, adapters-api]
     paths:
       - packages/open-next/**
   push:
-    branches: [main, experimental]
+    branches: [main, experimental, adapters-api]
     paths:
       - packages/open-next/**
 
@@ -18,16 +18,13 @@ jobs:
       - name: Checkout Repo
         # https://github.com/actions/checkout
         uses: actions/checkout@v4
-
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v4
         with:
-          registry-url: "https://registry.npmjs.org"
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup
+        with:
+          node-version: 22
 
-      - name: Install dependencies
-        run: pnpm install
 
       - name: Build package
         run: pnpm -F @opennextjs/aws build
