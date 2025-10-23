@@ -23,6 +23,7 @@ export async function compileOpenNextConfig(
   { nodeExternals = "", compileEdge = false } = {},
 ) {
   const buildDir = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-tmp"));
+
   let configPath = compileOpenNextConfigNode(
     openNextConfigPath,
     buildDir,

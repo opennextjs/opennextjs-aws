@@ -1,6 +1,5 @@
 import type { IncomingMessage } from "node:http";
 import { finished } from "node:stream/promises";
-// import { AppPathRoutesManifest } from "config/index";
 import type { OpenNextNodeResponse } from "http/index";
 import type { ResolvedRoute, RoutingResult, WaitUntil } from "types/open-next";
 
@@ -35,17 +34,15 @@ export async function adapterHandler(
       resolved = true;
       return result;
       //If it doesn't throw, we are done
-    } catch {
-      console.log("## adapterHandler route failed", route);
+    } catch (e) {
+      console.log("## adapterHandler route failed", route, e);
       // I'll have to run some more tests, but in theory, we should not have anything special to do here, and we should return the 500 page here.
     }
   }
 }
 
 // Body replaced at build time
-function getHandler(
-  route: ResolvedRoute,
-):
+function getHandler(route: ResolvedRoute):
   | undefined
   | {
       handler: (

@@ -1,6 +1,6 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-import url from "node:url";
 import type { NextConfig } from "types/next-types";
 import { compileCache } from "./build/compileCache.js";
 import { compileOpenNextConfig } from "./build/compileConfig.js";
@@ -55,7 +55,10 @@ export default {
       { nodeExternals: undefined },
     );
 
-    const openNextDistDir = url.fileURLToPath(new URL(".", import.meta.url));
+    const require = createRequire(import.meta.url);
+    const openNextDistDir = path.dirname(
+      require.resolve("@opennextjs/aws/index.js"),
+    );
 
     buildOpts = buildHelper.normalizeOptions(config, openNextDistDir, buildDir);
 
