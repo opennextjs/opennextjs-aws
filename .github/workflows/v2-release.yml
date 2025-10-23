@@ -11,12 +11,9 @@ jobs:
         # https://github.com/actions/checkout
         uses: actions/checkout@v4
 
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v4
-        with:
-          registry-url: "https://registry.npmjs.org"
-
       - uses: ./.github/actions/setup
+        with:
+          node-version: 22
 
       - name: Publish Pre-release to npm
         run: pnpm release-v2

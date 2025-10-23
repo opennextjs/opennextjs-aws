@@ -1,6 +1,12 @@
 name: Install & setup
 description: Install's node, pnpm, restores cache, and then installs dependencies
 
+inputs:
+  node-version:
+    default: 18.x
+  registry-url:
+    default: "https://registry.npmjs.org"
+
 runs:
   using: 'composite'
   steps:
@@ -8,7 +14,8 @@ runs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 18.x
+        node-version: ${{ inputs.node-version }}
+        registry-url: ${{ inputs.registry-url }}
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
