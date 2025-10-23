@@ -10,6 +10,8 @@ jobs:
       - name: Checkout Repo
         # https://github.com/actions/checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup
         with:
