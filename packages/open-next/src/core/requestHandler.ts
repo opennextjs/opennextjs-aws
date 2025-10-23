@@ -326,7 +326,7 @@ async function handleNoFallbackError(
     //   invokeOutput: routingResult.resolvedRoutes[index].route,
     //   ...metadata,
     // })(req, res);
-    console.log("coucou");
+    //TODO: find a way to do that without breaking current main
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {
       await handleNoFallbackError(req, res, routingResult, metadata, index + 1);
