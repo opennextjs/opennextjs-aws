@@ -106,19 +106,31 @@ async function computeCacheControl(
   };
 }
 
-function getBodyForAppRouter(event: MiddlewareEvent, cachedValue: CacheValue<"cache">): {body: string, additionalHeaders: Record<string, string>} {
-  if(cachedValue.type !== "app") {
+function getBodyForAppRouter(
+  event: MiddlewareEvent,
+  cachedValue: CacheValue<"cache">,
+): { body: string; additionalHeaders: Record<string, string> } {
+  if (cachedValue.type !== "app") {
     throw new Error("getBodyForAppRouter called with non-app cache value");
   }
   try {
-    const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`
-    const isSegmentResponse = Boolean(segmentHeader) && segmentHeader in (cachedValue.segmentData || {});
+    const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
+    const isSegmentResponse =
+      Boolean(segmentHeader) &&
+      segmentHeader in (cachedValue.segmentData || {});
 
-    const body = isSegmentResponse ? cachedValue.segmentData![segmentHeader] : cachedValue.rsc;
-    return {body, additionalHeaders: isSegmentResponse ? {[NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2"} : {}};
-  }catch(e) {
+    const body = isSegmentResponse
+      ? cachedValue.segmentData![segmentHeader]
+      : cachedValue.rsc;
+    return {
+      body,
+      additionalHeaders: isSegmentResponse
+        ? { [NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2" }
+        : {},
+    };
+  } catch (e) {
     error("Error while getting body for app router from cache:", e);
-    return {body: cachedValue.rsc, additionalHeaders: {}};
+    return { body: cachedValue.rsc, additionalHeaders: {} };
   }
 }
 
@@ -133,22 +145,23 @@ async function generateResult(
   let type = "application/octet-stream";
   let isDataRequest = false;
   let additionalHeaders = {};
-  if(cachedValue.type === "app") {
-     isDataRequest = Boolean(event.headers.rsc);
+  if (cachedValue.type === "app") {
+    isDataRequest = Boolean(event.headers.rsc);
     if (isDataRequest) {
-      const {body: appRouterBody, additionalHeaders: appHeaders} = getBodyForAppRouter(event, cachedValue);
+      const { body: appRouterBody, additionalHeaders: appHeaders } =
+        getBodyForAppRouter(event, cachedValue);
       body = appRouterBody;
       additionalHeaders = appHeaders;
     }
     type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
   } else if (cachedValue.type === "page") {
     isDataRequest = Boolean(event.query.__nextDataReq);
-      body = isDataRequest
-        ? JSON.stringify(cachedValue.json)
-        : cachedValue.html;
-      type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
-  }else {
-    throw new Error("generateResult called with unsupported cache value type, only 'app' and 'page' are supported");
+    body = isDataRequest ? JSON.stringify(cachedValue.json) : cachedValue.html;
+    type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
+  } else {
+    throw new Error(
+      "generateResult called with unsupported cache value type, only 'app' and 'page' are supported",
+    );
   }
   const cacheControl = await computeCacheControl(
     localizedPath,
@@ -172,7 +185,7 @@ async function generateResult(
       "content-type": type,
       ...cachedValue.meta?.headers,
       vary: VARY_HEADER,
-      ...additionalHeaders
+      ...additionalHeaders,
     },
   };
 }

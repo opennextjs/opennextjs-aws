@@ -27,8 +27,8 @@ export async function optimizeImage(
   const { isAbsolute, href } = imageParams;
 
   const imageUpstream = isAbsolute
-    //@ts-ignore 
-    ? await fetchExternalImage(href)
+    ? //@ts-ignore
+      await fetchExternalImage(href)
     : await fetchInternalImage(
         href,
         // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.

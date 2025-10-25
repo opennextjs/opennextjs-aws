@@ -32,8 +32,8 @@ export default async function Image() {
       // size config to also set the ImageResponse's width and height.
       ...size,
       headers: {
-        "cache-control": "public, immutable, no-transform, max-age=31536000"
-      }
+        "cache-control": "public, immutable, no-transform, max-age=31536000",
+      },
     },
   );
 }

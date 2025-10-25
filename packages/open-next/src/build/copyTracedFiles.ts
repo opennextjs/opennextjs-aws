@@ -294,7 +294,7 @@ File ${serverPath} does not exist
       } catch (e) {
         logger.debug("Error copying file:", e);
         erroredFiles.push(to);
-      } 
+      }
     }
   });
 
