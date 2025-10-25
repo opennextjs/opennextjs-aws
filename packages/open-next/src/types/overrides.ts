@@ -67,6 +67,7 @@ export type CachedFile =
       html: string;
       rsc: string;
       meta?: Meta;
+      segmentData?: Object;
     }
   | {
       type: "route";
