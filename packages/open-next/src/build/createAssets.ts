@@ -105,6 +105,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const isFileSkipped = (relativePath: string) =>
     relativePath.endsWith(".js") ||
     relativePath.endsWith(".js.nft.json") ||
+    // We skip manifest files as well
+    relativePath.endsWith("-manifest.json") ||
+    // We skip the segment rsc files as they are treated in a different way
+    relativePath.endsWith(".segment.rsc") ||
     (relativePath.endsWith(".html") && htmlPages.has(relativePath));
 
   // Merge cache files into a single file
@@ -169,6 +173,21 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
       logger.warn(`Skipping invalid cache file: ${cacheFilePath}`);
       return;
     }
+    const segments : Record<string, string> = {};
+
+    // If we have a meta file, and it contains segmentPaths, we need to add them to the cache file
+    if (
+      cacheFileMeta &&
+      Array.isArray(cacheFileMeta.segmentPaths) &&
+      cacheFileMeta.segmentPaths.length > 0
+    ) {
+      cacheFileMeta.segmentPaths.forEach((segmentPath: string) => {
+        const absoluteSegmentPath = path.join(files.meta!.replace(/\.meta$/, ".segments"), `${segmentPath}.segment.rsc`);
+        const segmentContent = fs.readFileSync(absoluteSegmentPath, "utf8");
+        segments[segmentPath] = segmentContent;
+      });
+    }
+
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
       meta: cacheFileMeta,
@@ -184,6 +203,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
                 : "utf8",
             )
         : undefined,
+      segmentData: Object.keys(segments).length > 0 ? segments : undefined,
     };
 
     // Ensure directory exists before writing
