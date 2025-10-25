@@ -27,6 +27,7 @@ export async function optimizeImage(
   const { isAbsolute, href } = imageParams;
 
   const imageUpstream = isAbsolute
+    //@ts-ignore 
     ? await fetchExternalImage(href)
     : await fetchInternalImage(
         href,
