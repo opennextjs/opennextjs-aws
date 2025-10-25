@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export function middleware(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
   const host = request.headers.get("host");

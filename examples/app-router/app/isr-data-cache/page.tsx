@@ -4,7 +4,7 @@ async function getTime() {
   return new Date().toISOString();
 }
 
-const cachedTime = unstable_cache(getTime, { revalidate: false });
+const cachedTime = unstable_cache(getTime, ["getTime"], { revalidate: false });
 
 export const revalidate = 10;
 

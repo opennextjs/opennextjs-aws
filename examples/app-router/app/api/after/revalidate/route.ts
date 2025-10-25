@@ -6,7 +6,8 @@ export function POST() {
     () =>
       new Promise<void>((resolve) =>
         setTimeout(() => {
-          revalidateTag("date");
+          // We want to expire the "date" tag immediately
+          revalidateTag("date", {expire: 0});
           resolve();
         }, 5000),
       ),
