@@ -152,6 +152,8 @@ async function generateResult(
         getBodyForAppRouter(event, cachedValue);
       body = appRouterBody;
       additionalHeaders = appHeaders;
+    } else {
+      body = cachedValue.html;
     }
     type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
   } else if (cachedValue.type === "page") {
