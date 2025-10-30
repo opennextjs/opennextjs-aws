@@ -173,23 +173,22 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
       logger.warn(`Skipping invalid cache file: ${cacheFilePath}`);
       return;
     }
-    const segments: Record<string, string> = {};
 
     // If we have a meta file, and it contains segmentPaths, we need to add them to the cache file
-    if (
-      cacheFileMeta &&
-      Array.isArray(cacheFileMeta.segmentPaths) &&
-      cacheFileMeta.segmentPaths.length > 0
-    ) {
-      cacheFileMeta.segmentPaths.forEach((segmentPath: string) => {
-        const absoluteSegmentPath = path.join(
-          files.meta!.replace(/\.meta$/, ".segments"),
-          `${segmentPath}.segment.rsc`,
-        );
-        const segmentContent = fs.readFileSync(absoluteSegmentPath, "utf8");
-        segments[segmentPath] = segmentContent;
-      });
-    }
+    const segments: Record<string, string> = Array.isArray(
+      cacheFileMeta?.segmentPaths,
+    )
+      ? Object.fromEntries(
+          cacheFileMeta!.segmentPaths.map((segmentPath: string) => {
+            const absoluteSegmentPath = path.join(
+              files.meta!.replace(/\.meta$/, ".segments"),
+              `${segmentPath}.segment.rsc`,
+            );
+            const segmentContent = fs.readFileSync(absoluteSegmentPath, "utf8");
+            return [segmentPath, segmentContent];
+          }),
+        )
+      : {};
 
     const cacheFileContent = {
       type: files.body ? "route" : files.json ? "page" : "app",
