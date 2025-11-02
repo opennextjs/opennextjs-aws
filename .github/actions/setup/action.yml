@@ -3,7 +3,7 @@ description: Install's node, pnpm, restores cache, and then installs dependencie
 
 inputs:
   node-version:
-    default: 18.x
+    default: 20.x
   registry-url:
     default: "https://registry.npmjs.org"
 
