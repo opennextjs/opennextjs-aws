@@ -49,8 +49,5 @@ test("next/og (vercel/og) to work in API route", async ({ request }) => {
   const response = await request.get("api/og?title=opennext");
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("image/png");
-  // expect(response.headers()["cache-control"]).toBe(
-  //   "public, immutable, no-transform, max-age=31536000",
-  // );
   expect(validateMd5(await response.body(), API_OG_MD5)).toBe(true);
 });
