@@ -29,6 +29,9 @@ export default {
     },
     loader: "fs-dev",
   },
+  dangerous: {
+    enableCacheInterception: true,
+  },
   // You can override the build command here so that you don't have to rebuild next every time you make a change
-  //buildCommand: "echo 'No build command'",
+  // buildCommand: "echo 'No build command'",
 } satisfies OpenNextConfig;

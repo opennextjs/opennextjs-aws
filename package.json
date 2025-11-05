@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "openbuild:local": "turbo run openbuild:local",
+    "openbuild:local:start": "turbo run openbuild:local:start",
     "clean": "turbo run clean && rm -rf node_modules pnpm-lock.yaml",
     "lint": "biome check",
     "lint:fix": "biome check --fix",

@@ -5,7 +5,7 @@
   "scripts": {
     "openbuild": "node ../../packages/open-next/dist/index.js build --build-command \"npx turbo build\"",
     "openbuild:local": "node ../../packages/open-next/dist/index.js build --config-path open-next.config.local.ts",
-    "openbuild:local:start": "PORT=3003 tsx proxy.ts",
+    "openbuild:local:start": "PORT=3003 tsx on-proxy.ts",
     "dev": "next dev --turbopack --port 3003",
     "build": "next build",
     "start": "next start --port 3003",
