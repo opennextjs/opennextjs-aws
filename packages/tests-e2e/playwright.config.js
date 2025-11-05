@@ -31,4 +31,14 @@ export default defineConfig({
       },
     },
   ],
+  // Workaround for https://github.com/microsoft/playwright/issues/36371
+  // It seems to be failing in our Github action
+  // https://github.com/opennextjs/opennextjs-aws/actions/runs/19116336570/job/54627469525#step:15:171
+  use: {
+    launchOptions: {
+      args: [
+        "--disable-features=AcceptCHFrame,AutoExpandDetailsElement,AvoidUnnecessaryBeforeUnloadCheckSync,CertificateTransparencyComponentUpdater,DestroyProfileOnBrowserClose,DialMediaRouteProvider,ExtensionManifestV2Disabled,GlobalMediaControls,HttpsUpgrades,ImprovedCookieControls,LazyFrameLoading,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,DeferRendererTasksAfterInput",
+      ],
+    },
+  },
 });
