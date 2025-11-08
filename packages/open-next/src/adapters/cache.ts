@@ -148,6 +148,14 @@ export default class Cache {
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
         if (globalThis.isNextAfter15 && cacheData?.type === "app") {
+          const segmentData = new Map<string, Buffer>();
+          if (cacheData.segmentData) {
+            for (const [segmentPath, segmentContent] of Object.entries(
+              cacheData.segmentData ?? {},
+            )) {
+              segmentData.set(segmentPath, Buffer.from(segmentContent));
+            }
+          }
           return {
             lastModified: _lastModified,
             value: {
@@ -157,6 +165,7 @@ export default class Cache {
               status: meta?.status,
               headers: meta?.headers,
               postponed: meta?.postponed,
+              segmentData,
             },
           } as CacheHandlerValue;
         }

@@ -27,7 +27,9 @@ export async function optimizeImage(
   const { isAbsolute, href } = imageParams;
 
   const imageUpstream = isAbsolute
-    ? await fetchExternalImage(href)
+    ? //@ts-expect-error - fetchExternalImage signature has changed in Next.js 16, it has an extra boolean parameter.
+      // https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
+      await fetchExternalImage(href)
     : await fetchInternalImage(
         href,
         // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.

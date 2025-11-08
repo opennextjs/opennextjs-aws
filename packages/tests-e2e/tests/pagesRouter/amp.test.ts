@@ -1,7 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("next/amp", () => {
-  test("should load and display the timeago component", async ({ page }) => {
+  // amp is removed in Next.js 16+
+  test.skip("should load and display the timeago component", async ({
+    page,
+  }) => {
     await page.goto("/amp");
     const timeago = await page.getByTestId("amp-timeago").textContent();
     // We can safely assume this will always show `just now` as its using `format()` from `timeago.js`.

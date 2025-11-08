@@ -8,6 +8,8 @@ export function middleware(request: NextRequest) {
   return NextResponse.next({
     headers: {
       "x-from-middleware": "true",
+      // We need to disable caching in cloudfront to ensure we always hit the origin for this test
+      "cache-control": "private, no-store",
     },
   });
 }

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Response as PwResponse, expect, test } from "@playwright/test";
 import { validateMd5 } from "../utils";
 
 /*
@@ -23,14 +23,21 @@ test("Middleware Rewrite", async ({ page }) => {
 });
 
 test("Middleware Rewrite External Image", async ({ page }) => {
-  page.on("response", async (response) => {
-    expect(response.status()).toBe(200);
-    expect(response.headers()["content-type"]).toBe("image/png");
-    expect(response.headers()["cache-control"]).toBe("max-age=600");
-    const bodyBuffer = await response.body();
-    expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
+  const responsePromise = new Promise<PwResponse>((resolve) => {
+    page.on("response", async (resp) => {
+      resolve(resp);
+    });
   });
+
   await page.goto("/rewrite-external");
+
+  const response = await responsePromise;
+
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("image/png");
+  expect(response.headers()["cache-control"]).toBe("max-age=600");
+  const bodyBuffer = await response.body();
+  expect(validateMd5(bodyBuffer, OPENNEXT_PNG_MD5)).toBe(true);
 });
 
 test("Middleware Rewrite Status Code", async ({ page }) => {

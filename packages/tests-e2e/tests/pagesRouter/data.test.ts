@@ -4,10 +4,11 @@ test("fix _next/data", async ({ page }) => {
   await page.goto("/");
 
   const isrJson = page.waitForResponse("/_next/data/*/en/isr.json");
-  await page.locator('[href="/isr/"]').click();
   const response = await isrJson;
   expect(response.ok()).toBe(true);
   expect(response.request().url()).toMatch(/\/_next\/data\/.*\/en\/isr\.json$/);
+
+  await page.locator('[href="/isr/"]').click();
   await page.waitForURL("/isr/");
 
   const homeJson = page.waitForResponse("/_next/data/*/en.json");
