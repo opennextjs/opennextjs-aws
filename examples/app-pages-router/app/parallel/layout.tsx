@@ -17,29 +17,13 @@ export default function Layout({
 
   return (
     <div>
-      <div className="flex flex-col mb-10">
-        <label htmlFor="a">
-          Enable A
-          <input
-            name="a"
-            type="checkbox"
-            checked={routeA}
-            onChange={(e) => {
-              setRouteA(e.target.checked);
-            }}
-          />
-        </label>
-        <label htmlFor="b">
-          Enable B
-          <input
-            name="b"
-            type="checkbox"
-            checked={routeB}
-            onChange={(e) => {
-              setRouteB(e.target.checked);
-            }}
-          />
-        </label>
+      <div className="flex flex-col items-start mb-10">
+        <button onClick={() => setRouteA(!routeA)} data-testid="enable-a">
+          {routeA ? "Disable A" : "Enable A"}
+        </button>
+        <button onClick={() => setRouteB(!routeB)} data-testid="enable-b">
+          {routeB ? "Disable B" : "Enable B"}
+        </button>
       </div>
 
       {routeA && a}
