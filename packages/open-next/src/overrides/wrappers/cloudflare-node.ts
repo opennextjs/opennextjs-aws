@@ -85,7 +85,7 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           write(chunk, encoding, callback) {
             try {
               controller.enqueue(chunk);
-            } catch (e: Error | null | undefined) {
+            } catch (e: any) {
               return callback(e);
             }
             callback();
