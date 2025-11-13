@@ -64,9 +64,7 @@ test("headers", async ({ page }) => {
     }
 
     // this was set in middleware
-    if (
-      hasBeenStale && hasBeenHit
-    ) {
+    if (hasBeenStale && hasBeenHit) {
       break;
     }
     await page.waitForTimeout(1000);
