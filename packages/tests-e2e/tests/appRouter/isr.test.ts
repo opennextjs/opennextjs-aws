@@ -45,13 +45,28 @@ test("headers", async ({ page }) => {
     return response.status() === 200;
   });
   await page.goto("/isr");
+  let hasBeenStale = false;
+  let hasBeenHit = false;
 
   while (true) {
     const response = await responsePromise;
     const headers = response.headers();
+    expect(headers["cache-control"]).toBe(
+      "max-age=10, stale-while-revalidate=999",
+    );
+    const cacheHeader =
+      headers["x-nextjs-cache"] ?? headers["x-opennext-cache"];
+    if (cacheHeader === "STALE") {
+      hasBeenStale = true;
+    }
+    if (cacheHeader === "HIT") {
+      hasBeenHit = true;
+    }
 
     // this was set in middleware
-    if (headers["cache-control"] === "max-age=10, stale-while-revalidate=999") {
+    if (
+      hasBeenStale && hasBeenHit
+    ) {
       break;
     }
     await page.waitForTimeout(1000);
