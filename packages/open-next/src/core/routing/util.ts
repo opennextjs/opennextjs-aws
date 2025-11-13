@@ -356,6 +356,11 @@ export async function revalidateIfRequired(
  * @__PURE__
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
+  const regex = /s-maxage=(\d+)/;
+  // We only apply the fix if the cache-control header contains s-maxage
+  if(!headers[CommonHeaders.CACHE_CONTROL]?.match(regex)){
+    return;
+  }
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
@@ -366,7 +371,6 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     // calculate age
     const age = Math.round((Date.now() - _lastModified) / 1000);
     // extract s-maxage from cache-control
-    const regex = /s-maxage=(\d+)/;
     const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
     debug("cache-control", cacheControl, _lastModified, Date.now());
     if (typeof cacheControl !== "string") return;
