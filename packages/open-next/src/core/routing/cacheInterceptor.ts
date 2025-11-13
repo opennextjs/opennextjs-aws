@@ -141,7 +141,18 @@ async function generateResult(
   lastModified?: number,
 ): Promise<InternalResult> {
   debug("Returning result from experimental cache");
-  let body = "";
+  let enqueue = (chunk: any) => {};
+  let close = () => {};
+  const readableBody = new ReadableStream({
+    start(controller) {
+      enqueue = (chunk: any) => {
+        controller.enqueue(chunk);
+      };
+      close = () => {
+        controller.close();
+      };
+    }
+  });
   let type = "application/octet-stream";
   let isDataRequest = false;
   let additionalHeaders = {};
@@ -150,28 +161,62 @@ async function generateResult(
     if (isDataRequest) {
       const { body: appRouterBody, additionalHeaders: appHeaders } =
         getBodyForAppRouter(event, cachedValue);
-      body = appRouterBody;
+      enqueue(appRouterBody);
       additionalHeaders = appHeaders;
     } else {
-      body = cachedValue.html;
+      if(cachedValue.meta?.postponed) {
+        console.log("Postponed request detected", localizedPath);
+        const formData = new FormData();
+        formData.append('path', localizedPath);
+        const result = fetch(`http://localhost:3000/${localizedPath}`, {
+          method: 'POST',
+          headers: {
+            'next-resume': '1',
+            'x-matched-path': localizedPath
+          },
+          body: cachedValue.meta?.postponed
+        });
+        // const data = await result.text()
+        enqueue(cachedValue.html);
+        result.then(text => {
+          text.body!.getReader().read().then(({ done, value }) => {
+            if (done) {
+              console.log("Stream finished");
+              close();
+              return;
+            }
+            enqueue(value);
+          });
+        }).catch(err => {
+          console.error(err);
+        });
+      } else {
+        enqueue(cachedValue.html);
+        close();
+      }
     }
     type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
   } else if (cachedValue.type === "page") {
     isDataRequest = Boolean(event.query.__nextDataReq);
-    body = isDataRequest ? JSON.stringify(cachedValue.json) : cachedValue.html;
+    if (isDataRequest) {
+      enqueue(JSON.stringify(cachedValue.json));
+    } else {
+      enqueue(cachedValue.html);
+    }
     type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
   } else {
     throw new Error(
       "generateResult called with unsupported cache value type, only 'app' and 'page' are supported",
     );
   }
-  const cacheControl = await computeCacheControl(
-    localizedPath,
-    body,
-    event.headers.host,
-    cachedValue.revalidate,
-    lastModified,
-  );
+  // close();
+  // const cacheControl = await computeCacheControl(
+  //   localizedPath,
+  //   ,
+  //   event.headers.host,
+  //   cachedValue.revalidate,
+  //   lastModified,
+  // );
   return {
     type: "core",
     // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
@@ -180,10 +225,11 @@ async function generateResult(
     // `NextResponse.rewrite(url, { status: xxx})
     // The rewrite status code should take precedence over the cached one
     statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
-    body: toReadableStream(body, false),
+    // @ts-expect-error
+    body: readableBody,
     isBase64Encoded: false,
     headers: {
-      ...cacheControl,
+      // ...cacheControl,
       "content-type": type,
       ...cachedValue.meta?.headers,
       vary: VARY_HEADER,
@@ -230,7 +276,8 @@ export async function cacheInterceptor(
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
-    Boolean(event.headers["x-prerender-revalidate"])
+    Boolean(event.headers["x-prerender-revalidate"]) ||
+    Boolean(event.headers["next-resume"])
   )
     return event;
 

@@ -3,6 +3,8 @@ import { finished } from "node:stream/promises";
 import type { OpenNextNodeResponse } from "http/index";
 import type { ResolvedRoute, RoutingResult, WaitUntil } from "types/open-next";
 
+const NEXT_REQUEST_META = Symbol.for('NextInternalRequestMeta')
+
 /**
  * This function loads the necessary routes, and invoke the expected handler.
  * @param routingResult The result of the routing process, containing information about the matched route and any parameters.
@@ -16,6 +18,14 @@ export async function adapterHandler(
   } = {},
 ) {
   let resolved = false;
+  if (routingResult.internalEvent.headers['next-resume'] === "1") {
+    
+    const postponed = routingResult.internalEvent.body!.toString('utf8')
+    // @ts-expect-error
+    req[NEXT_REQUEST_META] = {
+      postponed
+    }
+  }
 
   //TODO: replace this at runtime with a version precompiled for the cloudflare adapter.
   for (const route of routingResult.resolvedRoutes) {
