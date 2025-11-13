@@ -748,6 +748,7 @@ describe("fixISRHeaders", () => {
   it("should set cache-control directive to must-revalidate when x-nextjs-cache is REVALIDATED", () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "REVALIDATED",
+      "cache-control": "s-maxage=10, stale-while-revalidate=86400",
     };
     fixISRHeaders(headers);
 
@@ -771,12 +772,32 @@ describe("fixISRHeaders", () => {
   it("should set cache-control directive to stale-while-revalidate when x-nextjs-cache is STALE", () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "STALE",
+      "cache-control": "s-maxage=86400", // 1 day
     };
     fixISRHeaders(headers);
 
     expect(headers["cache-control"]).toBe(
       "s-maxage=2, stale-while-revalidate=2592000",
     );
+  });
+
+  it("should not modify cache-control when cache-control is missing", () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "HIT",
+    };
+    fixISRHeaders(headers);
+
+    expect(headers["cache-control"]).toBeUndefined();
+  });
+
+  it("should not modify cache-control when cache-control has no s-maxage", () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "HIT",
+      "cache-control": "private, max-age=0",
+    };
+    fixISRHeaders(headers);
+
+    expect(headers["cache-control"]).toBe("private, max-age=0");
   });
 });
 
