@@ -25,7 +25,6 @@ jobs:
         with:
           node-version: 22
 
-
       - name: Build package
         run: pnpm -F @opennextjs/aws build
 

@@ -7,6 +7,10 @@ on:
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   release:
     name: Release
@@ -19,6 +23,11 @@ jobs:
           fetch-depth: 0
 
       - uses: ./.github/actions/setup
+        with:
+          # Ensure npm 11.5.1 or later is installed
+          # See https://docs.npmjs.com/trusted-publishers
+          node-version: 24
+
       - uses: ./.github/actions/lint
 
       - name: Create Release Pull Request or Publish to npm
@@ -31,7 +40,6 @@ jobs:
           publish: pnpm run release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: View outputs
         run: echo ${{join(steps.changesets.outputs.*, ' ')}}
