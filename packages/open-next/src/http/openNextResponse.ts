@@ -22,6 +22,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   headers: OutgoingHttpHeaders = {};
   headersSent = false;
   _chunks: Buffer[] = [];
+  headersAlreadyFixed = false;
 
   private _cookies: string[] = [];
   private responseStream?: Writable;
@@ -69,7 +70,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   constructor(
-    private fixHeaders: (headers: OutgoingHttpHeaders) => void,
+    private fixHeadersFn: (headers: OutgoingHttpHeaders) => void,
     private onEnd: (headers: OutgoingHttpHeaders) => Promise<void>,
     private streamCreator?: StreamCreator,
     private initialHeaders?: OutgoingHttpHeaders,
@@ -270,6 +271,14 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   /**
    * OpenNext specific method
    */
+
+  fixHeaders(headers: OutgoingHttpHeaders) {
+    if (this.headersAlreadyFixed) {
+      return;
+    }
+    this.fixHeadersFn(headers);
+    this.headersAlreadyFixed = true;
+  }
 
   getFixedHeaders(): OutgoingHttpHeaders {
     // Do we want to apply this on writeHead?
