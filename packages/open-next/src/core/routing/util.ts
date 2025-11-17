@@ -356,7 +356,7 @@ export async function revalidateIfRequired(
  * @__PURE__
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
-  const regex = /s-maxage=(\d+)/;
+  const regex = /s-maxage=\d+/;
   // We only apply the fix if the cache-control header contains s-maxage
   if (!headers[CommonHeaders.CACHE_CONTROL]?.match(regex)) {
     return;
