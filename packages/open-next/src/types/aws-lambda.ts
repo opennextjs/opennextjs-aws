@@ -30,9 +30,6 @@ interface Metadata {
 declare global {
   namespace awslambda {
     function streamifyResponse(handler: Handler): Handler;
-    namespace HttpResponseStream {
-      function from(res: Writable, metadata: Metadata): ResponseStream;
-    }
   }
 }
 
