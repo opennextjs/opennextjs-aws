@@ -24,12 +24,6 @@ runs:
       shell: bash
       run: npm install -g npm@latest
 
-    # Install pnpm. https://github.com/pnpm/action-setup
-    - uses: pnpm/action-setup@v4
-      with:
-        version: 9
-        # run_install: false
-
     # Get pnpm store path so we can cache it
     - name: Get pnpm store directory
       shell: bash
