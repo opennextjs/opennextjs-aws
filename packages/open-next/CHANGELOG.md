@@ -1,5 +1,19 @@
 # open-next
 
+## 3.9.0
+
+### Minor Changes
+
+- [#1029](https://github.com/opennextjs/opennextjs-aws/pull/1029) [`89336e450b4572d5c5123cfc9408b74ffa15ad67`](https://github.com/opennextjs/opennextjs-aws/commit/89336e450b4572d5c5123cfc9408b74ffa15ad67) Thanks [@conico974](https://github.com/conico974)! - Add support for Next 16
+
+### Patch Changes
+
+- [#1036](https://github.com/opennextjs/opennextjs-aws/pull/1036) [`e821f512e010b58f783f7db5fc75c9b1971c29db`](https://github.com/opennextjs/opennextjs-aws/commit/e821f512e010b58f783f7db5fc75c9b1971c29db) Thanks [@conico974](https://github.com/conico974)! - Fix cache-control header set in middleware being overriden for ISR route
+
+- [#1016](https://github.com/opennextjs/opennextjs-aws/pull/1016) [`499de6ab46851052e6da65f28d028967b47b8212`](https://github.com/opennextjs/opennextjs-aws/commit/499de6ab46851052e6da65f28d028967b47b8212) Thanks [@donnabelsey](https://github.com/donnabelsey)! - fix: Handle location header array with a single value without emitting warning
+
+- [#1035](https://github.com/opennextjs/opennextjs-aws/pull/1035) [`78d2197add9dae91d75ae0cd28461799701a9e36`](https://github.com/opennextjs/opennextjs-aws/commit/78d2197add9dae91d75ae0cd28461799701a9e36) Thanks [@mhart](https://github.com/mhart)! - Improve error handling in Writable stream in cloudflare node converters
+
 ## 3.8.5
 
 ### Patch Changes
