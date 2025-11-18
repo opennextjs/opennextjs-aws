@@ -9,7 +9,7 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   release:
