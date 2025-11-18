@@ -57,7 +57,7 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
   convertTo: async (result) => {
     if ("internalEvent" in result) {
       const request = new Request(result.internalEvent.url, {
-        body: result.internalEvent.body?.buffer as BodyInit | undefined,
+        body: result.internalEvent.body as BodyInit | undefined,
         method: result.internalEvent.method,
         headers: {
           ...result.internalEvent.headers,
