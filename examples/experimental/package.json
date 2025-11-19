@@ -13,7 +13,7 @@
     "clean": "rm -rf .turbo node_modules .next .open-next"
   },
   "dependencies": {
-    "next": "15.4.0-canary.14",
+    "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
