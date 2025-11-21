@@ -85,6 +85,34 @@ describe("CacheHandler", () => {
       expect(result).toBeNull();
     });
 
+    describe("undefined openNextConfig", () => {
+      it("Should not throw when globalThis.openNextConfig is undefined", async () => {
+        // @ts-expect-error - Testing undefined config scenario
+        globalThis.openNextConfig = undefined;
+
+        // Should not throw TypeError: Cannot read properties of undefined (reading 'dangerous')
+        const result = await cache.get("key");
+
+        expect(result).not.toBeUndefined();
+      });
+
+      it("Should not throw on set when globalThis.openNextConfig is undefined", async () => {
+        // @ts-expect-error - Testing undefined config scenario
+        globalThis.openNextConfig = undefined;
+
+        await expect(
+          cache.set("key", { kind: "REDIRECT", props: {} }),
+        ).resolves.not.toThrow();
+      });
+
+      it("Should not throw on revalidateTag when globalThis.openNextConfig is undefined", async () => {
+        // @ts-expect-error - Testing undefined config scenario
+        globalThis.openNextConfig = undefined;
+
+        await expect(cache.revalidateTag("tag")).resolves.not.toThrow();
+      });
+    });
+
     describe("disableIncrementalCache", () => {
       beforeEach(() => {
         globalThis.openNextConfig.dangerous.disableIncrementalCache = true;

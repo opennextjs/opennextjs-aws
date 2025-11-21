@@ -45,7 +45,7 @@ export default class Cache {
           kind?: "FETCH";
         },
   ) {
-    if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
+    if (globalThis.openNextConfig?.dangerous?.disableIncrementalCache) {
       return null;
     }
 
@@ -204,7 +204,7 @@ export default class Cache {
     data?: IncrementalCacheValue,
     ctx?: IncrementalCacheContext,
   ): Promise<void> {
-    if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
+    if (globalThis.openNextConfig?.dangerous?.disableIncrementalCache) {
       return;
     }
     // This one might not even be necessary anymore
@@ -322,7 +322,7 @@ export default class Cache {
   }
 
   public async revalidateTag(tags: string | string[]) {
-    const config = globalThis.openNextConfig.dangerous;
+    const config = globalThis.openNextConfig?.dangerous;
     if (config?.disableTagCache || config?.disableIncrementalCache) {
       return;
     }
@@ -430,7 +430,7 @@ export default class Cache {
     ctx?: IncrementalCacheContext,
   ) {
     if (
-      globalThis.openNextConfig.dangerous?.disableTagCache ||
+      globalThis.openNextConfig?.dangerous?.disableTagCache ||
       globalThis.tagCache.mode === "nextMode" ||
       // Here it means it's a delete
       !data
