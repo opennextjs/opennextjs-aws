@@ -42,7 +42,7 @@ async function computeCacheControl(
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
-  const existingRoute = Object.entries(PrerenderManifest.routes).find(
+  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
     (p) => p[0] === path,
   )?.[1];
   if (revalidate === undefined && existingRoute) {
@@ -259,8 +259,10 @@ export async function cacheInterceptor(
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
   const isISR =
-    Object.keys(PrerenderManifest.routes).includes(localizedPath ?? "/") ||
-    Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
+    Object.keys(PrerenderManifest?.routes ?? {}).includes(
+      localizedPath ?? "/",
+    ) ||
+    Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
       new RegExp(dr.routeRegex).test(localizedPath),
     );
   debug("isISR", isISR);
