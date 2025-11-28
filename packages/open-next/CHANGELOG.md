@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.1
+
+### Patch Changes
+
+- [#1044](https://github.com/opennextjs/opennextjs-aws/pull/1044) [`5bb5fdba741ce378dc343271a636b0670c274111`](https://github.com/opennextjs/opennextjs-aws/commit/5bb5fdba741ce378dc343271a636b0670c274111) Thanks [@vicb](https://github.com/vicb)! - Make `NEXT_BUILD_ID` and `NEXT_PREVIEW_MODE_ID` always available on `process.env`
+
 ## 3.9.0
 
 ### Minor Changes
