@@ -89,24 +89,21 @@ describe("isExternal", () => {
   });
 
   it("returns true for absolute https url different host but same host in path", () => {
-    expect(
-      isExternal(
-        "https://absolute.com/local.com",
-        "local.com",
-      ),
-    ).toBe(true);
+    expect(isExternal("https://absolute.com/local.com", "local.com")).toBe(
+      true,
+    );
   });
 
   it("returns false for same host with port", () => {
-    expect(
-      isExternal("https://localhost:3000/path", "localhost:3000"),
-    ).toBe(false);
+    expect(isExternal("https://localhost:3000/path", "localhost:3000")).toBe(
+      false,
+    );
   });
 
   it("returns true for different port on same hostname", () => {
-    expect(
-      isExternal("https://localhost:3001/path", "localhost:3000"),
-    ).toBe(true);
+    expect(isExternal("https://localhost:3001/path", "localhost:3000")).toBe(
+      true,
+    );
   });
 });
 
