@@ -30,10 +30,18 @@ import { generateMessageGroupId } from "./queue.js";
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
   const pattern = /^https?:\/\//;
+  if (!pattern.test(url)) return false;
+
   if (host) {
-    return pattern.test(url) && !url.includes(host);
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.host !== host;
+    } catch {
+      // If URL parsing fails, fall back to substring check
+      return !url.includes(host);
+    }
   }
-  return pattern.test(url);
+  return true;
 }
 
 export function convertFromQueryString(query: string) {
