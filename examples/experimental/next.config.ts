@@ -4,14 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   cleanDistDir: true,
   output: "standalone",
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  experimental: {
-    ppr: "incremental",
-    nodeMiddleware: true,
-    dynamicIO: true,
-  },
+  cacheComponents: true,
 };
 
 export default nextConfig;
