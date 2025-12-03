@@ -63,6 +63,9 @@
     "tsc-alias": "^1.8.16",
     "typescript": "catalog:"
   },
+  "peerDependencies": {
+    "next": "<15 || ~15.4.8 || ~15.5.7 || ^16.0.7"
+  },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"
   },
