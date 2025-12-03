@@ -287,7 +287,7 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       next:
-        specifier: < 14.2 || ^14.2 || 14.3.0-canary.0 - 14.3.0-canary.77 || ~15.0.5 || ~15.1.9 || ~15.3.6 || ~15.4.8 || ~15.5.7 || ^16.0.7
+        specifier: < 14.2 || ^14.2 || 14.3.0-canary.0 - 14.3.0-canary.76 || ~15.0.5 || ~15.1.9 || ~15.3.6 || ~15.4.8 || ~15.5.7 || ^16.0.7
         version: 16.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       path-to-regexp:
         specifier: ^6.3.0
