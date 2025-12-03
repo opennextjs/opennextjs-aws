@@ -1,5 +1,16 @@
 # open-next
 
+## 3.9.2
+
+### Patch Changes
+
+- [#1046](https://github.com/opennextjs/opennextjs-aws/pull/1046) [`c6bab5b43f88686c7675276c9caff426be84e74d`](https://github.com/opennextjs/opennextjs-aws/commit/c6bab5b43f88686c7675276c9caff426be84e74d) Thanks [@javascripter](https://github.com/javascripter)! - fix: Correct external URL detection in isExternal using proper URL parsing
+
+  Replaces substring-based host matching with URL parsing to correctly determine whether a rewritten URL is external.
+  This fixes an issue where NextResponse.rewrite() would treat certain external URLs as internal when their pathname contained the host as a substring, causing unexpected 404s during middleware rewrites.
+
+- [#1048](https://github.com/opennextjs/opennextjs-aws/pull/1048) [`2689ad358ab25d9552d73b0bc9c3e5cd870e3550`](https://github.com/opennextjs/opennextjs-aws/commit/2689ad358ab25d9552d73b0bc9c3e5cd870e3550) Thanks [@vicb](https://github.com/vicb)! - bump Next.js
+
 ## 3.9.1
 
 ### Patch Changes
