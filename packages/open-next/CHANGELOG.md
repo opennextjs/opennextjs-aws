@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.3
+
+### Patch Changes
+
+- [#1050](https://github.com/opennextjs/opennextjs-aws/pull/1050) [`24a02a6626dad618dcad0a0ead3d2d3d00e45f46`](https://github.com/opennextjs/opennextjs-aws/commit/24a02a6626dad618dcad0a0ead3d2d3d00e45f46) Thanks [@vicb](https://github.com/vicb)! - Update next peer dependency
+
 ## 3.9.2
 
 ### Patch Changes
