@@ -137,7 +137,7 @@ describe("convertFrom", () => {
     });
   });
 
-  it("Should handle queryStringParameters and multiValueQueryStringParameters", async () => {
+  it("Should handle queryStringParameters and multiValueQueryStringParameters for single value parameters", async () => {
     const event: APIGatewayProxyEvent = {
       body: JSON.stringify({ message: "Hello, world!" }),
       headers: {},
@@ -172,7 +172,48 @@ describe("convertFrom", () => {
       headers: {},
       remoteAddress: "::1",
       query: {
-        test: ["test"],
+        test: "test",
+      },
+      cookies: {},
+    });
+  });
+
+  it("Should handle queryStringParameters and multiValueQueryStringParameters for multi value parameters", async () => {
+    const event: APIGatewayProxyEvent = {
+      body: JSON.stringify({ message: "Hello, world!" }),
+      headers: {},
+      multiValueHeaders: {},
+      httpMethod: "POST",
+      isBase64Encoded: false,
+      path: "/",
+      pathParameters: null,
+      queryStringParameters: {
+        test: "testB",
+      },
+      multiValueQueryStringParameters: {
+        test: ["testA", "testB"],
+      },
+      stageVariables: null,
+      requestContext: {
+        identity: {
+          sourceIp: "::1",
+        },
+      } as any,
+      resource: "",
+    };
+
+    const response = await converter.convertFrom(event);
+
+    expect(response).toEqual({
+      type: "core",
+      method: "POST",
+      rawPath: "/",
+      url: "https://on/?test=testA&test=testB",
+      body: Buffer.from('{"message":"Hello, world!"}'),
+      headers: {},
+      remoteAddress: "::1",
+      query: {
+        test: ["testA", "testB"],
       },
       cookies: {},
     });

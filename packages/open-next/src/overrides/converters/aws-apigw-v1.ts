@@ -53,6 +53,24 @@ function normalizeAPIGatewayProxyEventQueryParams(
   return value ? `?${value}` : "";
 }
 
+function normalizeAPIGatewayProxyEventMultiValueQueryStringParameters(
+  event: APIGatewayProxyEvent,
+): Record<string, string[] | string> {
+  const params: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(
+    event.multiValueQueryStringParameters || {},
+  )) {
+    if (value !== undefined && Array.isArray(value)) {
+      if (value.length === 1) {
+        params[key] = value[0];
+      } else {
+        params[key] = value;
+      }
+    }
+  }
+  return params;
+}
+
 async function convertFromAPIGatewayProxyEvent(
   event: APIGatewayProxyEvent,
 ): Promise<InternalEvent> {
@@ -67,7 +85,7 @@ async function convertFromAPIGatewayProxyEvent(
     headers,
     remoteAddress: requestContext.identity.sourceIp,
     query: removeUndefinedFromQuery(
-      event.multiValueQueryStringParameters ?? {},
+      normalizeAPIGatewayProxyEventMultiValueQueryStringParameters(event),
     ),
     cookies:
       event.multiValueHeaders?.cookie?.reduce(
