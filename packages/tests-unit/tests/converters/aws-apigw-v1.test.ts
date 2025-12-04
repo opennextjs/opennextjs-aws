@@ -191,7 +191,7 @@ describe("convertFrom", () => {
         test: "testB",
       },
       multiValueQueryStringParameters: {
-        test: ["testA","testB"],
+        test: ["testA", "testB"],
       },
       stageVariables: null,
       requestContext: {
@@ -213,13 +213,11 @@ describe("convertFrom", () => {
       headers: {},
       remoteAddress: "::1",
       query: {
-        test: ["testA","testB"],
+        test: ["testA", "testB"],
       },
       cookies: {},
     });
   });
-
-
 
   it("Should handle cookies", async () => {
     const event: APIGatewayProxyEvent = {
