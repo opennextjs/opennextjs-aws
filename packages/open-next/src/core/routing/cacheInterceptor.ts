@@ -135,6 +135,49 @@ function getBodyForAppRouter(
   }
 }
 
+function createPprPartialResult(
+  event: MiddlewareEvent,
+  localizedPath: string,
+  cachedValue: CacheValue<"cache">,
+  responseBody: string | (() => ReturnType<typeof toReadableStream>),
+  contentType: string,
+): PartialResult {
+  if (cachedValue.type !== "app") {
+    throw new Error("createPprPartialResult called with non-app cache value");
+  }
+
+  return {
+    resumeRequest: {
+      ...event,
+      method: "POST",
+      url: `http://${event.headers.host}${NextConfig.basePath || ""}${
+        localizedPath || "/"
+      }`,
+      headers: {
+        ...event.headers,
+        "next-resume": "1",
+      },
+      rawPath: localizedPath,
+      body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8"),
+    },
+    result: {
+      type: "core",
+      statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+      body:
+        typeof responseBody === "string"
+          ? toReadableStream(responseBody)
+          : responseBody(),
+      isBase64Encoded: false,
+      headers: {
+        "content-type": contentType,
+        "x-opennext-ppr": "1",
+        ...cachedValue.meta?.headers,
+        vary: VARY_HEADER,
+      },
+    },
+  };
+}
+
 async function generateResult(
   event: MiddlewareEvent,
   localizedPath: string,
@@ -155,71 +198,25 @@ async function generateResult(
       additionalHeaders = appHeaders;
       if (cachedValue.meta?.postponed) {
         debug("App router postponed request detected", localizedPath);
-
-        return {
-          resumeRequest: {
-            ...event,
-            method: "POST",
-            url: `http://${event.headers.host}${NextConfig.basePath || ""}${
-              localizedPath || "/"
-            }`,
-            headers: {
-              ...event.headers,
-              "next-resume": "1",
-            },
-            rawPath: localizedPath,
-            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8"),
-          },
-          result: {
-            type: "core",
-            statusCode:
-              event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
-            // It doesn't want to build for some reasons
-            body: emptyReadableStream(),
-            isBase64Encoded: false,
-            headers: {
-              "content-type": "text/x-component",
-              "x-opennext-ppr": "1",
-              ...cachedValue.meta?.headers,
-              vary: VARY_HEADER,
-            },
-          },
-        } satisfies PartialResult;
+        return createPprPartialResult(
+          event,
+          localizedPath,
+          cachedValue,
+          () => emptyReadableStream(),
+          "text/x-component",
+        );
       }
       debug("App router data request detected", localizedPath, body);
     } else {
       if (cachedValue.meta?.postponed) {
         debug("Postponed request detected", localizedPath);
-
-        return {
-          resumeRequest: {
-            ...event,
-            method: "POST",
-            url: `http://${event.headers.host}${NextConfig.basePath || ""}${
-              localizedPath || "/"
-            }`,
-            headers: {
-              ...event.headers,
-              "next-resume": "1",
-            },
-            rawPath: localizedPath,
-            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8"),
-          },
-          result: {
-            type: "core",
-            statusCode:
-              event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
-            // It doesn't want to build for some reasons
-            body: toReadableStream(cachedValue.html),
-            isBase64Encoded: false,
-            headers: {
-              "content-type": "text/html; charset=utf-8",
-              "x-opennext-ppr": "1",
-              ...cachedValue.meta?.headers,
-              vary: VARY_HEADER,
-            },
-          },
-        } satisfies PartialResult;
+        return createPprPartialResult(
+          event,
+          localizedPath,
+          cachedValue,
+          cachedValue.html,
+          "text/html; charset=utf-8",
+        );
       } else {
         body = cachedValue.html;
       }
@@ -339,14 +336,14 @@ export async function cacheInterceptor(
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const isDynamicISR = Object.values(PrerenderManifest.dynamicRoutes).some(
-    (dr) => {
-      const regex = new RegExp(dr.routeRegex);
-      return regex.test(localizedPath);
-    },
-  );
+  const isDynamicISR = Object.values(
+    PrerenderManifest?.dynamicRoutes ?? {},
+  ).some((dr) => {
+    const regex = new RegExp(dr.routeRegex);
+    return regex.test(localizedPath);
+  });
 
-  const isStaticRoute = Object.keys(PrerenderManifest.routes).includes(
+  const isStaticRoute = Object.keys(PrerenderManifest?.routes ?? {}).includes(
     localizedPath || "/",
   );
 
@@ -358,7 +355,7 @@ export async function cacheInterceptor(
       // For PPR, we need to check the fallback value to get the correct cache key
       // We don't want to override a static route though
       if (isDynamicISR && !isStaticRoute) {
-        pathToUse = Object.entries(PrerenderManifest.dynamicRoutes).find(
+        pathToUse = Object.entries(PrerenderManifest?.dynamicRoutes ?? {}).find(
           ([, dr]) => {
             const regex = new RegExp(dr.routeRegex);
             return regex.test(localizedPath);
