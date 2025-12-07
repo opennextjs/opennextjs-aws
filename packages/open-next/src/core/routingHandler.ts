@@ -250,7 +250,7 @@ export default async function routingHandler(
       if (isInternalResult(cacheInterceptionResult)) {
         applyMiddlewareHeaders(cacheInterceptionResult, headers);
         return cacheInterceptionResult;
-      }else if (isPartialResult(cacheInterceptionResult)) {
+      } else if (isPartialResult(cacheInterceptionResult)) {
         // We need to apply the headers to both the result (the streamed response) and the resume request
         applyMiddlewareHeaders(cacheInterceptionResult.result, headers);
         applyMiddlewareHeaders(cacheInterceptionResult.resumeRequest, headers);
@@ -264,8 +264,7 @@ export default async function routingHandler(
           locale: NextConfig.i18n
             ? detectLocale(eventOrResult, NextConfig.i18n)
             : undefined,
-          rewriteStatusCode:
-            middlewareEventOrResult.rewriteStatusCode,
+          rewriteStatusCode: middlewareEventOrResult.rewriteStatusCode,
           initialResponse: cacheInterceptionResult.result,
         };
       }

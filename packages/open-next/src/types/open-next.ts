@@ -47,14 +47,14 @@ export type PartialResult = {
   /**
    * Resume request that will be forwarded to the handler
    */
-  resumeRequest: InternalEvent,
+  resumeRequest: InternalEvent;
   /**
    * The result that was generated so far by the cache interceptor
    * It contains the first part of the body that we'll need to forward to the client immediately
-   * As well as the headers and status code  
+   * As well as the headers and status code
    */
-  result: InternalResult
-}
+  result: InternalResult;
+};
 
 export type InternalResult = {
   statusCode: number;

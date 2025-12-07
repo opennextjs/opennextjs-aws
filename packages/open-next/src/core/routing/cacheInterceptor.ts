@@ -153,9 +153,9 @@ async function generateResult(
         getBodyForAppRouter(event, cachedValue);
       body = appRouterBody;
       additionalHeaders = appHeaders;
-      if(cachedValue.meta?.postponed) {
+      if (cachedValue.meta?.postponed) {
         debug("App router postponed request detected", localizedPath);
-        
+
         return {
           resumeRequest: {
             ...event,
@@ -168,11 +168,12 @@ async function generateResult(
               "next-resume": "1",
             },
             rawPath: localizedPath,
-            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8")
+            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8"),
           },
           result: {
             type: "core",
-            statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+            statusCode:
+              event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
             // It doesn't want to build for some reasons
             body: emptyReadableStream(),
             isBase64Encoded: false,
@@ -187,7 +188,7 @@ async function generateResult(
       }
       debug("App router data request detected", localizedPath, body);
     } else {
-      if(cachedValue.meta?.postponed) {
+      if (cachedValue.meta?.postponed) {
         debug("Postponed request detected", localizedPath);
 
         return {
@@ -202,11 +203,12 @@ async function generateResult(
               "next-resume": "1",
             },
             rawPath: localizedPath,
-            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8")
+            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8"),
           },
           result: {
             type: "core",
-            statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+            statusCode:
+              event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
             // It doesn't want to build for some reasons
             body: toReadableStream(cachedValue.html),
             isBase64Encoded: false,
@@ -307,7 +309,7 @@ export async function cacheInterceptor(
     event.method !== "GET"
   )
     return event;
-  
+
   // if(Boolean(event.headers.rsc) && !(Boolean(event.headers["next-router-prefetch"]) || Boolean(event.headers[NEXT_SEGMENT_PREFETCH_HEADER]))) {
   //   // Let the handler deal with RSC requests with no prefetch header as they are SSR requests
   //   return event;
@@ -337,20 +339,18 @@ export async function cacheInterceptor(
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const isDynamicISR = Object.values(
-    PrerenderManifest.dynamicRoutes,
-  ).some((dr) => {
-    const regex = new RegExp(dr.routeRegex);
-    return regex.test(localizedPath);
-  });
+  const isDynamicISR = Object.values(PrerenderManifest.dynamicRoutes).some(
+    (dr) => {
+      const regex = new RegExp(dr.routeRegex);
+      return regex.test(localizedPath);
+    },
+  );
 
   const isStaticRoute = Object.keys(PrerenderManifest.routes).includes(
     localizedPath || "/",
   );
 
-  const isISR =
-    isStaticRoute ||
-    isDynamicISR;
+  const isISR = isStaticRoute || isDynamicISR;
   debug("isISR", isISR);
   if (isISR) {
     try {
@@ -358,18 +358,16 @@ export async function cacheInterceptor(
       // For PPR, we need to check the fallback value to get the correct cache key
       // We don't want to override a static route though
       if (isDynamicISR && !isStaticRoute) {
-        pathToUse = Object.entries(
-          PrerenderManifest.dynamicRoutes,
-        ).find(([, dr]) => {
-          const regex = new RegExp(dr.routeRegex);
-          return regex.test(localizedPath);
-        })?.[1].fallback! as string
-      }else if (localizedPath === "") {
+        pathToUse = Object.entries(PrerenderManifest.dynamicRoutes).find(
+          ([, dr]) => {
+            const regex = new RegExp(dr.routeRegex);
+            return regex.test(localizedPath);
+          },
+        )?.[1].fallback! as string;
+      } else if (localizedPath === "") {
         pathToUse = "/index";
       }
-      const cachedData = await globalThis.incrementalCache.get(
-        pathToUse
-      );
+      const cachedData = await globalThis.incrementalCache.get(pathToUse);
       debug("cached data in interceptor", cachedData);
 
       if (!cachedData?.value) {

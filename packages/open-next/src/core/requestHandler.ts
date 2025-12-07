@@ -10,6 +10,8 @@ import type {
 } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
+import { Writable } from "node:stream";
+import { finished } from "node:stream/promises";
 import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
@@ -31,8 +33,6 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
-import { Writable } from "node:stream";
-import { finished } from "node:stream/promises";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -204,11 +204,13 @@ export async function openNextHandler(
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
         routingResult,
-        routingResult.initialResponse ? routingResult.initialResponse.headers : overwrittenResponseHeaders,
+        routingResult.initialResponse
+          ? routingResult.initialResponse.headers
+          : overwrittenResponseHeaders,
         options?.streamCreator,
       );
 
-      if(routingResult.initialResponse) {
+      if (routingResult.initialResponse) {
         res.statusCode = routingResult.initialResponse.statusCode;
         res.flushHeaders();
         for await (const chunk of routingResult.initialResponse.body) {
@@ -225,10 +227,9 @@ export async function openNextHandler(
                 write(chunk, encoding, callback) {
                   res.write(chunk, encoding, callback);
                 },
-                
-              })
-            }
-          }
+              });
+            },
+          },
         );
         await adapterHandler(req, pprRes, routingResult, {
           waitUntil: options?.waitUntil,
@@ -237,7 +238,6 @@ export async function openNextHandler(
         res.end();
 
         return convertRes(res);
-  
       }
 
       //#override useAdapterHandler
@@ -271,7 +271,7 @@ export async function openNextHandler(
 }
 
 function getHeaders(routingResult: RoutingResult | InternalResult) {
-  if("type" in routingResult) {
+  if ("type" in routingResult) {
     return routingResult.headers;
   } else {
     return routingResult.internalEvent.headers;
