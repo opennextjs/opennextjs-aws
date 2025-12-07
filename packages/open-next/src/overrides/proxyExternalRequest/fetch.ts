@@ -16,7 +16,7 @@ const fetchProxy: ProxyExternalRequest = {
     const response = await fetch(url, {
       method,
       headers,
-      body,
+      body: body as BodyInit | undefined,
     });
     const responseHeaders: Record<string, string | string[]> = {};
     response.headers.forEach((value, key) => {

@@ -3,7 +3,7 @@ description: Install's node, pnpm, restores cache, and then installs dependencie
 
 inputs:
   node-version:
-    default: 18.x
+    default: 20.x
   registry-url:
     default: "https://registry.npmjs.org"
 
@@ -16,6 +16,13 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: ${{ inputs.registry-url }}
+
+    # Ensure npm 11.5.1 or later is installed
+    # See https://docs.npmjs.com/trusted-publishers
+    # Note that pnpm publish runs npm publish
+    - name: Update npm
+      shell: bash
+      run: npm install -g npm@latest
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4

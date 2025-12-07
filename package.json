@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "openbuild:local": "turbo run openbuild:local",
+    "openbuild:local:start": "turbo run openbuild:local:start",
     "clean": "turbo run clean && rm -rf node_modules pnpm-lock.yaml",
     "lint": "biome check",
     "lint:fix": "biome check --fix",
@@ -17,9 +19,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@changesets/changelog-github": "^0.4.4",
-    "@changesets/cli": "^2.22.0",
-    "pkg-pr-new": "^0.0.29",
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.29.7",
+    "pkg-pr-new": "^0.0.60",
     "turbo": "1.10.12"
   },
   "engines": {

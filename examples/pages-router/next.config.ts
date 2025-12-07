@@ -9,10 +9,6 @@ const nextConfig: NextConfig = {
   cleanDistDir: true,
   reactStrictMode: true,
   output: "standalone",
-  // outputFileTracingRoot: "../sst",
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   headers: async () => [
     {
       source: "/",

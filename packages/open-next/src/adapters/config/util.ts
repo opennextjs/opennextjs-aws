@@ -76,10 +76,15 @@ export function loadConfigHeaders(nextDir: string) {
   return routesManifest.headers;
 }
 
-export function loadPrerenderManifest(nextDir: string) {
+export function loadPrerenderManifest(
+  nextDir: string,
+): PrerenderManifest | undefined {
   const filePath = path.join(nextDir, "prerender-manifest.json");
+  if (!fs.existsSync(filePath)) {
+    return undefined;
+  }
   const json = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(json) as PrerenderManifest;
+  return JSON.parse(json);
 }
 
 export function loadAppPathsManifest(nextDir: string) {

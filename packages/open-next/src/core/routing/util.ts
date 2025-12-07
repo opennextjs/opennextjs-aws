@@ -30,10 +30,18 @@ import { generateMessageGroupId } from "./queue.js";
 export function isExternal(url?: string, host?: string) {
   if (!url) return false;
   const pattern = /^https?:\/\//;
+  if (!pattern.test(url)) return false;
+
   if (host) {
-    return pattern.test(url) && !url.includes(host);
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.host !== host;
+    } catch {
+      // If URL parsing fails, fall back to substring check
+      return !url.includes(host);
+    }
   }
-  return pattern.test(url);
+  return true;
 }
 
 export function convertFromQueryString(query: string) {
@@ -356,6 +364,13 @@ export async function revalidateIfRequired(
  * @__PURE__
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
+  const sMaxAgeRegex = /s-maxage=(\d+)/;
+  const match = headers[CommonHeaders.CACHE_CONTROL]?.match(sMaxAgeRegex);
+  const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
+  // We only apply the fix if the cache-control header contains s-maxage
+  if (!sMaxAge) {
+    return;
+  }
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
     headers[CommonHeaders.CACHE_CONTROL] =
       "private, no-cache, no-store, max-age=0, must-revalidate";
@@ -363,18 +378,17 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   }
   const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
   if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
-    // calculate age
-    const age = Math.round((Date.now() - _lastModified) / 1000);
-    // extract s-maxage from cache-control
-    const regex = /s-maxage=(\d+)/;
-    const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
-    debug("cache-control", cacheControl, _lastModified, Date.now());
-    if (typeof cacheControl !== "string") return;
-    const match = cacheControl.match(regex);
-    const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
+    debug(
+      "cache-control",
+      headers[CommonHeaders.CACHE_CONTROL],
+      _lastModified,
+      Date.now(),
+    );
 
     // 31536000 is the default s-maxage value for SSG pages
     if (sMaxAge && sMaxAge !== 31536000) {
+      // calculate age
+      const age = Math.round((Date.now() - _lastModified) / 1000);
       const remainingTtl = Math.max(sMaxAge - age, 1);
       headers[CommonHeaders.CACHE_CONTROL] =
         `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;

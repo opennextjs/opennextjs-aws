@@ -194,8 +194,8 @@ ${contents}
   export const FunctionsConfigManifest = ${JSON.stringify(FunctionsConfigManifest)};
   export const PagesManifest = ${JSON.stringify(PagesManifest)};
 
-
   process.env.NEXT_BUILD_ID = BuildId;
+  process.env.NEXT_PREVIEW_MODE_ID = PrerenderManifest?.preview?.previewModeId;
 `;
           return { contents };
         },

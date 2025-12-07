@@ -260,6 +260,7 @@ File ${serverPath} does not exist
 
   // Only files that are actually copied
   const tracedFiles: string[] = [];
+  const erroredFiles: string[] = [];
   //Actually copy the files
   filesToCopy.forEach((to, from) => {
     // We don't want to copy excluded packages (e.g. sharp)
@@ -285,7 +286,15 @@ File ${serverPath} does not exist
         }
       }
     } else {
-      copyFileSync(from, to);
+      // Adding this inside a try-catch to handle errors on Next 16+
+      // where some files listed in the .nft.json might not be present in the standalone folder
+      // TODO: investigate that further - is it expected?
+      try {
+        copyFileSync(from, to);
+      } catch (e) {
+        logger.debug("Error copying file:", e);
+        erroredFiles.push(to);
+      }
     }
   });
 
@@ -353,7 +362,7 @@ File ${serverPath} does not exist
     const staticFiles: Array<string> = Object.values(pagesManifest);
     // Then we need to get all fallback: true dynamic routes html
     const locales = config.i18n?.locales;
-    Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
+    Object.values(prerenderManifest?.dynamicRoutes ?? {}).forEach((route) => {
       if (typeof route.fallback === "string") {
         if (locales) {
           locales.forEach((locale) => {
@@ -383,7 +392,7 @@ File ${serverPath} does not exist
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
 
   return {
-    tracedFiles,
+    tracedFiles: tracedFiles.filter((f) => !erroredFiles.includes(f)),
     nodePackages,
     manifests,
   };

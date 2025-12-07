@@ -1,5 +1,48 @@
 # open-next
 
+## 3.9.4
+
+### Patch Changes
+
+- [#1052](https://github.com/opennextjs/opennextjs-aws/pull/1052) [`2a9c7dd1db589061e8f1c94ac490c1c16b0c5fa0`](https://github.com/opennextjs/opennextjs-aws/commit/2a9c7dd1db589061e8f1c94ac490c1c16b0c5fa0) Thanks [@vicb](https://github.com/vicb)! - Update next peer dependency
+
+## 3.9.3
+
+### Patch Changes
+
+- [#1050](https://github.com/opennextjs/opennextjs-aws/pull/1050) [`24a02a6626dad618dcad0a0ead3d2d3d00e45f46`](https://github.com/opennextjs/opennextjs-aws/commit/24a02a6626dad618dcad0a0ead3d2d3d00e45f46) Thanks [@vicb](https://github.com/vicb)! - Update next peer dependency
+
+## 3.9.2
+
+### Patch Changes
+
+- [#1046](https://github.com/opennextjs/opennextjs-aws/pull/1046) [`c6bab5b43f88686c7675276c9caff426be84e74d`](https://github.com/opennextjs/opennextjs-aws/commit/c6bab5b43f88686c7675276c9caff426be84e74d) Thanks [@javascripter](https://github.com/javascripter)! - fix: Correct external URL detection in isExternal using proper URL parsing
+
+  Replaces substring-based host matching with URL parsing to correctly determine whether a rewritten URL is external.
+  This fixes an issue where NextResponse.rewrite() would treat certain external URLs as internal when their pathname contained the host as a substring, causing unexpected 404s during middleware rewrites.
+
+- [#1048](https://github.com/opennextjs/opennextjs-aws/pull/1048) [`2689ad358ab25d9552d73b0bc9c3e5cd870e3550`](https://github.com/opennextjs/opennextjs-aws/commit/2689ad358ab25d9552d73b0bc9c3e5cd870e3550) Thanks [@vicb](https://github.com/vicb)! - bump Next.js
+
+## 3.9.1
+
+### Patch Changes
+
+- [#1044](https://github.com/opennextjs/opennextjs-aws/pull/1044) [`5bb5fdba741ce378dc343271a636b0670c274111`](https://github.com/opennextjs/opennextjs-aws/commit/5bb5fdba741ce378dc343271a636b0670c274111) Thanks [@vicb](https://github.com/vicb)! - Make `NEXT_BUILD_ID` and `NEXT_PREVIEW_MODE_ID` always available on `process.env`
+
+## 3.9.0
+
+### Minor Changes
+
+- [#1029](https://github.com/opennextjs/opennextjs-aws/pull/1029) [`89336e450b4572d5c5123cfc9408b74ffa15ad67`](https://github.com/opennextjs/opennextjs-aws/commit/89336e450b4572d5c5123cfc9408b74ffa15ad67) Thanks [@conico974](https://github.com/conico974)! - Add support for Next 16
+
+### Patch Changes
+
+- [#1036](https://github.com/opennextjs/opennextjs-aws/pull/1036) [`e821f512e010b58f783f7db5fc75c9b1971c29db`](https://github.com/opennextjs/opennextjs-aws/commit/e821f512e010b58f783f7db5fc75c9b1971c29db) Thanks [@conico974](https://github.com/conico974)! - Fix cache-control header set in middleware being overriden for ISR route
+
+- [#1016](https://github.com/opennextjs/opennextjs-aws/pull/1016) [`499de6ab46851052e6da65f28d028967b47b8212`](https://github.com/opennextjs/opennextjs-aws/commit/499de6ab46851052e6da65f28d028967b47b8212) Thanks [@donnabelsey](https://github.com/donnabelsey)! - fix: Handle location header array with a single value without emitting warning
+
+- [#1035](https://github.com/opennextjs/opennextjs-aws/pull/1035) [`78d2197add9dae91d75ae0cd28461799701a9e36`](https://github.com/opennextjs/opennextjs-aws/commit/78d2197add9dae91d75ae0cd28461799701a9e36) Thanks [@mhart](https://github.com/mhart)! - Improve error handling in Writable stream in cloudflare node converters
+
 ## 3.8.5
 
 ### Patch Changes

@@ -11,7 +11,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
-import { debug } from "../../adapters/logger";
+import { debug, error } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
 
@@ -29,6 +29,9 @@ const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
  */
 const VARY_HEADER =
   "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Router-Segment-Prefetch, Next-Url";
+const NEXT_SEGMENT_PREFETCH_HEADER = "next-router-segment-prefetch";
+const NEXT_PRERENDER_HEADER = "x-nextjs-prerender";
+const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
 
 async function computeCacheControl(
   path: string,
@@ -39,7 +42,7 @@ async function computeCacheControl(
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
-  const existingRoute = Object.entries(PrerenderManifest.routes).find(
+  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
     (p) => p[0] === path,
   )?.[1];
   if (revalidate === undefined && existingRoute) {
@@ -103,6 +106,34 @@ async function computeCacheControl(
   };
 }
 
+function getBodyForAppRouter(
+  event: MiddlewareEvent,
+  cachedValue: CacheValue<"cache">,
+): { body: string; additionalHeaders: Record<string, string> } {
+  if (cachedValue.type !== "app") {
+    throw new Error("getBodyForAppRouter called with non-app cache value");
+  }
+  try {
+    const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
+    const isSegmentResponse =
+      Boolean(segmentHeader) &&
+      segmentHeader in (cachedValue.segmentData || {});
+
+    const body = isSegmentResponse
+      ? cachedValue.segmentData![segmentHeader]
+      : cachedValue.rsc;
+    return {
+      body,
+      additionalHeaders: isSegmentResponse
+        ? { [NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2" }
+        : {},
+    };
+  } catch (e) {
+    error("Error while getting body for app router from cache:", e);
+    return { body: cachedValue.rsc, additionalHeaders: {} };
+  }
+}
+
 async function generateResult(
   event: MiddlewareEvent,
   localizedPath: string,
@@ -113,19 +144,26 @@ async function generateResult(
   let body = "";
   let type = "application/octet-stream";
   let isDataRequest = false;
-  switch (cachedValue.type) {
-    case "app":
-      isDataRequest = Boolean(event.headers.rsc);
-      body = isDataRequest ? cachedValue.rsc : cachedValue.html;
-      type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
-      break;
-    case "page":
-      isDataRequest = Boolean(event.query.__nextDataReq);
-      body = isDataRequest
-        ? JSON.stringify(cachedValue.json)
-        : cachedValue.html;
-      type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
-      break;
+  let additionalHeaders = {};
+  if (cachedValue.type === "app") {
+    isDataRequest = Boolean(event.headers.rsc);
+    if (isDataRequest) {
+      const { body: appRouterBody, additionalHeaders: appHeaders } =
+        getBodyForAppRouter(event, cachedValue);
+      body = appRouterBody;
+      additionalHeaders = appHeaders;
+    } else {
+      body = cachedValue.html;
+    }
+    type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
+  } else if (cachedValue.type === "page") {
+    isDataRequest = Boolean(event.query.__nextDataReq);
+    body = isDataRequest ? JSON.stringify(cachedValue.json) : cachedValue.html;
+    type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
+  } else {
+    throw new Error(
+      "generateResult called with unsupported cache value type, only 'app' and 'page' are supported",
+    );
   }
   const cacheControl = await computeCacheControl(
     localizedPath,
@@ -149,6 +187,7 @@ async function generateResult(
       "content-type": type,
       ...cachedValue.meta?.headers,
       vary: VARY_HEADER,
+      ...additionalHeaders,
     },
   };
 }
@@ -220,8 +259,10 @@ export async function cacheInterceptor(
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
   const isISR =
-    Object.keys(PrerenderManifest.routes).includes(localizedPath ?? "/") ||
-    Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
+    Object.keys(PrerenderManifest?.routes ?? {}).includes(
+      localizedPath ?? "/",
+    ) ||
+    Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
       new RegExp(dr.routeRegex).test(localizedPath),
     );
   debug("isISR", isISR);

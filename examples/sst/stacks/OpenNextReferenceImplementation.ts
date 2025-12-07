@@ -189,7 +189,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         code: Code.fromAsset(
           path.join(this.openNextBasePath, ".open-next/dynamodb-provider"),
         ),
-        runtime: Runtime.NODEJS_18_X,
+        runtime: Runtime.NODEJS_20_X,
         timeout: Duration.minutes(15),
         memorySize: 128,
         environment: {
@@ -293,7 +293,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
             "",
         ),
       ),
-      runtime: Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_20_X,
       timeout: Duration.seconds(30),
     });
     consumer.addEventSource(
@@ -330,7 +330,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
     const environment = this.getEnvironment();
     const fn = new CdkFunction(this, `${key}Function`, {
       architecture: Architecture.ARM_64,
-      runtime: Runtime.NODEJS_18_X,
+      runtime: Runtime.NODEJS_20_X,
       handler: origin.handler,
       code: Code.fromAsset(path.join(this.openNextBasePath, origin.bundle)),
       environment,

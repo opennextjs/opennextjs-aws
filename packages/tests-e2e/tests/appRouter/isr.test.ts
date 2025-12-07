@@ -45,13 +45,26 @@ test("headers", async ({ page }) => {
     return response.status() === 200;
   });
   await page.goto("/isr");
+  let hasBeenStale = false;
+  let hasBeenHit = false;
 
   while (true) {
     const response = await responsePromise;
     const headers = response.headers();
+    expect(headers["cache-control"]).toBe(
+      "max-age=10, stale-while-revalidate=999",
+    );
+    const cacheHeader =
+      headers["x-nextjs-cache"] ?? headers["x-opennext-cache"];
+    if (cacheHeader === "STALE") {
+      hasBeenStale = true;
+    }
+    if (cacheHeader === "HIT") {
+      hasBeenHit = true;
+    }
 
     // this was set in middleware
-    if (headers["cache-control"] === "max-age=10, stale-while-revalidate=999") {
+    if (hasBeenStale && hasBeenHit) {
       break;
     }
     await page.waitForTimeout(1000);
@@ -98,7 +111,9 @@ test.describe("dynamicParams set to true", () => {
   test("should be HIT on a path that was prebuilt", async ({ page }) => {
     const res = await page.goto("/isr/dynamic-params-true/1");
     expect(res?.status()).toEqual(200);
-    expect(res?.headers()["x-nextjs-cache"]).toEqual("HIT");
+    const cacheHeader =
+      res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
+    expect(cacheHeader).toEqual("HIT");
     const title = await page.getByTestId("title").textContent();
     const content = await page.getByTestId("content").textContent();
     expect(title).toEqual("Post 1");
@@ -110,7 +125,9 @@ test.describe("dynamicParams set to true", () => {
   // We are gonna skip this one for now, turborepo caching can cause this page to be STALE once deployed
   test.skip("should SSR on a path that was not prebuilt", async ({ page }) => {
     const res = await page.goto("/isr/dynamic-params-true/11");
-    expect(res?.headers()["x-nextjs-cache"]).toEqual("MISS");
+    const cacheHeader =
+      res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
+    expect(cacheHeader).toEqual("MISS");
     const title = await page.getByTestId("title").textContent();
     const content = await page.getByTestId("content").textContent();
     expect(title).toEqual("Post 11");
@@ -139,7 +156,9 @@ test.describe("dynamicParams set to false", () => {
   test("should be HIT on a path that was prebuilt", async ({ page }) => {
     const res = await page.goto("/isr/dynamic-params-false/1");
     expect(res?.status()).toEqual(200);
-    expect(res?.headers()["x-nextjs-cache"]).toEqual("HIT");
+    const cacheHeader =
+      res?.headers()["x-nextjs-cache"] ?? res?.headers()["x-opennext-cache"];
+    expect(cacheHeader).toEqual("HIT");
     const title = await page.getByTestId("title").textContent();
     const content = await page.getByTestId("content").textContent();
     expect(title).toEqual("Post 1");
