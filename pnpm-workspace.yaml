@@ -3,14 +3,14 @@ packages:
   - "packages/*"
 
 catalog:
-  next: 16.0.1
-  react: 19.0.0
-  react-dom: 19.0.0
+  next: 16.0.7
+  react: 19.0.1
+  react-dom: 19.0.1
   "@types/node": 20.17.6
-  "@types/react": 19.0.0
-  "@types/react-dom": 19.0.0
+  "@types/react": 19.0.1
+  "@types/react-dom": 19.0.1
   autoprefixer: 10.4.15
   postcss: 8.4.27
   tailwindcss: 3.3.3
-  typescript: 5.6.3
+  typescript: 5.9.3
   esbuild: 0.25.4

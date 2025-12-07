@@ -60,7 +60,7 @@ export async function handleMiddleware(
   if (
     headers["x-isr"] &&
     headers["x-prerender-revalidate"] ===
-      PrerenderManifest.preview.previewModeId
+      PrerenderManifest?.preview?.previewModeId
   )
     return internalEvent;
 

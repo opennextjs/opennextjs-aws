@@ -362,7 +362,7 @@ File ${serverPath} does not exist
     const staticFiles: Array<string> = Object.values(pagesManifest);
     // Then we need to get all fallback: true dynamic routes html
     const locales = config.i18n?.locales;
-    Object.values(prerenderManifest.dynamicRoutes).forEach((route) => {
+    Object.values(prerenderManifest?.dynamicRoutes ?? {}).forEach((route) => {
       if (typeof route.fallback === "string") {
         if (locales) {
           locales.forEach((locale) => {

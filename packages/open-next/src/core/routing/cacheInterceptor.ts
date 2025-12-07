@@ -43,7 +43,7 @@ async function computeCacheControl(
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
-  const existingRoute = Object.entries(PrerenderManifest.routes).find(
+  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
     (p) => p[0] === path,
   )?.[1];
   if (revalidate === undefined && existingRoute) {

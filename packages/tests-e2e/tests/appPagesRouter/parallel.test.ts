@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("Parallel routes", async ({ page }) => {
   await page.goto("/");
-  await page.locator('[href="/parallel"]').click();
+  await page.getByRole("link", { name: "Parallel" }).click();
 
   await page.waitForURL("/parallel");
 
@@ -13,13 +13,13 @@ test("Parallel routes", async ({ page }) => {
   await expect(routeB).not.toBeVisible();
 
   // Enable A, which should be visible but not B
-  await page.locator('input[name="a"]').check();
+  await page.getByTestId("enable-a").click();
   routeA = page.getByText("Parallel Route A");
   await expect(routeA).toBeVisible();
   await expect(routeB).not.toBeVisible();
 
   // Enable B, both should be visible
-  await page.locator('input[name="b"]').check();
+  await page.getByTestId("enable-b").click();
   routeB = page.getByText("Parallel Route B");
   await expect(routeA).toBeVisible();
   await expect(routeB).toBeVisible();

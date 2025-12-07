@@ -40,3 +40,6 @@ export const AppPathRoutesManifest =
 
 export const FunctionsConfigManifest =
   /* @__PURE__ */ loadFunctionsConfigManifest(NEXT_DIR);
+
+process.env.NEXT_BUILD_ID = BuildId;
+process.env.NEXT_PREVIEW_MODE_ID = PrerenderManifest?.preview?.previewModeId;
