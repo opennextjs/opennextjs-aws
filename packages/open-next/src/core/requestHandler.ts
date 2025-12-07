@@ -31,6 +31,8 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
+import { Writable } from "node:stream";
+import { finished } from "node:stream/promises";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -91,10 +93,7 @@ export async function openNextHandler(
       });
       //#endOverride
 
-      const headers =
-        "type" in routingResult
-          ? routingResult.headers
-          : routingResult.internalEvent.headers;
+      const headers = getHeaders(routingResult);
 
       const overwrittenResponseHeaders: Record<string, string | string[]> = {};
 
@@ -205,9 +204,41 @@ export async function openNextHandler(
       const req = new IncomingMessage(reqProps);
       const res = createServerResponse(
         routingResult,
-        overwrittenResponseHeaders,
+        routingResult.initialResponse ? routingResult.initialResponse.headers : overwrittenResponseHeaders,
         options?.streamCreator,
       );
+
+      if(routingResult.initialResponse) {
+        res.statusCode = routingResult.initialResponse.statusCode;
+        res.flushHeaders();
+        for await (const chunk of routingResult.initialResponse.body) {
+          res.write(chunk);
+        }
+
+        //We create a special response for the PPR resume request
+        const pprRes = createServerResponse(
+          routingResult,
+          overwrittenResponseHeaders,
+          {
+            writeHeaders: () => {
+              return new Writable({
+                write(chunk, encoding, callback) {
+                  res.write(chunk, encoding, callback);
+                },
+                
+              })
+            }
+          }
+        );
+        await adapterHandler(req, pprRes, routingResult, {
+          waitUntil: options?.waitUntil,
+        });
+        await finished(pprRes);
+        res.end();
+
+        return convertRes(res);
+  
+      }
 
       //#override useAdapterHandler
       await adapterHandler(req, res, routingResult, {
@@ -237,6 +268,14 @@ export async function openNextHandler(
       return internalResult;
     },
   );
+}
+
+function getHeaders(routingResult: RoutingResult | InternalResult) {
+  if("type" in routingResult) {
+    return routingResult.headers;
+  } else {
+    return routingResult.internalEvent.headers;
+  }
 }
 
 async function processRequest(

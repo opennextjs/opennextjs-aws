@@ -5,6 +5,7 @@ import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
+  PartialResult,
 } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
@@ -139,69 +140,95 @@ async function generateResult(
   localizedPath: string,
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
-): Promise<InternalResult> {
+): Promise<InternalResult | PartialResult | InternalEvent> {
   debug("Returning result from experimental cache");
-  let enqueue = (chunk: any) => {};
-  let close = () => {};
-  const readableBody = new ReadableStream({
-    start(controller) {
-      enqueue = (chunk: any) => {
-        controller.enqueue(chunk);
-      };
-      close = () => {
-        controller.close();
-      };
-    }
-  });
   let type = "application/octet-stream";
   let isDataRequest = false;
   let additionalHeaders = {};
+  let body: string;
   if (cachedValue.type === "app") {
     isDataRequest = Boolean(event.headers.rsc);
     if (isDataRequest) {
       const { body: appRouterBody, additionalHeaders: appHeaders } =
         getBodyForAppRouter(event, cachedValue);
-      enqueue(appRouterBody);
+      body = appRouterBody;
       additionalHeaders = appHeaders;
+      if(cachedValue.meta?.postponed) {
+        debug("App router postponed request detected", localizedPath);
+        
+        return {
+          resumeRequest: {
+            ...event,
+            method: "POST",
+            url: `http://${event.headers.host}${NextConfig.basePath || ""}${
+              localizedPath || "/"
+            }`,
+            headers: {
+              ...event.headers,
+              "next-resume": "1",
+            },
+            rawPath: localizedPath,
+            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8")
+          },
+          result: {
+            type: "core",
+            statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+            // It doesn't want to build for some reasons
+            body: emptyReadableStream(),
+            isBase64Encoded: false,
+            headers: {
+              "content-type": "text/x-component",
+              "x-opennext-ppr": "1",
+              ...cachedValue.meta?.headers,
+              vary: VARY_HEADER,
+            },
+          },
+        } satisfies PartialResult;
+      }
+      debug("App router data request detected", localizedPath, body);
     } else {
       if(cachedValue.meta?.postponed) {
-        console.log("Postponed request detected", localizedPath);
-        const formData = new FormData();
-        formData.append('path', localizedPath);
-        const result = fetch(`http://localhost:3000/${localizedPath}`, {
-          method: 'POST',
-          headers: {
-            'next-resume': '1',
-            'x-matched-path': localizedPath
+        debug("Postponed request detected", localizedPath);
+
+        return {
+          resumeRequest: {
+            ...event,
+            method: "POST",
+            url: `http://${event.headers.host}${NextConfig.basePath || ""}${
+              localizedPath || "/"
+            }`,
+            headers: {
+              ...event.headers,
+              "next-resume": "1",
+            },
+            rawPath: localizedPath,
+            body: Buffer.from(cachedValue.meta?.postponed || "", "utf-8")
           },
-          body: cachedValue.meta?.postponed
-        });
-        // const data = await result.text()
-        enqueue(cachedValue.html);
-        result.then(text => {
-          text.body!.getReader().read().then(({ done, value }) => {
-            if (done) {
-              console.log("Stream finished");
-              close();
-              return;
-            }
-            enqueue(value);
-          });
-        }).catch(err => {
-          console.error(err);
-        });
+          result: {
+            type: "core",
+            statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+            // It doesn't want to build for some reasons
+            body: toReadableStream(cachedValue.html),
+            isBase64Encoded: false,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+              "x-opennext-ppr": "1",
+              ...cachedValue.meta?.headers,
+              vary: VARY_HEADER,
+            },
+          },
+        } satisfies PartialResult;
       } else {
-        enqueue(cachedValue.html);
-        close();
+        body = cachedValue.html;
       }
     }
     type = isDataRequest ? "text/x-component" : "text/html; charset=utf-8";
   } else if (cachedValue.type === "page") {
     isDataRequest = Boolean(event.query.__nextDataReq);
     if (isDataRequest) {
-      enqueue(JSON.stringify(cachedValue.json));
+      body = JSON.stringify(cachedValue.json);
     } else {
-      enqueue(cachedValue.html);
+      body = cachedValue.html;
     }
     type = isDataRequest ? "application/json" : "text/html; charset=utf-8";
   } else {
@@ -210,13 +237,13 @@ async function generateResult(
     );
   }
   // close();
-  // const cacheControl = await computeCacheControl(
-  //   localizedPath,
-  //   ,
-  //   event.headers.host,
-  //   cachedValue.revalidate,
-  //   lastModified,
-  // );
+  const cacheControl = await computeCacheControl(
+    localizedPath,
+    body,
+    event.headers.host,
+    cachedValue.revalidate,
+    lastModified,
+  );
   return {
     type: "core",
     // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
@@ -225,11 +252,10 @@ async function generateResult(
     // `NextResponse.rewrite(url, { status: xxx})
     // The rewrite status code should take precedence over the cached one
     statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
-    // @ts-expect-error
-    body: readableBody,
+    body: toReadableStream(body, isBinaryContentType(type)),
     isBase64Encoded: false,
     headers: {
-      // ...cacheControl,
+      ...cacheControl,
       "content-type": type,
       ...cachedValue.meta?.headers,
       vary: VARY_HEADER,
@@ -273,13 +299,19 @@ function decodePathParams(pathname: string): string {
 
 export async function cacheInterceptor(
   event: MiddlewareEvent,
-): Promise<InternalEvent | InternalResult> {
+): Promise<InternalEvent | InternalResult | PartialResult> {
   if (
     Boolean(event.headers["next-action"]) ||
     Boolean(event.headers["x-prerender-revalidate"]) ||
-    Boolean(event.headers["next-resume"])
+    Boolean(event.headers["next-resume"]) ||
+    event.method !== "GET"
   )
     return event;
+  
+  // if(Boolean(event.headers.rsc) && !(Boolean(event.headers["next-router-prefetch"]) || Boolean(event.headers[NEXT_SEGMENT_PREFETCH_HEADER]))) {
+  //   // Let the handler deal with RSC requests with no prefetch header as they are SSR requests
+  //   return event;
+  // }
 
   // Check for Next.js preview mode cookies
   const cookies = event.headers.cookie || "";
@@ -305,16 +337,38 @@ export async function cacheInterceptor(
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
+  const isDynamicISR = Object.values(
+    PrerenderManifest.dynamicRoutes,
+  ).some((dr) => {
+    const regex = new RegExp(dr.routeRegex);
+    return regex.test(localizedPath);
+  });
+
+  const isStaticRoute = Object.keys(PrerenderManifest.routes).includes(
+    localizedPath || "/",
+  );
+
   const isISR =
-    Object.keys(PrerenderManifest.routes).includes(localizedPath ?? "/") ||
-    Object.values(PrerenderManifest.dynamicRoutes).some((dr) =>
-      new RegExp(dr.routeRegex).test(localizedPath),
-    );
+    isStaticRoute ||
+    isDynamicISR;
   debug("isISR", isISR);
   if (isISR) {
     try {
+      let pathToUse = localizedPath;
+      // For PPR, we need to check the fallback value to get the correct cache key
+      // We don't want to override a static route though
+      if (isDynamicISR && !isStaticRoute) {
+        pathToUse = Object.entries(
+          PrerenderManifest.dynamicRoutes,
+        ).find(([, dr]) => {
+          const regex = new RegExp(dr.routeRegex);
+          return regex.test(localizedPath);
+        })?.[1].fallback! as string
+      }else if (localizedPath === "") {
+        pathToUse = "/index";
+      }
       const cachedData = await globalThis.incrementalCache.get(
-        localizedPath ?? "/index",
+        pathToUse
       );
       debug("cached data in interceptor", cachedData);
 
