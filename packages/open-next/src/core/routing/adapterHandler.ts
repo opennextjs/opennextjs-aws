@@ -2,6 +2,7 @@ import type { IncomingMessage } from "node:http";
 import { finished } from "node:stream/promises";
 import type { OpenNextNodeResponse } from "http/index";
 import type { ResolvedRoute, RoutingResult, WaitUntil } from "types/open-next";
+import { debug, error } from "../../adapters/logger";
 
 /**
  * This function loads the necessary routes, and invoke the expected handler.
@@ -25,17 +26,17 @@ export async function adapterHandler(
     }
 
     try {
-      console.log("## adapterHandler trying route", route, req.url);
+      debug("## adapterHandler trying route", route, req.url);
       const result = await module.handler(req, res, {
         waitUntil: options.waitUntil,
       });
       await finished(res); // Not sure this one is necessary.
-      console.log("## adapterHandler route succeeded", route);
+      debug("## adapterHandler route succeeded", route);
       resolved = true;
       return result;
       //If it doesn't throw, we are done
     } catch (e) {
-      console.log("## adapterHandler route failed", route, e);
+      error("## adapterHandler route failed", route, e);
       // I'll have to run some more tests, but in theory, we should not have anything special to do here, and we should return the 500 page here.
     }
   }

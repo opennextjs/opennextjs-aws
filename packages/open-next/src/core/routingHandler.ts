@@ -8,6 +8,7 @@ import {
 import type {
   InternalEvent,
   InternalResult,
+  PartialResult,
   ResolvedRoute,
   RoutingResult,
 } from "types/open-next";
@@ -235,25 +236,42 @@ export default async function routingHandler(
       };
     }
 
+    const resolvedRoutes: ResolvedRoute[] = [
+      ...foundStaticRoute,
+      ...foundDynamicRoute,
+    ];
+
     if (
       globalThis.openNextConfig.dangerous?.enableCacheInterception &&
       !isInternalResult(eventOrResult)
     ) {
       debug("Cache interception enabled");
-      eventOrResult = await cacheInterceptor(eventOrResult);
-      if (isInternalResult(eventOrResult)) {
-        applyMiddlewareHeaders(eventOrResult, headers);
-        return eventOrResult;
+      const cacheInterceptionResult = await cacheInterceptor(eventOrResult);
+      if (isInternalResult(cacheInterceptionResult)) {
+        applyMiddlewareHeaders(cacheInterceptionResult, headers);
+        return cacheInterceptionResult;
+      } else if (isPartialResult(cacheInterceptionResult)) {
+        // We need to apply the headers to both the result (the streamed response) and the resume request
+        applyMiddlewareHeaders(cacheInterceptionResult.result, headers);
+        applyMiddlewareHeaders(cacheInterceptionResult.resumeRequest, headers);
+        return {
+          internalEvent: cacheInterceptionResult.resumeRequest,
+          isExternalRewrite: false,
+          origin: false,
+          isISR: false,
+          resolvedRoutes,
+          initialURL: event.url,
+          locale: NextConfig.i18n
+            ? detectLocale(eventOrResult, NextConfig.i18n)
+            : undefined,
+          rewriteStatusCode: middlewareEventOrResult.rewriteStatusCode,
+          initialResponse: cacheInterceptionResult.result,
+        };
       }
     }
 
     // We apply the headers from the middleware response last
     applyMiddlewareHeaders(eventOrResult, headers);
-
-    const resolvedRoutes: ResolvedRoute[] = [
-      ...foundStaticRoute,
-      ...foundDynamicRoute,
-    ];
 
     debug("resolvedRoutes", resolvedRoutes);
 
@@ -301,8 +319,18 @@ export default async function routingHandler(
  * @param eventOrResult
  * @returns Whether the event is an instance of `InternalResult`
  */
-function isInternalResult(
-  eventOrResult: InternalEvent | InternalResult,
+export function isInternalResult(
+  eventOrResult: InternalEvent | InternalResult | PartialResult,
 ): eventOrResult is InternalResult {
   return eventOrResult != null && "statusCode" in eventOrResult;
+}
+
+/**
+ * @param eventOrResult
+ * @returns Whether the event is an instance of `PartialResult` (i.e. for PPR responses)
+ */
+export function isPartialResult(
+  eventOrResult: InternalEvent | InternalResult | PartialResult,
+): eventOrResult is PartialResult {
+  return eventOrResult != null && "resumeRequest" in eventOrResult;
 }
