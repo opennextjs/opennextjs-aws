@@ -64,7 +64,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "next": "< 14.2 || ^14.2 || 14.3.0-canary.0 - 14.3.0-canary.76 || ~15.0.5 || ~15.1.9 || ~15.2.6 || ~15.3.6 || ~15.4.8 || ~15.5.7 || ^16.0.7"
+    "next": "^14.2.34 || ~15.0.6 || ~15.1.10 || ~15.2.7 || ~15.3.7 || ~15.4.9 || ~15.5.8 || ^16.0.9"
   },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"
