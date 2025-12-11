@@ -1,5 +1,21 @@
 # open-next
 
+## 3.9.5
+
+### Patch Changes
+
+- [#1061](https://github.com/opennextjs/opennextjs-aws/pull/1061) [`2fb99000aaca974c7847d7a53d1621e08b58b820`](https://github.com/opennextjs/opennextjs-aws/commit/2fb99000aaca974c7847d7a53d1621e08b58b820) Thanks [@vicb](https://github.com/vicb)! - Bump Next and React to fix vulnerabilities (CVE-2025-55184 and CVE-2025-55183)
+
+  Note that Next 13 has been removed from the allowed peer Dependency range,
+  because it is vulnerable under specific conditions.
+
+  If possible we will check the conditions at build time and relax the peer dependency.
+
+  See <https://react.dev/blog/2025/12/11/denial-of-service-and-source-code-exposure-in-react-server-components>
+  See <https://nextjs.org/blog/security-update-2025-12-11>
+
+- [#1055](https://github.com/opennextjs/opennextjs-aws/pull/1055) [`85128a5b7e68fc3ddd155eca5ade59a5c5b2a8b2`](https://github.com/opennextjs/opennextjs-aws/commit/85128a5b7e68fc3ddd155eca5ade59a5c5b2a8b2) Thanks [@guerra-eb](https://github.com/guerra-eb)! - fix: AWS ApiGW v1 (REST) converter incorrectly parses all query parameters as arrays
+
 ## 3.9.4
 
 ### Patch Changes
