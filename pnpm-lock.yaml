@@ -10,11 +10,11 @@ catalogs:
       specifier: 20.17.6
       version: 20.17.6
     '@types/react':
-      specifier: 19.0.2
-      version: 19.0.2
+      specifier: 19.0.3
+      version: 19.0.3
     '@types/react-dom':
-      specifier: 19.0.2
-      version: 19.0.2
+      specifier: 19.0.3
+      version: 19.0.3
     autoprefixer:
       specifier: 10.4.15
       version: 10.4.15
@@ -28,11 +28,11 @@ catalogs:
       specifier: 8.4.27
       version: 8.4.27
     react:
-      specifier: 19.0.2
-      version: 19.0.2
+      specifier: 19.0.3
+      version: 19.0.3
     react-dom:
-      specifier: 19.0.2
-      version: 19.0.2
+      specifier: 19.0.3
+      version: 19.0.3
     tailwindcss:
       specifier: 3.3.3
       version: 3.3.3
@@ -73,13 +73,13 @@ importers:
         version: 2.1.1
       next:
         specifier: 'catalog:'
-        version: 16.0.10(react-dom@19.0.2(react@19.0.2))(react@19.0.2)
+        version: 16.0.10(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react:
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       react-dom:
         specifier: 'catalog:'
-        version: 19.0.2(react@19.0.2)
+        version: 19.0.3(react@19.0.3)
     devDependencies:
       '@types/express-http-proxy':
         specifier: 1.6.7
@@ -89,10 +89,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 19.0.2(@types/react@19.0.2)
+        version: 19.0.3(@types/react@19.0.3)
       autoprefixer:
         specifier: 'catalog:'
         version: 10.4.15(postcss@8.4.27)
@@ -116,13 +116,13 @@ importers:
         version: link:../shared
       next:
         specifier: 'catalog:'
-        version: 16.0.10(react-dom@19.0.2(react@19.0.2))(react@19.0.2)
+        version: 16.0.10(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react:
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       react-dom:
         specifier: 'catalog:'
-        version: 19.0.2(react@19.0.2)
+        version: 19.0.3(react@19.0.3)
     devDependencies:
       '@opennextjs/aws':
         specifier: workspace:*
@@ -132,10 +132,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 19.0.2(@types/react@19.0.2)
+        version: 19.0.3(@types/react@19.0.3)
       autoprefixer:
         specifier: 'catalog:'
         version: 10.4.15(postcss@8.4.27)
@@ -153,13 +153,13 @@ importers:
     dependencies:
       next:
         specifier: 15.4.0-canary.14
-        version: 15.4.0-canary.14(@playwright/test@1.49.1)(react-dom@19.0.2(react@19.0.2))(react@19.0.2)
+        version: 15.4.0-canary.14(@playwright/test@1.49.1)(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react:
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       react-dom:
         specifier: 'catalog:'
-        version: 19.0.2(react@19.0.2)
+        version: 19.0.3(react@19.0.3)
     devDependencies:
       '@opennextjs/aws':
         specifier: workspace:*
@@ -169,10 +169,10 @@ importers:
         version: 20.17.6
       '@types/react':
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 19.0.2(@types/react@19.0.2)
+        version: 19.0.3(@types/react@19.0.3)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -184,23 +184,23 @@ importers:
         version: link:../shared
       next:
         specifier: 'catalog:'
-        version: 16.0.10(react-dom@19.0.2(react@19.0.2))(react@19.0.2)
+        version: 16.0.10(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react:
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       react-dom:
         specifier: 'catalog:'
-        version: 19.0.2(react@19.0.2)
+        version: 19.0.3(react@19.0.3)
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.6
       '@types/react':
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 19.0.2(@types/react@19.0.2)
+        version: 19.0.3(@types/react@19.0.3)
       autoprefixer:
         specifier: 'catalog:'
         version: 10.4.15(postcss@8.4.27)
@@ -218,17 +218,17 @@ importers:
     dependencies:
       react:
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       react-dom:
         specifier: 'catalog:'
-        version: 19.0.2(react@19.0.2)
+        version: 19.0.3(react@19.0.3)
     devDependencies:
       '@types/react':
         specifier: 'catalog:'
-        version: 19.0.2
+        version: 19.0.3
       '@types/react-dom':
         specifier: 'catalog:'
-        version: 19.0.2(@types/react@19.0.2)
+        version: 19.0.3(@types/react@19.0.3)
 
   examples/sst:
     devDependencies:
@@ -240,7 +240,7 @@ importers:
         version: 10.3.0
       sst:
         specifier: ^2.43.6
-        version: 2.44.0(@aws-sdk/client-sso-oidc@3.678.0(@aws-sdk/client-sts@3.678.0(aws-crt@1.23.0))(aws-crt@1.23.0))(@types/react@19.0.2)(aws-crt@1.23.0)
+        version: 2.44.0(@aws-sdk/client-sso-oidc@3.678.0(@aws-sdk/client-sts@3.678.0(aws-crt@1.23.0))(aws-crt@1.23.0))(@types/react@19.0.3)(aws-crt@1.23.0)
 
   packages/open-next:
     dependencies:
@@ -288,7 +288,7 @@ importers:
         version: 5.1.0
       next:
         specifier: ^14.2.35 || ~15.0.7 || ~15.1.11 || ~15.2.8 || ~15.3.8 || ~15.4.10 || ~15.5.9 || ^16.0.10
-        version: 16.0.10(react-dom@19.0.2(react@19.0.2))(react@19.0.2)
+        version: 16.0.10(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       path-to-regexp:
         specifier: ^6.3.0
         version: 6.3.0
@@ -2798,13 +2798,13 @@ packages:
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
 
-  '@types/react-dom@19.0.2':
-    resolution: {integrity: sha512-c1s+7TKFaDRRxr1TxccIX2u7sfCnc3RxkVyBIUA2lCpyqCF+QoAwQ/CBg7bsMdVwP120HEH143VQezKtef5nCg==}
+  '@types/react-dom@19.0.3':
+    resolution: {integrity: sha512-0Knk+HJiMP/qOZgMyNFamlIjw9OFCsyC2ZbigmEEyXXixgre6IQpm/4V+r3qH4GC1JPvRJKInw+on2rV6YZLeA==}
     peerDependencies:
       '@types/react': ^19.0.0
 
-  '@types/react@19.0.2':
-    resolution: {integrity: sha512-USU8ZI/xyKJwFTpjSVIrSeHBVAGagkHQKPNbxeWwql/vDmnTIBgx+TJnhFnj1NXgz8XfprU0egV2dROLGpsBEg==}
+  '@types/react@19.0.3':
+    resolution: {integrity: sha512-UavfHguIjnnuq9O67uXfgy/h3SRJbidAYvNjLceB+2RIKVRBzVsh0QO+Pw6BCSQqFS9xwzKfwstXx0m6AbAREA==}
 
   '@types/readable-stream@4.0.16':
     resolution: {integrity: sha512-Fvp+8OcU8PyV90KTk5tR/rI8OjD3MP5NUow5rjOsZo+9zxf4p4soJtK9j4V6yeG30TH6rZxqRaP4JLa8lNNTNQ==}
@@ -4999,10 +4999,10 @@ packages:
     resolution: {integrity: sha512-RmkhL8CAyCRPXCE28MMH0z2PNWQBNk2Q09ZdxM9IOOXwxwZbN+qbWaatPkdkWIKL2ZVDImrN/pK5HTRz2PcS4g==}
     engines: {node: '>= 0.8'}
 
-  react-dom@19.0.2:
-    resolution: {integrity: sha512-6N4UcB4mLYRdX3W+z9fIz+2yijW3r7laRQCV+zg8PFCZsy2iVaEQgWy3eLH0NBeQmVyi1PeLzFqXfucqeYghjw==}
+  react-dom@19.0.3:
+    resolution: {integrity: sha512-a7ezLfxibhu6fZBVLwy6WEd3Jn/4H8JYVO8K8GtBfRf1Pl+ox7KFoMCzAGlxLZUXo0t44YZShzhhoDH3yMVdxQ==}
     peerDependencies:
-      react: ^19.0.2
+      react: ^19.0.3
 
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
@@ -5017,8 +5017,8 @@ packages:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
 
-  react@19.0.2:
-    resolution: {integrity: sha512-xgvB+eJxFIW0HcFmURjOOLhGmbhYVHATKeS+aQd7HeRJI3nYuutqG4eJfBi+I2rFob7E72M3tXJGjv+5XUHLEQ==}
+  react@19.0.3:
+    resolution: {integrity: sha512-owzQanTgpB8GF7pVL6mUwZZyhKzFePi9++GkFk54i9PRU0jq+z7v9Mwg7PAZJYCiYl5YwcyQGGq5/PLkesd8nw==}
     engines: {node: '>=0.10.0'}
 
   read-cache@1.0.0:
@@ -9556,11 +9556,11 @@ snapshots:
 
   '@types/range-parser@1.2.7': {}
 
-  '@types/react-dom@19.0.2(@types/react@19.0.2)':
+  '@types/react-dom@19.0.3(@types/react@19.0.3)':
     dependencies:
-      '@types/react': 19.0.2
+      '@types/react': 19.0.3
 
-  '@types/react@19.0.2':
+  '@types/react@19.0.3':
     dependencies:
       csstype: 3.1.3
 
@@ -11029,13 +11029,13 @@ snapshots:
 
   inherits@2.0.4: {}
 
-  ink-spinner@5.0.0(ink@4.4.1(@types/react@19.0.2)(react@18.3.1))(react@18.3.1):
+  ink-spinner@5.0.0(ink@4.4.1(@types/react@19.0.3)(react@18.3.1))(react@18.3.1):
     dependencies:
       cli-spinners: 2.9.2
-      ink: 4.4.1(@types/react@19.0.2)(react@18.3.1)
+      ink: 4.4.1(@types/react@19.0.3)(react@18.3.1)
       react: 18.3.1
 
-  ink@4.4.1(@types/react@19.0.2)(react@18.3.1):
+  ink@4.4.1(@types/react@19.0.3)(react@18.3.1):
     dependencies:
       '@alcalzone/ansi-tokenize': 0.1.3
       ansi-escapes: 6.2.1
@@ -11064,7 +11064,7 @@ snapshots:
       ws: 8.18.0
       yoga-wasm-web: 0.3.3
     optionalDependencies:
-      '@types/react': 19.0.2
+      '@types/react': 19.0.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -11563,16 +11563,16 @@ snapshots:
 
   negotiator@1.0.0: {}
 
-  next@15.4.0-canary.14(@playwright/test@1.49.1)(react-dom@19.0.2(react@19.0.2))(react@19.0.2):
+  next@15.4.0-canary.14(@playwright/test@1.49.1)(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
     dependencies:
       '@next/env': 15.4.0-canary.14
       '@swc/counter': 0.1.3
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001669
       postcss: 8.4.31
-      react: 19.0.2
-      react-dom: 19.0.2(react@19.0.2)
-      styled-jsx: 5.1.6(react@19.0.2)
+      react: 19.0.3
+      react-dom: 19.0.3(react@19.0.3)
+      styled-jsx: 5.1.6(react@19.0.3)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.4.0-canary.14
       '@next/swc-darwin-x64': 15.4.0-canary.14
@@ -11588,15 +11588,15 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@16.0.10(react-dom@19.0.2(react@19.0.2))(react@19.0.2):
+  next@16.0.10(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
     dependencies:
       '@next/env': 16.0.10
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001669
       postcss: 8.4.31
-      react: 19.0.2
-      react-dom: 19.0.2(react@19.0.2)
-      styled-jsx: 5.1.6(react@19.0.2)
+      react: 19.0.3
+      react-dom: 19.0.3(react@19.0.3)
+      styled-jsx: 5.1.6(react@19.0.3)
     optionalDependencies:
       '@next/swc-darwin-arm64': 16.0.10
       '@next/swc-darwin-x64': 16.0.10
@@ -11938,9 +11938,9 @@ snapshots:
       iconv-lite: 0.6.3
       unpipe: 1.0.0
 
-  react-dom@19.0.2(react@19.0.2):
+  react-dom@19.0.3(react@19.0.3):
     dependencies:
-      react: 19.0.2
+      react: 19.0.3
       scheduler: 0.25.0
 
   react-is@18.3.1: {}
@@ -11955,7 +11955,7 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
 
-  react@19.0.2: {}
+  react@19.0.3: {}
 
   read-cache@1.0.0:
     dependencies:
@@ -12365,7 +12365,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.2
 
-  sst@2.44.0(@aws-sdk/client-sso-oidc@3.678.0(@aws-sdk/client-sts@3.678.0(aws-crt@1.23.0))(aws-crt@1.23.0))(@types/react@19.0.2)(aws-crt@1.23.0):
+  sst@2.44.0(@aws-sdk/client-sso-oidc@3.678.0(@aws-sdk/client-sts@3.678.0(aws-crt@1.23.0))(aws-crt@1.23.0))(@types/react@19.0.3)(aws-crt@1.23.0):
     dependencies:
       '@aws-cdk/aws-lambda-python-alpha': 2.161.1-alpha.0(aws-cdk-lib@2.161.1(constructs@10.3.0))(constructs@10.3.0)
       '@aws-cdk/cloud-assembly-schema': 38.0.1
@@ -12417,8 +12417,8 @@ snapshots:
       graphql: 16.9.0
       graphql-yoga: 3.9.1(graphql@16.9.0)
       immer: 9.0.21
-      ink: 4.4.1(@types/react@19.0.2)(react@18.3.1)
-      ink-spinner: 5.0.0(ink@4.4.1(@types/react@19.0.2)(react@18.3.1))(react@18.3.1)
+      ink: 4.4.1(@types/react@19.0.3)(react@18.3.1)
+      ink-spinner: 5.0.0(ink@4.4.1(@types/react@19.0.3)(react@18.3.1))(react@18.3.1)
       kysely: 0.25.0
       kysely-codegen: 0.10.1(kysely@0.25.0)
       kysely-data-api: 0.2.1(@aws-sdk/client-rds-data@3.678.0(aws-crt@1.23.0))(kysely@0.25.0)
@@ -12518,10 +12518,10 @@ snapshots:
 
   strnum@1.0.5: {}
 
-  styled-jsx@5.1.6(react@19.0.2):
+  styled-jsx@5.1.6(react@19.0.3):
     dependencies:
       client-only: 0.0.1
-      react: 19.0.2
+      react: 19.0.3
 
   sucrase@3.35.0:
     dependencies:
