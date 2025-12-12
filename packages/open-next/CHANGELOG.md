@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.7
+
+### Patch Changes
+
+- [#1064](https://github.com/opennextjs/opennextjs-aws/pull/1064) [`c76fd93b8c2c622ed682364a453c7275c5842b63`](https://github.com/opennextjs/opennextjs-aws/commit/c76fd93b8c2c622ed682364a453c7275c5842b63) Thanks [@vicb](https://github.com/vicb)! - bump react
+
 ## 3.9.6
 
 ### Patch Changes
