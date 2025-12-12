@@ -3,7 +3,7 @@ packages:
   - "packages/*"
 
 catalog:
-  next: 16.0.9
+  next: 16.0.10
   react: 19.0.2
   react-dom: 19.0.2
   "@types/node": 20.17.6
