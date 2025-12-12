@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.6
+
+### Patch Changes
+
+- [#1062](https://github.com/opennextjs/opennextjs-aws/pull/1062) [`6feb26885c529ca87fe57d83a9f82a3e95410332`](https://github.com/opennextjs/opennextjs-aws/commit/6feb26885c529ca87fe57d83a9f82a3e95410332) Thanks [@vicb](https://github.com/vicb)! - fix for CVE-2025-67779
+
+  See <https://nextjs.org/blog/security-update-2025-12-11>
+
 ## 3.9.5
 
 ### Patch Changes
