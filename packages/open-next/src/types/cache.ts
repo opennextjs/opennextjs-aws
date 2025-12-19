@@ -162,7 +162,13 @@ export interface ComposableCacheHandler {
     pendingEntry: Promise<ComposableCacheEntry>,
   ): Promise<void>;
   refreshTags(): Promise<void>;
-  getExpiration(...tags: string[]): Promise<number>;
+  /**
+   * Next 16 takes an array of tags instead of variadic arguments
+   */
+  getExpiration(...tags: string[] | string[][]): Promise<number>;
+  /**
+   * Removed from Next.js 16
+   */
   expireTags(...tags: string[]): Promise<void>;
   /**
    * This function is only there for older versions and do nothing

@@ -326,7 +326,7 @@ describe("Composable cache handler", () => {
     });
   });
 
-  describe("getExpiration", () => {
+  describe("getExpiration (Next 15)", () => {
     it("should return last revalidated time in nextMode", async () => {
       tagCache.mode = "nextMode";
       tagCache.getLastRevalidated.mockResolvedValueOnce(123456);
@@ -352,6 +352,37 @@ describe("Composable cache handler", () => {
       tagCache.mode = undefined;
 
       const result = await ComposableCache.getExpiration("tag1", "tag2");
+
+      expect(result).toBe(0);
+    });
+  });
+
+  describe("getExpiration (Next 16)", () => {
+    it("should return last revalidated time in nextMode", async () => {
+      tagCache.mode = "nextMode";
+      tagCache.getLastRevalidated.mockResolvedValueOnce(123456);
+
+      const result = await ComposableCache.getExpiration(["tag1", "tag2"]);
+
+      expect(tagCache.getLastRevalidated).toHaveBeenCalledWith([
+        "tag1",
+        "tag2",
+      ]);
+      expect(result).toBe(123456);
+    });
+
+    it("should return 0 in original mode", async () => {
+      tagCache.mode = "original";
+
+      const result = await ComposableCache.getExpiration(["tag1", "tag2"]);
+
+      expect(result).toBe(0);
+    });
+
+    it("should return 0 when mode is undefined", async () => {
+      tagCache.mode = undefined;
+
+      const result = await ComposableCache.getExpiration(["tag1", "tag2"]);
 
       expect(result).toBe(0);
     });
