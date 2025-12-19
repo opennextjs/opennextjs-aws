@@ -99,14 +99,25 @@ export default {
     // We don't do anything for now, do we want to do something here ???
     return;
   },
-  async getExpiration(...tags: string[]) {
+
+  /**
+   * The signature has changed in Next.js 16
+   * - Before Next.js 16, the method takes `...tags: string[]`
+   * - From Next.js 16, the method takes `tags: string[]`
+   */
+  async getExpiration(...tags: string[] | string[][]) {
     if (globalThis.tagCache.mode === "nextMode") {
-      return globalThis.tagCache.getLastRevalidated(tags);
+      // Use `.flat()` to accommodate both signatures
+      return globalThis.tagCache.getLastRevalidated(tags.flat());
     }
     // We always return 0 here, original tag cache are handled directly in the get part
     // TODO: We need to test this more, i'm not entirely sure that this is working as expected
     return 0;
   },
+
+  /**
+   * This method is only used before Next.js 16
+   */
   async expireTags(...tags: string[]) {
     if (globalThis.tagCache.mode === "nextMode") {
       return writeTags(tags);
