@@ -261,7 +261,9 @@ export function fixCacheHeaderForHtmlPages(
   // https://opennext.js.org/aws/v2/advanced/workaround#workaround-nextserver-does-not-set-cache-headers-for-html-pages
   // Requests containing an `x-middleware-prefetch` header must not be cached
   if (
-    HtmlPages.includes(localizedPath) &&
+    HtmlPages.find(
+      (path) => `${NextConfig.basePath ?? ""}${path}` === localizedPath,
+    ) &&
     !internalEvent.headers["x-middleware-prefetch"]
   ) {
     headers[CommonHeaders.CACHE_CONTROL] =
