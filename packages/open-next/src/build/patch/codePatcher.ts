@@ -33,6 +33,10 @@ export type PatchCodeFn = (args: {
    * Next.js manifests that are used by Next at runtime
    */
   manifests: ReturnType<typeof getManifests>;
+  /**
+   * OpenNext build options
+   */
+  buildOptions: buildHelper.BuildOptions,
 }) => Promise<string>;
 
 interface IndividualPatch {
@@ -168,6 +172,7 @@ export async function applyCodePatches(
           filePath,
           tracedFiles,
           manifests,
+          buildOptions
         });
       }
       await fs.writeFile(filePath, patchedContent);

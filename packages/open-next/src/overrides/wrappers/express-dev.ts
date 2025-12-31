@@ -72,7 +72,7 @@ const wrapper: WrapperHandler = async (handler, converter) => {
     },
   );
 
-  app.on("error", (err) => {
+  app.on("mount", (err) => {
     console.error("error", err);
   });
 
