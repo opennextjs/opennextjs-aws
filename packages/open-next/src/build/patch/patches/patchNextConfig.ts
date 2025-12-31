@@ -1,6 +1,7 @@
 import { buildSync } from "esbuild";
 import { CodePatcher } from "../codePatcher";
 import path from "node:path";
+import fs from "node:fs";
 
 export const patchNextConfig : CodePatcher = {
     name: "patch-next-config",
@@ -9,20 +10,45 @@ export const patchNextConfig : CodePatcher = {
             "pathFilter": /required\-server\-files\.json$/,
             versions: ">=16.1.0",
             patchCode: async ({ code, buildOptions  }) => {
-                console.log("Patching required-server-files.json to include skipTrailingSlashRedirect");
 
-                // Because Next config could be in TS format, we need to first convert it to JS
-                buildSync({
-                    entryPoints: [path.join(buildOptions.appPath, 'next.config.ts')],
-                    outfile: path.join(buildOptions.tempBuildDir, 'next.config.mjs'),
-                    bundle: true,
-                    format: 'esm',
-                    platform: 'node',
-                })
+                // Find the next.config file with any supported extension
+                const possibleExtensions = ['.ts', '.mjs', '.js', '.cjs'];
+                let configPath: string | undefined;
+                let configExtension: string | undefined;
+                
+                for (const ext of possibleExtensions) {
+                    const testPath = path.join(buildOptions.appPath, `next.config${ext}`);
+                    if (fs.existsSync(testPath)) {
+                        configPath = testPath;
+                        configExtension = ext;
+                        break;
+                    }
+                }
+
+                if (!configPath || !configExtension) {
+                    throw new Error("Could not find next.config file");
+                }
+
+                let configToImport: string;
+                
+                // Only compile if the extension is .ts
+                if (configExtension === '.ts') {
+                    buildSync({
+                        entryPoints: [configPath],
+                        outfile: path.join(buildOptions.tempBuildDir, 'next.config.mjs'),
+                        bundle: true,
+                        format: 'esm',
+                        platform: 'node',
+                    });
+                    configToImport = path.join(buildOptions.tempBuildDir, 'next.config.mjs');
+                } else {
+                    // For .js, .mjs, .cjs, use the file directly
+                    configToImport = configPath;
+                }
+
                 // In next 16.1+ we need to add `skipTrailingSlashRedirect` manually because next removes it from the config
-                const originalConfig = (await import(path.join(buildOptions.tempBuildDir, 'next.config.mjs'))).default;
+                const originalConfig = (await import(configToImport)).default;
                 const config = JSON.parse(code);
-                console.log("Original config:", originalConfig, config);
                 if (config.config.skipTrailingSlashRedirect === undefined) {
                     config.config.skipTrailingSlashRedirect = originalConfig.skipTrailingSlashRedirect ?? false;
                 }
