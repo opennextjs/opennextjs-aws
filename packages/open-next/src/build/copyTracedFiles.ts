@@ -303,14 +303,13 @@ File ${serverPath} does not exist
       (fileOrDir) =>
         !statSync(path.join(standaloneNextDir, fileOrDir)).isDirectory(),
     )
-    .forEach((file) =>{
+    .forEach((file) => {
       copyFileSync(
         path.join(standaloneNextDir, file),
         path.join(outputNextDir, file),
       );
       tracedFiles.push(path.join(outputNextDir, file));
-    }
-    );
+    });
 
   // We then need to copy all the files at the root of server
 
@@ -322,14 +321,13 @@ File ${serverPath} does not exist
         !statSync(path.join(standaloneServerDir, fileOrDir)).isDirectory(),
     )
     .filter((file) => file !== "server.js")
-    .forEach((file) =>{
+    .forEach((file) => {
       copyFileSync(
         path.join(standaloneServerDir, file),
         path.join(path.join(outputNextDir, "server"), file),
       );
       tracedFiles.push(path.join(outputNextDir, "server", file));
-    }
-    );
+    });
 
   // Copy patch file
   copyPatchFile(path.join(outputDir, packagePath));

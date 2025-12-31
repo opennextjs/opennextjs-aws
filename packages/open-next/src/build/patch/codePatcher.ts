@@ -36,7 +36,7 @@ export type PatchCodeFn = (args: {
   /**
    * OpenNext build options
    */
-  buildOptions: buildHelper.BuildOptions,
+  buildOptions: buildHelper.BuildOptions;
 }) => Promise<string>;
 
 interface IndividualPatch {
@@ -172,7 +172,7 @@ export async function applyCodePatches(
           filePath,
           tracedFiles,
           manifests,
-          buildOptions
+          buildOptions,
         });
       }
       await fs.writeFile(filePath, patchedContent);
