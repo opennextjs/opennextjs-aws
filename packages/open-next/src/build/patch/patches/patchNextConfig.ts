@@ -11,7 +11,8 @@ export const patchNextConfig: CodePatcher = {
       versions: ">=16.1.0",
       patchCode: async ({ code, buildOptions }) => {
         // Find the next.config file with any supported extension
-        const possibleExtensions = [".ts", ".mjs", ".js", ".cjs"];
+        const tsExtensions = [".ts", ".mts", ".cts"];
+        const possibleExtensions = [...tsExtensions, ".mjs", ".js", ".cjs"];
         let configPath: string | undefined;
         let configExtension: string | undefined;
 
@@ -30,8 +31,8 @@ export const patchNextConfig: CodePatcher = {
 
         let configToImport: string;
 
-        // Only compile if the extension is .ts
-        if (configExtension === ".ts") {
+        // Only compile if the extension is a TypeScript extension
+        if (tsExtensions.includes(configExtension)) {
           buildSync({
             entryPoints: [configPath],
             outfile: path.join(buildOptions.tempBuildDir, "next.config.mjs"),
