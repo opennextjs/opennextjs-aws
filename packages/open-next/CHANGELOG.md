@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.8
+
+### Patch Changes
+
+- [#1072](https://github.com/opennextjs/opennextjs-aws/pull/1072) [`35af007fc7ebc6c4adb755a32141a0508d881c2f`](https://github.com/opennextjs/opennextjs-aws/commit/35af007fc7ebc6c4adb755a32141a0508d881c2f) Thanks [@conico974](https://github.com/conico974)! - Fix for Next 16.1 config
+
 ## 3.9.7
 
 ### Patch Changes
