@@ -8,3 +8,4 @@ export {
 export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.js";
 export { patchBackgroundRevalidation } from "./patchBackgroundRevalidation.js";
 export { patchNodeEnvironment } from "./patchNodeEnvironment.js";
+export { patchNextConfig } from "./patchNextConfig.js";
