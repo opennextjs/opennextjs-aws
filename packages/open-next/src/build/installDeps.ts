@@ -78,7 +78,7 @@ export function installDependencies(
       }
     }
     // End of Node Workaround
-    
+
     // Cleanup tempDir
     fs.rmSync(tempInstallDir, { recursive: true, force: true });
     logger.info(`Dependencies installed for ${name}`);
