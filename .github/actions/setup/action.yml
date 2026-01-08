@@ -27,7 +27,7 @@ runs:
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
       with:
-        version: 9
+        version: 10
         # run_install: false
 
     # Get pnpm store path so we can cache it

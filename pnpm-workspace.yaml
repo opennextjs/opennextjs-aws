@@ -14,3 +14,8 @@ catalog:
   tailwindcss: 3.3.3
   typescript: 5.9.3
   esbuild: 0.25.4
+
+overrides:
+  "qs@6.14.0": ^6.14.1
+  "brace-expansion@2.0.1": ^2.0.2
+  "nanoid@3.3.7": ^3.3.8
