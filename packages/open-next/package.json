@@ -50,7 +50,7 @@
     "chalk": "^5.6.2",
     "cookie": "^1.0.2",
     "esbuild": "catalog:",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "path-to-regexp": "^6.3.0",
     "urlpattern-polyfill": "^10.1.0",
     "yaml": "^2.8.1"
