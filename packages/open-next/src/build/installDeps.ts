@@ -7,8 +7,6 @@ import type { InstallOptions } from "types/open-next";
 
 import logger from "../logger.js";
 
-const AFFECTED_NODE_VERSIONS = ["22.17.0", "22.17.1", "22.18.0"];
-
 export function installDependencies(
   outputDir: string,
   installOptions?: InstallOptions,
@@ -54,33 +52,32 @@ export function installDependencies(
       { recursive: true, force: true, dereference: true },
     );
 
-    // This is a workaround for Node `22.17.0` and `22.17.1`
     // https://github.com/nodejs/node/issues/59168
-    const nodeVersion = process.versions.node;
-    if (AFFECTED_NODE_VERSIONS.includes(nodeVersion)) {
-      const tempBinDir = path.join(tempInstallDir, "node_modules", ".bin");
-      const outputBinDir = path.join(outputDir, "node_modules", ".bin");
+    // This is a workaround for all Node versions. It seems to be an issue continue to affect new versions aswell.
+    // Therefor I think the most logical solution is to always run this workaround instead of trying to figure out which versions are affected.
+    const tempBinDir = path.join(tempInstallDir, "node_modules", ".bin");
+    const outputBinDir = path.join(outputDir, "node_modules", ".bin");
 
-      for (const fileName of fs.readdirSync(tempBinDir)) {
-        const symlinkPath = path.join(tempBinDir, fileName);
-        const stat = fs.lstatSync(symlinkPath);
+    for (const fileName of fs.readdirSync(tempBinDir)) {
+      const symlinkPath = path.join(tempBinDir, fileName);
+      const stat = fs.lstatSync(symlinkPath);
 
-        if (stat.isSymbolicLink()) {
-          const linkTarget = fs.readlinkSync(symlinkPath);
-          const realFilePath = path.resolve(tempBinDir, linkTarget);
+      if (stat.isSymbolicLink()) {
+        const linkTarget = fs.readlinkSync(symlinkPath);
+        const realFilePath = path.resolve(tempBinDir, linkTarget);
 
-          const outputFilePath = path.join(outputBinDir, fileName);
+        const outputFilePath = path.join(outputBinDir, fileName);
 
-          if (fs.existsSync(outputFilePath)) {
-            fs.unlinkSync(outputFilePath);
-          }
-
-          fs.copyFileSync(realFilePath, outputFilePath);
-          fs.chmodSync(outputFilePath, "755");
-          logger.debug(`Replaced symlink ${fileName} with actual file`);
+        if (fs.existsSync(outputFilePath)) {
+          fs.unlinkSync(outputFilePath);
         }
+
+        fs.copyFileSync(realFilePath, outputFilePath);
+        fs.chmodSync(outputFilePath, "755");
+        logger.debug(`Replaced symlink ${fileName} with actual file`);
       }
     }
+    // End of Node Workaround
 
     // Cleanup tempDir
     fs.rmSync(tempInstallDir, { recursive: true, force: true });
