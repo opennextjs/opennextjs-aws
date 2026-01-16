@@ -438,5 +438,66 @@ export async function isEdgeRuntime(
 }
 
 export function getPackagePath(options: BuildOptions) {
+  // First, try to detect the actual package path from the standalone output.
+  // Next.js uses the package name from package.json to create the folder structure
+  // inside .next/standalone, which may differ from the filesystem path in monorepos.
+  const standaloneDir = path.join(
+    options.appBuildOutputPath,
+    ".next/standalone",
+  );
+
+  if (fs.existsSync(standaloneDir)) {
+    const detectedPath = findStandalonePackagePath(standaloneDir);
+    if (detectedPath !== null) {
+      return detectedPath;
+    }
+  }
+
   return path.relative(options.monorepoRoot, options.appBuildOutputPath);
+}
+
+/**
+ * Finds the package path inside the standalone output by looking for a directory
+ * that contains a `.next` folder. This handles monorepo setups where Next.js
+ * uses the package name from package.json rather than the filesystem path.
+ */
+function findStandalonePackagePath(standaloneDir: string): string | null {
+  // If .next exists directly in standalone dir, it's not a monorepo setup
+  if (fs.existsSync(path.join(standaloneDir, ".next"))) {
+    return "";
+  }
+
+  // Helper function to recursively search for .next directory
+  function findNextDir(dir: string, currentPath: string): string | null {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      // Skip node_modules directory
+      if (entry.name === "node_modules") {
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        const entryPath = path.join(dir, entry.name);
+        const relativePath = currentPath
+          ? path.join(currentPath, entry.name)
+          : entry.name;
+
+        // Check if this directory contains a .next folder
+        if (fs.existsSync(path.join(entryPath, ".next"))) {
+          return relativePath;
+        }
+
+        // Recursively search subdirectories
+        const result = findNextDir(entryPath, relativePath);
+        if (result) {
+          return result;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  return findNextDir(standaloneDir, "");
 }
