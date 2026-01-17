@@ -1,6 +1,7 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-import { buildSync } from "esbuild";
+import { build } from "esbuild";
 import type { CodePatcher } from "../codePatcher";
 
 export const patchNextConfig: CodePatcher = {
@@ -33,12 +34,40 @@ export const patchNextConfig: CodePatcher = {
 
         // Only compile if the extension is a TypeScript extension
         if (tsExtensions.includes(configExtension)) {
-          buildSync({
+          await build({
             entryPoints: [configPath],
             outfile: path.join(buildOptions.tempBuildDir, "next.config.mjs"),
             bundle: true,
             format: "esm",
             platform: "node",
+            plugins: [
+              {
+                name: "inline-require-resolve",
+                setup: (build) => {
+                  build.onLoad(
+                    { filter: /\.(js|ts|mjs|cjs)$/ },
+                    async (args) => {
+                      const transformed = fs
+                        .readFileSync(args.path, "utf-8")
+                        .replace(
+                          /require\.resolve\(['"]([^'"]+)['"]\)/g,
+                          (_, modulePath) => {
+                            try {
+                              return JSON.stringify(
+                                createRequire(args.path).resolve(modulePath),
+                              );
+                            } catch {
+                              return `require.resolve('${modulePath}')`;
+                            }
+                          },
+                        );
+
+                      return { contents: transformed, loader: "default" };
+                    },
+                  );
+                },
+              },
+            ],
           });
           configToImport = path.join(
             buildOptions.tempBuildDir,
