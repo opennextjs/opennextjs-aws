@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
-import { inlineRequireResolvePlugin } from "../../../plugins/inline-require-resolve";
-import type { CodePatcher } from "../codePatcher";
+import { inlineRequireResolvePlugin } from "../../../plugins/inline-require-resolve.js";
+import type { CodePatcher } from "../codePatcher.js";
 
 export const patchNextConfig: CodePatcher = {
   name: "patch-next-config",
