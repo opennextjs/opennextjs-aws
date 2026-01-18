@@ -8,12 +8,12 @@ export const inlineRequireResolvePlugin: Plugin = {
     build.onLoad({ filter: /\.(js|ts|mjs|cjs)$/ }, async (args) => {
       const source = await fs.promises.readFile(args.path, "utf-8");
       const transformed = source.replace(
-        /require\.resolve\(['"]([^'"]+)['"]\)/g,
-        (_, modulePath) => {
+        /require\.resolve\((?<quote>['"])((?:\\.|.)*?)\k<quote>\)/g,
+        (_, quote, modulePath) => {
           try {
             return JSON.stringify(createRequire(args.path).resolve(modulePath));
           } catch {
-            return `require.resolve('${modulePath}')`;
+            return `require.resolve(${quote}${modulePath}${quote})`;
           }
         },
       );
