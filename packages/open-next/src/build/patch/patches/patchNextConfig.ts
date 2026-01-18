@@ -1,7 +1,7 @@
 import fs from "node:fs";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { build } from "esbuild";
+import { inlineRequireResolvePlugin } from "../../../plugins/inline-require-resolve";
 import type { CodePatcher } from "../codePatcher";
 
 export const patchNextConfig: CodePatcher = {
@@ -40,34 +40,7 @@ export const patchNextConfig: CodePatcher = {
             bundle: true,
             format: "esm",
             platform: "node",
-            plugins: [
-              {
-                name: "inline-require-resolve",
-                setup: (build) => {
-                  build.onLoad(
-                    { filter: /\.(js|ts|mjs|cjs)$/ },
-                    async (args) => {
-                      const transformed = fs
-                        .readFileSync(args.path, "utf-8")
-                        .replace(
-                          /require\.resolve\(['"]([^'"]+)['"]\)/g,
-                          (_, modulePath) => {
-                            try {
-                              return JSON.stringify(
-                                createRequire(args.path).resolve(modulePath),
-                              );
-                            } catch {
-                              return `require.resolve('${modulePath}')`;
-                            }
-                          },
-                        );
-
-                      return { contents: transformed, loader: "default" };
-                    },
-                  );
-                },
-              },
-            ],
+            plugins: [inlineRequireResolvePlugin],
           });
           configToImport = path.join(
             buildOptions.tempBuildDir,
