@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.9
+
+### Patch Changes
+
+- [#1077](https://github.com/opennextjs/opennextjs-aws/pull/1077) [`bedc1fededfdf9e94fd17cd7f4e0fdf51781296a`](https://github.com/opennextjs/opennextjs-aws/commit/bedc1fededfdf9e94fd17cd7f4e0fdf51781296a) Thanks [@james-elicx](https://github.com/james-elicx)! - fix: require.resolve throwing exception in next 16.1.0 config patch
+
+- [#1081](https://github.com/opennextjs/opennextjs-aws/pull/1081) [`aecd707fe3a75c30475bcbf871235a30ed1e3c88`](https://github.com/opennextjs/opennextjs-aws/commit/aecd707fe3a75c30475bcbf871235a30ed1e3c88) Thanks [@vicb](https://github.com/vicb)! - fix: make sure the edge adapter loads a patched Next config
+
 ## 3.9.8
 
 ### Patch Changes
