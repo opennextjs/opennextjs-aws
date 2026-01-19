@@ -42,8 +42,7 @@ export async function patchOriginalNextConfig(
         await importNextConfigFromSource(options);
       manifest.config.skipTrailingSlashRedirect =
         skipTrailingSlashRedirect ?? false;
-      manifest.config.serverExternalPackages =
-        serverExternalPackages ?? [];
+      manifest.config.serverExternalPackages = serverExternalPackages ?? [];
       await fs.promises.writeFile(
         manifestPath,
         JSON.stringify(manifest, null, 2),
