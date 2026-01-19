@@ -38,10 +38,12 @@ export async function patchOriginalNextConfig(
       await fs.promises.readFile(manifestPath, "utf-8"),
     );
     if (manifest.config.skipTrailingSlashRedirect === undefined) {
-      const { skipTrailingSlashRedirect } =
+      const { skipTrailingSlashRedirect, serverExternalPackages } =
         await importNextConfigFromSource(options);
       manifest.config.skipTrailingSlashRedirect =
         skipTrailingSlashRedirect ?? false;
+      manifest.config.serverExternalPackages =
+        serverExternalPackages ?? [];
       await fs.promises.writeFile(
         manifestPath,
         JSON.stringify(manifest, null, 2),
