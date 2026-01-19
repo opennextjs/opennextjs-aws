@@ -207,7 +207,6 @@ async function generateBundle(
     patches.patchBackgroundRevalidation,
     patches.patchUseCacheForISR,
     patches.patchNodeEnvironment,
-    patches.patchNextConfig,
     ...additionalCodePatches,
   ]);
 

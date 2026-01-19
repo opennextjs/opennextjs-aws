@@ -16,6 +16,7 @@ import { createServerBundle } from "./build/createServerBundle.js";
 import { createWarmerBundle } from "./build/createWarmerBundle.js";
 import { generateOutput } from "./build/generateOutput.js";
 import * as buildHelper from "./build/helper.js";
+import { patchOriginalNextConfig } from "./build/patch/patches/index.js";
 import { printHeader, showWarningOnWindows } from "./build/utils.js";
 import logger from "./logger.js";
 
@@ -58,6 +59,9 @@ export async function build(
 
   // Generate deployable bundle
   printHeader("Generating bundle");
+
+  // Patch the original Next.js config
+  await patchOriginalNextConfig(options);
 
   // Compile cache.ts
   compileCache(options);
