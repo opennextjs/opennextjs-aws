@@ -10,6 +10,7 @@ import * as buildHelper from "../../helper.js";
  * This patch adds it back in by compiling and importing the user's `next.config.js` file.
  *
  * It is a regression in https://github.com/vercel/next.js/pull/86830
+ * TODO(#1082): revisit when Next is fixed
  */
 export async function patchOriginalNextConfig(
   options: buildHelper.BuildOptions,
