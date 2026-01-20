@@ -65,7 +65,7 @@ export function normalizeOptions(
   };
 }
 
-function findMonorepoRoot(appPath: string) {
+export function findMonorepoRoot(appPath: string) {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [
