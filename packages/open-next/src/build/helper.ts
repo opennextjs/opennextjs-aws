@@ -29,7 +29,7 @@ export function normalizeOptions(
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
 
-  const { root: monorepoRoot, packager } = findMonorepoRoot(
+  const { root: monorepoRoot, packager } = findPmAndMonorepoRoot(
     path.join(process.cwd(), config.appPath || "."),
   );
 
@@ -64,8 +64,14 @@ export function normalizeOptions(
     tempBuildDir,
   };
 }
-
-export function findMonorepoRoot(appPath: string) {
+/**
+ * Given the path to a project this function detects the project's repository root (wether the project is in a simple
+ * repository or a monorepo) as well as the package manager being used.
+ *
+ * @param appPath The project's path
+ * @returns An object containing the root of the project's repo/monorepo as well as the package manager that it uses.
+ */
+export function findPmAndMonorepoRoot(appPath: string): { root: string, packager: 'npm'|'pnpm'|'yarn'|'bun' } {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [

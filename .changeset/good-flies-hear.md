@@ -2,4 +2,4 @@
 "@opennextjs/aws": minor
 ---
 
-export the `findMonorepoRoot` utility externally
+export the `findPmAndMonorepoRoot` utility externally
