@@ -65,7 +65,7 @@ export function normalizeOptions(
   };
 }
 /**
- * Given the path to a project this function detects the project's repository root (wether the project is in a simple
+ * Given the path to a project this function detects the project's repository root (whether the project is in a simple
  * repository or a monorepo) as well as the package manager being used.
  *
  * @param appPath The project's path
