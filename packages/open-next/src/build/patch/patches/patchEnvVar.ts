@@ -1,5 +1,5 @@
-import { createPatchCode } from "../astCodePatcher.js";
-import type { CodePatcher } from "../codePatcher";
+import { createPatchCode, patchCode } from "../astCodePatcher.js";
+import type { CodePatcher, PatchCodeFn } from "../codePatcher.js";
 
 /**
  * Creates a rule to replace `process.env.${envVar}` by `value` in the condition of if statements
@@ -21,6 +21,22 @@ fix:
   '${value}'
 `;
 
+function isTurbopackBuild(tracedFiles: string[]): boolean {
+  const hasTurboRuntime = tracedFiles.some((file) =>
+    /-turbo[.-].*\.runtime\.(prod|dev)\.js$/.test(file),
+  );
+  const hasNonTurboRuntime = tracedFiles.some(
+    (file) =>
+      /\.runtime\.(prod|dev)\.js$/.test(file) && !/-turbo[.-]/.test(file),
+  );
+  return hasTurboRuntime && !hasNonTurboRuntime;
+}
+
+const createTurbopackPatch: PatchCodeFn = async ({ code, tracedFiles }) => {
+  const value = isTurbopackBuild(tracedFiles) ? "true" : "false";
+  return patchCode(code, envVarRuleCreator("TURBOPACK", value));
+};
+
 export const patchEnvVars: CodePatcher = {
   name: "patch-env-vars",
   patches: [
@@ -39,12 +55,12 @@ export const patchEnvVars: CodePatcher = {
       contentFilter: /process\.env\.NODE_ENV/,
       patchCode: createPatchCode(envVarRuleCreator("NODE_ENV", '"production"')),
     },
-    // This patch will set `TURBOPACK` env to false to avoid loading turbopack related deps at runtime
+    // Turbopack builds only include *-turbo.runtime.prod.js files, so we detect and set accordingly
     {
       versions: ">=15.0.0",
       pathFilter: /module\.compiled\.js$/,
       contentFilter: /process\.env\.TURBOPACK/,
-      patchCode: createPatchCode(envVarRuleCreator("TURBOPACK", "false")),
+      patchCode: createTurbopackPatch,
     },
   ],
 };
