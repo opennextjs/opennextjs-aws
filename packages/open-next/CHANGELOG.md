@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.10
+
+### Patch Changes
+
+- [#1083](https://github.com/opennextjs/opennextjs-aws/pull/1083) [`6b54e8e5566cb5da246872ddd1fd5110035baf5a`](https://github.com/opennextjs/opennextjs-aws/commit/6b54e8e5566cb5da246872ddd1fd5110035baf5a) Thanks [@conico974](https://github.com/conico974)! - Include serverExternalPackages in required-server-files
+
 ## 3.9.9
 
 ### Patch Changes
