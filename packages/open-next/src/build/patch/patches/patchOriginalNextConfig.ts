@@ -5,17 +5,22 @@ import { inlineRequireResolvePlugin } from "../../../plugins/inline-require-reso
 import * as buildHelper from "../../helper.js";
 
 /**
- * Next 16.1+ removes `skipTrailingSlashRedirect` from the config in `required-server-files.json`.
+ * Next 16.1.0-16.1.4 has missing fields in `required-server-files.json`:
+ * - `skipTrailingSlashRedirect`
+ * - `serverExternalPackages`
  *
- * This patch adds it back in by compiling and importing the user's `next.config.js` file.
+ * This patch adds them back in by compiling and importing the user's `next.config.js` file.
  *
- * It is a regression in https://github.com/vercel/next.js/pull/86830
- * TODO(#1082): revisit when Next is fixed
+ * It is a regression in https://github.com/vercel/next.js/pull/86830 (16.1.0)
+ * Fixed in https://github.com/vercel/next.js/pull/88733 (16.1.4)
  */
 export async function patchOriginalNextConfig(
   options: buildHelper.BuildOptions,
 ): Promise<void> {
-  if (buildHelper.compareSemver(options.nextVersion, "<", "16.1.0")) {
+  if (
+    buildHelper.compareSemver(options.nextVersion, "<", "16.1.0") ||
+    buildHelper.compareSemver(options.nextVersion, ">=", "16.1.4")
+  ) {
     return;
   }
 
