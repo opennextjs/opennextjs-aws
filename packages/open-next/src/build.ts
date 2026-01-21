@@ -78,10 +78,13 @@ export async function build(
     }
   }
 
-  await createServerBundle(options);
-  await createRevalidationBundle(options);
-  await createImageOptimizationBundle(options);
-  await createWarmerBundle(options);
+  await Promise.all([
+    createServerBundle(options),
+    createRevalidationBundle(options),
+    createImageOptimizationBundle(options),
+    createWarmerBundle(options),
+  ]);
+
   await generateOutput(options);
   logger.info("OpenNext build complete.");
 }

@@ -188,10 +188,23 @@ export async function generateOutput(options: BuildOptions) {
     }
   });
 
-  const defaultOriginCanstream = await canStream(config.default);
-
   const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
   const prefixer = prefixPattern(nextConfig.basePath ?? "");
+
+  // Resolve all overrides in parallel for default origins
+  const [
+    defaultOriginCanstream,
+    imageLoader,
+    imageOptimizerOverride,
+    defaultOverrideFn,
+    defaultCommonOverride,
+  ] = await Promise.all([
+    canStream(config.default),
+    extractOverrideName("s3", config.imageOptimization?.loader),
+    extractOverrideFn(config.imageOptimization?.override),
+    extractOverrideFn(config.default.override),
+    extractCommonOverride(config.default.override),
+  ]);
 
   // First add s3 origins and image optimization
 
@@ -222,27 +235,24 @@ export async function generateOutput(options: BuildOptions) {
       handler: indexHandler,
       bundle: ".open-next/image-optimization-function",
       streaming: false,
-      imageLoader: await extractOverrideName(
-        "s3",
-        config.imageOptimization?.loader,
-      ),
-      ...(await extractOverrideFn(config.imageOptimization?.override)),
+      imageLoader,
+      ...imageOptimizerOverride,
     },
     default: config.default.override?.generateDockerfile
       ? {
           type: "ecs",
           bundle: ".open-next/server-functions/default",
           dockerfile: ".open-next/server-functions/default/Dockerfile",
-          ...(await extractOverrideFn(config.default.override)),
-          ...(await extractCommonOverride(config.default.override)),
+          ...defaultOverrideFn,
+          ...defaultCommonOverride,
         }
       : {
           type: "function",
           handler: indexHandler,
           bundle: ".open-next/server-functions/default",
           streaming: defaultOriginCanstream,
-          ...(await extractOverrideFn(config.default.override)),
-          ...(await extractCommonOverride(config.default.override)),
+          ...defaultOverrideFn,
+          ...defaultCommonOverride,
         },
   };
 

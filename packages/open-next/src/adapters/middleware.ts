@@ -35,28 +35,24 @@ const defaultHandler = async (
   // We know that the middleware is external when this adapter is used
   const middlewareConfig = globalThis.openNextConfig
     .middleware as ExternalMiddlewareConfig;
-  const originResolver = await resolveOriginResolver(
-    middlewareConfig?.originResolver,
-  );
 
-  const externalRequestProxy = await resolveProxyRequest(
-    middlewareConfig?.override?.proxyExternalRequest,
-  );
-
-  const assetResolver = await resolveAssetResolver(
-    middlewareConfig?.assetResolver,
-  );
+  // Resolve all dependencies in parallel
+  const [originResolver, externalRequestProxy, assetResolver, tagCache, queue, incrementalCache] =
+    await Promise.all([
+      resolveOriginResolver(middlewareConfig?.originResolver),
+      resolveProxyRequest(middlewareConfig?.override?.proxyExternalRequest),
+      resolveAssetResolver(middlewareConfig?.assetResolver),
+      //#override includeCacheInMiddleware
+      resolveTagCache(middlewareConfig?.override?.tagCache),
+      resolveQueue(middlewareConfig?.override?.queue),
+      resolveIncrementalCache(middlewareConfig?.override?.incrementalCache),
+      //#endOverride
+    ]);
 
   //#override includeCacheInMiddleware
-  globalThis.tagCache = await resolveTagCache(
-    middlewareConfig?.override?.tagCache,
-  );
-
-  globalThis.queue = await resolveQueue(middlewareConfig?.override?.queue);
-
-  globalThis.incrementalCache = await resolveIncrementalCache(
-    middlewareConfig?.override?.incrementalCache,
-  );
+  globalThis.tagCache = tagCache;
+  globalThis.queue = queue;
+  globalThis.incrementalCache = incrementalCache;
   //#endOverride
 
   const requestId = Math.random().toString(36);
