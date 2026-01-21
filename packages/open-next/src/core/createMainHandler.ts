@@ -31,26 +31,27 @@ export async function createMainHandler() {
   await globalThis.__next_route_preloader("start");
 
   // Default queue
-    const [queue, incrementalCache, tagCache, assetResolver, proxyExternalRequest, cdnInvalidationHandler] =
-    await Promise.all([
-      resolveQueue(thisFunction.override?.queue),
-      resolveIncrementalCache(thisFunction.override?.incrementalCache),
-      resolveTagCache(thisFunction.override?.tagCache),
-      config.middleware?.external !== true
-        ? resolveAssetResolver(globalThis.openNextConfig.middleware?.assetResolver)
-        : Promise.resolve(undefined),
-      resolveProxyRequest(thisFunction.override?.proxyExternalRequest),
-      resolveCdnInvalidation(thisFunction.override?.cdnInvalidation),
-    ]);
+  globalThis.queue = await resolveQueue(thisFunction.override?.queue);
 
-  globalThis.queue = queue;
-  globalThis.incrementalCache = incrementalCache;
-  globalThis.tagCache = tagCache;
-  if (assetResolver !== undefined) {
-    globalThis.assetResolver = assetResolver;
+  globalThis.incrementalCache = await resolveIncrementalCache(
+    thisFunction.override?.incrementalCache,
+  );
+
+  globalThis.tagCache = await resolveTagCache(thisFunction.override?.tagCache);
+
+  if (config.middleware?.external !== true) {
+    globalThis.assetResolver = await resolveAssetResolver(
+      globalThis.openNextConfig.middleware?.assetResolver,
+    );
   }
-  globalThis.proxyExternalRequest = proxyExternalRequest;
-  globalThis.cdnInvalidationHandler = cdnInvalidationHandler;
+
+  globalThis.proxyExternalRequest = await resolveProxyRequest(
+    thisFunction.override?.proxyExternalRequest,
+  );
+
+  globalThis.cdnInvalidationHandler = await resolveCdnInvalidation(
+    thisFunction.override?.cdnInvalidation,
+  );
 
   // From the config, we create the converter
   const converter = await resolveConverter(thisFunction.override?.converter);
