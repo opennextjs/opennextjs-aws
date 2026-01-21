@@ -440,3 +440,29 @@ export async function isEdgeRuntime(
 export function getPackagePath(options: BuildOptions) {
   return path.relative(options.monorepoRoot, options.appBuildOutputPath);
 }
+
+/**
+ * Returns the Next.js runtime used: "webpack" or "turbopack"
+ *
+ * Must be called after building the Next.js app.
+ *
+ * @param options
+ * @returns the Next.js runtime used: "webpack" or "turbopack"
+ */
+export function getBundlerRuntime(
+  options: BuildOptions,
+): "webpack" | "turbopack" {
+  const dotNextPath = path.join(options.appPath, ".next");
+  if (fs.existsSync(path.join(dotNextPath, "server/webpack-runtime.js"))) {
+    return "webpack";
+  }
+  if (
+    fs.existsSync(
+      path.join(dotNextPath, "server/chunks/[turbopack]_runtime.js"),
+    )
+  ) {
+    return "turbopack";
+  }
+
+  throw new Error("Unable to determine Next.js runtime (webpack or turbopack)");
+}
