@@ -9,7 +9,7 @@ import type { CodePatcher } from "../codePatcher";
  * @param value The value that we want to replace it with
  * @returns
  */
-const envVarRuleCreator = (envVar: string, value: string) => `
+export const envVarRuleCreator = (envVar: string, value: string) => `
 rule:
   kind: member_expression
   pattern: process.env.${envVar}
