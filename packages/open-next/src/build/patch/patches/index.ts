@@ -1,4 +1,4 @@
-export { envVarRuleCreator, patchEnvVars } from "./patchEnvVar.js";
+export { getEnvVarsPatch } from "./patchEnvVar.js";
 export { patchNextServer } from "./patchNextServer.js";
 export {
   patchFetchCacheForISR,

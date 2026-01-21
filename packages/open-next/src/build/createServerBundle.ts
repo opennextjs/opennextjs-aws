@@ -203,7 +203,7 @@ async function generateBundle(
     patches.patchFetchCacheForISR,
     patches.patchUnstableCacheForISR,
     patches.patchNextServer,
-    patches.patchEnvVars,
+    patches.getEnvVarsPatch(options),
     patches.patchBackgroundRevalidation,
     patches.patchUseCacheForISR,
     patches.patchNodeEnvironment,
