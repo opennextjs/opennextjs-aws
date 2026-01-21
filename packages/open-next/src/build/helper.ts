@@ -71,7 +71,10 @@ export function normalizeOptions(
  * @param appPath The project's path
  * @returns An object containing the root of the project's repo/monorepo as well as the package manager that it uses.
  */
-export function findPackagerAndRoot(appPath: string): { root: string, packager: 'npm'|'pnpm'|'yarn'|'bun' } {
+export function findPackagerAndRoot(appPath: string): {
+  root: string;
+  packager: "npm" | "pnpm" | "yarn" | "bun";
+} {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [
