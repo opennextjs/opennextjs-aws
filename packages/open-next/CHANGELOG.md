@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.11
+
+### Patch Changes
+
+- [#1086](https://github.com/opennextjs/opennextjs-aws/pull/1086) [`0267ae9448533a14fcb1be1e2eeff0894b94db31`](https://github.com/opennextjs/opennextjs-aws/commit/0267ae9448533a14fcb1be1e2eeff0894b94db31) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - export the `findPackagerAndRoot` utility
+
+- [#1087](https://github.com/opennextjs/opennextjs-aws/pull/1087) [`fdd53b5210d0066cb9e8993b4902b6ba54da427f`](https://github.com/opennextjs/opennextjs-aws/commit/fdd53b5210d0066cb9e8993b4902b6ba54da427f) Thanks [@vicb](https://github.com/vicb)! - fix: use the correct runtime (i.e. webpack or turbopack)
+
 ## 3.9.10
 
 ### Patch Changes
