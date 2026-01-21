@@ -1,5 +1,5 @@
 ---
-"@opennextjs/aws": minor
+"@opennextjs/aws": patch
 ---
 
 export the `findPmAndMonorepoRoot` utility externally
