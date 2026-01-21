@@ -29,7 +29,7 @@ export function normalizeOptions(
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
 
-  const { root: monorepoRoot, packager } = findPmAndMonorepoRoot(
+  const { root: monorepoRoot, packager } = findPackagerAndRoot(
     path.join(process.cwd(), config.appPath || "."),
   );
 
@@ -71,7 +71,7 @@ export function normalizeOptions(
  * @param appPath The project's path
  * @returns An object containing the root of the project's repo/monorepo as well as the package manager that it uses.
  */
-export function findPmAndMonorepoRoot(appPath: string): { root: string, packager: 'npm'|'pnpm'|'yarn'|'bun' } {
+export function findPackagerAndRoot(appPath: string): { root: string, packager: 'npm'|'pnpm'|'yarn'|'bun' } {
   let currentPath = appPath;
   while (currentPath !== "/") {
     const found = [

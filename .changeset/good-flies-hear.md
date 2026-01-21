@@ -2,4 +2,4 @@
 "@opennextjs/aws": patch
 ---
 
-export the `findPmAndMonorepoRoot` utility externally
+export the `findPackagerAndRoot` utility externally
