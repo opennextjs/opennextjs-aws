@@ -461,13 +461,16 @@ export function getPackagePath(options: BuildOptions) {
 export function getBundlerRuntime(
   options: BuildOptions,
 ): "webpack" | "turbopack" {
-  const dotNextPath = path.join(options.appPath, ".next");
-  if (fs.existsSync(path.join(dotNextPath, "server/webpack-runtime.js"))) {
+  const dotNextServerPath = path.join(options.appPath, ".next/server");
+  if (fs.existsSync(path.join(dotNextServerPath, "webpack-runtime.js"))) {
     return "webpack";
   }
   if (
     fs.existsSync(
-      path.join(dotNextPath, "server/chunks/[turbopack]_runtime.js"),
+      path.join(dotNextServerPath, "chunks/[turbopack]_runtime.js"),
+    ) ||
+    fs.existsSync(
+      path.join(dotNextServerPath, "chunks/ssr/[turbopack]_runtime.js"),
     )
   ) {
     return "turbopack";
