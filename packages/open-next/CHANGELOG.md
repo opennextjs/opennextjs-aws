@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.12
+
+### Patch Changes
+
+- [#1091](https://github.com/opennextjs/opennextjs-aws/pull/1091) [`2c47a92e097e31082420410d9c4034f94b229323`](https://github.com/opennextjs/opennextjs-aws/commit/2c47a92e097e31082420410d9c4034f94b229323) Thanks [@vicb](https://github.com/vicb)! - fix the detection of the runtime (webpack vs turbopack)
+
 ## 3.9.11
 
 ### Patch Changes
