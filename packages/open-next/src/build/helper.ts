@@ -391,14 +391,26 @@ export function copyEnvFile(
 }
 
 /**
- * Check we are in a Nextjs app by looking for the Nextjs config file.
+ * Finds the path to the Next configuration file if it exists.
+ *
+ * @param appPath The directory to check for the Next config file
+ * @returns The full path to Next config file if it exists, undefined otherwise
  */
-export function checkRunningInsideNextjsApp(options: BuildOptions) {
-  const { appPath } = options;
-  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
+export function findNextConfig({
+  appPath,
+}: Pick<BuildOptions, "appPath">): string | undefined {
+  return ["js", "cjs", "mjs", "ts"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
-  if (!extension) {
+}
+
+/**
+ * Check we are in a Nextjs app by looking for the Nextjs config file.
+ */
+export function checkRunningInsideNextjsApp({
+  appPath,
+}: Pick<BuildOptions, "appPath">) {
+  if (!findNextConfig({ appPath })) {
     logger.error(
       "Error: next.config.js not found. Please make sure you are running this command inside a Next.js app.",
     );
