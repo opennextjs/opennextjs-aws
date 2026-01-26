@@ -1,5 +1,20 @@
 # open-next
 
+## 3.9.13
+
+### Patch Changes
+
+- [#1095](https://github.com/opennextjs/opennextjs-aws/pull/1095) [`9f6b673e0e5ac7804dd82c11b9adc30654043b6a`](https://github.com/opennextjs/opennextjs-aws/commit/9f6b673e0e5ac7804dd82c11b9adc30654043b6a) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Implement new `findNextConfig` function to find the project's Next.js config file if present
+
+- [#1094](https://github.com/opennextjs/opennextjs-aws/pull/1094) [`bb0bcea33832fa9663057181efb68daf467fe35f`](https://github.com/opennextjs/opennextjs-aws/commit/bb0bcea33832fa9663057181efb68daf467fe35f) Thanks [@vicb](https://github.com/vicb)! - Check for supported Next version
+
+  The build will now error for unsupported Next version which may contain unpatched security vulnerabilities.
+  You can bypass the check using the `--dangerously-use-unsupported-next-version` flag.
+
+- [#1097](https://github.com/opennextjs/opennextjs-aws/pull/1097) [`44e67e4ba51b501dc95bc18711d61223f3eca9d8`](https://github.com/opennextjs/opennextjs-aws/commit/44e67e4ba51b501dc95bc18711d61223f3eca9d8) Thanks [@vicb](https://github.com/vicb)! - bump Next and React version for CVE-2026-23864
+
+  See https://vercel.com/changelog/summary-of-cve-2026-23864
+
 ## 3.9.12
 
 ### Patch Changes
