@@ -358,6 +358,83 @@ export function compareSemver(
   }
 }
 
+/**
+ * Next.js major version release dates (YYYY-MM-DD).
+ * Each major version is supported for 2 years from its release date.
+ *
+ * Source: https://nextjs.org/support-policy#supported-versions
+ *
+ * TODO: Update this list when new Next.js major versions are released.
+ * Check https://github.com/vercel/next.js/releases for release dates.
+ */
+const NEXT_RELEASE_DATES: Record<number, string> = {
+  16: "2025-10-21",
+  15: "2024-10-21",
+  14: "2023-10-26",
+  13: "2022-10-26",
+  12: "2021-10-26",
+};
+
+/**
+ * Check if a Next.js version is supported by the Next.js team.
+ * Major versions are supported for 2 years following their initial release.
+ *
+ * @param version - The Next.js version to check (semver format)
+ * @returns true if the version is currently supported, false otherwise
+ */
+export function isNextVersionSupported(version: string): boolean {
+  const match = version.match(/^\d+/);
+
+  if (!match) {
+    return false;
+  }
+
+  const releaseDateStr = NEXT_RELEASE_DATES[Number(match[0])];
+
+  if (!releaseDateStr) {
+    return false;
+  }
+
+  const releaseDate = new Date(releaseDateStr);
+  const supportEndDate = new Date(releaseDate);
+  supportEndDate.setFullYear(supportEndDate.getFullYear() + 2);
+
+  const now = new Date();
+  return now <= supportEndDate;
+}
+
+/**
+ * Check if the Next.js version is supported and handle errors/warnings.
+ *
+ * Note: Exits the process with code 1 if the version is not supported.
+ *
+ * @param options - Build options containing Next.js version
+ * @param allowUnsupportedNextVersion - Whether to allow using an unmaintained Next.js version
+ */
+export function checkNextVersionSupport(
+  nextVersion: string,
+  allowUnsupportedNextVersion: boolean,
+  flagName = "--dangerously-use-unsupported-next-version",
+) {
+  const isSupported = isNextVersionSupported(nextVersion);
+
+  if (!isSupported) {
+    const message = `Next.js version ${nextVersion} is not supported by the Next.js team.
+Major versions are supported for 2 years from their release date.
+Unsupported releases may contain unpatched security vulnerabilities.
+See https://nextjs.org/support-policy for more information.`;
+
+    if (allowUnsupportedNextVersion) {
+      logger.warn(`${message}
+Continuing build due to ${flagName} flag.`);
+      return;
+    }
+    logger.error(`${message}
+If you want to proceed anyway, use the ${flagName} flag.`);
+    process.exit(1);
+  }
+}
+
 export function copyOpenNextConfig(
   inputDir: string,
   outputDir: string,

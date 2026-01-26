@@ -27,6 +27,7 @@ export type PublicFiles = {
 export async function build(
   openNextConfigPath?: string,
   nodeExternals?: string,
+  allowUnsupportedNextVersion?: boolean,
 ) {
   showWarningOnWindows();
 
@@ -50,6 +51,12 @@ export async function build(
   buildHelper.checkRunningInsideNextjsApp(options);
   buildHelper.printNextjsVersion(options);
   buildHelper.printOpenNextVersion(options);
+
+  // Check Next.js version support
+  buildHelper.checkNextVersionSupport(
+    options.nextVersion,
+    allowUnsupportedNextVersion ?? false,
+  );
 
   // Build Next.js app
   printHeader("Building Next.js app");

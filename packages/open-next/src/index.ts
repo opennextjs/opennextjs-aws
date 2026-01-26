@@ -8,7 +8,11 @@ if (command !== "build") printHelp();
 const args = parseArgs();
 if (Object.keys(args).includes("--help")) printHelp();
 
-await build(args["--config-path"], args["--node-externals"]);
+await build(
+  args["--config-path"],
+  args["--node-externals"],
+  args["--dangerously-use-unsupported-next-version"] !== undefined,
+);
 
 function parseArgs() {
   return process.argv.slice(2).reduce(
@@ -30,19 +34,15 @@ function parseArgs() {
 }
 
 function printHelp() {
-  console.log("Unknown command");
-  console.log("");
-  console.log("Usage:");
-  console.log("  npx open-next build");
-  console.log("You can use a custom config path here");
-  console.log(
-    "  npx open-next build --config-path ./path/to/open-next.config.ts",
-  );
-  console.log(
-    "You can configure externals for the esbuild compilation of the open-next.config.ts file",
-  );
-  console.log("  npx open-next build --node-externals aws-sdk,sharp,sqlite3");
-  console.log("");
+  console.log(`Unknown command
+
+Usage:
+  npx open-next build
+You can use a custom config path here
+  npx open-next build --config-path ./path/to/open-next.config.ts
+You can configure externals for the esbuild compilation of the open-next.config.ts file
+  npx open-next build --node-externals aws-sdk,sharp,sqlite3
+`);
 
   process.exit(1);
 }
