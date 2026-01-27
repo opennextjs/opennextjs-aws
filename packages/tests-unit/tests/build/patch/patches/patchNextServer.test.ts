@@ -2,6 +2,7 @@ import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
   createEmptyBodyRule,
   disablePreloadingRule,
+  emptyHandleNextImageRequestRule,
   removeMiddlewareManifestRule,
 } from "@opennextjs/aws/build/patch/patches/patchNextServer.js";
 import { describe, it } from "vitest";
@@ -474,6 +475,115 @@ getMiddlewareManifest() {return null;}
                    const { dynamicRoutes = [] } = this.getRoutesManifest() ?? {};
                    this.dynamicRoutes = dynamicRoutes.map((r)=>{
                        // TODO: can we just re-use the regex from the manifest?
+      "
+    `);
+  });
+
+  it("should empty handleNextImageRequest", async () => {
+    expect(
+      computePatchDiff(
+        "next-server.js",
+        next15ServerMinimalCode,
+        emptyHandleNextImageRequestRule,
+      ),
+    ).toMatchInlineSnapshot(`
+      "Index: next-server.js
+      ===================================================================
+      --- next-server.js
+      +++ next-server.js
+      @@ -1,91 +1,9 @@
+      -
+       class NextNodeServer extends _baseserver.default {
+       constructor(options){
+               var _options_conf_experimental_sri, _options_conf_experimental;
+               // Initialize super class
+      -        super(options), this.registeredInstrumentation = false, this.cleanupListeners = new _asynccallbackset.AsyncCallbackSet(), this.handleNextImageRequest = async (req, res, parsedUrl)=>{
+      -            if (!parsedUrl.pathname || !parsedUrl.pathname.startsWith('/_next/image')) {
+      -                return false;
+      -            }
+      -            // Ignore if its a middleware request
+      -            if ((0, _requestmeta.getRequestMeta)(req, 'middlewareInvoke')) {
+      -                return false;
+      -            }
+      -            if (this.minimalMode || this.nextConfig.output === 'export' || process.env.NEXT_MINIMAL) {
+      -                res.statusCode = 400;
+      -                res.body('Bad Request').send();
+      -                return true;
+      -            // the \`else\` branch is needed for tree-shaking
+      -            } else {
+      -                const { ImageOptimizerCache } = require('./image-optimizer');
+      -                const imageOptimizerCache = new ImageOptimizerCache({
+      -                    distDir: this.distDir,
+      -                    nextConfig: this.nextConfig
+      -                });
+      -                const { sendResponse, ImageError } = require('./image-optimizer');
+      -                if (!this.imageResponseCache) {
+      -                    throw Object.defineProperty(new Error('invariant image optimizer cache was not initialized'), "__NEXT_ERROR_CODE", {
+      -                        value: "E160",
+      -                        enumerable: false,
+      -                        configurable: true
+      -                    });
+      -                }
+      -                const imagesConfig = this.nextConfig.images;
+      -                if (imagesConfig.loader !== 'default' || imagesConfig.unoptimized) {
+      -                    await this.render404(req, res);
+      -                    return true;
+      -                }
+      -                const paramsResult = ImageOptimizerCache.validateParams(req.originalRequest, parsedUrl.query, this.nextConfig, !!this.renderOpts.dev);
+      -                if ('errorMessage' in paramsResult) {
+      -                    res.statusCode = 400;
+      -                    res.body(paramsResult.errorMessage).send();
+      -                    return true;
+      -                }
+      -                const cacheKey = ImageOptimizerCache.getCacheKey(paramsResult);
+      -                try {
+      -                    var _cacheEntry_value, _cacheEntry_cacheControl;
+      -                    const { getExtension } = require('./serve-static');
+      -                    const cacheEntry = await this.imageResponseCache.get(cacheKey, async ({ previousCacheEntry })=>{
+      -                        const { buffer, contentType, maxAge, upstreamEtag, etag } = await this.imageOptimizer(req, res, paramsResult, previousCacheEntry);
+      -                        return {
+      -                            value: {
+      -                                kind: _responsecache.CachedRouteKind.IMAGE,
+      -                                buffer,
+      -                                etag,
+      -                                extension: getExtension(contentType),
+      -                                upstreamEtag
+      -                            },
+      -                            isFallback: false,
+      -                            cacheControl: {
+      -                                revalidate: maxAge,
+      -                                expire: undefined
+      -                            }
+      -                        };
+      -                    }, {
+      -                        routeKind: _routekind.RouteKind.IMAGE,
+      -                        incrementalCache: imageOptimizerCache,
+      -                        isFallback: false
+      -                    });
+      -                    if ((cacheEntry == null ? void 0 : (_cacheEntry_value = cacheEntry.value) == null ? void 0 : _cacheEntry_value.kind) !== _responsecache.CachedRouteKind.IMAGE) {
+      -                        throw Object.defineProperty(new Error('invariant did not get entry from image response cache'), "__NEXT_ERROR_CODE", {
+      -                            value: "E518",
+      -                            enumerable: false,
+      -                            configurable: true
+      -                        });
+      -                    }
+      -                    sendResponse(req.originalRequest, res.originalResponse, paramsResult.href, cacheEntry.value.extension, cacheEntry.value.buffer, cacheEntry.value.etag, paramsResult.isStatic, cacheEntry.isMiss ? 'MISS' : cacheEntry.isStale ? 'STALE' : 'HIT', imagesConfig, ((_cacheEntry_cacheControl = cacheEntry.cacheControl) == null ? void 0 : _cacheEntry_cacheControl.revalidate) || 0, Boolean(this.renderOpts.dev));
+      -                    return true;
+      -                } catch (err) {
+      -                    if (err instanceof ImageError) {
+      -                        res.statusCode = err.statusCode;
+      -                        res.body(err.message).send();
+      -                        return true;
+      -                    }
+      -                    throw err;
+      -                }
+      -            }
+      -        }, this.handleCatchallRenderRequest = async (req, res, parsedUrl)=>{
+      +        super(options), this.registeredInstrumentation = false, this.cleanupListeners = new _asynccallbackset.AsyncCallbackSet(), this.handleNextImageRequest = async (req, res, parsedUrl) => false, this.handleCatchallRenderRequest = async (req, res, parsedUrl)=>{
+                   let { pathname, query } = parsedUrl;
+                   if (!pathname) {
+                       throw Object.defineProperty(new Error('Invariant: pathname is undefined'), "__NEXT_ERROR_CODE", {
+                           value: "E409",
       "
     `);
   });
