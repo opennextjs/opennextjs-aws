@@ -34,6 +34,23 @@ fix:
   '{return null;}'
 `;
 
+// Make `handleNextImageRequest` a no-op to avoid pulling `sharp`
+export const emptyHandleNextImageRequestRule = `
+rule:
+  kind: assignment_expression
+  pattern: this.handleNextImageRequest = $VALUE
+  inside:
+    kind: method_definition
+    stopBy: end
+    has:
+      kind: property_identifier
+      regex: ^constructor$
+    inside:
+      kind: class_body
+fix:
+  this.handleNextImageRequest = async (req, res, parsedUrl) => false
+`;
+
 /**
  * Swaps the body for a throwing implementation
  *
@@ -90,6 +107,12 @@ export const patchNextServer: CodePatcher = {
       pathFilter,
       contentFilter: /imageOptimizer\(/,
       patchCode: createPatchCode(createEmptyBodyRule("imageOptimizer")),
+    },
+    // Make `handleNextImageRequest` a no-op to avoid pulling `sharp` - unused in OpenNext
+    {
+      pathFilter,
+      contentFilter: /handleNextImageRequest\(/,
+      patchCode: createPatchCode(createEmptyBodyRule("handleNextImageRequest")),
     },
     // Disable Next background preloading done at creation of `NextServer`
     {
