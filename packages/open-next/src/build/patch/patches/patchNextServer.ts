@@ -35,6 +35,7 @@ fix:
 `;
 
 // Make `handleNextImageRequest` a no-op to avoid pulling `sharp`
+// Apply to Next 14, 15, and 16
 export const emptyHandleNextImageRequestRule = `
 rule:
   kind: assignment_expression
