@@ -112,7 +112,7 @@ export const patchNextServer: CodePatcher = {
     {
       pathFilter,
       contentFilter: /handleNextImageRequest\(/,
-      patchCode: createPatchCode(createEmptyBodyRule("handleNextImageRequest")),
+      patchCode: createPatchCode(emptyHandleNextImageRequestRule),
     },
     // Disable Next background preloading done at creation of `NextServer`
     {
