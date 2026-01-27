@@ -112,7 +112,7 @@ export const patchNextServer: CodePatcher = {
     // Make `handleNextImageRequest` a no-op to avoid pulling `sharp` - unused in OpenNext
     {
       pathFilter,
-      contentFilter: /handleNextImageRequest\(/,
+      contentFilter: /handleNextImageRequest/,
       patchCode: createPatchCode(emptyHandleNextImageRequestRule),
     },
     // Disable Next background preloading done at creation of `NextServer`
