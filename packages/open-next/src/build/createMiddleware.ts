@@ -31,7 +31,10 @@ export async function createMiddleware(
   logger.info("Bundling middleware function...");
 
   const { config, outputDir } = options;
-  const buildOutputDotNextDir = path.join(options.appBuildOutputPath, ".next");
+  const buildOutputDotNextDir = path.join(
+    options.appBuildOutputPath,
+    options.nextDistDir,
+  );
 
   // Get middleware manifest
   const middlewareManifest = loadMiddlewareManifest(buildOutputDotNextDir);

@@ -28,14 +28,17 @@ export async function patchOriginalNextConfig(
   // are patched as Open Next uses either of them.
   const manifestPath = path.join(
     options.appBuildOutputPath,
-    ".next/required-server-files.json",
+    options.nextDistDir,
+    "required-server-files.json",
   );
 
   const manifestStandalonePath = path.join(
     options.appBuildOutputPath,
-    ".next/standalone",
+    options.nextDistDir,
+    "standalone",
     buildHelper.getPackagePath(options),
-    ".next/required-server-files.json",
+    options.nextDistDir,
+    "required-server-files.json",
   );
 
   if (fs.existsSync(manifestPath)) {

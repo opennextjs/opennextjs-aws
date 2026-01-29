@@ -103,8 +103,9 @@ export async function buildEdgeBundle({
         ),
         openNextEdgePlugins({
           middlewareInfo,
-          nextDir: path.join(options.appBuildOutputPath, ".next"),
+          nextDir: path.join(options.appBuildOutputPath, options.nextDistDir),
           isInCloudflare,
+          distDir: options.nextDistDir,
         }),
         ...additionalPlugins,
         // The content updater plugin must be the last plugin
@@ -188,7 +189,10 @@ export async function generateEdgeBundle(
 ) {
   logger.info(`Generating edge bundle for: ${name}`);
 
-  const buildOutputDotNextDir = path.join(options.appBuildOutputPath, ".next");
+  const buildOutputDotNextDir = path.join(
+    options.appBuildOutputPath,
+    options.nextDistDir,
+  );
 
   // Create output folder
   const outputDir = path.join(options.outputDir, "server-functions", name);
@@ -235,7 +239,7 @@ export function copyMiddlewareResources(
   mkdirSync(path.join(destDir, "wasm"), { recursive: true });
   for (const file of middlewareInfo?.wasm ?? []) {
     fs.copyFileSync(
-      path.join(options.appBuildOutputPath, ".next", file.filePath),
+      path.join(options.appBuildOutputPath, options.nextDistDir, file.filePath),
       path.join(destDir, `wasm/${file.name}.wasm`),
     );
   }
@@ -243,7 +247,7 @@ export function copyMiddlewareResources(
   mkdirSync(path.join(destDir, "assets"), { recursive: true });
   for (const file of middlewareInfo?.assets ?? []) {
     fs.copyFileSync(
-      path.join(options.appBuildOutputPath, ".next", file.filePath),
+      path.join(options.appBuildOutputPath, options.nextDistDir, file.filePath),
       path.join(destDir, `assets/${file.name}`),
     );
   }

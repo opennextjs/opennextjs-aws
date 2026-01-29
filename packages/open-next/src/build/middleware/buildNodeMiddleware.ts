@@ -67,7 +67,7 @@ export async function buildExternalNodeMiddleware(
         path.join(options.openNextDistDir, "adapters", "middleware.js"),
       ],
       outfile: path.join(outputPath, "handler.mjs"),
-      external: ["./.next/*"],
+      external: [`./${options.nextDistDir}/*`],
       platform: "node",
       plugins: [
         openNextResolvePlugin({
@@ -128,7 +128,7 @@ export async function buildBundledNodeMiddleware(
       entryPoints: [
         path.join(options.openNextDistDir, "core/nodeMiddlewareHandler.js"),
       ],
-      external: ["./.next/*"],
+      external: [`./${options.nextDistDir}/*`],
       outfile: path.join(options.buildDir, "middleware.mjs"),
       bundle: true,
       platform: "node",

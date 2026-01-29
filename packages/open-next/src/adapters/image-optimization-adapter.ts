@@ -33,7 +33,7 @@ import { optimizeImage } from "./plugins/image-optimization/image-optimization.j
 import { setNodeEnv } from "./util.js";
 
 setNodeEnv();
-const nextDir = path.join(__dirname, ".next");
+const nextDir = path.join(__dirname, globalThis.nextDistDir || ".next");
 const config = loadConfig(nextDir);
 const buildId = loadBuildId(nextDir);
 const nextConfig = {

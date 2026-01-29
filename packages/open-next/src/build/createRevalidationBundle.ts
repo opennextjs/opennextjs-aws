@@ -46,7 +46,7 @@ export async function createRevalidationBundle(
 
   // Copy over .next/prerender-manifest.json file
   fs.copyFileSync(
-    path.join(appBuildOutputPath, ".next", "prerender-manifest.json"),
+    path.join(appBuildOutputPath, options.nextDistDir, "prerender-manifest.json"),
     path.join(outputPath, "prerender-manifest.json"),
   );
 }
