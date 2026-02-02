@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.14
+
+### Patch Changes
+
+- [#1098](https://github.com/opennextjs/opennextjs-aws/pull/1098) [`43d31b798791de11f844eedec6c2e7943e92e2bb`](https://github.com/opennextjs/opennextjs-aws/commit/43d31b798791de11f844eedec6c2e7943e92e2bb) Thanks [@vicb](https://github.com/vicb)! - Empty `NextNodeServer#handleNextImageRequest` to avoid pulling unneeded deps
+
 ## 3.9.13
 
 ### Patch Changes
