@@ -1,6 +1,7 @@
 import url from "node:url";
 
 import {
+  chmodSync,
   copyFileSync,
   cpSync,
   existsSync,
@@ -32,6 +33,21 @@ import {
 
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
+/**
+ * Copies a file and ensures the destination is writable.
+ * This is necessary because copyFileSync preserves file permissions,
+ * and source files may be read-only (e.g., in Bazel's node_modules).
+ * Without this, subsequent patches would fail with EACCES errors.
+ */
+export function copyFileAndMakeOwnerWritable(src: string, dest: string): void {
+  copyFileSync(src, dest);
+  // Ensure the copied file is writable (add owner write permission)
+  const stats = statSync(dest);
+  if (!(stats.mode & 0o200)) {
+    chmodSync(dest, stats.mode | 0o200);
+  }
+}
+
 //TODO: we need to figure which packages we could safely remove
 const EXCLUDED_PACKAGES = [
   "caniuse-lite",
@@ -60,7 +76,7 @@ export function isExcluded(srcPath: string): boolean {
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
   const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
-  copyFileSync(patchFile, outputPatchFile);
+  copyFileAndMakeOwnerWritable(patchFile, outputPatchFile);
 }
 
 interface CopyTracedFilesOptions {
@@ -211,7 +227,7 @@ File ${serverPath} does not exist
   // Check for instrumentation trace file
   if (existsSync(path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE))) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
-    copyFileSync(
+    copyFileAndMakeOwnerWritable(
       path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE),
       path.join(standaloneNextDir, INSTRUMENTATION_TRACE_FILE),
     );
@@ -221,7 +237,7 @@ File ${serverPath} does not exist
 
   if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
-    copyFileSync(
+    copyFileAndMakeOwnerWritable(
       path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
       path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
     );
@@ -290,7 +306,7 @@ File ${serverPath} does not exist
       // where some files listed in the .nft.json might not be present in the standalone folder
       // TODO: investigate that further - is it expected?
       try {
-        copyFileSync(from, to);
+        copyFileAndMakeOwnerWritable(from, to);
       } catch (e) {
         logger.debug("Error copying file:", e);
         erroredFiles.push(to);
@@ -304,7 +320,7 @@ File ${serverPath} does not exist
         !statSync(path.join(standaloneNextDir, fileOrDir)).isDirectory(),
     )
     .forEach((file) => {
-      copyFileSync(
+      copyFileAndMakeOwnerWritable(
         path.join(standaloneNextDir, file),
         path.join(outputNextDir, file),
       );
@@ -322,7 +338,7 @@ File ${serverPath} does not exist
     )
     .filter((file) => file !== "server.js")
     .forEach((file) => {
-      copyFileSync(
+      copyFileAndMakeOwnerWritable(
         path.join(standaloneServerDir, file),
         path.join(path.join(outputNextDir, "server"), file),
       );
@@ -346,7 +362,7 @@ File ${serverPath} does not exist
       mkdirSync(path.dirname(path.join(outputNextDir, filePath)), {
         recursive: true,
       });
-      copyFileSync(
+      copyFileAndMakeOwnerWritable(
         path.join(standaloneNextDir, filePath),
         path.join(outputNextDir, filePath),
       );
