@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.15
+
+### Patch Changes
+
+- [#1104](https://github.com/opennextjs/opennextjs-aws/pull/1104) [`5f3f7e78fc90f4fc8cddfab1bd51bef0908a6f07`](https://github.com/opennextjs/opennextjs-aws/commit/5f3f7e78fc90f4fc8cddfab1bd51bef0908a6f07) Thanks [@anonrig](https://github.com/anonrig)! - Fix EACCES errors when building with read-only node_modules
+
+  Ensures copied files are writable after copying. This fixes build failures in environments like Bazel where node_modules files are read-only.
+
 ## 3.9.14
 
 ### Patch Changes
