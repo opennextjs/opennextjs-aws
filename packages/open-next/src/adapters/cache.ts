@@ -207,6 +207,7 @@ export default class Cache {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
+    console.log("SET CACHE", { key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__openNextAls
@@ -314,6 +315,7 @@ export default class Cache {
       await this.updateTagsOnSet(key, data, ctx);
       debug("Finished setting cache");
     } catch (e) {
+      console.log("ARE WE HERE");
       error("Failed to set cache", e);
     } finally {
       // We need to resolve the promise even if there was an error
