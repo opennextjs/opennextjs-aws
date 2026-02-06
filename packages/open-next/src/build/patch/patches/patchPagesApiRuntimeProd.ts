@@ -33,7 +33,7 @@ fix:
   'true'
 `;
 
-// Use correct protocol from `NextInternalRequestMeta` when doing HEAD fetch for revalidation
+// Use correct protocol when doing HEAD fetch for revalidation
 export const headFetchProtocolRule = `
 rule:
   kind: string_fragment
@@ -80,7 +80,7 @@ export const patchPagesApiRuntimeProd: CodePatcher = {
       patchCode: createPatchCode(trustHostHeaderRule),
       versions: ">=15.0.0",
     },
-    // Use correct protocol from `NextInternalRequestMeta` when doing HEAD fetch for revalidation
+    // Use correct protocol when doing HEAD fetch for revalidation
     {
       pathFilter,
       contentFilter: /https/,
