@@ -54,6 +54,7 @@ interface IncrementalCachedAppPageValue {
   headers?: Record<string, undefined | string | string[]>;
   postponed?: string;
   status?: number;
+  segmentData?: Map<string, Buffer>;
 }
 
 export type IncrementalCacheValue =
