@@ -207,7 +207,6 @@ export default class Cache {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
-    console.log("SET CACHE", { key, data, ctx });
     // This one might not even be necessary anymore
     // Better be safe than sorry
     const detachedPromise = globalThis.__openNextAls
