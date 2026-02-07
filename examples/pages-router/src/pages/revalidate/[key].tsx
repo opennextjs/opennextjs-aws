@@ -13,10 +13,19 @@ type Props = {
   record: FakeRecord;
 };
 
-const fakeDb: FakeRecord[] = [
-  { key: "1", title: "First record", updatedAt: new Date().toISOString() },
-  { key: "2", title: "Second record", updatedAt: new Date().toISOString() },
-  { key: "3", title: "Third record", updatedAt: new Date().toISOString() },
+const fakeDb: Omit<FakeRecord, "updatedAt">[] = [
+  {
+    key: "1",
+    title: "First record",
+  },
+  {
+    key: "2",
+    title: "Second record",
+  },
+  {
+    key: "3",
+    title: "Third record",
+  },
 ];
 
 export default function TestKeyPage({ record }: Props) {
