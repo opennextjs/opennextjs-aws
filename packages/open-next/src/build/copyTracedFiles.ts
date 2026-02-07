@@ -86,6 +86,7 @@ interface CopyTracedFilesOptions {
   routes: string[];
   bundledNextServer: boolean;
   skipServerFiles?: boolean;
+  nextDistDir?: string;
 }
 
 export function getManifests(nextDir: string) {
@@ -108,13 +109,14 @@ export async function copyTracedFiles({
   routes,
   bundledNextServer,
   skipServerFiles,
+  nextDistDir = ".next",
 }: CopyTracedFilesOptions) {
   const tsStart = Date.now();
-  const dotNextDir = path.join(buildOutputPath, ".next");
+  const dotNextDir = path.join(buildOutputPath, nextDistDir);
   const standaloneDir = path.join(dotNextDir, "standalone");
-  const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
+  const standaloneNextDir = path.join(standaloneDir, packagePath, nextDistDir);
   const standaloneServerDir = path.join(standaloneNextDir, "server");
-  const outputNextDir = path.join(outputDir, packagePath, ".next");
+  const outputNextDir = path.join(outputDir, packagePath, nextDistDir);
 
   // Files to copy
   // Map from files in the `.next/standalone` to files in the `.open-next` folder
