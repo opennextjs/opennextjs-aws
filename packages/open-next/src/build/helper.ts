@@ -476,9 +476,15 @@ export function copyEnvFile(
 export function findNextConfig({
   appPath,
 }: Pick<BuildOptions, "appPath">): string | undefined {
-  return ["js", "cjs", "mjs", "ts"].find((ext) =>
+  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
     fs.existsSync(path.join(appPath, `next.config.${ext}`)),
   );
+
+  if (!extension) {
+    return undefined;
+  }
+
+  return path.join(appPath, `next.config.${extension}`);
 }
 
 /**

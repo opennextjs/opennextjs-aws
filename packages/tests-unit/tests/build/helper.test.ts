@@ -1,8 +1,12 @@
+import fs from "node:fs";
 import {
   compareSemver,
+  findNextConfig,
   isNextVersionSupported,
 } from "@opennextjs/aws/build/helper.js";
 import { afterEach, vi } from "vitest";
+
+vi.mock("node:fs");
 
 // We don't need to test canary versions, they are stripped out
 describe("compareSemver", () => {
@@ -120,5 +124,61 @@ describe("isNextVersionSupported", () => {
     expect(isNextVersionSupported("11.0.0")).toBe(false);
     expect(isNextVersionSupported("10.0.0")).toBe(false);
     expect(isNextVersionSupported("9.0.0")).toBe(false);
+  });
+});
+
+describe("findNextConfig", () => {
+  const appPath = "/test/app";
+
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReset();
+  });
+
+  test("returns next.config.js when it exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/next.config.js",
+    );
+
+    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.js");
+  });
+
+  test("returns next.config.cjs when it exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/next.config.cjs",
+    );
+
+    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.cjs");
+  });
+
+  test("returns next.config.mjs when it exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/next.config.mjs",
+    );
+
+    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.mjs");
+  });
+
+  test("returns next.config.ts when it exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/next.config.ts",
+    );
+
+    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.ts");
+  });
+
+  test("returns undefined when no config file exists", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(findNextConfig({ appPath })).toBeUndefined();
+  });
+
+  test("returns first matching extension when multiple configs exist", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) =>
+        filePath === "/test/app/next.config.js" ||
+        filePath === "/test/app/next.config.ts",
+    );
+
+    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.js");
   });
 });
