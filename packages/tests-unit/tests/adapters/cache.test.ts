@@ -323,6 +323,46 @@ describe("CacheHandler", () => {
         });
       });
 
+      it("Should return value when cache data type is app with segmentData and postponed (Next 15+)", async () => {
+        globalThis.isNextAfter15 = true;
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+            rsc: "rsc-data",
+            segmentData: {
+              segment1: "data1",
+              segment2: "data2",
+            },
+            meta: {
+              status: 200,
+              headers: { "x-custom": "value" },
+              postponed: "postponed-data",
+            },
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(getIncrementalCache).toHaveBeenCalled();
+        expect(result).toEqual({
+          value: {
+            kind: "APP_PAGE",
+            html: "<html></html>",
+            rscData: Buffer.from("rsc-data"),
+            status: 200,
+            headers: { "x-custom": "value" },
+            postponed: "postponed-data",
+            segmentData: new Map([
+              ["segment1", Buffer.from("data1")],
+              ["segment2", Buffer.from("data2")],
+            ]),
+          },
+          lastModified: Date.now(),
+        });
+      });
+
       it("Should return value when cache data type is redirect", async () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -453,6 +493,42 @@ describe("CacheHandler", () => {
           html: "<html></html>",
           rsc: "rsc",
           meta: { status: 200, headers: {} },
+        },
+        "cache",
+      );
+    });
+
+    it("Should set cache when for APP_PAGE with segmentData and postponed", async () => {
+      const segmentData = new Map([
+        ["segment1", Buffer.from("data1")],
+        ["segment2", Buffer.from("data2")],
+      ]);
+
+      await cache.set("key", {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: Buffer.from("rsc"),
+        status: 200,
+        headers: { "x-custom": "value" },
+        segmentData,
+        postponed: "postponed-data",
+      });
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "app",
+          html: "<html></html>",
+          rsc: "rsc",
+          meta: {
+            status: 200,
+            headers: { "x-custom": "value" },
+            postponed: "postponed-data",
+          },
+          segmentData: {
+            segment1: "data1",
+            segment2: "data2",
+          },
         },
         "cache",
       );
