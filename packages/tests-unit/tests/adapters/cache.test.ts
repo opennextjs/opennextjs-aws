@@ -331,8 +331,8 @@ describe("CacheHandler", () => {
             html: "<html></html>",
             rsc: "rsc-data",
             segmentData: {
-              "segment1": "data1",
-              "segment2": "data2",
+              segment1: "data1",
+              segment2: "data2",
             },
             meta: {
               status: 200,
@@ -526,8 +526,8 @@ describe("CacheHandler", () => {
             postponed: "postponed-data",
           },
           segmentData: {
-            "segment1": "data1",
-            "segment2": "data2",
+            segment1: "data1",
+            segment2: "data2",
           },
         },
         "cache",
