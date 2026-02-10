@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.16
+
+### Patch Changes
+
+- [#1107](https://github.com/opennextjs/opennextjs-aws/pull/1107) [`0344a7d8c7872e50186e4676748861082f7b85a8`](https://github.com/opennextjs/opennextjs-aws/commit/0344a7d8c7872e50186e4676748861082f7b85a8) Thanks [@conico974](https://github.com/conico974)! - Fix for setting PPR data
+
+- [#1114](https://github.com/opennextjs/opennextjs-aws/pull/1114) [`88c2944775874145a541b25b0fffe2cae5c598cd`](https://github.com/opennextjs/opennextjs-aws/commit/88c2944775874145a541b25b0fffe2cae5c598cd) Thanks [@dario-piotrowicz](https://github.com/dario-piotrowicz)! - Fix `findNextConfig` returning the incorrect result and also expend the return result to be an object with both the path and a new flag indicating whether the file is in TypeScript or not
+
 ## 3.9.15
 
 ### Patch Changes
