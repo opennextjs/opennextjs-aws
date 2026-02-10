@@ -478,16 +478,16 @@ export function findNextConfig({
 }: Pick<BuildOptions, "appPath">):
   | { path: string; isTypescript: boolean }
   | undefined {
-  const tsExtensions = [".ts", ".mts", ".cts"].map((ext) => ({
-    ext,
-    isTypescript: true,
-  }));
-  const jsExtensions = [".mjs", ".js", ".cjs"].map((ext) => ({
-    ext,
-    isTypescript: false,
-  }));
+  const extensions = [
+    { ext: ".ts", isTypescript: true },
+    { ext: ".mts", isTypescript: true },
+    { ext: ".cts", isTypescript: true },
+    { ext: ".js", isTypescript: false },
+    { ext: ".mjs", isTypescript: false },
+    { ext: ".cjs", isTypescript: false },
+  ];
 
-  for (const { ext, isTypescript } of [...tsExtensions, ...jsExtensions]) {
+  for (const { ext, isTypescript } of extensions) {
     const testPath = path.join(appPath, `next.config${ext}`);
     if (fs.existsSync(testPath)) {
       return {
