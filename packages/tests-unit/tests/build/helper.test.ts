@@ -139,7 +139,10 @@ describe("findNextConfig", () => {
       (filePath) => filePath === "/test/app/next.config.js",
     );
 
-    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.js");
+    expect(findNextConfig({ appPath })).toEqual({
+      path: "/test/app/next.config.js",
+      isTypescript: false,
+    });
   });
 
   test("returns next.config.cjs when it exists", () => {
@@ -147,7 +150,10 @@ describe("findNextConfig", () => {
       (filePath) => filePath === "/test/app/next.config.cjs",
     );
 
-    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.cjs");
+    expect(findNextConfig({ appPath })).toEqual({
+      path: "/test/app/next.config.cjs",
+      isTypescript: false,
+    });
   });
 
   test("returns next.config.mjs when it exists", () => {
@@ -155,7 +161,10 @@ describe("findNextConfig", () => {
       (filePath) => filePath === "/test/app/next.config.mjs",
     );
 
-    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.mjs");
+    expect(findNextConfig({ appPath })).toEqual({
+      path: "/test/app/next.config.mjs",
+      isTypescript: false,
+    });
   });
 
   test("returns next.config.ts when it exists", () => {
@@ -163,7 +172,10 @@ describe("findNextConfig", () => {
       (filePath) => filePath === "/test/app/next.config.ts",
     );
 
-    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.ts");
+    expect(findNextConfig({ appPath })).toEqual({
+      path: "/test/app/next.config.ts",
+      isTypescript: true,
+    });
   });
 
   test("returns undefined when no config file exists", () => {
@@ -172,13 +184,16 @@ describe("findNextConfig", () => {
     expect(findNextConfig({ appPath })).toBeUndefined();
   });
 
-  test("returns first matching extension when multiple configs exist", () => {
+  test("returns one of matching extension when multiple configs exist", () => {
     vi.mocked(fs.existsSync).mockImplementation(
       (filePath) =>
         filePath === "/test/app/next.config.js" ||
         filePath === "/test/app/next.config.ts",
     );
 
-    expect(findNextConfig({ appPath })).toBe("/test/app/next.config.js");
+    expect(findNextConfig({ appPath })).toEqual({
+      path: "/test/app/next.config.ts",
+      isTypescript: true,
+    });
   });
 });

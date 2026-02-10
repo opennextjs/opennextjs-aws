@@ -471,20 +471,31 @@ export function copyEnvFile(
  * Finds the path to the Next configuration file if it exists.
  *
  * @param appPath The directory to check for the Next config file
- * @returns The full path to Next config file if it exists, undefined otherwise
+ * @returns An object with the full path to Next config file alongside a flag indicating whether the file is in typescript if it exists, undefined otherwise
  */
 export function findNextConfig({
   appPath,
-}: Pick<BuildOptions, "appPath">): string | undefined {
-  const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
-    fs.existsSync(path.join(appPath, `next.config.${ext}`)),
-  );
+}: Pick<BuildOptions, "appPath">):
+  | { path: string; isTypescript: boolean }
+  | undefined {
+  const tsExtensions = [".ts", ".mts", ".cts"].map((ext) => ({
+    ext,
+    isTypescript: true,
+  }));
+  const jsExtensions = [".mjs", ".js", ".cjs"].map((ext) => ({
+    ext,
+    isTypescript: false,
+  }));
 
-  if (!extension) {
-    return undefined;
+  for (const { ext, isTypescript } of [...tsExtensions, ...jsExtensions]) {
+    const testPath = path.join(appPath, `next.config${ext}`);
+    if (fs.existsSync(testPath)) {
+      return {
+        path: testPath,
+        isTypescript,
+      };
+    }
   }
-
-  return path.join(appPath, `next.config.${extension}`);
 }
 
 /**

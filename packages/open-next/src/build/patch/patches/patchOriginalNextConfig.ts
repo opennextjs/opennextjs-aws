@@ -76,29 +76,18 @@ export async function patchOriginalNextConfig(
 async function importNextConfigFromSource(
   buildOptions: buildHelper.BuildOptions,
 ) {
-  // Find the `next.config file with any supported extension
-  const tsExtensions = [".ts", ".mts", ".cts"];
-  const possibleExtensions = [...tsExtensions, ".mjs", ".js", ".cjs"];
-  let configPath: string | undefined;
-  let configExtension: string | undefined;
+  const nextConfigDetails = buildHelper.findNextConfig(buildOptions);
 
-  for (const ext of possibleExtensions) {
-    const testPath = path.join(buildOptions.appPath, `next.config${ext}`);
-    if (fs.existsSync(testPath)) {
-      configPath = testPath;
-      configExtension = ext;
-      break;
-    }
-  }
-
-  if (!configPath || !configExtension) {
+  if (!nextConfigDetails) {
     throw new Error("Could not find next.config file");
   }
+
+  const { path: configPath, isTypescript: configIsTs } = nextConfigDetails;
 
   let configToImport: string;
 
   // Only compile if the extension is a TypeScript extension
-  if (tsExtensions.includes(configExtension)) {
+  if (configIsTs) {
     await build({
       entryPoints: [configPath],
       outfile: path.join(buildOptions.tempBuildDir, "next.config.mjs"),
