@@ -488,10 +488,10 @@ export function findNextConfig({
   ];
 
   for (const { ext, isTypescript } of extensions) {
-    const testPath = path.join(appPath, `next.config${ext}`);
-    if (fs.existsSync(testPath)) {
+    const configPath = path.join(appPath, `next.config${ext}`);
+    if (fs.existsSync(configPath)) {
       return {
-        path: testPath,
+        path: configPath,
         isTypescript,
       };
     }
