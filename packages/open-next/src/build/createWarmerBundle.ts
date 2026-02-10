@@ -27,7 +27,7 @@ export async function createWarmerBundle(options: buildHelper.BuildOptions) {
       entryPoints: [
         path.join(options.openNextDistDir, "adapters", "warmer-function.js"),
       ],
-      external: ["next"],
+      external: ["next", ...(config.warmer?.esbuild?.external ?? [])],
       outfile: path.join(outputPath, "index.mjs"),
       plugins: [
         openNextResolvePlugin({

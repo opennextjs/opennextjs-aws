@@ -298,7 +298,12 @@ async function generateBundle(
       entryPoints: [
         path.join(options.openNextDistDir, "adapters", "server-adapter.js"),
       ],
-      external: ["next", "./middleware.mjs", "./next-server.runtime.prod.js"],
+      external: [
+        "next",
+        "./middleware.mjs",
+        "./next-server.runtime.prod.js",
+        ...(fnOptions.esbuild?.external ?? []),
+      ],
       outfile: path.join(outputPath, packagePath, `index.${outfileExt}`),
       banner: {
         js: [

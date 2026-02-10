@@ -338,6 +338,26 @@ export interface DefaultFunctionOptions<
    * @default undefined
    */
   install?: InstallOptions;
+
+  /**
+   * Custom esbuild options for the function bundling.
+   * @default undefined
+   */
+  esbuild?: {
+    /**
+     * Additional packages to exclude from the esbuild bundle.
+     * Useful when a dependency includes native binaries (.node files)
+     * that esbuild cannot handle.
+     * @example
+     * ```ts
+     * esbuild: {
+     *   external: ["@swc/core", "@swc/wasm"]
+     * }
+     * ```
+     * @default []
+     */
+    external?: string[];
+  };
 }
 
 export interface FunctionOptions extends DefaultFunctionOptions {

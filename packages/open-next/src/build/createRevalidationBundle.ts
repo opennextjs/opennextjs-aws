@@ -23,7 +23,12 @@ export async function createRevalidationBundle(
   // Build Lambda code
   await buildHelper.esbuildAsync(
     {
-      external: ["next", "styled-jsx", "react"],
+      external: [
+        "next",
+        "styled-jsx",
+        "react",
+        ...(config.revalidate?.esbuild?.external ?? []),
+      ],
       entryPoints: [
         path.join(options.openNextDistDir, "adapters", "revalidate.js"),
       ],

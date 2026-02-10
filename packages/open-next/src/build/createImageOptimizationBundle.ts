@@ -66,7 +66,11 @@ export async function createImageOptimizationBundle(
           "image-optimization-adapter.js",
         ),
       ],
-      external: ["sharp", "next"],
+      external: [
+        "sharp",
+        "next",
+        ...(config.imageOptimization?.esbuild?.external ?? []),
+      ],
       outfile: path.join(outputPath, "index.mjs"),
       plugins,
     },
@@ -81,7 +85,11 @@ export async function createImageOptimizationBundle(
   buildHelper.esbuildSync(
     {
       entryPoints: [path.join(outputPath, "index.mjs")],
-      external: ["sharp", "@opentelemetry/api"],
+      external: [
+        "sharp",
+        "@opentelemetry/api",
+        ...(config.imageOptimization?.esbuild?.external ?? []),
+      ],
       allowOverwrite: true,
       outfile: path.join(outputPath, "index.mjs"),
       banner: {
