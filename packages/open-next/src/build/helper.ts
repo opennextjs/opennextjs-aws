@@ -479,16 +479,16 @@ export function findNextConfig({
   | { path: string; isTypescript: boolean }
   | undefined {
   const extensions = [
-    { ext: ".ts", isTypescript: true },
-    { ext: ".mts", isTypescript: true },
-    { ext: ".cts", isTypescript: true },
-    { ext: ".js", isTypescript: false },
-    { ext: ".mjs", isTypescript: false },
-    { ext: ".cjs", isTypescript: false },
+    { ext: "ts", isTypescript: true },
+    { ext: "mts", isTypescript: true },
+    { ext: "cts", isTypescript: true },
+    { ext: "js", isTypescript: false },
+    { ext: "mjs", isTypescript: false },
+    { ext: "cjs", isTypescript: false },
   ];
 
   for (const { ext, isTypescript } of extensions) {
-    const configPath = path.join(appPath, `next.config${ext}`);
+    const configPath = path.join(appPath, `next.config.${ext}`);
     if (fs.existsSync(configPath)) {
       return {
         path: configPath,
