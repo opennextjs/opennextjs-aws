@@ -4,7 +4,7 @@ import type { InternalEvent, InternalResult } from "types/open-next";
 
 import { emptyReadableStream } from "utils/stream.js";
 import { debug } from "../../../adapters/logger.js";
-import { constructNextUrl } from "../util.js";
+import { constructNextUrl, convertToQueryString } from "../util.js";
 import { acceptLanguage } from "./accept-header";
 
 function isLocalizedPath(path: string): boolean {
@@ -164,11 +164,13 @@ export function handleLocaleRedirect(
   const defaultLocale = domainLocale?.defaultLocale ?? i18n.defaultLocale;
 
   if (detectedLocale.toLowerCase() !== defaultLocale.toLowerCase()) {
+    const nextUrl = constructNextUrl(internalEvent.url, `/${detectedLocale}`);
+    const queryString = convertToQueryString(internalEvent.query);
     return {
       type: "core",
       statusCode: 307,
       headers: {
-        Location: constructNextUrl(internalEvent.url, `/${detectedLocale}`),
+        Location: `${nextUrl}${queryString}`,
       },
       body: emptyReadableStream(),
       isBase64Encoded: false,

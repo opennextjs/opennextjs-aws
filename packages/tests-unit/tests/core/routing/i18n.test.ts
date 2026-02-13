@@ -232,6 +232,24 @@ describe("handleLocaleRedirect", () => {
     expect(result).toBe(false);
   });
 
+  it("should preserve query parameters when redirecting to localized path", () => {
+    const event = createEvent({
+      url: "http://localhost?foo=bar",
+      headers: {
+        "accept-language": "fr",
+      },
+    });
+
+    const result = handleLocaleRedirect(event);
+
+    expect(result).toMatchObject({
+      statusCode: 307,
+      headers: {
+        Location: "http://localhost/fr?foo=bar",
+      },
+    });
+  });
+
   describe("using domain", () => {
     it("should redirect to the preferred domain if the domain is different", () => {
       vi.spyOn(NextConfig, "i18n", "get").mockReturnValue({
