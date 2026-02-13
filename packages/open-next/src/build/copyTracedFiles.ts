@@ -73,6 +73,18 @@ export function isExcluded(srcPath: string): boolean {
   );
 }
 
+const NON_LINUX_PLATFORMS = ["darwin", "win32", "freebsd", "android"];
+
+const platformPattern = NON_LINUX_PLATFORMS.join("|");
+const nonLinuxPlatformRegex = getCrossPlatformPathRegex(
+  `/node_modules/(?:@[^/]+/)?(?:[^/]+-)?(${platformPattern})-[^/]+/`,
+  { escape: false },
+);
+
+export function isNonLinuxPlatformPackage(srcPath: string): boolean {
+  return nonLinuxPlatformRegex.test(srcPath);
+}
+
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
   const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
@@ -278,9 +290,20 @@ File ${serverPath} does not exist
   const tracedFiles: string[] = [];
   const erroredFiles: string[] = [];
   //Actually copy the files
+  const skippedPlatformPackages = new Set<string>();
   filesToCopy.forEach((to, from) => {
     // We don't want to copy excluded packages (e.g. sharp)
     if (isExcluded(from)) {
+      return;
+    }
+    // Skip non-Linux platform-specific native binaries (e.g. @swc/core-darwin-arm64)
+    if (isNonLinuxPlatformPackage(from)) {
+      const match = from.match(
+        /node_modules\/(?:\.pnpm\/.*\/node_modules\/)?((?:@[^/]+\/)?[^/]+)/,
+      );
+      if (match) {
+        skippedPlatformPackages.add(match[1]);
+      }
       return;
     }
     tracedFiles.push(to);
@@ -313,6 +336,13 @@ File ${serverPath} does not exist
       }
     }
   });
+
+  if (skippedPlatformPackages.size > 0) {
+    logger.debug(
+      "Skipped non-Linux platform packages:",
+      [...skippedPlatformPackages].join(", "),
+    );
+  }
 
   readdirSync(standaloneNextDir)
     .filter(
