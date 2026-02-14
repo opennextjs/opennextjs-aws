@@ -164,7 +164,10 @@ export function handleLocaleRedirect(
   const defaultLocale = domainLocale?.defaultLocale ?? i18n.defaultLocale;
 
   if (detectedLocale.toLowerCase() !== defaultLocale.toLowerCase()) {
-    const nextUrl = constructNextUrl(internalEvent.url, `/${detectedLocale}`);
+    const nextUrl = constructNextUrl(
+      internalEvent.url,
+      `/${detectedLocale}${NextConfig.trailingSlash ? "/" : ""}`,
+    );
     const queryString = convertToQueryString(internalEvent.query);
     return {
       type: "core",

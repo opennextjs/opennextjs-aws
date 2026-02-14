@@ -14,6 +14,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => {
         defaultLocale: "en",
         locales: ["en", "fr"],
       },
+      trailingSlash: undefined,
     },
   };
 });
@@ -232,7 +233,7 @@ describe("handleLocaleRedirect", () => {
     expect(result).toBe(false);
   });
 
-  it("should preserve query parameters when redirecting to localized path", () => {
+  it("should redirect to the localized path with a query parameter", () => {
     const event = createEvent({
       url: "http://localhost?foo=bar",
       headers: {
@@ -248,6 +249,30 @@ describe("handleLocaleRedirect", () => {
         Location: "http://localhost/fr?foo=bar",
       },
     });
+  });
+
+  it("should redirect to the localized path with a query parameter when trailingSlash is true", () => {
+    const trailingSlashSpy = vi
+      .spyOn(NextConfig, "trailingSlash", "get")
+      .mockReturnValue(true);
+
+    const event = createEvent({
+      url: "http://localhost?foo=bar",
+      headers: {
+        "accept-language": "fr",
+      },
+    });
+
+    const result = handleLocaleRedirect(event);
+
+    expect(result).toMatchObject({
+      statusCode: 307,
+      headers: {
+        Location: "http://localhost/fr/?foo=bar",
+      },
+    });
+
+    trailingSlashSpy.mockRestore();
   });
 
   describe("using domain", () => {
