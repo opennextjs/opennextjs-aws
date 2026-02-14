@@ -1,5 +1,3 @@
-import type { ReadableStream } from "node:stream/web";
-
 interface CachedFetchValue {
   kind: "FETCH";
   data: {
@@ -153,7 +151,7 @@ export interface ComposableCacheEntry {
 }
 
 export type StoredComposableCacheEntry = Omit<ComposableCacheEntry, "value"> & {
-  value: string;
+  value: Blob;
 };
 
 export interface ComposableCacheHandler {

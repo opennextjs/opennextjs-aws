@@ -1,12 +1,14 @@
-import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import type { CacheValue } from "types/overrides";
+import type {
+  ComposableCacheEntry,
+  ComposableCacheHandler,
+  StoredComposableCacheEntry,
+} from "types/cache";
 import { writeTags } from "utils/cache";
-import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
 const pendingWritePromiseMap = new Map<
   string,
-  Promise<CacheValue<"composable">>
+  Promise<StoredComposableCacheEntry>
 >();
 
 export default {
@@ -14,15 +16,14 @@ export default {
     try {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
-      if (pendingWritePromiseMap.has(cacheKey)) {
-        const stored = pendingWritePromiseMap.get(cacheKey);
-        if (stored) {
-          return stored.then((entry) => ({
-            ...entry,
-            value: toReadableStream(entry.value),
-          }));
-        }
+      const stored = pendingWritePromiseMap.get(cacheKey);
+      if (stored) {
+        return stored.then((val) => ({
+          ...val,
+          value: val.value.stream(),
+        }));
       }
+
       const result = await globalThis.incrementalCache.get(
         cacheKey,
         "composable",
@@ -60,7 +61,7 @@ export default {
 
       return {
         ...result.value,
-        value: toReadableStream(result.value.value),
+        value: result.value.value.stream(),
       };
     } catch (e) {
       debug("Cannot read composable cache entry");
@@ -69,28 +70,42 @@ export default {
   },
 
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
-    const promiseEntry = pendingEntry.then(async (entry) => ({
-      ...entry,
-      value: await fromReadableStream(entry.value),
-    }));
-    pendingWritePromiseMap.set(cacheKey, promiseEntry);
-
-    const entry = await promiseEntry.finally(() => {
-      pendingWritePromiseMap.delete(cacheKey);
+    // Convert ReadableStream to Blob first
+    const blobPromise = pendingEntry.then(async (entry) => {
+      const reader = entry.value.getReader();
+      const chunks: Uint8Array[] = [];
+      let result: ReadableStreamReadResult<Uint8Array>;
+      while (!(result = await reader.read()).done) {
+        chunks.push(result.value);
+      }
+      reader.releaseLock();
+      return { ...entry, value: new Blob(chunks) };
     });
+
+    // Store a stream from the blob in the pending map for concurrent get() calls
+    pendingWritePromiseMap.set(cacheKey, blobPromise);
+
+    const entryWithBlob = await blobPromise;
+
     await globalThis.incrementalCache.set(
       cacheKey,
-      {
-        ...entry,
-        value: entry.value,
-      },
+      entryWithBlob,
       "composable",
     );
+
+    // Delete from pending map only after the write is complete
+    pendingWritePromiseMap.delete(cacheKey);
+
     if (globalThis.tagCache.mode === "original") {
       const storedTags = await globalThis.tagCache.getByPath(cacheKey);
-      const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
+      const tagsToWrite = [];
+      for (const tag of entryWithBlob.tags) {
+        if (!storedTags.includes(tag)) {
+          tagsToWrite.push({ tag, path: cacheKey });
+        }
+      }
       if (tagsToWrite.length > 0) {
-        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
+        await writeTags(tagsToWrite);
       }
     }
   },
@@ -136,17 +151,14 @@ export default {
         }));
       }),
     );
-    // We need to deduplicate paths, we use a set for that
-    const setToWrite = new Set<{ path: string; tag: string }>();
+
+    const dedupeMap = new Map();
     for (const entry of pathsToUpdate.flat()) {
-      setToWrite.add(entry);
+      dedupeMap.set(`${entry.path}|${entry.tag}`, entry);
     }
-    await writeTags(Array.from(setToWrite));
+    await writeTags(Array.from(dedupeMap.values()));
   },
 
   // This one is necessary for older versions of next
-  async receiveExpiredTags(...tags: string[]) {
-    // This function does absolutely nothing
-    return;
-  },
+  async receiveExpiredTags() {},
 } satisfies ComposableCacheHandler;
