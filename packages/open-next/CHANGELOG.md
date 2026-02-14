@@ -1,5 +1,11 @@
 # open-next
 
+## 3.9.17
+
+### Patch Changes
+
+- [#1118](https://github.com/opennextjs/opennextjs-aws/pull/1118) [`e49782af723ec97f1373e654a7e400e1ba3e827e`](https://github.com/opennextjs/opennextjs-aws/commit/e49782af723ec97f1373e654a7e400e1ba3e827e) Thanks [@tsurumeso](https://github.com/tsurumeso)! - Preserve query parameters during i18n redirects to a localized path
+
 ## 3.9.16
 
 ### Patch Changes
