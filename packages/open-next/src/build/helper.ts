@@ -124,6 +124,8 @@ export function esbuildSync(
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
     ...esbuildOptions,
+    // Native .node binaries cannot be bundled by esbuild
+    loader: { ".node": "empty", ...esbuildOptions.loader },
     external: ["./open-next.config.mjs", ...(esbuildOptions.external ?? [])],
     banner: {
       ...esbuildOptions.banner,
@@ -163,6 +165,8 @@ export async function esbuildAsync(
     sourcemap: debug ? "inline" : false,
     sourcesContent: false,
     ...esbuildOptions,
+    // Native .node binaries cannot be bundled by esbuild
+    loader: { ".node": "empty", ...esbuildOptions.loader },
     external: [
       ...(esbuildOptions.external ?? []),
       "next",
