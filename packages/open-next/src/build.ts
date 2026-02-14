@@ -40,7 +40,7 @@ export async function build(
   );
 
   // Initialize options
-  const options = buildHelper.normalizeOptions(
+  const options = await buildHelper.normalizeOptions(
     config,
     openNextDistDir,
     buildDir,

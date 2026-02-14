@@ -202,6 +202,13 @@ declare global {
   var openNextVersion: string;
 
   /**
+   * The Next.js dist directory (e.g., ".next" or custom distDir from next.config).
+   * Available everywhere.
+   * Defined in the esbuild banner.
+   */
+  var nextDistDir: string;
+
+  /**
    * The function that is used when resolving external rewrite requests.
    * Only available in main functions
    * Defined in `createMainHandler`.

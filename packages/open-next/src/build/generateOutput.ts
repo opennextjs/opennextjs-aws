@@ -190,7 +190,9 @@ export async function generateOutput(options: BuildOptions) {
 
   const defaultOriginCanstream = await canStream(config.default);
 
-  const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const nextConfig = loadConfig(
+    path.join(appBuildOutputPath, options.nextDistDir),
+  );
   const prefixer = prefixPattern(nextConfig.basePath ?? "");
 
   // First add s3 origins and image optimization
