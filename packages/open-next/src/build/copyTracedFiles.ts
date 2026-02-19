@@ -73,7 +73,7 @@ export function isExcluded(srcPath: string): boolean {
   );
 }
 
-const NON_LINUX_PLATFORMS = ["darwin", "win32", "freebsd", "android"];
+const NON_LINUX_PLATFORMS = ["darwin", "win32", "freebsd"];
 
 const platformPattern = NON_LINUX_PLATFORMS.join("|");
 const nonLinuxPlatformRegex = getCrossPlatformPathRegex(
@@ -297,7 +297,11 @@ File ${serverPath} does not exist
       return;
     }
     // Skip non-Linux platform-specific native binaries (e.g. @swc/core-darwin-arm64)
-    if (isNonLinuxPlatformPackage(from)) {
+    // Set OPEN_NEXT_SKIP_PLATFORM_FILTER=true to bypass this check
+    if (
+      !process.env.OPEN_NEXT_SKIP_PLATFORM_FILTER &&
+      isNonLinuxPlatformPackage(from)
+    ) {
       const match = from.match(
         /node_modules\/(?:\.pnpm\/.*\/node_modules\/)?((?:@[^/]+\/)?[^/]+)/,
       );

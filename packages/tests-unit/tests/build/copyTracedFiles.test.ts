@@ -66,15 +66,10 @@ describe("isNonLinuxPlatformPackage", () => {
     ).toBe(true);
   });
 
-  test("should exclude freebsd and android packages", () => {
+  test("should exclude freebsd packages", () => {
     expect(
       isNonLinuxPlatformPackage(
         "/project/node_modules/@rollup/rollup-freebsd-x64/rollup.freebsd-x64.node",
-      ),
-    ).toBe(true);
-    expect(
-      isNonLinuxPlatformPackage(
-        "/project/node_modules/@rollup/rollup-android-arm64/rollup.android-arm64.node",
       ),
     ).toBe(true);
   });
