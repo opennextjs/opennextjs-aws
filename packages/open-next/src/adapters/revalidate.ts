@@ -25,6 +25,8 @@ export interface RevalidateEvent {
   }[];
 }
 
+const ALLOWED_STATUS_CODES = [200, 301, 302, 307, 308, 404, 410]
+
 const defaultHandler = async (event: RevalidateEvent) => {
   const failedRecords: RevalidateEvent["records"] = [];
   for (const record of event.records) {
@@ -58,7 +60,7 @@ const defaultHandler = async (event: RevalidateEvent) => {
               statusCode: res.statusCode,
             });
             if (
-              res.statusCode !== 200 ||
+              !ALLOWED_STATUS_CODES.includes(res.statusCode ?? 0) ||
               res.headers["x-nextjs-cache"] !== "REVALIDATED"
             ) {
               failedRecords.push(record);
