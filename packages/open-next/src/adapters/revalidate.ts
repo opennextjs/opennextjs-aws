@@ -25,7 +25,7 @@ export interface RevalidateEvent {
   }[];
 }
 
-const ALLOWED_STATUS_CODES = [200, 301, 302, 307, 308, 404, 410]
+const ALLOWED_STATUS_CODES = [200, 307, 308, 404]
 
 const defaultHandler = async (event: RevalidateEvent) => {
   const failedRecords: RevalidateEvent["records"] = [];
