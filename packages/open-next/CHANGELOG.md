@@ -1,5 +1,13 @@
 # open-next
 
+## 3.9.17
+
+### Patch Changes
+
+- [#1117](https://github.com/opennextjs/opennextjs-aws/pull/1117) [`3a2b1b9497c531e9f07f66f7a140f152a9d8fc26`](https://github.com/opennextjs/opennextjs-aws/commit/3a2b1b9497c531e9f07f66f7a140f152a9d8fc26) Thanks [@clichedmoog](https://github.com/clichedmoog)! - Auto-filter non-Linux platform-specific native binaries (e.g. @swc/core-darwin-arm64) from Lambda bundles during traced files copy
+
+- [#1118](https://github.com/opennextjs/opennextjs-aws/pull/1118) [`e49782af723ec97f1373e654a7e400e1ba3e827e`](https://github.com/opennextjs/opennextjs-aws/commit/e49782af723ec97f1373e654a7e400e1ba3e827e) Thanks [@tsurumeso](https://github.com/tsurumeso)! - Preserve query parameters during i18n redirects to a localized path
+
 ## 3.9.16
 
 ### Patch Changes
