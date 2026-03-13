@@ -66,14 +66,16 @@ export async function createServerBundle(
 
   const remainingRoutes = new Set<string>();
 
-  const { appBuildOutputPath } = options;
+  const { appBuildOutputPath, nextDistDir } = options;
 
   // Find remaining routes
   const serverPath = path.join(
     appBuildOutputPath,
-    ".next/standalone",
+    nextDistDir,
+    "standalone",
     buildHelper.getPackagePath(options),
-    ".next/server",
+    nextDistDir,
+    "server",
   );
 
   // Find app dir routes
@@ -171,7 +173,7 @@ async function generateBundle(
     );
 
     const middlewareManifest = loadMiddlewareManifest(
-      path.join(options.appBuildOutputPath, ".next"),
+      path.join(options.appBuildOutputPath, options.nextDistDir),
     );
 
     copyMiddlewareResources(
@@ -185,7 +187,12 @@ async function generateBundle(
   buildHelper.copyOpenNextConfig(options.buildDir, outPackagePath);
 
   // Copy env files
-  buildHelper.copyEnvFile(appBuildOutputPath, packagePath, outputPath);
+  buildHelper.copyEnvFile(
+    appBuildOutputPath,
+    options.nextDistDir,
+    packagePath,
+    outputPath,
+  );
 
   // Copy all necessary traced files
   const { tracedFiles, manifests } = await copyTracedFiles({
@@ -194,6 +201,7 @@ async function generateBundle(
     outputDir: outputPath,
     routes: fnOptions.routes ?? ["app/page.tsx"],
     bundledNextServer: isBundled,
+    nextDistDir: options.nextDistDir,
   });
 
   const additionalCodePatches = codeCustomization?.additionalCodePatches ?? [];
