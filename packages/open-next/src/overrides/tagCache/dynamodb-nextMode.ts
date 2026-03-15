@@ -117,14 +117,25 @@ export default {
         `Failed to query dynamo item: ${response.status}`,
       );
     }
-    // Now we need to check for every item if lastModified is greater than the revalidatedAt
+    // Now we need to check for every item if they have expired or been revalidated
     const { Responses } = await response.json();
     if (!Responses) {
       return false;
     }
+    const now = Date.now();
     const revalidatedTags = Responses[CACHE_DYNAMO_TABLE ?? ""].filter(
-      (item: any) =>
-        Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0),
+      (item: any) => {
+        // Check if tag has expired
+        if (item.expiry?.N) {
+          const expiry = Number.parseInt(item.expiry.N);
+          const isExpired = expiry <= now && expiry > (lastModified ?? 0);
+          if (isExpired) {
+            return true;
+          }
+        }
+        // Check if tag has been revalidated
+        return Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0);
+      },
     );
     debug("retrieved tags", revalidatedTags);
     return revalidatedTags.length > 0;

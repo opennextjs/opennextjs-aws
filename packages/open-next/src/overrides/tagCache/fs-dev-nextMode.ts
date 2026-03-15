@@ -31,11 +31,23 @@ export default {
       return false;
     }
 
+    const now = Date.now();
     const hasRevalidatedTag = tags.some((tag) => {
       const tagData = tagsMap.get(tag);
-      return tagData
-        ? tagData.revalidatedAt > (lastModified ?? 0)
-        : false;
+      if (!tagData) {
+        return false;
+      }
+      
+      // Check if tag has expired
+      if (typeof tagData.expiry === 'number') {
+        const isExpired = tagData.expiry <= now && tagData.expiry > (lastModified ?? 0);
+        if (isExpired) {
+          return true;
+        }
+      }
+      
+      // Check if tag has been revalidated
+      return tagData.revalidatedAt > (lastModified ?? 0);
     });
 
     debug("hasBeenRevalidated result:", hasRevalidatedTag);

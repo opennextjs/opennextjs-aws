@@ -178,8 +178,19 @@ const tagCache: TagCache = {
       }
       const revalidatedTags = ((await result.json()) as any).Items ?? [];
       debug("revalidatedTags", revalidatedTags);
-      // If we have revalidated tags we return -1 to force revalidation
-      return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
+      
+      // Check if any tag has expired
+      const now = Date.now();
+      const hasExpiredTag = revalidatedTags.some((item: any) => {
+        if (item.expiry?.N) {
+          const expiry = Number.parseInt(item.expiry.N);
+          return expiry <= now && expiry > (lastModified ?? 0);
+        }
+        return false;
+      });
+      
+      // If we have revalidated tags or expired tags we return -1 to force revalidation
+      return revalidatedTags.length > 0 || hasExpiredTag ? -1 : (lastModified ?? Date.now());
     } catch (e) {
       error("Failed to get revalidated tags", e);
       return lastModified ?? Date.now();

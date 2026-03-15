@@ -1,5 +1,6 @@
 import type {
   CacheValue,
+  NextModeTagCacheWriteInput,
   OriginalTagCacheWriteInput,
   WithLastModified,
 } from "types/overrides";
@@ -50,18 +51,25 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   }
 }
 
-function getTagKey(tag: string | OriginalTagCacheWriteInput): string {
+function getTagKey(
+  tag: string | OriginalTagCacheWriteInput | NextModeTagCacheWriteInput,
+): string {
   if (typeof tag === "string") {
     return tag;
   }
-  return JSON.stringify({
-    tag: tag.tag,
-    path: tag.path,
-  });
+  // For OriginalTagCacheWriteInput, include path in the key
+  if ("path" in tag) {
+    return JSON.stringify({
+      tag: tag.tag,
+      path: tag.path,
+    });
+  }
+  // For NextModeTagCacheWriteInput, just use the tag
+  return tag.tag;
 }
 
 export async function writeTags(
-  tags: (string | OriginalTagCacheWriteInput)[],
+  tags: (string | OriginalTagCacheWriteInput | NextModeTagCacheWriteInput)[],
 ): Promise<void> {
   const store = globalThis.__openNextAls.getStore();
   debug("Writing tags", tags, store);

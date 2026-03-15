@@ -333,7 +333,10 @@ export default class Cache {
     }
   }
 
-  public async revalidateTag(tags: string | string[]) {
+  public async revalidateTag(
+    tags: string | string[],
+    durations?: { expire?: number }
+  ) {
     const config = globalThis.openNextConfig.dangerous;
     if (config?.disableTagCache || config?.disableIncrementalCache) {
       return;
@@ -347,7 +350,25 @@ export default class Cache {
       if (globalThis.tagCache.mode === "nextMode") {
         const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
 
-        await writeTags(_tags);
+        const now = Date.now();
+        const tagsToWrite = _tags.map((tag) => {
+          if (durations) {
+            // Use provided durations
+            return {
+              tag,
+              stale: now,
+              expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+            };
+          } else {
+            // Default behavior: immediate expiration
+            return {
+              tag,
+              expiry: now,
+            };
+          }
+        });
+        
+        await writeTags(tagsToWrite);
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
@@ -373,10 +394,24 @@ export default class Cache {
         // Find all keys with the given tag
         const paths = await globalThis.tagCache.getByTag(tag);
         debug("Items", paths);
-        const toInsert = paths.map((path) => ({
-          path,
-          tag,
-        }));
+        const now = Date.now();
+        const toInsert = paths.map((path) => {
+          const baseEntry = { path, tag };
+          if (durations) {
+            // Use provided durations
+            return {
+              ...baseEntry,
+              stale: now,
+              expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+            };
+          } else {
+            // Default behavior: immediate expiration
+            return {
+              ...baseEntry,
+              expiry: now,
+            };
+          }
+        });
 
         // If the tag is a soft tag, we should also revalidate the hard tags
         if (tag.startsWith(SOFT_TAG_PREFIX)) {
@@ -391,10 +426,21 @@ export default class Cache {
               const _paths = await globalThis.tagCache.getByTag(hardTag);
               debug({ hardTag, _paths });
               toInsert.push(
-                ..._paths.map((path) => ({
-                  path,
-                  tag: hardTag,
-                })),
+                ..._paths.map((path) => {
+                  const baseEntry = { path, tag: hardTag };
+                  if (durations) {
+                    return {
+                      ...baseEntry,
+                      stale: now,
+                      expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+                    };
+                  } else {
+                    return {
+                      ...baseEntry,
+                      expiry: now,
+                    };
+                  }
+                }),
               );
             }
           }

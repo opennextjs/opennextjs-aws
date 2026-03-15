@@ -43,7 +43,18 @@ const tagCache: TagCache = {
         tagPathMapping.path.S === buildKey(path) &&
         Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0),
     );
-    return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
+    
+    // Check if any tag has expired
+    const now = Date.now();
+    const hasExpiredTag = tags.some((tagPathMapping) => {
+      if (tagPathMapping.path.S === buildKey(path) && tagPathMapping.expiry?.N) {
+        const expiry = Number.parseInt(tagPathMapping.expiry.N);
+        return expiry <= now && expiry > (lastModified ?? 0);
+      }
+      return false;
+    });
+    
+    return revalidatedTags.length > 0 || hasExpiredTag ? -1 : (lastModified ?? Date.now());
   },
   writeTags: async (newTags) => {
     const newTagsSet = new Set(
