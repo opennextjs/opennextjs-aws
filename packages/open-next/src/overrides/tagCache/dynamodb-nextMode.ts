@@ -59,12 +59,24 @@ function buildDynamoKey(key: string) {
 // We use the same key for both path and tag
 // That's mostly for compatibility reason so that it's easier to use this with existing infra
 // FIXME: Allow a simpler object without an unnecessary path key
-function buildDynamoObject(tag: string, revalidatedAt?: number) {
-  return {
+function buildDynamoObject(
+  tag: string,
+  revalidatedAt?: number,
+  stale?: number,
+  expiry?: number,
+) {
+  const obj: Record<string, any> = {
     path: { S: buildDynamoKey(tag) },
     tag: { S: buildDynamoKey(tag) },
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
   };
+  if (stale !== undefined) {
+    obj.stale = { N: `${stale}` };
+  }
+  if (expiry !== undefined) {
+    obj.expiry = { N: `${expiry}` };
+  }
+  return obj;
 }
 
 // This implementation does not support automatic invalidation of paths by the cdn
@@ -117,7 +129,7 @@ export default {
     debug("retrieved tags", revalidatedTags);
     return revalidatedTags.length > 0;
   },
-  writeTags: async (tags: string[]) => {
+  writeTags: async (tags) => {
     try {
       const { CACHE_DYNAMO_TABLE } = process.env;
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {
@@ -126,13 +138,18 @@ export default {
       const dataChunks = chunk(tags, MAX_DYNAMO_BATCH_WRITE_ITEM_COUNT).map(
         (Items) => ({
           RequestItems: {
-            [CACHE_DYNAMO_TABLE ?? ""]: Items.map((tag) => ({
-              PutRequest: {
-                Item: {
-                  ...buildDynamoObject(tag),
+            [CACHE_DYNAMO_TABLE ?? ""]: Items.map((tag) => {
+              const tagStr = typeof tag === "string" ? tag : tag.tag;
+              const stale = typeof tag === "string" ? undefined : tag.stale;
+              const expiry = typeof tag === "string" ? undefined : tag.expiry;
+              return {
+                PutRequest: {
+                  Item: {
+                    ...buildDynamoObject(tagStr, undefined, stale, expiry),
+                  },
                 },
-              },
-            })),
+              };
+            }),
           },
         }),
       );

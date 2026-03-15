@@ -14,6 +14,8 @@ let tags = JSON.parse(tagContent) as {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  stale?: { N: string };
+  expiry?: { N: string };
 }[];
 
 const { NEXT_BUILD_ID } = process.env;
@@ -51,11 +53,26 @@ const tagCache: TagCache = {
       ({ tag, path }) => !newTagsSet.has(`${tag.S}-${path.S}`),
     );
     tags = unchangedTags.concat(
-      newTags.map((item) => ({
-        tag: { S: buildKey(item.tag) },
-        path: { S: buildKey(item.path) },
-        revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
-      })),
+      newTags.map((item) => {
+        const tagEntry: {
+          tag: { S: string };
+          path: { S: string };
+          revalidatedAt: { N: string };
+          stale?: { N: string };
+          expiry?: { N: string };
+        } = {
+          tag: { S: buildKey(item.tag) },
+          path: { S: buildKey(item.path) },
+          revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
+        };
+        if (item.stale !== undefined) {
+          tagEntry.stale = { N: `${item.stale}` };
+        }
+        if (item.expiry !== undefined) {
+          tagEntry.expiry = { N: `${item.expiry}` };
+        }
+        return tagEntry;
+      }),
     );
   },
 };

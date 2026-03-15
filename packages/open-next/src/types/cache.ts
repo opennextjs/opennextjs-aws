@@ -99,6 +99,8 @@ export type TagCacheMetaFile = {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  stale?: { N: string };
+  expiry?: { N: string };
 };
 
 // Cache context since vercel/next.js#76207

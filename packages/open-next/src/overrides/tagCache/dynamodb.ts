@@ -33,12 +33,25 @@ function buildDynamoKey(key: string) {
   return path.posix.join(NEXT_BUILD_ID ?? "", key);
 }
 
-function buildDynamoObject(path: string, tags: string, revalidatedAt?: number) {
-  return {
+function buildDynamoObject(
+  path: string,
+  tags: string,
+  revalidatedAt?: number,
+  stale?: number,
+  expiry?: number,
+) {
+  const obj: Record<string, any> = {
     path: { S: buildDynamoKey(path) },
     tag: { S: buildDynamoKey(tags) },
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
   };
+  if (stale !== undefined) {
+    obj.stale = { N: `${stale}` };
+  }
+  if (expiry !== undefined) {
+    obj.expiry = { N: `${expiry}` };
+  }
+  return obj;
 }
 
 const tagCache: TagCache = {
@@ -139,7 +152,13 @@ const tagCache: TagCache = {
             [CACHE_DYNAMO_TABLE ?? ""]: Items.map((Item) => ({
               PutRequest: {
                 Item: {
-                  ...buildDynamoObject(Item.path, Item.tag, Item.revalidatedAt),
+                  ...buildDynamoObject(
+                    Item.path,
+                    Item.tag,
+                    Item.revalidatedAt,
+                    Item.stale,
+                    Item.expiry,
+                  ),
                 },
               },
             })),

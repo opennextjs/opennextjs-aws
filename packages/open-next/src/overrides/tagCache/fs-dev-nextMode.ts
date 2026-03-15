@@ -1,7 +1,10 @@
 import type { NextModeTagCache } from "types/overrides";
 import { debug } from "../../adapters/logger";
 
-const tagsMap = new Map<string, number>();
+const tagsMap = new Map<
+  string,
+  { revalidatedAt: number; stale?: number; expiry?: number }
+>();
 
 export default {
   name: "fs-dev-nextMode",
@@ -14,9 +17,9 @@ export default {
     let lastRevalidated = 0;
 
     tags.forEach((tag) => {
-      const tagTime = tagsMap.get(tag);
-      if (tagTime && tagTime > lastRevalidated) {
-        lastRevalidated = tagTime;
+      const tagData = tagsMap.get(tag);
+      if (tagData && tagData.revalidatedAt > lastRevalidated) {
+        lastRevalidated = tagData.revalidatedAt;
       }
     });
 
@@ -29,14 +32,16 @@ export default {
     }
 
     const hasRevalidatedTag = tags.some((tag) => {
-      const tagRevalidatedAt = tagsMap.get(tag);
-      return tagRevalidatedAt ? tagRevalidatedAt > (lastModified ?? 0) : false;
+      const tagData = tagsMap.get(tag);
+      return tagData
+        ? tagData.revalidatedAt > (lastModified ?? 0)
+        : false;
     });
 
     debug("hasBeenRevalidated result:", hasRevalidatedTag);
     return hasRevalidatedTag;
   },
-  writeTags: async (tags: string[]) => {
+  writeTags: async (tags) => {
     if (
       globalThis.openNextConfig.dangerous?.disableTagCache ||
       tags.length === 0
@@ -47,7 +52,14 @@ export default {
     debug("writeTags", { tags: tags });
 
     tags.forEach((tag) => {
-      tagsMap.set(tag, Date.now());
+      const tagStr = typeof tag === "string" ? tag : tag.tag;
+      const stale = typeof tag === "string" ? undefined : tag.stale;
+      const expiry = typeof tag === "string" ? undefined : tag.expiry;
+      tagsMap.set(tagStr, {
+        revalidatedAt: Date.now(),
+        stale,
+        expiry,
+      });
     });
 
     debug("writeTags completed, written", tags.length, "tags");
