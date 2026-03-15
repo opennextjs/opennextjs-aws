@@ -177,4 +177,10 @@ export interface ComposableCacheHandler {
    * This function is only there for older versions and do nothing
    */
   receiveExpiredTags(...tags: string[]): Promise<void>;
+  /**
+   * Added in Next.js 16. Updates tags with optional stale/expire durations.
+   * When durations is provided, marks tags as stale immediately and sets expiry;
+   * when omitted, immediately expires tags (same as expireTags).
+   */
+  updateTags(tags: string[], durations?: { expire?: number }): Promise<void>;
 }

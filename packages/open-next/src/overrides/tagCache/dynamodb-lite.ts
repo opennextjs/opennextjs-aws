@@ -196,6 +196,47 @@ const tagCache: TagCache = {
       return lastModified ?? Date.now();
     }
   },
+  async hasBeenStale(tags: string[], lastModified?: number) {
+    try {
+      if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+        return false;
+      }
+      const { CACHE_DYNAMO_TABLE } = process.env;
+      // For each tag, query entries directly by tag (primary key) and check
+      // if any have a stale timestamp newer than lastModified
+      const results = await Promise.all(
+        tags.map(async (tag) => {
+          const result = await awsFetch(
+            JSON.stringify({
+              TableName: CACHE_DYNAMO_TABLE,
+              KeyConditionExpression: "#tag = :tag",
+              ExpressionAttributeNames: { "#tag": "tag" },
+              ExpressionAttributeValues: {
+                ":tag": { S: buildDynamoKey(tag) },
+              },
+            }),
+          );
+          if (result.status !== 200) {
+            throw new RecoverableError(
+              `Failed to check stale tags: ${result.status}`,
+            );
+          }
+          return ((await result.json()) as any).Items ?? [];
+        }),
+      );
+      return results.some((items: any[]) =>
+        items.some((item: any) => {
+          if (item.stale?.N) {
+            return Number.parseInt(item.stale.N) > (lastModified ?? 0);
+          }
+          return false;
+        }),
+      );
+    } catch (e) {
+      error("Failed to check stale tags", e);
+      return false;
+    }
+  },
   async writeTags(tags) {
     try {
       const { CACHE_DYNAMO_TABLE } = process.env;

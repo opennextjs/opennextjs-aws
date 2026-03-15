@@ -53,6 +53,20 @@ export default {
     debug("hasBeenRevalidated result:", hasRevalidatedTag);
     return hasRevalidatedTag;
   },
+  hasBeenStale: async (tags: string[], lastModified?: number) => {
+    if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+      return false;
+    }
+    const hasStaleTag = tags.some((tag) => {
+      const tagData = tagsMap.get(tag);
+      if (!tagData || typeof tagData.stale !== "number") {
+        return false;
+      }
+      return tagData.stale > (lastModified ?? 0);
+    });
+    debug("hasBeenStale result:", hasStaleTag);
+    return hasStaleTag;
+  },
   writeTags: async (tags) => {
     if (
       globalThis.openNextConfig.dangerous?.disableTagCache ||

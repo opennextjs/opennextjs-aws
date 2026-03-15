@@ -174,6 +174,12 @@ export type NextModeTagCache = BaseTagCache & {
   // Optional method to get paths by tags
   // It is used to automatically invalidate paths in the CDN
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
+  /**
+   * Optional method to check if any tag has become stale (but not yet expired).
+   * When tags are stale, the cache entry is still returned but revalidate is set to -1
+   * to trigger background revalidation.
+   */
+  hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
 
 export interface OriginalTagCacheWriteInput {
@@ -209,6 +215,12 @@ export type OriginalTagCache = BaseTagCache & {
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
+  /**
+   * Optional method to check if any tag entry for the given tags has a stale
+   * timestamp newer than lastModified. When stale, the cache entry is still
+   * returned but revalidate is set to -1 to trigger background revalidation.
+   */
+  hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;

@@ -56,6 +56,15 @@ const tagCache: TagCache = {
     
     return revalidatedTags.length > 0 || hasExpiredTag ? -1 : (lastModified ?? Date.now());
   },
+  hasBeenStale: async (tagsToCheck: string[], lastModified?: number) => {
+    return tagsToCheck.some((tag) =>
+      tags.some((entry) => {
+        if (entry.tag.S !== buildKey(tag)) return false;
+        if (!entry.stale?.N) return false;
+        return Number.parseInt(entry.stale.N) > (lastModified ?? 0);
+      }),
+    );
+  },
   writeTags: async (newTags) => {
     const newTagsSet = new Set(
       newTags.map(({ tag, path }) => `${buildKey(tag)}-${buildKey(path)}`),

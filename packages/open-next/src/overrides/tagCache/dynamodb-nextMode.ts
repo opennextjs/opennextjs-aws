@@ -140,6 +140,48 @@ export default {
     debug("retrieved tags", revalidatedTags);
     return revalidatedTags.length > 0;
   },
+  hasBeenStale: async (tags: string[], lastModified?: number) => {
+    if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+      return false;
+    }
+    if (tags.length === 0) return false;
+    if (tags.length > 100) {
+      throw new RecoverableError(
+        "Cannot query more than 100 tags at once. You should not be using this tagCache implementation for this amount of tags",
+      );
+    }
+    const { CACHE_DYNAMO_TABLE } = process.env;
+    const response = await awsFetch(
+      JSON.stringify({
+        RequestItems: {
+          [CACHE_DYNAMO_TABLE ?? ""]: {
+            Keys: tags.map((tag) => ({
+              path: { S: buildDynamoKey(tag) },
+              tag: { S: buildDynamoKey(tag) },
+            })),
+          },
+        },
+      }),
+      "query",
+    );
+    if (response.status !== 200) {
+      throw new RecoverableError(
+        `Failed to query dynamo item: ${response.status}`,
+      );
+    }
+    const { Responses } = await response.json();
+    if (!Responses) return false;
+    const hasStaleTag = Responses[CACHE_DYNAMO_TABLE ?? ""].some(
+      (item: any) => {
+        if (item.stale?.N) {
+          return Number.parseInt(item.stale.N) > (lastModified ?? 0);
+        }
+        return false;
+      },
+    );
+    debug("hasBeenStale result:", hasStaleTag);
+    return hasStaleTag;
+  },
   writeTags: async (tags) => {
     try {
       const { CACHE_DYNAMO_TABLE } = process.env;
