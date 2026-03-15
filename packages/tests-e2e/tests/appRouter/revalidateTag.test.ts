@@ -70,6 +70,77 @@ test("Revalidate tag", async ({ page, request }) => {
   expect(nextCacheHeaderNested).toEqual("HIT");
 });
 
+test("Revalidate tag - stale data served first", async ({ page, request }) => {
+  test.setTimeout(45000);
+
+  // Warm up: visit several times so the page is firmly cached (HIT)
+  for (let i = 0; i < 3; i++) {
+    await page.goto("/revalidate-tag/stale");
+    await page.waitForSelector("[data-testid='cached-time']");
+  }
+
+  let responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/revalidate-tag/stale") &&
+      response.status() === 200,
+  );
+  await page.goto("/revalidate-tag/stale");
+  const warmupResponse = await responsePromise;
+  const warmupHeaders = warmupResponse.headers();
+  const warmupCache =
+    warmupHeaders["x-nextjs-cache"] ?? warmupHeaders["x-opennext-cache"];
+  // Must be cached after warm-up
+  expect(warmupCache).toMatch(/^(HIT|STALE)$/);
+
+  // Record the currently cached value
+  const cachedTimeEl = page.getByTestId("cached-time");
+  const originalTime = await cachedTimeEl.textContent();
+
+  // Trigger revalidateTag WITHOUT expire — marks the tag stale but does NOT
+  // immediately purge the cache; the next request should get STALE data.
+  const revalidateRes = await request.get("/api/revalidate-tag-stale");
+  expect(revalidateRes.status()).toEqual(200);
+  expect(await revalidateRes.text()).toEqual("ok");
+
+  // First request after revalidation — expect STALE header and OLD content
+  responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/revalidate-tag/stale") &&
+      response.status() === 200,
+  );
+  await page.goto("/revalidate-tag/stale");
+  const staleResponse = await responsePromise;
+  const staleHeaders = staleResponse.headers();
+  const staleCache =
+    staleHeaders["x-nextjs-cache"] ?? staleHeaders["x-opennext-cache"];
+  expect(staleCache).toEqual("HIT");
+
+  const staleTime = await page.getByTestId("cached-time").textContent();
+  // Stale content must match the pre-revalidation value
+  expect(staleTime).toEqual(originalTime);
+
+  // Wait for the background regeneration to finish, then verify fresh data
+  let freshTime: string | null = null;
+  let attempts = 0;
+  while (attempts < 10) {
+    await page.waitForTimeout(2000);
+    await page.goto("/revalidate-tag/stale");
+
+    
+      freshTime = await page.getByTestId("cached-time").textContent();
+      if(freshTime !== originalTime) {
+        break;
+      }
+    
+    attempts++;
+  }
+
+  // After background regen the cached value must have been updated
+  expect(freshTime).not.toBeNull();
+  expect(freshTime).not.toEqual(originalTime);
+  expect(attempts).toBeGreaterThan(2); // We should serve stale data for at least a couple of attempts
+});
+
 test("Revalidate path", async ({ page, request }) => {
   await page.goto("/revalidate-path");
 
