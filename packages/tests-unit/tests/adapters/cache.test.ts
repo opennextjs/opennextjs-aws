@@ -739,7 +739,7 @@ describe("CacheHandler", () => {
         tagCache.getByTag.mockResolvedValueOnce(["/path"]);
         tagCache.getByPath.mockResolvedValueOnce([]);
         const now = Date.now();
-        
+
         await cache.revalidateTag("tag", { expire: 60 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -756,7 +756,7 @@ describe("CacheHandler", () => {
       it("Should set stale and expiry when durations.expire is provided - nextMode", async () => {
         tagCache.mode = "nextMode";
         const now = Date.now();
-        
+
         await cache.revalidateTag("tag", { expire: 60 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -772,7 +772,7 @@ describe("CacheHandler", () => {
       it("Should set stale without expiry when durations.expire is undefined", async () => {
         tagCache.mode = "nextMode";
         const now = Date.now();
-        
+
         await cache.revalidateTag("tag", { expire: undefined });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -790,7 +790,7 @@ describe("CacheHandler", () => {
           .mockResolvedValueOnce(["/path1"])
           .mockResolvedValueOnce(["/path2"]);
         const now = Date.now();
-        
+
         await cache.revalidateTag(["tag1", "tag2"], { expire: 30 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(2);
@@ -815,7 +815,7 @@ describe("CacheHandler", () => {
       it("Should handle multiple tags with durations - nextMode", async () => {
         tagCache.mode = "nextMode";
         const now = Date.now();
-        
+
         await cache.revalidateTag(["tag1", "tag2"], { expire: 30 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -838,7 +838,7 @@ describe("CacheHandler", () => {
         tagCache.getByTag.mockResolvedValueOnce(["/path"]);
         tagCache.getByPath.mockResolvedValueOnce([]); // No hard tags
         const now = Date.now();
-        
+
         await cache.revalidateTag(`${SOFT_TAG_PREFIX}path`, { expire: 60 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -855,7 +855,7 @@ describe("CacheHandler", () => {
       it("Should handle immediate expiration (expire: 0) - original mode", async () => {
         tagCache.getByTag.mockResolvedValueOnce(["/test-path"]);
         const now = Date.now();
-        
+
         await cache.revalidateTag("testtag", { expire: 0 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
@@ -872,7 +872,7 @@ describe("CacheHandler", () => {
       it("Should handle immediate expiration (expire: 0) - nextMode", async () => {
         tagCache.mode = "nextMode";
         const now = Date.now();
-        
+
         await cache.revalidateTag("tag", { expire: 0 });
 
         expect(tagCache.writeTags).toHaveBeenCalledTimes(1);

@@ -335,7 +335,7 @@ export default class Cache {
 
   public async revalidateTag(
     tags: string | string[],
-    durations?: { expire?: number }
+    durations?: { expire?: number },
   ) {
     const config = globalThis.openNextConfig.dangerous;
     if (config?.disableTagCache || config?.disableIncrementalCache) {
@@ -357,7 +357,10 @@ export default class Cache {
             return {
               tag,
               stale: now,
-              expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+              expiry:
+                durations.expire !== undefined
+                  ? now + durations.expire * 1000
+                  : undefined,
             };
           } else {
             // Default behavior: immediate expiration
@@ -367,7 +370,7 @@ export default class Cache {
             };
           }
         });
-        
+
         await writeTags(tagsToWrite);
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
@@ -402,7 +405,10 @@ export default class Cache {
             return {
               ...baseEntry,
               stale: now,
-              expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+              expiry:
+                durations.expire !== undefined
+                  ? now + durations.expire * 1000
+                  : undefined,
             };
           } else {
             // Default behavior: immediate expiration
@@ -432,7 +438,10 @@ export default class Cache {
                     return {
                       ...baseEntry,
                       stale: now,
-                      expiry: durations.expire !== undefined ? now + durations.expire * 1000 : undefined,
+                      expiry:
+                        durations.expire !== undefined
+                          ? now + durations.expire * 1000
+                          : undefined,
                     };
                   } else {
                     return {

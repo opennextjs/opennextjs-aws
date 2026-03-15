@@ -126,12 +126,11 @@ test("Revalidate tag - stale data served first", async ({ page, request }) => {
     await page.waitForTimeout(2000);
     await page.goto("/revalidate-tag/stale");
 
-    
-      freshTime = await page.getByTestId("cached-time").textContent();
-      if(freshTime !== originalTime) {
-        break;
-      }
-    
+    freshTime = await page.getByTestId("cached-time").textContent();
+    if (freshTime !== originalTime) {
+      break;
+    }
+
     attempts++;
   }
 

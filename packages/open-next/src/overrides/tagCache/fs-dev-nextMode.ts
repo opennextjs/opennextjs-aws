@@ -37,13 +37,14 @@ export default {
       if (!tagData) {
         return false;
       }
-      
+
       // Check if tag has expired
-      if (typeof tagData.expiry === 'number') {
-        const isExpired = tagData.expiry <= now && tagData.expiry > (lastModified ?? 0);
+      if (typeof tagData.expiry === "number") {
+        const isExpired =
+          tagData.expiry <= now && tagData.expiry > (lastModified ?? 0);
         return isExpired;
       }
-      
+
       // Check if tag has been revalidated
       return tagData.revalidatedAt > (lastModified ?? 0);
     });
@@ -60,7 +61,6 @@ export default {
       if (!tagData || typeof tagData.stale !== "number") {
         return false;
       }
-      console.log('Checking stale for tag:', tag, 'stale:', tagData.stale, 'now:', Date.now(), 'lastModified:', lastModified);
       return tagData.stale > (lastModified ?? 0);
     });
     debug("hasBeenStale result:", hasStaleTag);
@@ -75,7 +75,6 @@ export default {
     }
 
     debug("writeTags", { tags: tags });
-    console.log("writeTags", { tags: tags });
 
     tags.forEach((tag) => {
       const tagStr = typeof tag === "string" ? tag : tag.tag;
