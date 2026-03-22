@@ -98,7 +98,8 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : ((await globalThis.tagCache.hasBeenStale?.(_tags, _lastModified)) ?? false);
+        : ((await globalThis.tagCache.hasBeenStale?.(_tags, _lastModified)) ??
+          false);
 
       return {
         lastModified: _isStale ? 1 : _lastModified,
@@ -131,7 +132,8 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : ((await globalThis.tagCache.hasBeenStale?.(tags, _lastModified)) ?? false);
+        : ((await globalThis.tagCache.hasBeenStale?.(tags, _lastModified)) ??
+          false);
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
