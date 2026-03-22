@@ -372,13 +372,12 @@ export default class Cache {
                   ? now + durations.expire * 1000
                   : undefined,
             };
-          } else {
-            // Default behavior: immediate expiration
-            return {
-              tag,
-              expiry: now,
-            };
           }
+          // Default behavior: immediate expiration
+          return {
+            tag,
+            expiry: now,
+          };
         });
 
         await writeTags(tagsToWrite);
@@ -420,13 +419,12 @@ export default class Cache {
                   ? now + durations.expire * 1000
                   : undefined,
             };
-          } else {
-            // Default behavior: immediate expiration
-            return {
-              ...baseEntry,
-              expiry: now,
-            };
           }
+          // Default behavior: immediate expiration
+          return {
+            ...baseEntry,
+            expiry: now,
+          };
         });
 
         // If the tag is a soft tag, we should also revalidate the hard tags
@@ -453,12 +451,11 @@ export default class Cache {
                           ? now + durations.expire * 1000
                           : undefined,
                     };
-                  } else {
-                    return {
-                      ...baseEntry,
-                      expiry: now,
-                    };
                   }
+                  return {
+                    ...baseEntry,
+                    expiry: now,
+                  };
                 }),
               );
             }
