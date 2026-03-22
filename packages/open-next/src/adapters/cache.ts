@@ -96,8 +96,12 @@ export default class Cache {
         }
       }
 
+      const _isStale = cachedEntry.shouldBypassTagCache
+        ? false
+        : ((await globalThis.tagCache.hasBeenStale?.(_tags, _lastModified)) ?? false);
+
       return {
-        lastModified: _lastModified,
+        lastModified: _isStale ? 1 : _lastModified,
         value: cachedEntry.value,
       } as CacheHandlerValue;
     } catch (e) {
@@ -125,9 +129,13 @@ export default class Cache {
         : await hasBeenRevalidated(key, tags, cachedEntry);
       if (_hasBeenRevalidated) return null;
 
+      const _isStale = cachedEntry.shouldBypassTagCache
+        ? false
+        : ((await globalThis.tagCache.hasBeenStale?.(tags, _lastModified)) ?? false);
+
       const store = globalThis.__openNextAls.getStore();
       if (store) {
-        store.lastModified = _lastModified;
+        store.lastModified = _isStale ? 1 : _lastModified;
       }
 
       if (cacheData?.type === "route") {
