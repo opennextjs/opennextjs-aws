@@ -22,9 +22,10 @@ export function createStaticAssets(
 ) {
   logger.info("Bundling static assets...");
 
-  const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
+  const { appBuildOutputPath, appPublicPath, outputDir, appPath, nextDistDir } =
+    options;
 
-  const NextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const NextConfig = loadConfig(path.join(appBuildOutputPath, nextDistDir));
   const basePath = useBasePath ? (NextConfig.basePath ?? "") : "";
 
   // Create output folder
@@ -47,12 +48,12 @@ export function createStaticAssets(
    * Note: BUILD_ID is used by the SST infra.
    */
   fs.copyFileSync(
-    path.join(appBuildOutputPath, ".next/BUILD_ID"),
+    path.join(appBuildOutputPath, nextDistDir, "BUILD_ID"),
     path.join(outputPath, "BUILD_ID"),
   );
 
   fs.cpSync(
-    path.join(appBuildOutputPath, ".next/static"),
+    path.join(appBuildOutputPath, nextDistDir, "static"),
     path.join(outputPath, "_next", "static"),
     { recursive: true },
   );
@@ -82,25 +83,29 @@ export function createStaticAssets(
 export function createCacheAssets(options: buildHelper.BuildOptions) {
   logger.info("Bundling cache assets...");
 
-  const { appBuildOutputPath, outputDir } = options;
+  const { appBuildOutputPath, outputDir, nextDistDir } = options;
   const packagePath = buildHelper.getPackagePath(options);
   const buildId = buildHelper.getBuildId(options);
   let useTagCache = false;
 
   const dotNextPath = path.join(
     appBuildOutputPath,
-    ".next/standalone",
+    nextDistDir,
+    "standalone",
     packagePath,
   );
 
   const outputCachePath = path.join(outputDir, "cache", buildId);
   fs.mkdirSync(outputCachePath, { recursive: true });
 
-  const sourceDirs = [".next/server/pages", ".next/server/app"]
+  const sourceDirs = [
+    path.join(nextDistDir, "server/pages"),
+    path.join(nextDistDir, "server/app"),
+  ]
     .map((dir) => path.join(dotNextPath, dir))
     .filter(fs.existsSync);
 
-  const htmlPages = buildHelper.getHtmlPages(dotNextPath);
+  const htmlPages = buildHelper.getHtmlPages(dotNextPath, nextDistDir);
 
   const isFileSkipped = (relativePath: string) =>
     relativePath.endsWith(".js") ||
@@ -219,7 +224,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
     appBuildOutputPath,
-    ".next/cache/fetch-cache",
+    nextDistDir,
+    "cache/fetch-cache",
   );
   if (fs.existsSync(fetchCachePath)) {
     const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);

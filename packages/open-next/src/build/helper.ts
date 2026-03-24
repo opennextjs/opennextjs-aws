@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
+import os from "node:os";
 import path from "node:path";
 import url from "node:url";
 
@@ -15,9 +16,9 @@ import logger from "../logger.js";
 const require = createRequire(import.meta.url);
 const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
-export type BuildOptions = ReturnType<typeof normalizeOptions>;
+export type BuildOptions = Awaited<ReturnType<typeof normalizeOptions>>;
 
-export function normalizeOptions(
+export async function normalizeOptions(
   config: OpenNextConfig,
   distDir: string,
   tempBuildDir: string,
@@ -28,6 +29,9 @@ export function normalizeOptions(
     config.buildOutputPath || ".",
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
+
+  // Read distDir from source config BEFORE building Next.js
+  const nextDistDir = await readDistDirFromConfig(appPath);
 
   const { root: monorepoRoot, packager } = findPackagerAndRoot(
     path.join(process.cwd(), config.appPath || "."),
@@ -57,6 +61,7 @@ export function normalizeOptions(
     minify: !debug,
     monorepoRoot,
     nextVersion: getNextVersion(appPath),
+    nextDistDir,
     openNextVersion: getOpenNextVersion(),
     openNextDistDir: distDir,
     outputDir,
@@ -113,7 +118,7 @@ export function esbuildSync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug, minify } = options;
+  const { openNextVersion, debug, minify, nextDistDir } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -131,6 +136,7 @@ export function esbuildSync(
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
+        `globalThis.nextDistDir = "${nextDistDir}";`,
       ].join(""),
     },
   });
@@ -149,7 +155,7 @@ export async function esbuildAsync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug, minify } = options;
+  const { openNextVersion, debug, minify, nextDistDir } = options;
   // Dump ESBuild build metadata to file in debug mode
   const metafile = debug && esbuildOptions.outfile !== undefined;
   const result = await buildAsync({
@@ -174,6 +180,7 @@ export async function esbuildAsync(
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
+        `globalThis.nextDistDir = "${nextDistDir}";`,
       ].join(""),
     },
   });
@@ -249,7 +256,7 @@ export function removeFiles(
   );
 }
 
-export function getHtmlPages(dotNextPath: string) {
+export function getHtmlPages(dotNextPath: string, nextDistDir = ".next") {
   // Get a list of HTML pages
   //
   // sample return value:
@@ -260,7 +267,8 @@ export function getHtmlPages(dotNextPath: string) {
   // ])
   const manifestPath = path.join(
     dotNextPath,
-    ".next/server/pages-manifest.json",
+    nextDistDir,
+    "server/pages-manifest.json",
   );
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   return Object.entries(JSON.parse(manifest))
@@ -272,7 +280,7 @@ export function getHtmlPages(dotNextPath: string) {
 export function getBuildId(options: BuildOptions) {
   return fs
     .readFileSync(
-      path.join(options.appBuildOutputPath, ".next/BUILD_ID"),
+      path.join(options.appBuildOutputPath, options.nextDistDir, "BUILD_ID"),
       "utf-8",
     )
     .trim();
@@ -452,10 +460,11 @@ export function copyOpenNextConfig(
 
 export function copyEnvFile(
   appPath: string,
+  nextDistDir: string,
   packagePath: string,
   outputPath: string,
 ) {
-  const baseAppPath = path.join(appPath, ".next/standalone", packagePath);
+  const baseAppPath = path.join(appPath, nextDistDir, "standalone", packagePath);
   const baseOutputPath = path.join(outputPath, packagePath);
   const envPath = path.join(baseAppPath, ".env");
   if (fs.existsSync(envPath)) {
@@ -495,6 +504,79 @@ export function findNextConfig({
         isTypescript,
       };
     }
+  }
+}
+
+/**
+ * Read the distDir from the source Next.js config file.
+ * This must be called BEFORE building Next.js since distDir determines
+ * where the build output will be placed.
+ *
+ * @param appPath - The path to the Next.js app
+ * @returns The distDir from the config, or ".next" as default
+ */
+export async function readDistDirFromConfig(appPath: string): Promise<string> {
+  const configExt = findNextConfig({ appPath });
+
+  if (!configExt) {
+    return ".next"; // Default
+  }
+
+  const configPath = path.join(appPath, `next.config.${configExt}`);
+
+  try {
+    // For TypeScript, compile first using esbuild (similar to importNextConfigFromSource)
+    if (configExt === "ts") {
+      const tempDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "opennext-distdir-"),
+      );
+      const compiledPath = path.join(tempDir, "next.config.mjs");
+
+      try {
+        const { inlineRequireResolvePlugin } = await import(
+          "../plugins/inline-require-resolve.js"
+        );
+        await buildAsync({
+          entryPoints: [configPath],
+          outfile: compiledPath,
+          bundle: true,
+          format: "esm",
+          platform: "node",
+          plugins: [inlineRequireResolvePlugin],
+        });
+
+        const configModule = await import(compiledPath);
+        let config = configModule.default || configModule;
+
+        // Handle config functions
+        if (typeof config === "function") {
+          config = await Promise.resolve(config("phase-production-build", {}));
+        }
+
+        return config?.distDir || ".next";
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    }
+
+    // For JS/MJS/CJS, import directly
+    // Need to use file:// protocol for ESM imports
+    const fileUrl = url.pathToFileURL(configPath).href;
+    const configModule = await import(fileUrl);
+    let config = configModule.default || configModule;
+
+    // Handle config functions
+    if (typeof config === "function") {
+      config = await Promise.resolve(config("phase-production-build", {}));
+    }
+
+    return config?.distDir || ".next";
+  } catch (error) {
+    logger.warn(
+      `Failed to read distDir from ${configPath}, using default ".next"`,
+      error,
+    );
+    return ".next";
   }
 }
 
@@ -567,7 +649,11 @@ export function getPackagePath(options: BuildOptions) {
 export function getBundlerRuntime(
   options: BuildOptions,
 ): "webpack" | "turbopack" {
-  const dotNextServerPath = path.join(options.appPath, ".next/server");
+  const dotNextServerPath = path.join(
+    options.appPath,
+    options.nextDistDir,
+    "server",
+  );
   if (fs.existsSync(path.join(dotNextServerPath, "webpack-runtime.js"))) {
     return "webpack";
   }
