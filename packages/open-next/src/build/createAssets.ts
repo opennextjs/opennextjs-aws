@@ -57,7 +57,7 @@ export function createStaticAssets(
     { recursive: true },
   );
   if (fs.existsSync(appPublicPath)) {
-    fs.cpSync(appPublicPath, outputPath, { recursive: true });
+    fs.cpSync(appPublicPath, outputPath, { recursive: true, dereference: true });
   }
 
   const appSrcPath = fs.existsSync(path.join(appPath, "src"))
