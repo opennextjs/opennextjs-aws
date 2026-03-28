@@ -193,7 +193,10 @@ const tagCache: TagCache = {
       // separately via hasExpiredTag above.
       const nonExpiredRevalidatedTags = revalidatedTags.filter((item: any) => {
         if (item.expiry?.N) {
-          return Number.parseInt(item.expiry.N) === Number.parseInt(item.revalidatedAt.N);
+          return (
+            Number.parseInt(item.expiry.N) ===
+            Number.parseInt(item.revalidatedAt.N)
+          );
         }
         return true;
       });
