@@ -144,9 +144,17 @@ const tagCache: TagCache = {
         }
         return false;
       });
+      // Exclude expired tags from the revalidated count — they are handled
+      // separately via hasExpiredTag above.
+      const nonExpiredRevalidatedTags = revalidatedTags.filter((item) => {
+        if (item.expiry?.N) {
+          return Number.parseInt(item.expiry.N) > now;
+        }
+        return true;
+      });
 
       // If we have revalidated tags or expired tags we return -1 to force revalidation
-      return revalidatedTags.length > 0 || hasExpiredTag
+      return nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
         ? -1
         : (lastModified ?? Date.now());
     } catch (e) {
@@ -154,35 +162,29 @@ const tagCache: TagCache = {
       return lastModified ?? Date.now();
     }
   },
-  async hasBeenStale(tags: string[], lastModified?: number) {
+  async hasBeenStale(key: string, lastModified?: number) {
     try {
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {
         return false;
       }
-      // For each tag, query entries directly by tag (primary key) and check
-      // if any have a stale timestamp newer than lastModified
-      const results = await Promise.all(
-        tags.map((tag) =>
-          dynamoClient.send(
-            new QueryCommand({
-              TableName: CACHE_DYNAMO_TABLE,
-              KeyConditionExpression: "#tag = :tag",
-              ExpressionAttributeNames: { "#tag": "tag" },
-              ExpressionAttributeValues: {
-                ":tag": { S: buildDynamoKey(tag) },
-              },
-            }),
-          ),
-        ),
-      );
-      return results.some((result) =>
-        (result.Items ?? []).some((item) => {
-          if (item.stale?.N) {
-            return Number.parseInt(item.stale.N) > (lastModified ?? 0);
-          }
-          return false;
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: CACHE_DYNAMO_TABLE,
+          IndexName: "revalidate",
+          KeyConditionExpression:
+            "#key = :key AND #revalidatedAt > :lastModified",
+          ExpressionAttributeNames: {
+            "#key": "path",
+            "#revalidatedAt": "revalidatedAt",
+          },
+          ExpressionAttributeValues: {
+            ":key": { S: buildDynamoKey(key) },
+            ":lastModified": { N: String(lastModified ?? 0) },
+          },
         }),
       );
+      debug("hasBeenStale items", key, result.Items);
+      return (result.Items?.length ?? 0) > 0;
     } catch (e) {
       error("Failed to check stale tags", e);
       return false;

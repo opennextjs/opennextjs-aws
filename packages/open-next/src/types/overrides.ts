@@ -220,7 +220,7 @@ export type OriginalTagCache = BaseTagCache & {
    * timestamp newer than lastModified. When stale, the cache entry is still
    * returned but revalidate is set to -1 to trigger background revalidation.
    */
-  hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
+  hasBeenStale?(path: string, lastModified?: number): Promise<boolean>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;

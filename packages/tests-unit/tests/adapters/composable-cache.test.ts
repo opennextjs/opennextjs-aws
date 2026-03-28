@@ -70,6 +70,7 @@ describe("Composable cache handler", () => {
         disableTagCache: false,
       },
     };
+    globalThis.isNextAfter16 = true;
   });
 
   describe("get", () => {
@@ -228,7 +229,7 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(tagCache.hasBeenStale).toHaveBeenCalledWith(
-        ["tag1", "tag2"],
+        "test-key",
         expect.any(Number),
       );
       expect(result).toBeDefined();

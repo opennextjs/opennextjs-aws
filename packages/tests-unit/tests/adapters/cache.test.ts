@@ -7,6 +7,7 @@ declare global {
     dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
   };
   var isNextAfter15: boolean;
+  var isNextAfter16: boolean;
 }
 
 describe("CacheHandler", () => {
@@ -76,6 +77,7 @@ describe("CacheHandler", () => {
       },
     };
     globalThis.isNextAfter15 = false;
+    globalThis.isNextAfter16 = true;
     tagCache.mode = "original";
     tagCache.getPathsByTags = undefined;
   });

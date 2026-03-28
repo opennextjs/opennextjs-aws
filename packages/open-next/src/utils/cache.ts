@@ -6,6 +6,26 @@ import type {
 } from "types/overrides";
 import { debug } from "../adapters/logger";
 
+export async function hasBeenStale(
+  key: string,
+  tags: string[],
+  lastModified?: number,
+): Promise<boolean> {
+  if (!globalThis.isNextAfter16) {
+    return false;
+  }
+  if (globalThis.openNextConfig.dangerous?.disableTagCache) {
+    return false;
+  }
+  if (globalThis.tagCache.mode === "nextMode") {
+    return tags.length === 0
+      ? false
+      : ((await globalThis.tagCache.hasBeenStale?.(tags, lastModified)) ??
+          false);
+  }
+  return (await globalThis.tagCache.hasBeenStale?.(key, lastModified)) ?? false;
+}
+
 export async function hasBeenRevalidated(
   key: string,
   tags: string[],

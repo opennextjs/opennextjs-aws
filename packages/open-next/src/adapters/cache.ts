@@ -3,7 +3,7 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
+import { getTagsFromValue, hasBeenRevalidated, hasBeenStale, writeTags } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { debug, error, warn } from "./logger";
 
@@ -98,8 +98,7 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : ((await globalThis.tagCache.hasBeenStale?.(_tags, _lastModified)) ??
-          false);
+        : await hasBeenStale(key, _tags, _lastModified);
 
       return {
         lastModified: _isStale ? 1 : _lastModified,
@@ -124,7 +123,7 @@ export default class Cache {
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
-      const _lastModified = cachedEntry.lastModified ?? Date.now();
+      let _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
@@ -132,12 +131,12 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : ((await globalThis.tagCache.hasBeenStale?.(tags, _lastModified)) ??
-          false);
+        : await hasBeenStale(key, tags, _lastModified);
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
         store.lastModified = _isStale ? 1 : _lastModified;
+        _lastModified = store.lastModified;
       }
 
       if (cacheData?.type === "route") {
@@ -461,6 +460,8 @@ export default class Cache {
             }
           }
         }
+
+        console.log("Tags to revalidate", toInsert);
 
         // Update all keys with the given tag with revalidatedAt set to now
         await writeTags(toInsert);

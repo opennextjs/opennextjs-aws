@@ -23,6 +23,12 @@ export function compileCache(
     "15.0.0",
   );
 
+  const isAfter16 = buildHelper.compareSemver(
+    options.nextVersion,
+    ">=",
+    "16.0.0",
+  );
+
   // Normal cache
   buildHelper.esbuildSync(
     {
@@ -40,6 +46,7 @@ export function compileCache(
             config.dangerous?.disableTagCache ?? false
           };`,
           `globalThis.isNextAfter15 = ${isAfter15};`,
+          `globalThis.isNextAfter16 = ${isAfter16};`,
         ].join(""),
       },
     },
@@ -70,6 +77,7 @@ export function compileCache(
             config.dangerous?.disableTagCache ?? false
           };`,
           `globalThis.isNextAfter15 = ${isAfter15};`,
+          `globalThis.isNextAfter16 = ${isAfter16};`,
         ].join(""),
       },
     },
