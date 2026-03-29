@@ -62,7 +62,9 @@ const tagCache: TagCache = {
         return [];
       }
       const store = globalThis.__openNextAls.getStore();
-      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByPath");
+      const cache = store?.requestCache.getOrCreate<string, string[]>(
+        "dynamoDb:getByPath",
+      );
       if (cache?.has(path)) {
         return cache.get(path)!;
       }
@@ -82,7 +84,9 @@ const tagCache: TagCache = {
       const tags = result.Items?.map((item) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
       // We need to remove the buildId from the path
-      const resultTags = tags.map((tag) => tag.replace(`${NEXT_BUILD_ID}/`, ""));
+      const resultTags = tags.map((tag) =>
+        tag.replace(`${NEXT_BUILD_ID}/`, ""),
+      );
       cache?.set(path, resultTags);
       return resultTags;
     } catch (e) {
@@ -96,7 +100,9 @@ const tagCache: TagCache = {
         return [];
       }
       const store = globalThis.__openNextAls.getStore();
-      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByTag");
+      const cache = store?.requestCache.getOrCreate<string, string[]>(
+        "dynamoDb:getByTag",
+      );
       if (cache?.has(tag)) {
         return cache.get(tag)!;
       }
@@ -130,7 +136,9 @@ const tagCache: TagCache = {
         return lastModified ?? Date.now();
       }
       const store = globalThis.__openNextAls.getStore();
-      const itemsCache = store?.requestCache.getOrCreate<string, any[]>("dynamoDb:revalidateQueryItems");
+      const itemsCache = store?.requestCache.getOrCreate<string, any[]>(
+        "dynamoDb:revalidateQueryItems",
+      );
       const cacheKey = `${key}:${lastModified ?? 0}`;
       let revalidatedTags: any[];
       if (itemsCache?.has(cacheKey)) {
@@ -190,7 +198,9 @@ const tagCache: TagCache = {
         return false;
       }
       const store = globalThis.__openNextAls.getStore();
-      const itemsCache = store?.requestCache.getOrCreate<string, any[]>("dynamoDb:revalidateQueryItems");
+      const itemsCache = store?.requestCache.getOrCreate<string, any[]>(
+        "dynamoDb:revalidateQueryItems",
+      );
       const cacheKey = `${key}:${lastModified ?? 0}`;
       let items: any[];
       if (itemsCache?.has(cacheKey)) {

@@ -23,7 +23,7 @@ import tagCache from "@opennextjs/aws/overrides/tagCache/dynamodb-nextMode.js";
 declare global {
   //@ts-ignore
   var openNextConfig: { dangerous?: { disableTagCache?: boolean } };
-    //@ts-ignore
+  //@ts-ignore
   var __openNextAls: { getStore: () => any };
 }
 

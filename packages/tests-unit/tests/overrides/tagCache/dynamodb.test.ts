@@ -26,9 +26,9 @@ vi.mock("@aws-sdk/client-dynamodb", () => ({
 import tagCache from "@opennextjs/aws/overrides/tagCache/dynamodb.js";
 
 declare global {
-    //@ts-ignore
+  //@ts-ignore
   var openNextConfig: { dangerous?: { disableTagCache?: boolean } };
-    //@ts-ignore
+  //@ts-ignore
   var __openNextAls: { getStore: () => any };
 }
 
@@ -349,7 +349,9 @@ describe("dynamodb tagCache", () => {
     it("does not include stale or expiry in the item when not provided", async () => {
       mockSend.mockResolvedValue({});
 
-      await tagCache.writeTags([{ path: "/path1", tag: "tag1", revalidatedAt: 1000 }]);
+      await tagCache.writeTags([
+        { path: "/path1", tag: "tag1", revalidatedAt: 1000 },
+      ]);
 
       const sentCommand = mockSend.mock.calls[0][0];
       const item = sentCommand.RequestItems[TABLE_NAME][0].PutRequest.Item;
@@ -371,7 +373,9 @@ describe("dynamodb tagCache", () => {
     it("skips write when disableTagCache is true", async () => {
       globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
 
-      await tagCache.writeTags([{ path: "/path1", tag: "tag1", revalidatedAt: 1000 }]);
+      await tagCache.writeTags([
+        { path: "/path1", tag: "tag1", revalidatedAt: 1000 },
+      ]);
 
       expect(mockSend).not.toHaveBeenCalled();
     });

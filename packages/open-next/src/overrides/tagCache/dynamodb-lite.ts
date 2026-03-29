@@ -87,7 +87,9 @@ const tagCache: TagCache = {
       }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const store = globalThis.__openNextAls.getStore();
-      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByPath");
+      const cache = store?.requestCache.getOrCreate<string, string[]>(
+        "dynamoDb:getByPath",
+      );
       if (cache?.has(path)) {
         return cache.get(path)!;
       }
@@ -114,7 +116,9 @@ const tagCache: TagCache = {
       const tags = Items?.map((item: any) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
       // We need to remove the buildId from the path
-      const resultTags = tags.map((tag: string) => tag.replace(`${NEXT_BUILD_ID}/`, ""));
+      const resultTags = tags.map((tag: string) =>
+        tag.replace(`${NEXT_BUILD_ID}/`, ""),
+      );
       cache?.set(path, resultTags);
       return resultTags;
     } catch (e) {
@@ -129,7 +133,9 @@ const tagCache: TagCache = {
       }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
       const store = globalThis.__openNextAls.getStore();
-      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByTag");
+      const cache = store?.requestCache.getOrCreate<string, string[]>(
+        "dynamoDb:getByTag",
+      );
       if (cache?.has(tag)) {
         return cache.get(tag)!;
       }
@@ -169,7 +175,9 @@ const tagCache: TagCache = {
       }
       const { CACHE_DYNAMO_TABLE } = process.env;
       const store = globalThis.__openNextAls.getStore();
-      const cache = store?.requestCache.getOrCreate<string, number>("dynamoDb:getLastModified");
+      const cache = store?.requestCache.getOrCreate<string, number>(
+        "dynamoDb:getLastModified",
+      );
       const cacheKey = `${key}:${lastModified ?? 0}`;
       if (cache?.has(cacheKey)) {
         return cache.get(cacheKey)!;
@@ -238,7 +246,9 @@ const tagCache: TagCache = {
       }
       const { CACHE_DYNAMO_TABLE } = process.env;
       const store = globalThis.__openNextAls.getStore();
-      const itemsCache = store?.requestCache.getOrCreate<string, any[]>("dynamoDb:revalidateQueryItems");
+      const itemsCache = store?.requestCache.getOrCreate<string, any[]>(
+        "dynamoDb:revalidateQueryItems",
+      );
       const cacheKey = `${key}:${lastModified ?? 0}`;
       let items: any[];
       if (itemsCache?.has(cacheKey)) {

@@ -466,8 +466,6 @@ export default class Cache {
           }
         }
 
-        console.log("Tags to revalidate", toInsert);
-
         // Update all keys with the given tag with revalidatedAt set to now
         await writeTags(toInsert);
 

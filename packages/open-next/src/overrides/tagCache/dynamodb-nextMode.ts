@@ -180,7 +180,11 @@ export default {
       return Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0);
     };
 
-    const { uncachedTags, hasMatch } = checkItemsCache(tags, itemsCache, compute);
+    const { uncachedTags, hasMatch } = checkItemsCache(
+      tags,
+      itemsCache,
+      compute,
+    );
     if (hasMatch) return true;
     if (uncachedTags.length === 0) return false;
 
@@ -211,7 +215,11 @@ export default {
       return Number.parseInt(item.stale.N) > (lastModified ?? 0);
     };
 
-    const { uncachedTags, hasMatch } = checkItemsCache(tags, itemsCache, compute);
+    const { uncachedTags, hasMatch } = checkItemsCache(
+      tags,
+      itemsCache,
+      compute,
+    );
     if (hasMatch) return true;
     if (uncachedTags.length === 0) return false;
 

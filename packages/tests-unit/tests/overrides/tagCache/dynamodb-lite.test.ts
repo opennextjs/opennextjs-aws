@@ -186,7 +186,9 @@ describe("dynamodb-lite tagCache", () => {
     it("returns -1 when revalidated tags exist", async () => {
       mockFetch.mockResolvedValueOnce(
         makeJsonResponse({
-          Items: [{ revalidatedAt: { N: "99999" }, tag: { S: `${BUILD_ID}/t` } }],
+          Items: [
+            { revalidatedAt: { N: "99999" }, tag: { S: `${BUILD_ID}/t` } },
+          ],
         }),
       );
 
@@ -354,7 +356,9 @@ describe("dynamodb-lite tagCache", () => {
     it("does not include stale or expiry when not provided", async () => {
       mockFetch.mockResolvedValue({ status: 200 });
 
-      await tagCache.writeTags([{ path: "/path1", tag: "tag1", revalidatedAt: 1000 }]);
+      await tagCache.writeTags([
+        { path: "/path1", tag: "tag1", revalidatedAt: 1000 },
+      ]);
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       const item = body.RequestItems[TABLE_NAME][0].PutRequest.Item;
@@ -376,7 +380,9 @@ describe("dynamodb-lite tagCache", () => {
     it("skips write when disableTagCache is true", async () => {
       globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
 
-      await tagCache.writeTags([{ path: "/path1", tag: "tag1", revalidatedAt: 1000 }]);
+      await tagCache.writeTags([
+        { path: "/path1", tag: "tag1", revalidatedAt: 1000 },
+      ]);
 
       expect(mockFetch).not.toHaveBeenCalled();
     });
