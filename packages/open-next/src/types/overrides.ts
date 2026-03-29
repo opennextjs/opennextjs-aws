@@ -156,21 +156,38 @@ Cons :
 - One page request (i.e. GET request) could require to check a lot of tags (And some of them multiple time when used with the fetch cache)
 - Almost impossible to do automatic cdn revalidation by itself
 */
+
+export type NextModeTagCacheWriteInput =
+  | string
+  | {
+      tag: string;
+      stale?: number;
+      expiry?: number;
+    };
+
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
   // Necessary for the composable cache
   getLastRevalidated(tags: string[]): Promise<number>;
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
-  writeTags(tags: string[]): Promise<void>;
+  writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void>;
   // Optional method to get paths by tags
   // It is used to automatically invalidate paths in the CDN
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
+  /**
+   * Optional method to check if any tag has become stale (but not yet expired).
+   * When tags are stale, the cache entry is still returned but revalidate is set to -1
+   * to trigger background revalidation.
+   */
+  hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
 
 export interface OriginalTagCacheWriteInput {
   tag: string;
   path: string;
   revalidatedAt?: number;
+  stale?: number;
+  expiry?: number;
 }
 
 /**
@@ -198,6 +215,12 @@ export type OriginalTagCache = BaseTagCache & {
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
+  /**
+   * Optional method to check if any tag entry for the given tags has a stale
+   * timestamp newer than lastModified. When stale, the cache entry is still
+   * returned but revalidate is set to -1 to trigger background revalidation.
+   */
+  hasBeenStale?(path: string, lastModified?: number): Promise<boolean>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;

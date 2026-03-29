@@ -52,6 +52,20 @@ fix:
   this.handleNextImageRequest = async (req, res, parsedUrl) => false
 `;
 
+export const provideInternalWaitUntil = `
+rule:
+  kind: return_statement
+  inside:
+    kind: method_definition
+    stopBy: end
+    has:
+      kind: property_identifier
+      regex: getInternalWaitUntil
+
+fix:
+ return globalThis.__openNextAls.getStore()?.waitUntil;
+`;
+
 /**
  * Swaps the body for a throwing implementation
  *
@@ -129,6 +143,12 @@ export const patchNextServer: CodePatcher = {
       pathFilter,
       contentFilter: /getMiddlewareManifest/,
       patchCode: createPatchCode(removeMiddlewareManifestRule),
+    },
+    {
+      versions: ">=16.0.0",
+      pathFilter,
+      contentFilter: /getInternalWaitUntil/,
+      patchCode: createPatchCode(provideInternalWaitUntil),
     },
     ...babelPatches,
   ],

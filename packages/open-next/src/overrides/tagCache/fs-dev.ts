@@ -14,6 +14,8 @@ let tags = JSON.parse(tagContent) as {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  stale?: { N: string };
+  expiry?: { N: string };
 }[];
 
 const { NEXT_BUILD_ID } = process.env;
@@ -36,12 +38,37 @@ const tagCache: TagCache = {
       .map((tagEntry) => tagEntry.path.S.replace(`${NEXT_BUILD_ID}/`, ""));
   },
   getLastModified: async (path: string, lastModified?: number) => {
-    const revalidatedTags = tags.filter(
+    // Check if any tag has expired
+    const now = Date.now();
+    const hasExpiredTag = tags.some((tagPathMapping) => {
+      if (
+        tagPathMapping.path.S === buildKey(path) &&
+        tagPathMapping.expiry?.N
+      ) {
+        const expiry = Number.parseInt(tagPathMapping.expiry.N);
+        return expiry <= now && expiry > (lastModified ?? 0);
+      }
+      return false;
+    });
+
+    const nonExpiredRevalidatedTags = tags.filter(
       (tagPathMapping) =>
         tagPathMapping.path.S === buildKey(path) &&
-        Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0),
+        Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0) &&
+        (!tagPathMapping.expiry?.N ||
+          Number.parseInt(tagPathMapping.expiry.N) > now),
     );
-    return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
+
+    return nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
+      ? -1
+      : (lastModified ?? Date.now());
+  },
+  hasBeenStale: async (path: string, lastModified?: number) => {
+    return tags.some((entry) => {
+      if (entry.path.S !== buildKey(path)) return false;
+      if (!entry.stale?.N) return false;
+      return Number.parseInt(entry.stale.N) > (lastModified ?? 0);
+    });
   },
   writeTags: async (newTags) => {
     const newTagsSet = new Set(
@@ -51,11 +78,26 @@ const tagCache: TagCache = {
       ({ tag, path }) => !newTagsSet.has(`${tag.S}-${path.S}`),
     );
     tags = unchangedTags.concat(
-      newTags.map((item) => ({
-        tag: { S: buildKey(item.tag) },
-        path: { S: buildKey(item.path) },
-        revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
-      })),
+      newTags.map((item) => {
+        const tagEntry: {
+          tag: { S: string };
+          path: { S: string };
+          revalidatedAt: { N: string };
+          stale?: { N: string };
+          expiry?: { N: string };
+        } = {
+          tag: { S: buildKey(item.tag) },
+          path: { S: buildKey(item.path) },
+          revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
+        };
+        if (item.stale !== undefined) {
+          tagEntry.stale = { N: `${item.stale}` };
+        }
+        if (item.expiry !== undefined) {
+          tagEntry.expiry = { N: `${item.expiry}` };
+        }
+        return tagEntry;
+      }),
     );
   },
 };

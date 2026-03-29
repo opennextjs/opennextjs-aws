@@ -16,6 +16,12 @@ type DataType = {
   revalidatedAt: {
     N: string;
   };
+  stale?: {
+    N: string;
+  };
+  expiry?: {
+    N: string;
+  };
 };
 
 export interface InitializationFunctionEvent {
@@ -63,6 +69,8 @@ async function insert(
     tag: item.tag.S,
     path: item.path.S,
     revalidatedAt: Number.parseInt(item.revalidatedAt.N),
+    ...(item.stale && { stale: Number.parseInt(item.stale.N) }),
+    ...(item.expiry && { expiry: Number.parseInt(item.expiry.N) }),
   }));
 
   await tagCache.writeTags(parsedData);
