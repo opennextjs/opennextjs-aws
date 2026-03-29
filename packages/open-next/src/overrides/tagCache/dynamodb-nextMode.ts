@@ -80,6 +80,74 @@ function buildDynamoObject(
 }
 
 // This implementation does not support automatic invalidation of paths by the cdn
+
+/**
+ * Checks the items cache for each tag. Returns tags not yet cached and whether
+ * a positive result was already found among the cached ones.
+ */
+function checkItemsCache(
+  tags: string[],
+  itemsCache: Map<string, any> | undefined,
+  compute: (item: any) => boolean,
+): { uncachedTags: string[]; hasMatch: boolean } {
+  const uncachedTags: string[] = [];
+  let hasMatch = false;
+  for (const tag of tags) {
+    if (itemsCache?.has(tag)) {
+      if (compute(itemsCache.get(tag))) hasMatch = true;
+    } else {
+      uncachedTags.push(tag);
+    }
+  }
+  return { uncachedTags, hasMatch };
+}
+
+/**
+ * Fetches uncached tags from DynamoDB via BatchGetItem, populates the items
+ * cache (storing null for absent tags), and returns whether any tag matched.
+ */
+async function fetchAndCacheItems(
+  uncachedTags: string[],
+  itemsCache: Map<string, any> | undefined,
+  compute: (item: any) => boolean,
+): Promise<boolean> {
+  const { CACHE_DYNAMO_TABLE } = process.env;
+  const response = await awsFetch(
+    JSON.stringify({
+      RequestItems: {
+        [CACHE_DYNAMO_TABLE ?? ""]: {
+          Keys: uncachedTags.map((tag) => ({
+            path: { S: buildDynamoKey(tag) },
+            tag: { S: buildDynamoKey(tag) },
+          })),
+        },
+      },
+    }),
+    "query",
+  );
+  if (response.status !== 200) {
+    throw new RecoverableError(
+      `Failed to query dynamo item: ${response.status}`,
+    );
+  }
+  const { Responses } = await response.json();
+  const responseItems: any[] = Responses?.[CACHE_DYNAMO_TABLE ?? ""] ?? [];
+
+  // Build a lookup map: DynamoDB key → item
+  const responseByKey = new Map<string, any>();
+  for (const item of responseItems) {
+    responseByKey.set(item.tag.S, item);
+  }
+
+  let hasMatch = false;
+  for (const tag of uncachedTags) {
+    const item = responseByKey.get(buildDynamoKey(tag)) ?? null;
+    itemsCache?.set(tag, item);
+    if (compute(item)) hasMatch = true;
+  }
+  return hasMatch;
+}
+
 export default {
   name: "ddb-nextMode",
   mode: "nextMode",
@@ -96,49 +164,31 @@ export default {
         "Cannot query more than 100 tags at once. You should not be using this tagCache implementation for this amount of tags",
       );
     }
-    const { CACHE_DYNAMO_TABLE } = process.env;
+
+    const store = globalThis.__openNextAls.getStore();
+    const itemsCache = store?.requestCache.getOrCreate<string, any>(
+      "ddb-nextMode:tagItems",
+    );
+
+    const now = Date.now();
+    const compute = (item: any): boolean => {
+      if (!item) return false;
+      if (item.expiry?.N) {
+        const expiry = Number.parseInt(item.expiry.N);
+        if (expiry <= now && expiry > (lastModified ?? 0)) return true;
+      }
+      return Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0);
+    };
+
+    const { uncachedTags, hasMatch } = checkItemsCache(tags, itemsCache, compute);
+    if (hasMatch) return true;
+    if (uncachedTags.length === 0) return false;
+
     // It's unlikely that we will have more than 100 items to query
     // If that's the case, you should not use this tagCache implementation
-    const response = await awsFetch(
-      JSON.stringify({
-        RequestItems: {
-          [CACHE_DYNAMO_TABLE ?? ""]: {
-            Keys: tags.map((tag) => ({
-              path: { S: buildDynamoKey(tag) },
-              tag: { S: buildDynamoKey(tag) },
-            })),
-          },
-        },
-      }),
-      "query",
-    );
-    if (response.status !== 200) {
-      throw new RecoverableError(
-        `Failed to query dynamo item: ${response.status}`,
-      );
-    }
-    // Now we need to check for every item if they have expired or been revalidated
-    const { Responses } = await response.json();
-    if (!Responses) {
-      return false;
-    }
-    const now = Date.now();
-    const revalidatedTags = Responses[CACHE_DYNAMO_TABLE ?? ""].filter(
-      (item: any) => {
-        // Check if tag has expired
-        if (item.expiry?.N) {
-          const expiry = Number.parseInt(item.expiry.N);
-          const isExpired = expiry <= now && expiry > (lastModified ?? 0);
-          if (isExpired) {
-            return true;
-          }
-        }
-        // Check if tag has been revalidated
-        return Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0);
-      },
-    );
-    debug("retrieved tags", revalidatedTags);
-    return revalidatedTags.length > 0;
+    const result = await fetchAndCacheItems(uncachedTags, itemsCache, compute);
+    debug("retrieved tags for hasBeenRevalidated", tags);
+    return result;
   },
   hasBeenStale: async (tags: string[], lastModified?: number) => {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
@@ -150,37 +200,24 @@ export default {
         "Cannot query more than 100 tags at once. You should not be using this tagCache implementation for this amount of tags",
       );
     }
-    const { CACHE_DYNAMO_TABLE } = process.env;
-    const response = await awsFetch(
-      JSON.stringify({
-        RequestItems: {
-          [CACHE_DYNAMO_TABLE ?? ""]: {
-            Keys: tags.map((tag) => ({
-              path: { S: buildDynamoKey(tag) },
-              tag: { S: buildDynamoKey(tag) },
-            })),
-          },
-        },
-      }),
-      "query",
+
+    const store = globalThis.__openNextAls.getStore();
+    const itemsCache = store?.requestCache.getOrCreate<string, any>(
+      "ddb-nextMode:tagItems",
     );
-    if (response.status !== 200) {
-      throw new RecoverableError(
-        `Failed to query dynamo item: ${response.status}`,
-      );
-    }
-    const { Responses } = await response.json();
-    if (!Responses) return false;
-    const hasStaleTag = Responses[CACHE_DYNAMO_TABLE ?? ""].some(
-      (item: any) => {
-        if (item.stale?.N) {
-          return Number.parseInt(item.stale.N) > (lastModified ?? 0);
-        }
-        return false;
-      },
-    );
-    debug("hasBeenStale result:", hasStaleTag);
-    return hasStaleTag;
+
+    const compute = (item: any): boolean => {
+      if (!item?.stale?.N) return false;
+      return Number.parseInt(item.stale.N) > (lastModified ?? 0);
+    };
+
+    const { uncachedTags, hasMatch } = checkItemsCache(tags, itemsCache, compute);
+    if (hasMatch) return true;
+    if (uncachedTags.length === 0) return false;
+
+    const result = await fetchAndCacheItems(uncachedTags, itemsCache, compute);
+    debug("hasBeenStale result:", result);
+    return result;
   },
   writeTags: async (tags) => {
     try {

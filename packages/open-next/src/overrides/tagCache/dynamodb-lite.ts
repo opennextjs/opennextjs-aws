@@ -86,6 +86,11 @@ const tagCache: TagCache = {
         return [];
       }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+      const store = globalThis.__openNextAls.getStore();
+      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByPath");
+      if (cache?.has(path)) {
+        return cache.get(path)!;
+      }
       const result = await awsFetch(
         JSON.stringify({
           TableName: CACHE_DYNAMO_TABLE,
@@ -109,7 +114,9 @@ const tagCache: TagCache = {
       const tags = Items?.map((item: any) => item.tag.S ?? "") ?? [];
       debug("tags for path", path, tags);
       // We need to remove the buildId from the path
-      return tags.map((tag: string) => tag.replace(`${NEXT_BUILD_ID}/`, ""));
+      const resultTags = tags.map((tag: string) => tag.replace(`${NEXT_BUILD_ID}/`, ""));
+      cache?.set(path, resultTags);
+      return resultTags;
     } catch (e) {
       error("Failed to get tags by path", e);
       return [];
@@ -121,6 +128,11 @@ const tagCache: TagCache = {
         return [];
       }
       const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+      const store = globalThis.__openNextAls.getStore();
+      const cache = store?.requestCache.getOrCreate<string, string[]>("dynamoDb:getByTag");
+      if (cache?.has(tag)) {
+        return cache.get(tag)!;
+      }
       const result = await awsFetch(
         JSON.stringify({
           TableName: CACHE_DYNAMO_TABLE,
@@ -137,13 +149,14 @@ const tagCache: TagCache = {
         throw new RecoverableError(`Failed to get by tag: ${result.status}`);
       }
       const { Items } = (await result.json()) as any;
-      return (
-        // We need to remove the buildId from the path
+      // We need to remove the buildId from the path
+      const paths =
         Items?.map(
           ({ path: { S: key } }: any) =>
             key?.replace(`${NEXT_BUILD_ID}/`, "") ?? "",
-        ) ?? []
-      );
+        ) ?? [];
+      cache?.set(tag, paths);
+      return paths;
     } catch (e) {
       error("Failed to get by tag", e);
       return [];
@@ -155,6 +168,12 @@ const tagCache: TagCache = {
         return lastModified ?? Date.now();
       }
       const { CACHE_DYNAMO_TABLE } = process.env;
+      const store = globalThis.__openNextAls.getStore();
+      const cache = store?.requestCache.getOrCreate<string, number>("dynamoDb:getLastModified");
+      const cacheKey = `${key}:${lastModified ?? 0}`;
+      if (cache?.has(cacheKey)) {
+        return cache.get(cacheKey)!;
+      }
       const result = await awsFetch(
         JSON.stringify({
           TableName: CACHE_DYNAMO_TABLE,
@@ -201,9 +220,12 @@ const tagCache: TagCache = {
         return true;
       });
       // If we have revalidated tags or expired tags we return -1 to force revalidation
-      return nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
-        ? -1
-        : (lastModified ?? Date.now());
+      const resultValue =
+        nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
+          ? -1
+          : (lastModified ?? Date.now());
+      cache?.set(cacheKey, resultValue);
+      return resultValue;
     } catch (e) {
       error("Failed to get revalidated tags", e);
       return lastModified ?? Date.now();
@@ -215,31 +237,40 @@ const tagCache: TagCache = {
         return false;
       }
       const { CACHE_DYNAMO_TABLE } = process.env;
-      // We can reuse the same query as getLastModified since it already checks for revalidatedAt > lastModified as revalidatedAt and stale have the same value
-      const result = await awsFetch(
-        JSON.stringify({
-          TableName: CACHE_DYNAMO_TABLE,
-          IndexName: "revalidate",
-          KeyConditionExpression:
-            "#key = :key AND #revalidatedAt > :lastModified",
-          ExpressionAttributeNames: {
-            "#key": "path",
-            "#revalidatedAt": "revalidatedAt",
-          },
-          ExpressionAttributeValues: {
-            ":key": { S: buildDynamoKey(key) },
-            ":lastModified": { N: String(lastModified ?? 0) },
-          },
-        }),
-      );
-      if (result.status !== 200) {
-        throw new RecoverableError(
-          `Failed to check stale tags: ${result.status}`,
+      const store = globalThis.__openNextAls.getStore();
+      const itemsCache = store?.requestCache.getOrCreate<string, any[]>("dynamoDb:revalidateQueryItems");
+      const cacheKey = `${key}:${lastModified ?? 0}`;
+      let items: any[];
+      if (itemsCache?.has(cacheKey)) {
+        items = itemsCache.get(cacheKey)!;
+      } else {
+        // We can reuse the same query as getLastModified since it already checks for revalidatedAt > lastModified as revalidatedAt and stale have the same value
+        const result = await awsFetch(
+          JSON.stringify({
+            TableName: CACHE_DYNAMO_TABLE,
+            IndexName: "revalidate",
+            KeyConditionExpression:
+              "#key = :key AND #revalidatedAt > :lastModified",
+            ExpressionAttributeNames: {
+              "#key": "path",
+              "#revalidatedAt": "revalidatedAt",
+            },
+            ExpressionAttributeValues: {
+              ":key": { S: buildDynamoKey(key) },
+              ":lastModified": { N: String(lastModified ?? 0) },
+            },
+          }),
         );
+        if (result.status !== 200) {
+          throw new RecoverableError(
+            `Failed to check stale tags: ${result.status}`,
+          );
+        }
+        items = ((await result.json()) as any).Items ?? [];
+        itemsCache?.set(cacheKey, items);
       }
-      const { Items } = (await result.json()) as any;
-      debug("hasBeenStale items", path, Items);
-      return (Items?.length ?? 0) > 0;
+      debug("hasBeenStale items", key, items);
+      return items.length > 0;
     } catch (e) {
       error("Failed to check stale tags", e);
       return false;
