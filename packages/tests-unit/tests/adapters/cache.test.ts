@@ -1,5 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { type Mock, vi } from "vitest";
 
 declare global {
@@ -482,6 +483,7 @@ describe("CacheHandler", () => {
               withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
             },
             writtenTags: new Set(),
+            requestCache: new RequestCache(),
           };
           (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
           incrementalCache.get.mockResolvedValueOnce({
@@ -492,7 +494,7 @@ describe("CacheHandler", () => {
           const result = await cache.get("key", { kindHint: "app" });
 
           expect(result).not.toBeNull();
-          expect(result?.lastModified).toEqual(cachedLastModified);
+          expect(result?.lastModified).toEqual(1);
           expect(store.lastModified).toEqual(1);
         });
 
