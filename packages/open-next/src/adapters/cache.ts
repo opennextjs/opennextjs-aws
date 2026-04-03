@@ -6,7 +6,7 @@ import type {
 import {
   getTagsFromValue,
   hasBeenRevalidated,
-  hasBeenStale,
+  isStale as isStale,
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
@@ -103,7 +103,7 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : await hasBeenStale(key, _tags, _lastModified);
+        : await isStale(key, _tags, _lastModified);
 
       return {
         lastModified: _isStale ? 1 : _lastModified,
@@ -136,7 +136,7 @@ export default class Cache {
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
-        : await hasBeenStale(key, tags, _lastModified);
+        : await isStale(key, tags, _lastModified);
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {

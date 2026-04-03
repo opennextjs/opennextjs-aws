@@ -14,7 +14,7 @@ import { debug } from "../adapters/logger";
  * A cache entry is considered stale if at least one of its associated tags has been revalidated since the `lastModified` time, but none of them has expired yet. 
  * In this case, the cache entry is still valid and can be served, but it should trigger a background revalidation to update the cache.
  */
-export async function hasBeenStale(
+export async function isStale(
   key: string,
   tags: string[],
   lastModified?: number,

@@ -1,6 +1,6 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheValue, OriginalTagCache } from "types/overrides";
-import { hasBeenStale, writeTags } from "utils/cache";
+import { isStale, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
@@ -48,14 +48,14 @@ export default {
         if (hasBeenRevalidated) return undefined;
 
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isStale = result.shouldBypassTagCache
+        const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await hasBeenStale(
+          : await isStale(
               cacheKey,
               result.value.tags,
               result.lastModified,
             );
-        if (isStale) {
+        if (isCacheStale) {
           revalidate = -1;
         }
       } else if (
@@ -71,14 +71,14 @@ export default {
         if (hasBeenRevalidated) return undefined;
 
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isStale = result.shouldBypassTagCache
+        const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await hasBeenStale(
+          : await isStale(
               cacheKey,
               result.value.tags,
               result.lastModified,
             );
-        if (isStale) {
+        if (isCacheStale) {
           revalidate = -1;
         }
       }
