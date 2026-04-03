@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { TagCacheMetaFile } from "types/cache";
 
 import type { TagCache } from "types/overrides";
 import { getMonorepoRelativePath } from "utils/normalize-path";
@@ -79,23 +80,17 @@ const tagCache: TagCache = {
     );
     tags = unchangedTags.concat(
       newTags.map((item) => {
-        const tagEntry: {
-          tag: { S: string };
-          path: { S: string };
-          revalidatedAt: { N: string };
-          stale?: { N: string };
-          expiry?: { N: string };
-        } = {
+        const tagEntry: TagCacheMetaFile = {
           tag: { S: buildKey(item.tag) },
           path: { S: buildKey(item.path) },
           revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
+          ...(item.stale !== undefined
+            ? { stale: { N: `${item.stale}` } }
+             : undefined),
+          ...(item.expiry !== undefined
+            ? { expiry: { N: `${item.expiry}` } }
+             : undefined),
         };
-        if (item.stale !== undefined) {
-          tagEntry.stale = { N: `${item.stale}` };
-        }
-        if (item.expiry !== undefined) {
-          tagEntry.expiry = { N: `${item.expiry}` };
-        }
         return tagEntry;
       }),
     );

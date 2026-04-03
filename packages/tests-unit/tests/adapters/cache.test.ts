@@ -862,15 +862,6 @@ describe("CacheHandler", () => {
     });
 
     describe("durations parameter", () => {
-      it("Should set expiry immediately when no durations provided (default behavior) - original mode", async () => {
-        // This is a duplicate test - see "Should call tagCache.writeTags" above
-        // which already tests this behavior
-      });
-
-      it("Should set expiry immediately when no durations provided (default behavior) - nextMode", async () => {
-        // This is a duplicate test - see "Should only call writeTags for nextMode" above
-        // which already tests this behavior
-      });
 
       it("Should set stale and expiry when durations.expire is provided - original mode", async () => {
         tagCache.getByTag.mockResolvedValueOnce(["/path"]);

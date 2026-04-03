@@ -377,7 +377,7 @@ export default class Cache {
                   : undefined,
             };
           }
-          // Default behavior: immediate expiration
+          // Immediate expiration, default behavior before next 16, now only with {expire: 0}
           return {
             tag,
             expiry: now,

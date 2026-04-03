@@ -176,8 +176,13 @@ export type NextModeTagCache = BaseTagCache & {
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
   /**
    * Optional method to check if any tag has become stale (but not yet expired).
-   * When tags are stale, the cache entry is still returned but revalidate is set to -1
-   * to trigger background revalidation.
+   * There are three possible states for a cache entry:
+   * - **Fresh**: no tag has been revalidated since `lastModified` → returns `false`.
+   * - **Stale**: at least one tag was revalidated after `lastModified` but has not yet expired →
+   *   returns `true`. The cache entry is still served but `revalidate` is set to `-1` to trigger
+   *   background revalidation.
+   * - **Expired**: at least one tag has fully expired → handled by `hasBeenRevalidated` returning
+   *   `true`. This method is only called when `hasBeenRevalidated` returned `false`.
    */
   hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
@@ -216,9 +221,14 @@ export type OriginalTagCache = BaseTagCache & {
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
   /**
-   * Optional method to check if any tag entry for the given tags has a stale
-   * timestamp newer than lastModified. When stale, the cache entry is still
-   * returned but revalidate is set to -1 to trigger background revalidation.
+   * Optional method to check if any tag entry for the given path has become stale (but not yet expired).
+   * There are three possible states for a cache entry:
+   * - **Fresh**: no tag/path combination has been revalidated since `lastModified` → returns `false`.
+   * - **Stale**: at least one tag/path combination was revalidated after `lastModified` but has not
+   *   yet expired → returns `true`. The cache entry is still served but `revalidate` is set to `-1`
+   *   to trigger background revalidation.
+   * - **Expired**: at least one tag/path combination has fully expired → handled by `getLastModified`
+   *   returning `-1`. This method is only called when the entry is not fully expired.
    */
   hasBeenStale?(path: string, lastModified?: number): Promise<boolean>;
 };

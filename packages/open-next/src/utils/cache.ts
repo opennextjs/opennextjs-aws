@@ -5,12 +5,21 @@ import type {
   WithLastModified,
 } from "types/overrides";
 import { debug } from "../adapters/logger";
-
+/**
+ * 
+ * @param key The key for that specific cache entry
+ * @param tags Array of tags associated with that cache entry
+ * @param lastModified Time of the last update to the cache entry
+ * @returns A boolean indicating whether the cache entry has become stale -
+ * A cache entry is considered stale if at least one of its associated tags has been revalidated since the `lastModified` time, but none of them has expired yet. 
+ * In this case, the cache entry is still valid and can be served, but it should trigger a background revalidation to update the cache.
+ */
 export async function hasBeenStale(
   key: string,
   tags: string[],
   lastModified?: number,
 ): Promise<boolean> {
+  // SWR for revalidateTag has been implemented starting from Next.js 16
   if (!globalThis.isNextAfter16) {
     return false;
   }

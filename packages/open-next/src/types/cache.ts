@@ -99,7 +99,13 @@ export type TagCacheMetaFile = {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  /**
+   * The time at which the tag should be considered stale, in milliseconds since epoch. Optional, if not set the tag will never be stale.
+   */
   stale?: { N: string };
+  /**
+   * The time at which the tag should expire, in milliseconds since epoch. Optional, if not set the tag will never expire.
+   */
   expiry?: { N: string };
 };
 

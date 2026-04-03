@@ -33,12 +33,12 @@ export default {
 
       debug("composable cache result", result);
 
-      // We need to check if the tags associated with this entry has been revalidated
       let revalidate = result.value.revalidate;
       if (
         globalThis.tagCache.mode === "nextMode" &&
         result.value.tags.length > 0
       ) {
+        // We need to check if the tags associated with this entry has been revalidated
         const hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : await globalThis.tagCache.hasBeenRevalidated(
