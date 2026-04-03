@@ -5,6 +5,7 @@ import type {
   WithLastModified,
 } from "types/overrides";
 import { debug } from "../adapters/logger";
+import { compareSemver } from "./semver";
 /**
  * 
  * @param key The key for that specific cache entry
@@ -20,7 +21,7 @@ export async function isStale(
   lastModified?: number,
 ): Promise<boolean> {
   // SWR for revalidateTag has been implemented starting from Next.js 16
-  if (!globalThis.isNextAfter16) {
+  if (!compareSemver(globalThis.nextVersion, ">=", "16.0.0")) {
     return false;
   }
   if (globalThis.openNextConfig.dangerous?.disableTagCache) {

@@ -7,8 +7,7 @@ declare global {
   var openNextConfig: {
     dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
   };
-  var isNextAfter15: boolean;
-  var isNextAfter16: boolean;
+  var nextVersion: string;
 }
 
 describe("CacheHandler", () => {
@@ -77,8 +76,7 @@ describe("CacheHandler", () => {
         disableIncrementalCache: false,
       },
     };
-    globalThis.isNextAfter15 = false;
-    globalThis.isNextAfter16 = true;
+    globalThis.nextVersion = "14.0.0";
     tagCache.mode = "original";
     tagCache.getPathsByTags = undefined;
   });
@@ -135,7 +133,7 @@ describe("CacheHandler", () => {
 
       describe("next15", () => {
         beforeEach(() => {
-          globalThis.isNextAfter15 = true;
+          globalThis.nextVersion = "15.0.0";
         });
 
         it("Should retrieve cache from fetch cache when hint is fetch", async () => {
@@ -179,6 +177,10 @@ describe("CacheHandler", () => {
       });
 
       describe("stale tags", () => {
+        beforeEach(() => {
+          globalThis.nextVersion = "16.0.0";
+        });
+
         it("Should return lastModified as 1 when tag is stale", async () => {
           tagCache.mode = "nextMode";
           tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
@@ -407,7 +409,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should return value when cache data type is app with segmentData and postponed (Next 15+)", async () => {
-        globalThis.isNextAfter15 = true;
+        globalThis.nextVersion = "15.0.0";
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "app",
@@ -475,6 +477,10 @@ describe("CacheHandler", () => {
       });
 
       describe("stale tags", () => {
+        beforeEach(() => {
+          globalThis.nextVersion = "16.0.0";
+        });
+
         it("Should set store.lastModified to 1 when tag is stale", async () => {
           tagCache.hasBeenStale.mockResolvedValueOnce(true);
           const cachedLastModified = Date.now();

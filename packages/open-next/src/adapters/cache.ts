@@ -10,6 +10,7 @@ import {
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
+import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
 export const SOFT_TAG_PREFIX = "_N_T_/";
@@ -148,7 +149,7 @@ export default class Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: globalThis.isNextAfter15 ? "APP_ROUTE" : "ROUTE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0") ? "APP_ROUTE" : "ROUTE",
             body: Buffer.from(
               cacheData.body ?? Buffer.alloc(0),
               isBinaryContentType(String(meta?.headers?.["content-type"]))
@@ -161,7 +162,7 @@ export default class Cache {
         } as CacheHandlerValue;
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
-        if (globalThis.isNextAfter15 && cacheData?.type === "app") {
+        if (compareSemver(globalThis.nextVersion, ">=", "15.0.0") && cacheData?.type === "app") {
           const segmentData = new Map<string, Buffer>();
           if (cacheData.segmentData) {
             for (const [segmentPath, segmentContent] of Object.entries(
@@ -186,7 +187,7 @@ export default class Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: globalThis.isNextAfter15 ? "PAGES" : "PAGE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0") ? "PAGES" : "PAGE",
             html: cacheData.html,
             pageData:
               cacheData.type === "page" ? cacheData.json : cacheData.rsc,

@@ -70,7 +70,7 @@ describe("Composable cache handler", () => {
         disableTagCache: false,
       },
     };
-    globalThis.isNextAfter16 = true;
+    globalThis.nextVersion = "16.0.0";
   });
 
   describe("get", () => {

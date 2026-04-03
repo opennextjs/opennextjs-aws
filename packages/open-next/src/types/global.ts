@@ -109,18 +109,11 @@ declare global {
   var disableIncrementalCache: boolean;
 
   /**
-   * A boolean that indicates if Next is V15 or higher.
+   * The Next.js version of the application.
    * Only available in the cache adapter.
    * Defined in the esbuild banner for the cache adapter.
    */
-  var isNextAfter15: boolean;
-
-  /**
-   * A boolean that indicates if Next is V16 or higher.
-   * Only available in the cache adapter.
-   * Defined in the esbuild banner for the cache adapter.
-   */
-  var isNextAfter16: boolean;
+  var nextVersion: string;
 
   /**
    * A boolean that indicates if the runtime is Edge.
