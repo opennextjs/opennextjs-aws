@@ -1,4 +1,5 @@
 /* eslint-disable sonarjs/no-duplicate-string */
+import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
@@ -537,5 +538,119 @@ describe("cacheInterceptor", () => {
 
     const result = await cacheInterceptor(event);
     expect(result.statusCode).toBe(200);
+  });
+
+  describe("app RSC output", () => {
+    afterEach(() => {
+      delete (NextConfig as any).experimental;
+    });
+
+    it("should return RSC content for RSC data requests", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: { rsc: "1" },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      const body = await fromReadableStream(result.body);
+      expect(body).toEqual("RSC content");
+      expect(result).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "content-type": "text/x-component",
+          }),
+        }),
+      );
+    });
+
+    it("should return segment data when next-router-segment-prefetch header matches segmentData", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: {
+          rsc: "1",
+          "next-router-segment-prefetch": "/layout",
+        },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      const body = await fromReadableStream(result.body);
+      expect(body).toEqual("Segment content");
+      expect(result).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "x-nextjs-prerender": "1",
+            "x-nextjs-postponed": "2",
+          }),
+        }),
+      );
+    });
+
+    it("should fall back to RSC when segment key does not exist in segmentData", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: {
+          rsc: "1",
+          "next-router-segment-prefetch": "/not-here",
+        },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      const body = await fromReadableStream(result.body);
+      expect(body).toEqual("RSC content");
+      expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
+      expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+
+    it("should fall back to RSC when prefetchInlining is enabled", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: {
+          rsc: "1",
+          "next-router-segment-prefetch": "/layout",
+        },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+      (NextConfig as any).experimental = { prefetchInlining: true };
+
+      const result = await cacheInterceptor(event);
+
+      const body = await fromReadableStream(result.body);
+      expect(body).toEqual("RSC content");
+      expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
+      expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+    });
   });
 });
