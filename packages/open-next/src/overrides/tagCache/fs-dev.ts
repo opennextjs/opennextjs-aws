@@ -16,7 +16,7 @@ let tags = JSON.parse(tagContent) as {
   path: { S: string };
   revalidatedAt: { N: string };
   stale?: { N: string };
-  expiry?: { N: string };
+  expire?: { N: string };
 }[];
 
 const { NEXT_BUILD_ID } = process.env;
@@ -44,9 +44,9 @@ const tagCache: TagCache = {
     const hasExpiredTag = tags.some((tagPathMapping) => {
       if (
         tagPathMapping.path.S === buildKey(path) &&
-        tagPathMapping.expiry?.N
+        tagPathMapping.expire?.N
       ) {
-        const expiry = Number.parseInt(tagPathMapping.expiry.N);
+        const expiry = Number.parseInt(tagPathMapping.expire.N);
         return expiry <= now && expiry > (lastModified ?? 0);
       }
       return false;
@@ -56,8 +56,8 @@ const tagCache: TagCache = {
       (tagPathMapping) =>
         tagPathMapping.path.S === buildKey(path) &&
         Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0) &&
-        (!tagPathMapping.expiry?.N ||
-          Number.parseInt(tagPathMapping.expiry.N) > now),
+        (!tagPathMapping.expire?.N ||
+          Number.parseInt(tagPathMapping.expire.N) > now),
     );
 
     return nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
@@ -87,8 +87,8 @@ const tagCache: TagCache = {
           ...(item.stale !== undefined
             ? { stale: { N: `${item.stale}` } }
              : undefined),
-          ...(item.expiry !== undefined
-            ? { expiry: { N: `${item.expiry}` } }
+          ...(item.expire !== undefined
+            ? { expire: { N: `${item.expire}` } }
              : undefined),
         };
         return tagEntry;

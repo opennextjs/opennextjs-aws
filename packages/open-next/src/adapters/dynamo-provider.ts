@@ -19,7 +19,7 @@ type DataType = {
   stale?: {
     N: string;
   };
-  expiry?: {
+  expire?: {
     N: string;
   };
 };
@@ -70,7 +70,7 @@ async function insert(
     path: item.path.S,
     revalidatedAt: Number.parseInt(item.revalidatedAt.N),
     ...(item.stale && { stale: Number.parseInt(item.stale.N) }),
-    ...(item.expiry && { expiry: Number.parseInt(item.expiry.N) }),
+    ...(item.expire && { expire: Number.parseInt(item.expire.N) }),
   }));
 
   await tagCache.writeTags(parsedData);

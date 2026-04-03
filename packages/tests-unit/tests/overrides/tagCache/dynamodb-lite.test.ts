@@ -207,7 +207,7 @@ describe("dynamodb-lite tagCache", () => {
           Items: [
             {
               revalidatedAt: { N: String(expiry) },
-              expiry: { N: String(expiry) },
+              expire: { N: String(expiry) },
               tag: { S: `${BUILD_ID}/t` },
             },
           ],
@@ -231,7 +231,7 @@ describe("dynamodb-lite tagCache", () => {
           Items: [
             {
               revalidatedAt: { N: String(revalidatedAt) },
-              expiry: { N: String(expiry) },
+              expire: { N: String(expiry) },
               tag: { S: `${BUILD_ID}/t` },
             },
           ],
@@ -343,14 +343,14 @@ describe("dynamodb-lite tagCache", () => {
           tag: "tag1",
           revalidatedAt: 1000,
           stale: 500,
-          expiry: 9999,
+          expire: 9999,
         },
       ]);
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       const item = body.RequestItems[TABLE_NAME][0].PutRequest.Item;
       expect(item.stale).toEqual({ N: "500" });
-      expect(item.expiry).toEqual({ N: "9999" });
+      expect(item.expire).toEqual({ N: "9999" });
     });
 
     it("does not include stale or expiry when not provided", async () => {
@@ -363,7 +363,7 @@ describe("dynamodb-lite tagCache", () => {
       const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       const item = body.RequestItems[TABLE_NAME][0].PutRequest.Item;
       expect(item.stale).toBeUndefined();
-      expect(item.expiry).toBeUndefined();
+      expect(item.expire).toBeUndefined();
     });
 
     it("builds the DynamoDB key with the buildId prefix", async () => {

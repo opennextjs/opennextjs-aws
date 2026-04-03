@@ -371,7 +371,7 @@ export default class Cache {
             return {
               tag,
               stale: now,
-              expiry:
+              expire:
                 durations.expire !== undefined
                   ? now + durations.expire * 1000
                   : undefined,
@@ -380,7 +380,7 @@ export default class Cache {
           // Immediate expiration, default behavior before next 16, now only with {expire: 0}
           return {
             tag,
-            expiry: now,
+            expire: now,
           };
         });
 
@@ -418,7 +418,7 @@ export default class Cache {
             return {
               ...baseEntry,
               stale: now,
-              expiry:
+              expire:
                 durations.expire !== undefined
                   ? now + durations.expire * 1000
                   : undefined,
@@ -427,7 +427,7 @@ export default class Cache {
           // Default behavior: immediate expiration
           return {
             ...baseEntry,
-            expiry: now,
+            expire: now,
           };
         });
 
@@ -450,7 +450,7 @@ export default class Cache {
                     return {
                       ...baseEntry,
                       stale: now,
-                      expiry:
+                      expire:
                         durations.expire !== undefined
                           ? now + durations.expire * 1000
                           : undefined,
@@ -458,7 +458,7 @@ export default class Cache {
                   }
                   return {
                     ...baseEntry,
-                    expiry: now,
+                    expire: now,
                   };
                 }),
               );

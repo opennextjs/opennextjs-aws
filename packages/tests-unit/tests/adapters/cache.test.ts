@@ -771,7 +771,7 @@ describe("CacheHandler", () => {
         {
           path: "/path",
           tag: "tag",
-          expiry: Date.now(),
+          expire: Date.now(),
         },
       ]);
     });
@@ -786,7 +786,7 @@ describe("CacheHandler", () => {
         {
           path: "/path",
           tag: `${SOFT_TAG_PREFIX}path`,
-          expiry: Date.now(),
+          expire: Date.now(),
         },
       ]);
 
@@ -802,7 +802,7 @@ describe("CacheHandler", () => {
         {
           path: "123456",
           tag: "tag",
-          expiry: Date.now(),
+          expire: Date.now(),
         },
       ]);
 
@@ -817,11 +817,11 @@ describe("CacheHandler", () => {
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           tag: "tag1",
-          expiry: Date.now(),
+          expire: Date.now(),
         },
         {
           tag: "tag2",
-          expiry: Date.now(),
+          expire: Date.now(),
         },
       ]);
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
@@ -844,7 +844,7 @@ describe("CacheHandler", () => {
       expect(tagCache.writeTags).toHaveBeenCalledWith([
         {
           tag: "tag",
-          expiry: Date.now(),
+          expire: Date.now(),
         },
       ]);
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
@@ -876,7 +876,7 @@ describe("CacheHandler", () => {
             path: "/path",
             tag: "tag",
             stale: now,
-            expiry: now + 60 * 1000,
+            expire: now + 60 * 1000,
           },
         ]);
       });
@@ -892,7 +892,7 @@ describe("CacheHandler", () => {
           {
             tag: "tag",
             stale: now,
-            expiry: now + 60 * 1000,
+            expire: now + 60 * 1000,
           },
         ]);
       });
@@ -908,7 +908,7 @@ describe("CacheHandler", () => {
           {
             tag: "tag",
             stale: now,
-            expiry: undefined,
+            expire: undefined,
           },
         ]);
       });
@@ -927,7 +927,7 @@ describe("CacheHandler", () => {
             path: "/path1",
             tag: "tag1",
             stale: now,
-            expiry: now + 30 * 1000,
+            expire: now + 30 * 1000,
           },
         ]);
         expect(tagCache.writeTags).toHaveBeenNthCalledWith(2, [
@@ -935,7 +935,7 @@ describe("CacheHandler", () => {
             path: "/path2",
             tag: "tag2",
             stale: now,
-            expiry: now + 30 * 1000,
+            expire: now + 30 * 1000,
           },
         ]);
       });
@@ -951,12 +951,12 @@ describe("CacheHandler", () => {
           {
             tag: "tag1",
             stale: now,
-            expiry: now + 30 * 1000,
+            expire: now + 30 * 1000,
           },
           {
             tag: "tag2",
             stale: now,
-            expiry: now + 30 * 1000,
+            expire: now + 30 * 1000,
           },
         ]);
       });
@@ -975,7 +975,7 @@ describe("CacheHandler", () => {
             path: "/path",
             tag: `${SOFT_TAG_PREFIX}path`,
             stale: now,
-            expiry: now + 60 * 1000,
+            expire: now + 60 * 1000,
           },
         ]);
       });
@@ -992,7 +992,7 @@ describe("CacheHandler", () => {
             path: "/test-path",
             tag: "testtag",
             stale: now,
-            expiry: now,
+            expire: now,
           },
         ]);
       });
@@ -1008,7 +1008,7 @@ describe("CacheHandler", () => {
           {
             tag: "tag",
             stale: now,
-            expiry: now,
+            expire: now,
           },
         ]);
       });

@@ -38,19 +38,15 @@ function buildDynamoObject(
   tags: string,
   revalidatedAt?: number,
   stale?: number,
-  expiry?: number,
+  expire?: number,
 ) {
   const obj: Record<string, any> = {
     path: { S: buildDynamoKey(path) },
     tag: { S: buildDynamoKey(tags) },
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
+    ...(stale !== undefined ? { stale: { N: `${stale}` } } : {}),
+    ...(expire !== undefined ? { expire: { N: `${expire}` } } : {}),
   };
-  if (stale !== undefined) {
-    obj.stale = { N: `${stale}` };
-  }
-  if (expiry !== undefined) {
-    obj.expiry = { N: `${expiry}` };
-  }
   return obj;
 }
 
@@ -168,8 +164,8 @@ const tagCache: TagCache = {
       // Check if any tag has expired
       const now = Date.now();
       const hasExpiredTag = revalidatedTags.some((item) => {
-        if (item.expiry?.N) {
-          const expiry = Number.parseInt(item.expiry.N);
+        if (item.expire?.N) {
+          const expiry = Number.parseInt(item.expire.N);
           return expiry <= now && expiry > (lastModified ?? 0);
         }
         return false;
@@ -177,8 +173,8 @@ const tagCache: TagCache = {
       // Exclude expired tags from the revalidated count — they are handled
       // separately via hasExpiredTag above.
       const nonExpiredRevalidatedTags = revalidatedTags.filter((item) => {
-        if (item.expiry?.N) {
-          return Number.parseInt(item.expiry.N) > now;
+        if (item.expire?.N) {
+          return Number.parseInt(item.expire.N) > now;
         }
         return true;
       });
@@ -248,7 +244,7 @@ const tagCache: TagCache = {
                     Item.tag,
                     Item.revalidatedAt,
                     Item.stale,
-                    Item.expiry,
+                    Item.expire,
                   ),
                 },
               },

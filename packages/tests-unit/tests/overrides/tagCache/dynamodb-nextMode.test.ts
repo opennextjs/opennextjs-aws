@@ -142,7 +142,7 @@ describe("dynamodb-nextMode tagCache", () => {
               {
                 tag: { S: buildKey("tag1") },
                 revalidatedAt: { N: String(lastModified - 1) }, // before lastModified normally
-                expiry: { N: String(expiry) },
+                expire: { N: String(expiry) },
               },
             ],
           },
@@ -333,12 +333,12 @@ describe("dynamodb-nextMode tagCache", () => {
     it("writes object tags including stale and expiry", async () => {
       mockFetch.mockResolvedValue({ status: 200 });
 
-      await tagCache.writeTags([{ tag: "tag1", stale: 500, expiry: 9999 }]);
+      await tagCache.writeTags([{ tag: "tag1", stale: 500, expire: 9999 }]);
 
       const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       const item = body.RequestItems[TABLE_NAME][0].PutRequest.Item;
       expect(item.stale).toEqual({ N: "500" });
-      expect(item.expiry).toEqual({ N: "9999" });
+      expect(item.expire).toEqual({ N: "9999" });
     });
 
     it("does not include stale or expiry when not provided in objects", async () => {
@@ -349,7 +349,7 @@ describe("dynamodb-nextMode tagCache", () => {
       const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
       const item = body.RequestItems[TABLE_NAME][0].PutRequest.Item;
       expect(item.stale).toBeUndefined();
-      expect(item.expiry).toBeUndefined();
+      expect(item.expire).toBeUndefined();
     });
 
     it("skips write when disableTagCache is true", async () => {

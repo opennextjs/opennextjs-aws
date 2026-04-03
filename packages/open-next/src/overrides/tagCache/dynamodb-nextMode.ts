@@ -63,19 +63,15 @@ function buildDynamoObject(
   tag: string,
   revalidatedAt?: number,
   stale?: number,
-  expiry?: number,
+  expire?: number,
 ) {
   const obj: Record<string, any> = {
     path: { S: buildDynamoKey(tag) },
     tag: { S: buildDynamoKey(tag) },
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
+    ...(stale !== undefined ? { stale: { N: `${stale}` } } : {}),
+    ...(expire !== undefined ? { expire: { N: `${expire}` } } : {}),
   };
-  if (stale !== undefined) {
-    obj.stale = { N: `${stale}` };
-  }
-  if (expiry !== undefined) {
-    obj.expiry = { N: `${expiry}` };
-  }
   return obj;
 }
 
@@ -173,8 +169,8 @@ export default {
     const now = Date.now();
     const compute = (item: any): boolean => {
       if (!item) return false;
-      if (item.expiry?.N) {
-        const expiry = Number.parseInt(item.expiry.N);
+      if (item.expire?.N) {
+        const expiry = Number.parseInt(item.expire.N);
         if (expiry <= now && expiry > (lastModified ?? 0)) return true;
       }
       return Number.parseInt(item.revalidatedAt.N) > (lastModified ?? 0);
@@ -239,7 +235,7 @@ export default {
             [CACHE_DYNAMO_TABLE ?? ""]: Items.map((tag) => {
               const tagStr = typeof tag === "string" ? tag : tag.tag;
               const stale = typeof tag === "string" ? undefined : tag.stale;
-              const expiry = typeof tag === "string" ? undefined : tag.expiry;
+              const expiry = typeof tag === "string" ? undefined : tag.expire;
               return {
                 PutRequest: {
                   Item: {

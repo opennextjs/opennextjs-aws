@@ -200,14 +200,14 @@ export default {
             return {
               tag,
               stale: now,
-              expiry:
+              expire:
                 durations.expire !== undefined
                   ? now + durations.expire * 1000
                   : undefined,
             };
           }
           // Default: immediate expiry, no grace period
-          return { tag, expiry: now };
+          return { tag, expire: now };
         });
         await writeTags(tagsToWrite);
       } else {
@@ -222,13 +222,13 @@ export default {
                   path,
                   tag,
                   stale: now,
-                  expiry:
+                  expire:
                     durations.expire !== undefined
                       ? now + durations.expire * 1000
                       : undefined,
                 };
               }
-              return { path, tag, expiry: now };
+              return { path, tag, expire: now };
             });
           }),
         );

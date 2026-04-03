@@ -3,7 +3,7 @@ import { debug } from "../../adapters/logger";
 
 const tagsMap = new Map<
   string,
-  { revalidatedAt: number; stale?: number; expiry?: number }
+  { revalidatedAt: number; stale?: number; expire?: number }
 >();
 
 export default {
@@ -39,9 +39,9 @@ export default {
       }
 
       // Check if tag has expired
-      if (typeof tagData.expiry === "number") {
+      if (typeof tagData.expire === "number") {
         const isExpired =
-          tagData.expiry <= now && tagData.expiry > (lastModified ?? 0);
+          tagData.expire <= now && tagData.expire > (lastModified ?? 0);
         return isExpired;
       }
 
@@ -79,11 +79,11 @@ export default {
     tags.forEach((tag) => {
       const tagStr = typeof tag === "string" ? tag : tag.tag;
       const stale = typeof tag === "string" ? undefined : tag.stale;
-      const expiry = typeof tag === "string" ? undefined : tag.expiry;
+      const expire = typeof tag === "string" ? undefined : tag.expire;
       tagsMap.set(tagStr, {
         revalidatedAt: Date.now(),
         stale,
-        expiry,
+        expire,
       });
     });
 

@@ -162,7 +162,7 @@ export type NextModeTagCacheWriteInput =
   | {
       tag: string;
       stale?: number;
-      expiry?: number;
+      expire?: number;
     };
 
 export type NextModeTagCache = BaseTagCache & {
@@ -192,7 +192,7 @@ export interface OriginalTagCacheWriteInput {
   path: string;
   revalidatedAt?: number;
   stale?: number;
-  expiry?: number;
+  expire?: number;
 }
 
 /**

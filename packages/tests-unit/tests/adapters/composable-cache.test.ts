@@ -540,8 +540,8 @@ describe("Composable cache handler", () => {
       await ComposableCache.updateTags(["tag1", "tag2"]);
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { tag: "tag1", expiry: now },
-        { tag: "tag2", expiry: now },
+        { tag: "tag1", expire: now },
+        { tag: "tag2", expire: now },
       ]);
     });
 
@@ -552,8 +552,8 @@ describe("Composable cache handler", () => {
       await ComposableCache.updateTags(["tag1", "tag2"], { expire: 60 });
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { tag: "tag1", stale: now, expiry: now + 60 * 1000 },
-        { tag: "tag2", stale: now, expiry: now + 60 * 1000 },
+        { tag: "tag1", stale: now, expire: now + 60 * 1000 },
+        { tag: "tag2", stale: now, expire: now + 60 * 1000 },
       ]);
     });
 
@@ -564,7 +564,7 @@ describe("Composable cache handler", () => {
       await ComposableCache.updateTags(["tag1"], { expire: undefined });
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { tag: "tag1", stale: now, expiry: undefined },
+        { tag: "tag1", stale: now, expire: undefined },
       ]);
     });
 
@@ -580,8 +580,8 @@ describe("Composable cache handler", () => {
       await ComposableCache.updateTags(["tag1", "tag2"]);
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { path: "/path1", tag: "tag1", expiry: now },
-        { path: "/path2", tag: "tag2", expiry: now },
+        { path: "/path1", tag: "tag1", expire: now },
+        { path: "/path2", tag: "tag2", expire: now },
       ]);
     });
 
@@ -596,8 +596,8 @@ describe("Composable cache handler", () => {
       await ComposableCache.updateTags(["tag1"], { expire: 30 });
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { path: "/path1", tag: "tag1", stale: now, expiry: now + 30 * 1000 },
-        { path: "/path2", tag: "tag1", stale: now, expiry: now + 30 * 1000 },
+        { path: "/path1", tag: "tag1", stale: now, expire: now + 30 * 1000 },
+        { path: "/path2", tag: "tag1", stale: now, expire: now + 30 * 1000 },
       ]);
     });
 

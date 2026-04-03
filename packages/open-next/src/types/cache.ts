@@ -106,7 +106,7 @@ export type TagCacheMetaFile = {
   /**
    * The time at which the tag should expire, in milliseconds since epoch. Optional, if not set the tag will never expire.
    */
-  expiry?: { N: string };
+  expire?: { N: string };
 };
 
 // Cache context since vercel/next.js#76207
