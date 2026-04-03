@@ -161,7 +161,13 @@ export type NextModeTagCacheWriteInput =
   | string
   | {
       tag: string;
+      /**
+       * Timestamp in milliseconds since epoch after which the tag should be considered stale. 
+       */
       stale?: number;
+      /**
+       * Timestamp in milliseconds since epoch after which the tag should be considered expired.
+       */
       expire?: number;
     };
 
@@ -179,7 +185,7 @@ export type NextModeTagCache = BaseTagCache & {
    * There are three possible states for a cache entry:
    * - **Fresh**: no tag has been revalidated since `lastModified` → returns `false`.
    * - **Stale**: at least one tag was revalidated after `lastModified` but has not yet expired →
-   *   returns `true`. The cache entry is still served but `revalidate` is set to `-1` to trigger
+   *   returns `true`. The cache entry is still served but `revalidate` is set to `1` to trigger
    *   background revalidation.
    * - **Expired**: at least one tag has fully expired → handled by `hasBeenRevalidated` returning
    *   `true`. This method is only called when `hasBeenRevalidated` returned `false`.
@@ -191,7 +197,13 @@ export interface OriginalTagCacheWriteInput {
   tag: string;
   path: string;
   revalidatedAt?: number;
+  /**
+   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered stale. 
+   */
   stale?: number;
+  /**
+   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered expired.
+   */
   expire?: number;
 }
 
@@ -225,7 +237,7 @@ export type OriginalTagCache = BaseTagCache & {
    * There are three possible states for a cache entry:
    * - **Fresh**: no tag/path combination has been revalidated since `lastModified` → returns `false`.
    * - **Stale**: at least one tag/path combination was revalidated after `lastModified` but has not
-   *   yet expired → returns `true`. The cache entry is still served but `revalidate` is set to `-1`
+   *   yet expired → returns `true`. The cache entry is still served but `revalidate` is set to `1`
    *   to trigger background revalidation.
    * - **Expired**: at least one tag/path combination has fully expired → handled by `getLastModified`
    *   returning `-1`. This method is only called when the entry is not fully expired.
