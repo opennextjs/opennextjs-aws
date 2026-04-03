@@ -85,6 +85,7 @@ export interface NextConfig {
     optimizeCss?: boolean;
     // Used by Next to know if we should send a single RSC or split it into multiple ones.
     // Can be an object but only the boolean is supported for now in OpenNext.
+    // Added in Next 16.2
     prefetchInlining?: boolean;
   };
   images: ImageConfig;
