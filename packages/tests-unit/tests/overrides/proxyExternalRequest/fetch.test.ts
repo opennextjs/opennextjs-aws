@@ -1,7 +1,16 @@
 import fetchProxy from "@opennextjs/aws/overrides/proxyExternalRequest/fetch.js";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 describe("proxyExternalRequest/fetch", () => {
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
   // Note: if the url is hosted on the Cloudflare network we want to make sure that a `cf-connecting-ip` header is not being sent as that causes a DNS error
   //       (see: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-1xxx-errors/#error-1000-dns-points-to-prohibited-ip)
   it("the proxy should remove any cf-connecting-ip headers (with any casing) before passing it to fetch", async () => {
