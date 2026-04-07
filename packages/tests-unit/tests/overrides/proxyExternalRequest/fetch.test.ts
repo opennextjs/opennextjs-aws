@@ -36,4 +36,28 @@ describe("proxyExternalRequest/fetch", () => {
     expect(headersPassedToFetch).not.toContain("CF-CONNECTING-IP");
     expect(headersPassedToFetch).toContain("header-4");
   });
+  it("the proxy should save multiple set-cookie response headers as an array", async () => {
+    const responseHeaders = new Headers();
+    responseHeaders.append("set-cookie", "foo=value1");
+    responseHeaders.append("set-cookie", "bar=value2");
+    responseHeaders.append("Set-Cookie", "cookie=value3");
+    const fetchMock = vi.fn<typeof global.fetch>(
+      async () =>
+        new Response(null, {
+          headers: responseHeaders,
+        }),
+    );
+    globalThis.fetch = fetchMock;
+
+    const { proxy } = fetchProxy;
+
+    const { headers } = await proxy({ headers: {} });
+
+    expect(fetchMock.mock.calls.length).toEqual(1);
+    expect(headers["set-cookie"]).toEqual([
+      "foo=value1",
+      "bar=value2",
+      "cookie=value3",
+    ]);
+  });
 });
