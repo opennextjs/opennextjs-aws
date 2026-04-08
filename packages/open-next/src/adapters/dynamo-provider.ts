@@ -16,9 +16,15 @@ type DataType = {
   revalidatedAt: {
     N: string;
   };
+  /**
+   * The time at which the tag should be considered stale, in milliseconds since epoch.
+   */
   stale?: {
     N: string;
   };
+  /**
+   * The time at which the tag should expire, in milliseconds since epoch.
+   */
   expire?: {
     N: string;
   };

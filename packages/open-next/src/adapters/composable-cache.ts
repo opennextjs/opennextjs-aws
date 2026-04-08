@@ -175,6 +175,7 @@ export default {
    *
    * When `durations` is provided, marks tags as stale immediately and optionally
    * sets an expiry timestamp. When omitted, immediately expires tags (no grace period).
+   * durations.expire is in seconds, but we convert it to milliseconds for storage and comparison.
    */
   async updateTags(tags: string[], durations?: { expire?: number }) {
     const config = globalThis.openNextConfig.dangerous;

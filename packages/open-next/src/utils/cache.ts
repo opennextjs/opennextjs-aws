@@ -36,6 +36,17 @@ export async function isStale(
   return (await globalThis.tagCache.hasBeenStale?.(key, lastModified)) ?? false;
 }
 
+
+/**
+ * @param key The key for that specific cache entry
+ * @param tags Array of tags associated with that cache entry
+ * @param cacheEntry The cache entry with its last modified time and value
+ * @returns A boolean indicating whether the cache entry has been revalidated -
+ * A cache entry is considered revalidated if at least one of its associated tags has been revalidated
+ * after the entry's `lastModified` time, meaning the cached data is stale and must be re-fetched.
+ * For Next 16+ you need {@link isStale}, to know if a revalidated entry is stale (valid but needs background revalidation) or expired (needs to be re-fetched immediately).
+ * Without it, we consider all revalidated entries as expired, which means that they will be re-fetched immediately without a chance to be served stale.
+ */
 export async function hasBeenRevalidated(
   key: string,
   tags: string[],
