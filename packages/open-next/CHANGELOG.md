@@ -1,5 +1,36 @@
 # open-next
 
+## 3.10.0
+
+### Minor Changes
+
+- [#1122](https://github.com/opennextjs/opennextjs-aws/pull/1122) [`1a75cc712c56448f5d77abb810cf4af259802a28`](https://github.com/opennextjs/opennextjs-aws/commit/1a75cc712c56448f5d77abb810cf4af259802a28) Thanks [@conico974](https://github.com/conico974)! - Add support for SWR (stale-while-revalidate) in `revalidateTag`
+
+  Introduces a new optional method `isStale` in the tag cache for both the original and the next modes. The implementation is mandatory for SWR to work.
+
+  It also introduces a `RequestCache` utility that can be used to cache things scoped to a request (stored in the OpenNext internal AsyncLocalStorage context)
+
+  ### BREAKING CHANGE
+
+  `writeTags` for the tag cache signature has changed to `writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void>` for Next mode, and `writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>` for the original mode.
+  This is breaking only for custom tag cache implementations, if you are using the default one provided by OpenNext, you don't need to do anything.
+
+  `globalThis.isNextAfter15` is no longer available in the cache.
+
+### Patch Changes
+
+- [#1121](https://github.com/opennextjs/opennextjs-aws/pull/1121) [`fad4632ef4278db0a040b3a3948d259c1cf43c05`](https://github.com/opennextjs/opennextjs-aws/commit/fad4632ef4278db0a040b3a3948d259c1cf43c05) Thanks [@ntltd](https://github.com/ntltd)! - Fix ISR revalidation to also accept valid Next.js non-200 status codes (307, 308 and 404)
+
+- [#1135](https://github.com/opennextjs/opennextjs-aws/pull/1135) [`323448b83f6c292398338f9d6307c113d1246da9`](https://github.com/opennextjs/opennextjs-aws/commit/323448b83f6c292398338f9d6307c113d1246da9) Thanks [@ktKongTong](https://github.com/ktKongTong)! - fix: handle multiple same-name headers as array in fetch proxyExternalRequest
+
+- [#1132](https://github.com/opennextjs/opennextjs-aws/pull/1132) [`8210035cc30720702a6052e22bbf9275ef54c636`](https://github.com/opennextjs/opennextjs-aws/commit/8210035cc30720702a6052e22bbf9275ef54c636) Thanks [@conico974](https://github.com/conico974)! - add support for prefetch inlining in the cache interceptor
+
+- [#1117](https://github.com/opennextjs/opennextjs-aws/pull/1117) [`3a2b1b9497c531e9f07f66f7a140f152a9d8fc26`](https://github.com/opennextjs/opennextjs-aws/commit/3a2b1b9497c531e9f07f66f7a140f152a9d8fc26) Thanks [@clichedmoog](https://github.com/clichedmoog)! - Auto-filter non-Linux platform-specific native binaries (e.g. @swc/core-darwin-arm64) from Lambda bundles during traced files copy
+
+- [#1118](https://github.com/opennextjs/opennextjs-aws/pull/1118) [`e49782af723ec97f1373e654a7e400e1ba3e827e`](https://github.com/opennextjs/opennextjs-aws/commit/e49782af723ec97f1373e654a7e400e1ba3e827e) Thanks [@tsurumeso](https://github.com/tsurumeso)! - Preserve query parameters during i18n redirects to a localized path
+
+- [#1125](https://github.com/opennextjs/opennextjs-aws/pull/1125) [`92f1f300341321a820e60133eb9ee399b39fc5d1`](https://github.com/opennextjs/opennextjs-aws/commit/92f1f300341321a820e60133eb9ee399b39fc5d1) Thanks [@rikublock](https://github.com/rikublock)! - fix: dereference symlinks when copying public folder
+
 ## 3.9.16
 
 ### Patch Changes
