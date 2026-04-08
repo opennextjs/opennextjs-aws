@@ -223,9 +223,7 @@ describe("dynamodb-nextMode tagCache", () => {
     it("throws RecoverableError when tags.length > 100", async () => {
       const tags = Array.from({ length: 101 }, (_, i) => `tag${i}`);
 
-      await expect(tagCache.isStale(tags, 0)).rejects.toThrow(
-        RecoverableError,
-      );
+      await expect(tagCache.isStale(tags, 0)).rejects.toThrow(RecoverableError);
     });
 
     it("returns false when no tag has a stale timestamp after lastModified", async () => {

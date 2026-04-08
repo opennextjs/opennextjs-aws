@@ -30,12 +30,10 @@ export async function isStale(
   if (globalThis.tagCache.mode === "nextMode") {
     return tags.length === 0
       ? false
-      : ((await globalThis.tagCache.isStale?.(tags, lastModified)) ??
-          false);
+      : ((await globalThis.tagCache.isStale?.(tags, lastModified)) ?? false);
   }
   return (await globalThis.tagCache.isStale?.(key, lastModified)) ?? false;
 }
-
 
 /**
  * @param key The key for that specific cache entry
