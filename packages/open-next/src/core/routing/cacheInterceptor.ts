@@ -117,7 +117,8 @@ function getBodyForAppRouter(
     const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
     const isSegmentResponse =
       Boolean(segmentHeader) &&
-      segmentHeader in (cachedValue.segmentData || {});
+      segmentHeader in (cachedValue.segmentData || {}) &&
+      !NextConfig.experimental?.prefetchInlining;
 
     const body = isSegmentResponse
       ? cachedValue.segmentData![segmentHeader]
