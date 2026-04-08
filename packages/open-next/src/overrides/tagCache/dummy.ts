@@ -16,6 +16,9 @@ const dummyTagCache: TagCache = {
   writeTags: async () => {
     return;
   },
+  isStale: async (_path: string) => {
+    return false;
+  },
 };
 
 export default dummyTagCache;

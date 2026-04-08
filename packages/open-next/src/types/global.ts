@@ -11,6 +11,7 @@ import type {
 } from "types/overrides";
 
 import type { DetachedPromiseRunner } from "../utils/promise";
+import type { RequestCache } from "../utils/requestCache";
 import type { OpenNextConfig, WaitUntil } from "./open-next";
 
 export interface RequestData {
@@ -66,6 +67,8 @@ interface OpenNextRequestContext {
   waitUntil?: WaitUntil;
   /** We use this to deduplicate write of the tags*/
   writtenTags: Set<string>;
+  /** Per-request in-memory cache. Overrides can use this to store data scoped to the current request. */
+  requestCache: RequestCache;
 }
 
 declare global {
@@ -106,11 +109,11 @@ declare global {
   var disableIncrementalCache: boolean;
 
   /**
-   * A boolean that indicates if Next is V15 or higher.
+   * The Next.js version of the application.
    * Only available in the cache adapter.
    * Defined in the esbuild banner for the cache adapter.
    */
-  var isNextAfter15: boolean;
+  var nextVersion: string;
 
   /**
    * A boolean that indicates if the runtime is Edge.

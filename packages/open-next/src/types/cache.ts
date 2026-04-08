@@ -99,6 +99,14 @@ export type TagCacheMetaFile = {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  /**
+   * The time at which the tag should be considered stale, in milliseconds since epoch. Optional, if not set the tag will never be stale.
+   */
+  stale?: { N: string };
+  /**
+   * The time at which the tag should expire, in milliseconds since epoch. Optional, if not set the tag will never expire.
+   */
+  expire?: { N: string };
 };
 
 // Cache context since vercel/next.js#76207
@@ -175,4 +183,10 @@ export interface ComposableCacheHandler {
    * This function is only there for older versions and do nothing
    */
   receiveExpiredTags(...tags: string[]): Promise<void>;
+  /**
+   * Added in Next.js 16. Updates tags with optional stale/expire durations.
+   * When durations is provided, marks tags as stale immediately and sets expiry;
+   * when omitted, immediately expires tags (same as expireTags).
+   */
+  updateTags(tags: string[], durations?: { expire?: number }): Promise<void>;
 }

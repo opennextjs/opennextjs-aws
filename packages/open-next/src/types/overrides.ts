@@ -156,21 +156,55 @@ Cons :
 - One page request (i.e. GET request) could require to check a lot of tags (And some of them multiple time when used with the fetch cache)
 - Almost impossible to do automatic cdn revalidation by itself
 */
+
+export type NextModeTagCacheWriteInput =
+  | string
+  | {
+      tag: string;
+      /**
+       * Timestamp in milliseconds since epoch after which the tag should be considered stale.
+       */
+      stale?: number;
+      /**
+       * Timestamp in milliseconds since epoch after which the tag should be considered expired.
+       */
+      expire?: number;
+    };
+
 export type NextModeTagCache = BaseTagCache & {
   mode: "nextMode";
   // Necessary for the composable cache
   getLastRevalidated(tags: string[]): Promise<number>;
   hasBeenRevalidated(tags: string[], lastModified?: number): Promise<boolean>;
-  writeTags(tags: string[]): Promise<void>;
+  writeTags(tags: NextModeTagCacheWriteInput[]): Promise<void>;
   // Optional method to get paths by tags
   // It is used to automatically invalidate paths in the CDN
   getPathsByTags?: (tags: string[]) => Promise<string[]>;
+  /**
+   * Optional method to check if any tag has become stale (but not yet expired).
+   * There are three possible states for a cache entry:
+   * - **Fresh**: no tag has been revalidated since `lastModified` → returns `false`.
+   * - **Stale**: at least one tag was revalidated after `lastModified` but has not yet expired →
+   *   returns `true`. The cache entry is still served but `revalidate` is set to `1` to trigger
+   *   background revalidation.
+   * - **Expired**: at least one tag has fully expired → handled by `hasBeenRevalidated` returning
+   *   `true`. This method is only called when `hasBeenRevalidated` returned `false`.
+   */
+  isStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
 
 export interface OriginalTagCacheWriteInput {
   tag: string;
   path: string;
   revalidatedAt?: number;
+  /**
+   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered stale.
+   */
+  stale?: number;
+  /**
+   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered expired.
+   */
+  expire?: number;
 }
 
 /**
@@ -198,6 +232,17 @@ export type OriginalTagCache = BaseTagCache & {
   getByPath(path: string): Promise<string[]>;
   getLastModified(path: string, lastModified?: number): Promise<number>;
   writeTags(tags: OriginalTagCacheWriteInput[]): Promise<void>;
+  /**
+   * Optional method to check if any tag entry for the given path has become stale (but not yet expired).
+   * There are three possible states for a cache entry:
+   * - **Fresh**: no tag/path combination has been revalidated since `lastModified` → returns `false`.
+   * - **Stale**: at least one tag/path combination was revalidated after `lastModified` but has not
+   *   yet expired → returns `true`. The cache entry is still served but `revalidate` is set to `1`
+   *   to trigger background revalidation.
+   * - **Expired**: at least one tag/path combination has fully expired → handled by `getLastModified`
+   *   returning `-1`. This method is only called when the entry is not fully expired.
+   */
+  isStale?(path: string, lastModified?: number): Promise<boolean>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;

@@ -16,6 +16,18 @@ type DataType = {
   revalidatedAt: {
     N: string;
   };
+  /**
+   * The time at which the tag should be considered stale, in milliseconds since epoch.
+   */
+  stale?: {
+    N: string;
+  };
+  /**
+   * The time at which the tag should expire, in milliseconds since epoch.
+   */
+  expire?: {
+    N: string;
+  };
 };
 
 export interface InitializationFunctionEvent {
@@ -63,6 +75,8 @@ async function insert(
     tag: item.tag.S,
     path: item.path.S,
     revalidatedAt: Number.parseInt(item.revalidatedAt.N),
+    ...(item.stale && { stale: Number.parseInt(item.stale.N) }),
+    ...(item.expire && { expire: Number.parseInt(item.expire.N) }),
   }));
 
   await tagCache.writeTags(parsedData);

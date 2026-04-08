@@ -1,12 +1,13 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { type Mock, vi } from "vitest";
 
 declare global {
   var openNextConfig: {
     dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
   };
-  var isNextAfter15: boolean;
+  var nextVersion: string;
 }
 
 describe("CacheHandler", () => {
@@ -40,6 +41,7 @@ describe("CacheHandler", () => {
       .fn()
       .mockResolvedValue(new Date("2024-01-02T00:00:00Z").getTime()),
     writeTags: vi.fn(),
+    isStale: vi.fn().mockResolvedValue(false),
     getPathsByTags: undefined as Mock | undefined,
   };
   globalThis.tagCache = tagCache;
@@ -51,18 +53,21 @@ describe("CacheHandler", () => {
   globalThis.cdnInvalidationHandler = invalidateCdnHandler;
 
   globalThis.__openNextAls = {
-    getStore: vi.fn().mockReturnValue({
+    getStore: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Reset the getStore mock to return a fresh Set for each test
+    (globalThis.__openNextAls.getStore as Mock).mockReturnValue({
       pendingPromiseRunner: {
         withResolvers: vi.fn().mockReturnValue({
           resolve: vi.fn(),
         }),
       },
       writtenTags: new Set(),
-    }),
-  };
-
-  beforeEach(() => {
-    vi.clearAllMocks();
+    });
 
     cache = new Cache();
 
@@ -71,7 +76,7 @@ describe("CacheHandler", () => {
         disableIncrementalCache: false,
       },
     };
-    globalThis.isNextAfter15 = false;
+    globalThis.nextVersion = "14.0.0";
     tagCache.mode = "original";
     tagCache.getPathsByTags = undefined;
   });
@@ -128,7 +133,7 @@ describe("CacheHandler", () => {
 
       describe("next15", () => {
         beforeEach(() => {
-          globalThis.isNextAfter15 = true;
+          globalThis.nextVersion = "15.0.0";
         });
 
         it("Should retrieve cache from fetch cache when hint is fetch", async () => {
@@ -168,6 +173,86 @@ describe("CacheHandler", () => {
 
           expect(getFetchCacheSpy).toHaveBeenCalled();
           expect(result).toBeNull();
+        });
+      });
+
+      describe("stale tags", () => {
+        beforeEach(() => {
+          globalThis.nextVersion = "16.0.0";
+        });
+
+        it("Should return lastModified as 1 when tag is stale", async () => {
+          tagCache.mode = "nextMode";
+          tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+          tagCache.isStale.mockResolvedValueOnce(true);
+          const cachedLastModified = Date.now();
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              kind: "FETCH",
+              data: {
+                headers: {},
+                body: "{}",
+                url: "https://example.com",
+                status: 200,
+              },
+            },
+            lastModified: cachedLastModified,
+          });
+
+          const result = await cache.get("key", {
+            kind: "FETCH",
+            tags: ["tag1"],
+          });
+
+          expect(result).not.toBeNull();
+          expect(result?.lastModified).toEqual(1);
+        });
+
+        it("Should return original lastModified when tag is not stale", async () => {
+          tagCache.mode = "nextMode";
+          tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+          tagCache.isStale.mockResolvedValueOnce(false);
+          const cachedLastModified = Date.now();
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              kind: "FETCH",
+              data: {
+                headers: {},
+                body: "{}",
+                url: "https://example.com",
+                status: 200,
+              },
+            },
+            lastModified: cachedLastModified,
+          });
+
+          const result = await cache.get("key", {
+            kind: "FETCH",
+            tags: ["tag1"],
+          });
+
+          expect(result).not.toBeNull();
+          expect(result?.lastModified).toEqual(cachedLastModified);
+        });
+
+        it("Should not call isStale when shouldBypassTagCache is true", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              kind: "FETCH",
+              data: {
+                headers: {},
+                body: "{}",
+                url: "https://example.com",
+                status: 200,
+              },
+            },
+            lastModified: Date.now(),
+            shouldBypassTagCache: true,
+          });
+
+          await cache.get("key", { kind: "FETCH", tags: ["tag1"] });
+
+          expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
     });
@@ -324,7 +409,7 @@ describe("CacheHandler", () => {
       });
 
       it("Should return value when cache data type is app with segmentData and postponed (Next 15+)", async () => {
-        globalThis.isNextAfter15 = true;
+        globalThis.nextVersion = "15.0.0";
         incrementalCache.get.mockResolvedValueOnce({
           value: {
             type: "app",
@@ -389,6 +474,67 @@ describe("CacheHandler", () => {
 
         expect(getIncrementalCache).toHaveBeenCalled();
         expect(result).toBeNull();
+      });
+
+      describe("stale tags", () => {
+        beforeEach(() => {
+          globalThis.nextVersion = "16.0.0";
+        });
+
+        it("Should set store.lastModified to 1 when tag is stale", async () => {
+          tagCache.isStale.mockResolvedValueOnce(true);
+          const cachedLastModified = Date.now();
+          const store: Record<string, any> = {
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+            requestCache: new RequestCache(),
+          };
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: cachedLastModified,
+          });
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result).not.toBeNull();
+          expect(result?.lastModified).toEqual(1);
+          expect(store.lastModified).toEqual(1);
+        });
+
+        it("Should set store.lastModified to original lastModified when tag is not stale", async () => {
+          tagCache.isStale.mockResolvedValueOnce(false);
+          const cachedLastModified = Date.now();
+          const store: Record<string, any> = {
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+          };
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: cachedLastModified,
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(store.lastModified).toEqual(cachedLastModified);
+        });
+
+        it("Should not call isStale when shouldBypassTagCache is true", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+            shouldBypassTagCache: true,
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(tagCache.isStale).not.toHaveBeenCalled();
+        });
       });
     });
   });
@@ -631,6 +777,7 @@ describe("CacheHandler", () => {
         {
           path: "/path",
           tag: "tag",
+          expire: Date.now(),
         },
       ]);
     });
@@ -645,6 +792,7 @@ describe("CacheHandler", () => {
         {
           path: "/path",
           tag: `${SOFT_TAG_PREFIX}path`,
+          expire: Date.now(),
         },
       ]);
 
@@ -660,6 +808,7 @@ describe("CacheHandler", () => {
         {
           path: "123456",
           tag: "tag",
+          expire: Date.now(),
         },
       ]);
 
@@ -671,7 +820,16 @@ describe("CacheHandler", () => {
       await cache.revalidateTag(["tag1", "tag2"]);
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
-      expect(tagCache.writeTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          tag: "tag1",
+          expire: Date.now(),
+        },
+        {
+          tag: "tag2",
+          expire: Date.now(),
+        },
+      ]);
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
     });
 
@@ -689,7 +847,12 @@ describe("CacheHandler", () => {
       await cache.revalidateTag("tag");
 
       expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
-      expect(tagCache.writeTags).toHaveBeenCalledWith(["tag"]);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          tag: "tag",
+          expire: Date.now(),
+        },
+      ]);
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
         {
           initialPath: "/path",
@@ -702,6 +865,158 @@ describe("CacheHandler", () => {
           ],
         },
       ]);
+    });
+
+    describe("durations parameter", () => {
+      it("Should set stale and expiry when durations.expire is provided - original mode", async () => {
+        tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+        tagCache.getByPath.mockResolvedValueOnce([]);
+        const now = Date.now();
+
+        await cache.revalidateTag("tag", { expire: 60 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            path: "/path",
+            tag: "tag",
+            stale: now,
+            expire: now + 60 * 1000,
+          },
+        ]);
+      });
+
+      it("Should set stale and expiry when durations.expire is provided - nextMode", async () => {
+        tagCache.mode = "nextMode";
+        const now = Date.now();
+
+        await cache.revalidateTag("tag", { expire: 60 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            tag: "tag",
+            stale: now,
+            expire: now + 60 * 1000,
+          },
+        ]);
+      });
+
+      it("Should set stale without expiry when durations.expire is undefined", async () => {
+        tagCache.mode = "nextMode";
+        const now = Date.now();
+
+        await cache.revalidateTag("tag", { expire: undefined });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            tag: "tag",
+            stale: now,
+            expire: undefined,
+          },
+        ]);
+      });
+
+      it("Should handle multiple tags with durations - original mode", async () => {
+        tagCache.getByTag
+          .mockResolvedValueOnce(["/path1"])
+          .mockResolvedValueOnce(["/path2"]);
+        const now = Date.now();
+
+        await cache.revalidateTag(["tag1", "tag2"], { expire: 30 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(2);
+        expect(tagCache.writeTags).toHaveBeenNthCalledWith(1, [
+          {
+            path: "/path1",
+            tag: "tag1",
+            stale: now,
+            expire: now + 30 * 1000,
+          },
+        ]);
+        expect(tagCache.writeTags).toHaveBeenNthCalledWith(2, [
+          {
+            path: "/path2",
+            tag: "tag2",
+            stale: now,
+            expire: now + 30 * 1000,
+          },
+        ]);
+      });
+
+      it("Should handle multiple tags with durations - nextMode", async () => {
+        tagCache.mode = "nextMode";
+        const now = Date.now();
+
+        await cache.revalidateTag(["tag1", "tag2"], { expire: 30 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            tag: "tag1",
+            stale: now,
+            expire: now + 30 * 1000,
+          },
+          {
+            tag: "tag2",
+            stale: now,
+            expire: now + 30 * 1000,
+          },
+        ]);
+      });
+
+      it("Should set expiry with durations for soft tags - original mode", async () => {
+        // Test soft tag without hard tags (simpler case)
+        tagCache.getByTag.mockResolvedValueOnce(["/path"]);
+        tagCache.getByPath.mockResolvedValueOnce([]); // No hard tags
+        const now = Date.now();
+
+        await cache.revalidateTag(`${SOFT_TAG_PREFIX}path`, { expire: 60 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            path: "/path",
+            tag: `${SOFT_TAG_PREFIX}path`,
+            stale: now,
+            expire: now + 60 * 1000,
+          },
+        ]);
+      });
+
+      it("Should handle immediate expiration (expire: 0) - original mode", async () => {
+        tagCache.getByTag.mockResolvedValueOnce(["/test-path"]);
+        const now = Date.now();
+
+        await cache.revalidateTag("testtag", { expire: 0 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            path: "/test-path",
+            tag: "testtag",
+            stale: now,
+            expire: now,
+          },
+        ]);
+      });
+
+      it("Should handle immediate expiration (expire: 0) - nextMode", async () => {
+        tagCache.mode = "nextMode";
+        const now = Date.now();
+
+        await cache.revalidateTag("tag", { expire: 0 });
+
+        expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          {
+            tag: "tag",
+            stale: now,
+            expire: now,
+          },
+        ]);
+      });
     });
   });
 

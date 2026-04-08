@@ -32,6 +32,7 @@ describe("Composable cache handler", () => {
     name: "mock",
     mode: "original" as string | undefined,
     hasBeenRevalidated: vi.fn(),
+    isStale: vi.fn().mockResolvedValue(false),
     getByTag: vi.fn().mockResolvedValue(["path1", "path2"]),
     getByPath: vi.fn().mockResolvedValue(["tag1"]),
     getLastModified: vi
@@ -69,6 +70,7 @@ describe("Composable cache handler", () => {
         disableTagCache: false,
       },
     };
+    globalThis.nextVersion = "16.0.0";
   });
 
   describe("get", () => {
@@ -181,6 +183,67 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(result).toBeUndefined();
+    });
+
+    it("should return entry with revalidate=-1 when tags are stale in nextMode", async () => {
+      tagCache.mode = "nextMode";
+      tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      const result = await ComposableCache.get("test-key");
+
+      expect(tagCache.isStale).toHaveBeenCalledWith(
+        ["tag1", "tag2"],
+        expect.any(Number),
+      );
+      expect(result).toBeDefined();
+      expect(result?.revalidate).toBe(-1);
+    });
+
+    it("should not override revalidate when tags are not stale in nextMode", async () => {
+      tagCache.mode = "nextMode";
+      tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+      tagCache.isStale.mockResolvedValueOnce(false);
+
+      const result = await ComposableCache.get("test-key");
+
+      expect(result).toBeDefined();
+      expect(result?.revalidate).not.toBe(-1);
+    });
+
+    it("should not check stale when tags are already expired in nextMode", async () => {
+      tagCache.mode = "nextMode";
+      tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
+
+      const result = await ComposableCache.get("test-key");
+
+      expect(result).toBeUndefined();
+      expect(tagCache.isStale).not.toHaveBeenCalled();
+    });
+
+    it("should return entry with revalidate=-1 when path is stale in original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now()); // not expired
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      const result = await ComposableCache.get("test-key");
+
+      expect(tagCache.isStale).toHaveBeenCalledWith(
+        "test-key",
+        expect.any(Number),
+      );
+      expect(result).toBeDefined();
+      expect(result?.revalidate).toBe(-1);
+    });
+
+    it("should not check stale when path is already expired in original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getLastModified.mockResolvedValueOnce(-1); // expired
+
+      const result = await ComposableCache.get("test-key");
+
+      expect(result).toBeUndefined();
+      expect(tagCache.isStale).not.toHaveBeenCalled();
     });
 
     it("should return pending write promise if available", async () => {
@@ -461,6 +524,125 @@ describe("Composable cache handler", () => {
       // Should not call any methods
       expect(incrementalCache.get).not.toHaveBeenCalled();
       expect(incrementalCache.set).not.toHaveBeenCalled();
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateTags", () => {
+    beforeEach(() => {
+      writtenTags.clear();
+    });
+
+    it("should immediately expire tags when no durations provided - nextMode", async () => {
+      tagCache.mode = "nextMode";
+      const now = Date.now();
+
+      await ComposableCache.updateTags(["tag1", "tag2"]);
+
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { tag: "tag1", expire: now },
+        { tag: "tag2", expire: now },
+      ]);
+    });
+
+    it("should set stale and expiry when durations.expire provided - nextMode", async () => {
+      tagCache.mode = "nextMode";
+      const now = Date.now();
+
+      await ComposableCache.updateTags(["tag1", "tag2"], { expire: 60 });
+
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { tag: "tag1", stale: now, expire: now + 60 * 1000 },
+        { tag: "tag2", stale: now, expire: now + 60 * 1000 },
+      ]);
+    });
+
+    it("should set stale without expiry when durations.expire is undefined - nextMode", async () => {
+      tagCache.mode = "nextMode";
+      const now = Date.now();
+
+      await ComposableCache.updateTags(["tag1"], { expire: undefined });
+
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { tag: "tag1", stale: now, expire: undefined },
+      ]);
+    });
+
+    it("should immediately expire tags when no durations provided - original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getByTag.mockImplementation(async (tag: string) => {
+        if (tag === "tag1") return ["/path1"];
+        if (tag === "tag2") return ["/path2"];
+        return [];
+      });
+      const now = Date.now();
+
+      await ComposableCache.updateTags(["tag1", "tag2"]);
+
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { path: "/path1", tag: "tag1", expire: now },
+        { path: "/path2", tag: "tag2", expire: now },
+      ]);
+    });
+
+    it("should set stale and expiry when durations.expire provided - original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getByTag.mockImplementation(async (tag: string) => {
+        if (tag === "tag1") return ["/path1", "/path2"];
+        return [];
+      });
+      const now = Date.now();
+
+      await ComposableCache.updateTags(["tag1"], { expire: 30 });
+
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { path: "/path1", tag: "tag1", stale: now, expire: now + 30 * 1000 },
+        { path: "/path2", tag: "tag1", stale: now, expire: now + 30 * 1000 },
+      ]);
+    });
+
+    it("should do nothing when tags list is empty", async () => {
+      tagCache.mode = "nextMode";
+
+      await ComposableCache.updateTags([]);
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+
+    it("should do nothing when disableTagCache is true", async () => {
+      tagCache.mode = "nextMode";
+      globalThis.openNextConfig = {
+        dangerous: {
+          disableTagCache: true,
+          disableIncrementalCache: false,
+        },
+      };
+
+      await ComposableCache.updateTags(["tag1"]);
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+
+    it("should do nothing when disableIncrementalCache is true", async () => {
+      tagCache.mode = "nextMode";
+      globalThis.openNextConfig = {
+        dangerous: {
+          disableTagCache: false,
+          disableIncrementalCache: true,
+        },
+      };
+
+      await ComposableCache.updateTags(["tag1"]);
+
+      expect(tagCache.writeTags).not.toHaveBeenCalled();
+    });
+
+    it("should not write tags when all paths are empty in original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getByTag.mockResolvedValue([]);
+
+      await ComposableCache.updateTags(["tag1"]);
+
       expect(tagCache.writeTags).not.toHaveBeenCalled();
     });
   });

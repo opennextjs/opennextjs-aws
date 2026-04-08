@@ -3,8 +3,14 @@ import type {
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
-import { getTagsFromValue, hasBeenRevalidated, writeTags } from "utils/cache";
+import {
+  getTagsFromValue,
+  hasBeenRevalidated,
+  isStale,
+  writeTags,
+} from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
+import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
 export const SOFT_TAG_PREFIX = "_N_T_/";
@@ -96,8 +102,12 @@ export default class Cache {
         }
       }
 
+      const _isStale = cachedEntry.shouldBypassTagCache
+        ? false
+        : await isStale(key, _tags, _lastModified);
+
       return {
-        lastModified: _lastModified,
+        lastModified: _isStale ? 1 : _lastModified,
         value: cachedEntry.value,
       } as CacheHandlerValue;
     } catch (e) {
@@ -119,22 +129,29 @@ export default class Cache {
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
-      const _lastModified = cachedEntry.lastModified ?? Date.now();
+      let _lastModified = cachedEntry.lastModified ?? Date.now();
       const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
       if (_hasBeenRevalidated) return null;
 
+      const _isStale = cachedEntry.shouldBypassTagCache
+        ? false
+        : await isStale(key, tags, _lastModified);
+
       const store = globalThis.__openNextAls.getStore();
       if (store) {
-        store.lastModified = _lastModified;
+        store.lastModified = _isStale ? 1 : _lastModified;
+        _lastModified = store.lastModified;
       }
 
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
           value: {
-            kind: globalThis.isNextAfter15 ? "APP_ROUTE" : "ROUTE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
+              ? "APP_ROUTE"
+              : "ROUTE",
             body: Buffer.from(
               cacheData.body ?? Buffer.alloc(0),
               isBinaryContentType(String(meta?.headers?.["content-type"]))
@@ -147,7 +164,10 @@ export default class Cache {
         } as CacheHandlerValue;
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
-        if (globalThis.isNextAfter15 && cacheData?.type === "app") {
+        if (
+          compareSemver(globalThis.nextVersion, ">=", "15.0.0") &&
+          cacheData?.type === "app"
+        ) {
           const segmentData = new Map<string, Buffer>();
           if (cacheData.segmentData) {
             for (const [segmentPath, segmentContent] of Object.entries(
@@ -172,7 +192,9 @@ export default class Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: globalThis.isNextAfter15 ? "PAGES" : "PAGE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
+              ? "PAGES"
+              : "PAGE",
             html: cacheData.html,
             pageData:
               cacheData.type === "page" ? cacheData.json : cacheData.rsc,
@@ -333,7 +355,10 @@ export default class Cache {
     }
   }
 
-  public async revalidateTag(tags: string | string[]) {
+  public async revalidateTag(
+    tags: string | string[],
+    durations?: { expire?: number },
+  ) {
     const config = globalThis.openNextConfig.dangerous;
     if (config?.disableTagCache || config?.disableIncrementalCache) {
       return;
@@ -347,7 +372,27 @@ export default class Cache {
       if (globalThis.tagCache.mode === "nextMode") {
         const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
 
-        await writeTags(_tags);
+        const now = Date.now();
+        const tagsToWrite = _tags.map((tag) => {
+          if (durations) {
+            // Use provided durations
+            return {
+              tag,
+              stale: now,
+              expire:
+                durations.expire !== undefined
+                  ? now + durations.expire * 1000
+                  : undefined,
+            };
+          }
+          // Immediate expiration, default behavior before next 16, now only with {expire: 0}
+          return {
+            tag,
+            expire: now,
+          };
+        });
+
+        await writeTags(tagsToWrite);
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
@@ -373,10 +418,26 @@ export default class Cache {
         // Find all keys with the given tag
         const paths = await globalThis.tagCache.getByTag(tag);
         debug("Items", paths);
-        const toInsert = paths.map((path) => ({
-          path,
-          tag,
-        }));
+        const now = Date.now();
+        const toInsert = paths.map((path) => {
+          const baseEntry = { path, tag };
+          if (durations) {
+            // Use provided durations
+            return {
+              ...baseEntry,
+              stale: now,
+              expire:
+                durations.expire !== undefined
+                  ? now + durations.expire * 1000
+                  : undefined,
+            };
+          }
+          // Default behavior: immediate expiration
+          return {
+            ...baseEntry,
+            expire: now,
+          };
+        });
 
         // If the tag is a soft tag, we should also revalidate the hard tags
         if (tag.startsWith(SOFT_TAG_PREFIX)) {
@@ -391,10 +452,23 @@ export default class Cache {
               const _paths = await globalThis.tagCache.getByTag(hardTag);
               debug({ hardTag, _paths });
               toInsert.push(
-                ..._paths.map((path) => ({
-                  path,
-                  tag: hardTag,
-                })),
+                ..._paths.map((path) => {
+                  const baseEntry = { path, tag: hardTag };
+                  if (durations) {
+                    return {
+                      ...baseEntry,
+                      stale: now,
+                      expire:
+                        durations.expire !== undefined
+                          ? now + durations.expire * 1000
+                          : undefined,
+                    };
+                  }
+                  return {
+                    ...baseEntry,
+                    expire: now,
+                  };
+                }),
               );
             }
           }

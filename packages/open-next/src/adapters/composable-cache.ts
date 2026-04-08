@@ -1,6 +1,6 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
-import type { CacheValue } from "types/overrides";
-import { writeTags } from "utils/cache";
+import type { CacheValue, OriginalTagCache } from "types/overrides";
+import { isStale, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
@@ -33,11 +33,12 @@ export default {
 
       debug("composable cache result", result);
 
-      // We need to check if the tags associated with this entry has been revalidated
+      let revalidate = result.value.revalidate;
       if (
         globalThis.tagCache.mode === "nextMode" &&
         result.value.tags.length > 0
       ) {
+        // We need to check if the tags associated with this entry has been revalidated
         const hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : await globalThis.tagCache.hasBeenRevalidated(
@@ -45,6 +46,14 @@ export default {
               result.lastModified,
             );
         if (hasBeenRevalidated) return undefined;
+
+        // Check if tags are stale – entry is valid but needs background revalidation
+        const isCacheStale = result.shouldBypassTagCache
+          ? false
+          : await isStale(cacheKey, result.value.tags, result.lastModified);
+        if (isCacheStale) {
+          revalidate = -1;
+        }
       } else if (
         globalThis.tagCache.mode === "original" ||
         globalThis.tagCache.mode === undefined
@@ -56,10 +65,19 @@ export default {
               result.lastModified,
             )) === -1;
         if (hasBeenRevalidated) return undefined;
+
+        // Check if tags are stale – entry is valid but needs background revalidation
+        const isCacheStale = result.shouldBypassTagCache
+          ? false
+          : await isStale(cacheKey, result.value.tags, result.lastModified);
+        if (isCacheStale) {
+          revalidate = -1;
+        }
       }
 
       return {
         ...result.value,
+        revalidate,
         value: toReadableStream(result.value.value),
       };
     } catch (e) {
@@ -148,5 +166,72 @@ export default {
   async receiveExpiredTags(...tags: string[]) {
     // This function does absolutely nothing
     return;
+  },
+
+  /**
+   * Added in Next.js 16. Updates tags with optional stale/expire durations.
+   * Mirrors the logic in `Cache.revalidateTag` but without CDN invalidation
+   * since composable cache keys are not URL paths.
+   *
+   * When `durations` is provided, marks tags as stale immediately and optionally
+   * sets an expiry timestamp. When omitted, immediately expires tags (no grace period).
+   * durations.expire is in seconds, but we convert it to milliseconds for storage and comparison.
+   */
+  async updateTags(tags: string[], durations?: { expire?: number }) {
+    const config = globalThis.openNextConfig.dangerous;
+    if (config?.disableTagCache || config?.disableIncrementalCache) {
+      return;
+    }
+    if (tags.length === 0) {
+      return;
+    }
+    try {
+      const now = Date.now();
+      if (globalThis.tagCache.mode === "nextMode") {
+        const tagsToWrite = tags.map((tag) => {
+          if (durations) {
+            return {
+              tag,
+              stale: now,
+              expire:
+                durations.expire !== undefined
+                  ? now + durations.expire * 1000
+                  : undefined,
+            };
+          }
+          // Default: immediate expiry, no grace period
+          return { tag, expire: now };
+        });
+        await writeTags(tagsToWrite);
+      } else {
+        // Original mode: resolve tag → path mappings first
+        const originalTagCache = globalThis.tagCache as OriginalTagCache;
+        const pathsPerTag = await Promise.all(
+          tags.map(async (tag) => {
+            const paths = await originalTagCache.getByTag(tag);
+            return paths.map((path: string) => {
+              if (durations) {
+                return {
+                  path,
+                  tag,
+                  stale: now,
+                  expire:
+                    durations.expire !== undefined
+                      ? now + durations.expire * 1000
+                      : undefined,
+                };
+              }
+              return { path, tag, expire: now };
+            });
+          }),
+        );
+        const toWrite = pathsPerTag.flat();
+        if (toWrite.length > 0) {
+          await writeTags(toWrite);
+        }
+      }
+    } catch (e) {
+      debug("Failed to update tags", e);
+    }
   },
 } satisfies ComposableCacheHandler;

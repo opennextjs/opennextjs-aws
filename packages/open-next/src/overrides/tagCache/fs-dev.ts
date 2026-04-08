@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { TagCacheMetaFile } from "types/cache";
 
 import type { TagCache } from "types/overrides";
 import { getMonorepoRelativePath } from "utils/normalize-path";
@@ -14,6 +15,8 @@ let tags = JSON.parse(tagContent) as {
   tag: { S: string };
   path: { S: string };
   revalidatedAt: { N: string };
+  stale?: { N: string };
+  expire?: { N: string };
 }[];
 
 const { NEXT_BUILD_ID } = process.env;
@@ -36,12 +39,37 @@ const tagCache: TagCache = {
       .map((tagEntry) => tagEntry.path.S.replace(`${NEXT_BUILD_ID}/`, ""));
   },
   getLastModified: async (path: string, lastModified?: number) => {
-    const revalidatedTags = tags.filter(
+    // Check if any tag has expired
+    const now = Date.now();
+    const hasExpiredTag = tags.some((tagPathMapping) => {
+      if (
+        tagPathMapping.path.S === buildKey(path) &&
+        tagPathMapping.expire?.N
+      ) {
+        const expiry = Number.parseInt(tagPathMapping.expire.N);
+        return expiry <= now && expiry > (lastModified ?? 0);
+      }
+      return false;
+    });
+
+    const nonExpiredRevalidatedTags = tags.filter(
       (tagPathMapping) =>
         tagPathMapping.path.S === buildKey(path) &&
-        Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0),
+        Number.parseInt(tagPathMapping.revalidatedAt.N) > (lastModified ?? 0) &&
+        (!tagPathMapping.expire?.N ||
+          Number.parseInt(tagPathMapping.expire.N) > now),
     );
-    return revalidatedTags.length > 0 ? -1 : (lastModified ?? Date.now());
+
+    return nonExpiredRevalidatedTags.length > 0 || hasExpiredTag
+      ? -1
+      : (lastModified ?? Date.now());
+  },
+  isStale: async (path: string, lastModified?: number) => {
+    return tags.some((entry) => {
+      if (entry.path.S !== buildKey(path)) return false;
+      if (!entry.stale?.N) return false;
+      return Number.parseInt(entry.stale.N) > (lastModified ?? 0);
+    });
   },
   writeTags: async (newTags) => {
     const newTagsSet = new Set(
@@ -51,11 +79,20 @@ const tagCache: TagCache = {
       ({ tag, path }) => !newTagsSet.has(`${tag.S}-${path.S}`),
     );
     tags = unchangedTags.concat(
-      newTags.map((item) => ({
-        tag: { S: buildKey(item.tag) },
-        path: { S: buildKey(item.path) },
-        revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
-      })),
+      newTags.map((item) => {
+        const tagEntry: TagCacheMetaFile = {
+          tag: { S: buildKey(item.tag) },
+          path: { S: buildKey(item.path) },
+          revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
+          ...(item.stale !== undefined
+            ? { stale: { N: `${item.stale}` } }
+            : undefined),
+          ...(item.expire !== undefined
+            ? { expire: { N: `${item.expire}` } }
+            : undefined),
+        };
+        return tagEntry;
+      }),
     );
   },
 };
