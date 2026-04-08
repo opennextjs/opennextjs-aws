@@ -868,7 +868,6 @@ describe("CacheHandler", () => {
     });
 
     describe("durations parameter", () => {
-
       it("Should set stale and expiry when durations.expire is provided - original mode", async () => {
         tagCache.getByTag.mockResolvedValueOnce(["/path"]);
         tagCache.getByPath.mockResolvedValueOnce([]);

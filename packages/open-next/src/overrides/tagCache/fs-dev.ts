@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { TagCacheMetaFile } from "types/cache";
+import type { TagCacheMetaFile } from "types/cache";
 
 import type { TagCache } from "types/overrides";
 import { getMonorepoRelativePath } from "utils/normalize-path";
@@ -86,10 +86,10 @@ const tagCache: TagCache = {
           revalidatedAt: { N: `${item.revalidatedAt ?? Date.now()}` },
           ...(item.stale !== undefined
             ? { stale: { N: `${item.stale}` } }
-             : undefined),
+            : undefined),
           ...(item.expire !== undefined
             ? { expire: { N: `${item.expire}` } }
-             : undefined),
+            : undefined),
         };
         return tagEntry;
       }),

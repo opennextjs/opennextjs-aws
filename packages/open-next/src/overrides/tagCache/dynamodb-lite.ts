@@ -70,7 +70,6 @@ function buildDynamoObject(
     revalidatedAt: { N: `${revalidatedAt ?? Date.now()}` },
     ...(stale !== undefined ? { stale: { N: `${stale}` } } : {}),
     ...(expire !== undefined ? { expire: { N: `${expire}` } } : {}),
-
   };
   return obj;
 }

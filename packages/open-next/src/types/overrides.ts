@@ -162,7 +162,7 @@ export type NextModeTagCacheWriteInput =
   | {
       tag: string;
       /**
-       * Timestamp in milliseconds since epoch after which the tag should be considered stale. 
+       * Timestamp in milliseconds since epoch after which the tag should be considered stale.
        */
       stale?: number;
       /**
@@ -198,7 +198,7 @@ export interface OriginalTagCacheWriteInput {
   path: string;
   revalidatedAt?: number;
   /**
-   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered stale. 
+   * Timestamp in milliseconds since epoch after which the tag/path combination should be considered stale.
    */
   stale?: number;
   /**

@@ -50,11 +50,7 @@ export default {
         // Check if tags are stale – entry is valid but needs background revalidation
         const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await isStale(
-              cacheKey,
-              result.value.tags,
-              result.lastModified,
-            );
+          : await isStale(cacheKey, result.value.tags, result.lastModified);
         if (isCacheStale) {
           revalidate = -1;
         }
@@ -73,11 +69,7 @@ export default {
         // Check if tags are stale – entry is valid but needs background revalidation
         const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await isStale(
-              cacheKey,
-              result.value.tags,
-              result.lastModified,
-            );
+          : await isStale(cacheKey, result.value.tags, result.lastModified);
         if (isCacheStale) {
           revalidate = -1;
         }

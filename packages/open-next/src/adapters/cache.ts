@@ -6,7 +6,7 @@ import type {
 import {
   getTagsFromValue,
   hasBeenRevalidated,
-  isStale as isStale,
+  isStale,
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
@@ -149,7 +149,9 @@ export default class Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0") ? "APP_ROUTE" : "ROUTE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
+              ? "APP_ROUTE"
+              : "ROUTE",
             body: Buffer.from(
               cacheData.body ?? Buffer.alloc(0),
               isBinaryContentType(String(meta?.headers?.["content-type"]))
@@ -162,7 +164,10 @@ export default class Cache {
         } as CacheHandlerValue;
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
-        if (compareSemver(globalThis.nextVersion, ">=", "15.0.0") && cacheData?.type === "app") {
+        if (
+          compareSemver(globalThis.nextVersion, ">=", "15.0.0") &&
+          cacheData?.type === "app"
+        ) {
           const segmentData = new Map<string, Buffer>();
           if (cacheData.segmentData) {
             for (const [segmentPath, segmentContent] of Object.entries(
@@ -187,7 +192,9 @@ export default class Cache {
         return {
           lastModified: _lastModified,
           value: {
-            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0") ? "PAGES" : "PAGE",
+            kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
+              ? "PAGES"
+              : "PAGE",
             html: cacheData.html,
             pageData:
               cacheData.type === "page" ? cacheData.json : cacheData.rsc,
