@@ -1,7 +1,16 @@
 import fetchProxy from "@opennextjs/aws/overrides/proxyExternalRequest/fetch.js";
-import { vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 describe("proxyExternalRequest/fetch", () => {
+  let originalFetch: typeof global.fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
   // Note: if the url is hosted on the Cloudflare network we want to make sure that a `cf-connecting-ip` header is not being sent as that causes a DNS error
   //       (see: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-1xxx-errors/#error-1000-dns-points-to-prohibited-ip)
   it("the proxy should remove any cf-connecting-ip headers (with any casing) before passing it to fetch", async () => {
@@ -35,5 +44,29 @@ describe("proxyExternalRequest/fetch", () => {
     expect(headersPassedToFetch).not.toContain("CF-Connecting-IP");
     expect(headersPassedToFetch).not.toContain("CF-CONNECTING-IP");
     expect(headersPassedToFetch).toContain("header-4");
+  });
+  it("the proxy should save multiple set-cookie response headers as an array", async () => {
+    const responseHeaders = new Headers();
+    responseHeaders.append("set-cookie", "foo=value1");
+    responseHeaders.append("set-cookie", "bar=value2");
+    responseHeaders.append("Set-Cookie", "cookie=value3");
+    const fetchMock = vi.fn<typeof global.fetch>(
+      async () =>
+        new Response(null, {
+          headers: responseHeaders,
+        }),
+    );
+    globalThis.fetch = fetchMock;
+
+    const { proxy } = fetchProxy;
+
+    const { headers } = await proxy({ headers: {} });
+
+    expect(fetchMock.mock.calls.length).toEqual(1);
+    expect(headers["set-cookie"]).toEqual([
+      "foo=value1",
+      "bar=value2",
+      "cookie=value3",
+    ]);
   });
 });

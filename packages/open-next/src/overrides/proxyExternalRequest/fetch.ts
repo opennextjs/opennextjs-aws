@@ -20,7 +20,14 @@ const fetchProxy: ProxyExternalRequest = {
     });
     const responseHeaders: Record<string, string | string[]> = {};
     response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
+      const cur = responseHeaders[key];
+      if (cur === undefined) {
+        responseHeaders[key] = value;
+      } else if (Array.isArray(cur)) {
+        cur.push(value);
+      } else {
+        responseHeaders[key] = [cur, value];
+      }
     });
     return {
       type: "core",
