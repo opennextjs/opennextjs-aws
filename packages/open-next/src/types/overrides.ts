@@ -190,7 +190,7 @@ export type NextModeTagCache = BaseTagCache & {
    * - **Expired**: at least one tag has fully expired → handled by `hasBeenRevalidated` returning
    *   `true`. This method is only called when `hasBeenRevalidated` returned `false`.
    */
-  hasBeenStale?(tags: string[], lastModified?: number): Promise<boolean>;
+  isStale?(tags: string[], lastModified?: number): Promise<boolean>;
 };
 
 export interface OriginalTagCacheWriteInput {
@@ -242,7 +242,7 @@ export type OriginalTagCache = BaseTagCache & {
    * - **Expired**: at least one tag/path combination has fully expired → handled by `getLastModified`
    *   returning `-1`. This method is only called when the entry is not fully expired.
    */
-  hasBeenStale?(path: string, lastModified?: number): Promise<boolean>;
+  isStale?(path: string, lastModified?: number): Promise<boolean>;
 };
 
 export type TagCache = NextModeTagCache | OriginalTagCache;

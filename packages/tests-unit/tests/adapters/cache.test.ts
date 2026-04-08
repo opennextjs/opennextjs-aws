@@ -41,7 +41,7 @@ describe("CacheHandler", () => {
       .fn()
       .mockResolvedValue(new Date("2024-01-02T00:00:00Z").getTime()),
     writeTags: vi.fn(),
-    hasBeenStale: vi.fn().mockResolvedValue(false),
+    isStale: vi.fn().mockResolvedValue(false),
     getPathsByTags: undefined as Mock | undefined,
   };
   globalThis.tagCache = tagCache;
@@ -184,7 +184,7 @@ describe("CacheHandler", () => {
         it("Should return lastModified as 1 when tag is stale", async () => {
           tagCache.mode = "nextMode";
           tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
-          tagCache.hasBeenStale.mockResolvedValueOnce(true);
+          tagCache.isStale.mockResolvedValueOnce(true);
           const cachedLastModified = Date.now();
           incrementalCache.get.mockResolvedValueOnce({
             value: {
@@ -211,7 +211,7 @@ describe("CacheHandler", () => {
         it("Should return original lastModified when tag is not stale", async () => {
           tagCache.mode = "nextMode";
           tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
-          tagCache.hasBeenStale.mockResolvedValueOnce(false);
+          tagCache.isStale.mockResolvedValueOnce(false);
           const cachedLastModified = Date.now();
           incrementalCache.get.mockResolvedValueOnce({
             value: {
@@ -235,7 +235,7 @@ describe("CacheHandler", () => {
           expect(result?.lastModified).toEqual(cachedLastModified);
         });
 
-        it("Should not call hasBeenStale when shouldBypassTagCache is true", async () => {
+        it("Should not call isStale when shouldBypassTagCache is true", async () => {
           incrementalCache.get.mockResolvedValueOnce({
             value: {
               kind: "FETCH",
@@ -252,7 +252,7 @@ describe("CacheHandler", () => {
 
           await cache.get("key", { kind: "FETCH", tags: ["tag1"] });
 
-          expect(tagCache.hasBeenStale).not.toHaveBeenCalled();
+          expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
     });
@@ -482,7 +482,7 @@ describe("CacheHandler", () => {
         });
 
         it("Should set store.lastModified to 1 when tag is stale", async () => {
-          tagCache.hasBeenStale.mockResolvedValueOnce(true);
+          tagCache.isStale.mockResolvedValueOnce(true);
           const cachedLastModified = Date.now();
           const store: Record<string, any> = {
             pendingPromiseRunner: {
@@ -505,7 +505,7 @@ describe("CacheHandler", () => {
         });
 
         it("Should set store.lastModified to original lastModified when tag is not stale", async () => {
-          tagCache.hasBeenStale.mockResolvedValueOnce(false);
+          tagCache.isStale.mockResolvedValueOnce(false);
           const cachedLastModified = Date.now();
           const store: Record<string, any> = {
             pendingPromiseRunner: {
@@ -524,7 +524,7 @@ describe("CacheHandler", () => {
           expect(store.lastModified).toEqual(cachedLastModified);
         });
 
-        it("Should not call hasBeenStale when shouldBypassTagCache is true", async () => {
+        it("Should not call isStale when shouldBypassTagCache is true", async () => {
           incrementalCache.get.mockResolvedValueOnce({
             value: { type: "route", body: "{}" },
             lastModified: Date.now(),
@@ -533,7 +533,7 @@ describe("CacheHandler", () => {
 
           await cache.get("key", { kindHint: "app" });
 
-          expect(tagCache.hasBeenStale).not.toHaveBeenCalled();
+          expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
     });

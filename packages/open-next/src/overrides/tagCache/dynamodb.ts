@@ -188,7 +188,7 @@ const tagCache: TagCache = {
       return lastModified ?? Date.now();
     }
   },
-  async hasBeenStale(key: string, lastModified?: number) {
+  async isStale(key: string, lastModified?: number) {
     try {
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {
         return false;
@@ -221,7 +221,7 @@ const tagCache: TagCache = {
         items = result.Items ?? [];
         itemsCache?.set(cacheKey, items);
       }
-      debug("hasBeenStale items", key, items);
+      debug("isStale items", key, items);
       return items.length > 0;
     } catch (e) {
       error("Failed to check stale tags", e);

@@ -203,18 +203,18 @@ describe("dynamodb-nextMode tagCache", () => {
     });
   });
 
-  describe("hasBeenStale", () => {
+  describe("isStale", () => {
     it("returns false when disableTagCache is true", async () => {
       globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
 
-      const result = await tagCache.hasBeenStale(["tag1"], 12345);
+      const result = await tagCache.isStale(["tag1"], 12345);
 
       expect(mockFetch).not.toHaveBeenCalled();
       expect(result).toBe(false);
     });
 
     it("returns false when tags array is empty", async () => {
-      const result = await tagCache.hasBeenStale([], 12345);
+      const result = await tagCache.isStale([], 12345);
 
       expect(mockFetch).not.toHaveBeenCalled();
       expect(result).toBe(false);
@@ -223,7 +223,7 @@ describe("dynamodb-nextMode tagCache", () => {
     it("throws RecoverableError when tags.length > 100", async () => {
       const tags = Array.from({ length: 101 }, (_, i) => `tag${i}`);
 
-      await expect(tagCache.hasBeenStale(tags, 0)).rejects.toThrow(
+      await expect(tagCache.isStale(tags, 0)).rejects.toThrow(
         RecoverableError,
       );
     });
@@ -246,7 +246,7 @@ describe("dynamodb-nextMode tagCache", () => {
         }),
       );
 
-      const result = await tagCache.hasBeenStale(["tag1"], lastModified);
+      const result = await tagCache.isStale(["tag1"], lastModified);
 
       expect(result).toBe(false);
     });
@@ -269,7 +269,7 @@ describe("dynamodb-nextMode tagCache", () => {
         }),
       );
 
-      const result = await tagCache.hasBeenStale(["tag1"], lastModified);
+      const result = await tagCache.isStale(["tag1"], lastModified);
 
       expect(result).toBe(true);
     });
@@ -288,7 +288,7 @@ describe("dynamodb-nextMode tagCache", () => {
         }),
       );
 
-      const result = await tagCache.hasBeenStale(["tag1"], 0);
+      const result = await tagCache.isStale(["tag1"], 0);
 
       expect(result).toBe(false);
     });
@@ -301,7 +301,7 @@ describe("dynamodb-nextMode tagCache", () => {
       // First call populates cached tag items
       await tagCache.hasBeenRevalidated(["tag1"], 0);
       // Second call uses the cache — no additional fetch
-      await tagCache.hasBeenStale(["tag1"], 0);
+      await tagCache.isStale(["tag1"], 0);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
@@ -309,7 +309,7 @@ describe("dynamodb-nextMode tagCache", () => {
     it("throws RecoverableError when the response status is not 200", async () => {
       mockFetch.mockResolvedValueOnce({ status: 500, json: vi.fn() });
 
-      await expect(tagCache.hasBeenStale(["tag1"], 0)).rejects.toThrow(
+      await expect(tagCache.isStale(["tag1"], 0)).rejects.toThrow(
         RecoverableError,
       );
     });

@@ -30,10 +30,10 @@ export async function isStale(
   if (globalThis.tagCache.mode === "nextMode") {
     return tags.length === 0
       ? false
-      : ((await globalThis.tagCache.hasBeenStale?.(tags, lastModified)) ??
+      : ((await globalThis.tagCache.isStale?.(tags, lastModified)) ??
           false);
   }
-  return (await globalThis.tagCache.hasBeenStale?.(key, lastModified)) ?? false;
+  return (await globalThis.tagCache.isStale?.(key, lastModified)) ?? false;
 }
 
 

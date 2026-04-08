@@ -190,7 +190,7 @@ export default {
     debug("retrieved tags for hasBeenRevalidated", tags);
     return result;
   },
-  hasBeenStale: async (tags: string[], lastModified?: number) => {
+  isStale: async (tags: string[], lastModified?: number) => {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
       return false;
     }
@@ -220,7 +220,7 @@ export default {
     if (uncachedTags.length === 0) return false;
 
     const result = await fetchAndCacheItems(uncachedTags, itemsCache, compute);
-    debug("hasBeenStale result:", result);
+    debug("isStale result:", result);
     return result;
   },
   writeTags: async (tags) => {

@@ -266,13 +266,13 @@ describe("dynamodb tagCache", () => {
     });
   });
 
-  describe("hasBeenStale", () => {
+  describe("isStale", () => {
     it("returns true when items exist beyond lastModified", async () => {
       mockSend.mockResolvedValueOnce({
         Items: [{ revalidatedAt: { N: "99999" } }],
       });
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(true);
     });
@@ -280,7 +280,7 @@ describe("dynamodb tagCache", () => {
     it("returns false when no items exist", async () => {
       mockSend.mockResolvedValueOnce({ Items: [] });
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(false);
     });
@@ -288,7 +288,7 @@ describe("dynamodb tagCache", () => {
     it("returns false when disableTagCache is true", async () => {
       globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(mockSend).not.toHaveBeenCalled();
       expect(result).toBe(false);
@@ -300,7 +300,7 @@ describe("dynamodb tagCache", () => {
       // First call populates the shared cache
       await tagCache.getLastModified("/key", 100);
       // Second call reuses it
-      const result = await tagCache.hasBeenStale("/key", 100);
+      const result = await tagCache.isStale("/key", 100);
 
       expect(mockSend).toHaveBeenCalledTimes(1);
       expect(result).toBe(false);
@@ -309,7 +309,7 @@ describe("dynamodb tagCache", () => {
     it("returns false on DynamoDB error", async () => {
       mockSend.mockRejectedValueOnce(new Error("DynamoDB error"));
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(false);
     });

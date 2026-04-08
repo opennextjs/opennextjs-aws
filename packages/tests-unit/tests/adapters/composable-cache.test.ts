@@ -32,7 +32,7 @@ describe("Composable cache handler", () => {
     name: "mock",
     mode: "original" as string | undefined,
     hasBeenRevalidated: vi.fn(),
-    hasBeenStale: vi.fn().mockResolvedValue(false),
+    isStale: vi.fn().mockResolvedValue(false),
     getByTag: vi.fn().mockResolvedValue(["path1", "path2"]),
     getByPath: vi.fn().mockResolvedValue(["tag1"]),
     getLastModified: vi
@@ -188,11 +188,11 @@ describe("Composable cache handler", () => {
     it("should return entry with revalidate=-1 when tags are stale in nextMode", async () => {
       tagCache.mode = "nextMode";
       tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
-      tagCache.hasBeenStale.mockResolvedValueOnce(true);
+      tagCache.isStale.mockResolvedValueOnce(true);
 
       const result = await ComposableCache.get("test-key");
 
-      expect(tagCache.hasBeenStale).toHaveBeenCalledWith(
+      expect(tagCache.isStale).toHaveBeenCalledWith(
         ["tag1", "tag2"],
         expect.any(Number),
       );
@@ -203,7 +203,7 @@ describe("Composable cache handler", () => {
     it("should not override revalidate when tags are not stale in nextMode", async () => {
       tagCache.mode = "nextMode";
       tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
-      tagCache.hasBeenStale.mockResolvedValueOnce(false);
+      tagCache.isStale.mockResolvedValueOnce(false);
 
       const result = await ComposableCache.get("test-key");
 
@@ -218,17 +218,17 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(result).toBeUndefined();
-      expect(tagCache.hasBeenStale).not.toHaveBeenCalled();
+      expect(tagCache.isStale).not.toHaveBeenCalled();
     });
 
     it("should return entry with revalidate=-1 when path is stale in original mode", async () => {
       tagCache.mode = "original";
       tagCache.getLastModified.mockResolvedValueOnce(Date.now()); // not expired
-      tagCache.hasBeenStale.mockResolvedValueOnce(true);
+      tagCache.isStale.mockResolvedValueOnce(true);
 
       const result = await ComposableCache.get("test-key");
 
-      expect(tagCache.hasBeenStale).toHaveBeenCalledWith(
+      expect(tagCache.isStale).toHaveBeenCalledWith(
         "test-key",
         expect.any(Number),
       );
@@ -243,7 +243,7 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(result).toBeUndefined();
-      expect(tagCache.hasBeenStale).not.toHaveBeenCalled();
+      expect(tagCache.isStale).not.toHaveBeenCalled();
     });
 
     it("should return pending write promise if available", async () => {

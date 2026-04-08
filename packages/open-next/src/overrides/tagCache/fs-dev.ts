@@ -64,7 +64,7 @@ const tagCache: TagCache = {
       ? -1
       : (lastModified ?? Date.now());
   },
-  hasBeenStale: async (path: string, lastModified?: number) => {
+  isStale: async (path: string, lastModified?: number) => {
     return tags.some((entry) => {
       if (entry.path.S !== buildKey(path)) return false;
       if (!entry.stale?.N) return false;

@@ -273,13 +273,13 @@ describe("dynamodb-lite tagCache", () => {
     });
   });
 
-  describe("hasBeenStale", () => {
+  describe("isStale", () => {
     it("returns true when items exist beyond lastModified", async () => {
       mockFetch.mockResolvedValueOnce(
         makeJsonResponse({ Items: [{ revalidatedAt: { N: "99999" } }] }),
       );
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(true);
     });
@@ -287,7 +287,7 @@ describe("dynamodb-lite tagCache", () => {
     it("returns false when no items exist", async () => {
       mockFetch.mockResolvedValueOnce(makeJsonResponse({ Items: [] }));
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(false);
     });
@@ -295,7 +295,7 @@ describe("dynamodb-lite tagCache", () => {
     it("returns false when disableTagCache is true", async () => {
       globalThis.openNextConfig = { dangerous: { disableTagCache: true } };
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(mockFetch).not.toHaveBeenCalled();
       expect(result).toBe(false);
@@ -304,11 +304,11 @@ describe("dynamodb-lite tagCache", () => {
     it("reuses cached items with getLastModified for the same key+lastModified", async () => {
       mockFetch.mockResolvedValueOnce(makeJsonResponse({ Items: [] }));
 
-      // getLastModified does NOT share cache with hasBeenStale in dynamodb-lite
-      // (getLastModified caches the numeric result; hasBeenStale caches raw items)
-      // Both keys bring their own fetch, but hasBeenStale cache key uses raw items
-      await tagCache.hasBeenStale("/key", 100);
-      await tagCache.hasBeenStale("/key", 100);
+      // getLastModified does NOT share cache with isStale in dynamodb-lite
+      // (getLastModified caches the numeric result; isStale caches raw items)
+      // Both keys bring their own fetch, but isStale cache key uses raw items
+      await tagCache.isStale("/key", 100);
+      await tagCache.isStale("/key", 100);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
@@ -316,7 +316,7 @@ describe("dynamodb-lite tagCache", () => {
     it("returns false on fetch error", async () => {
       mockFetch.mockRejectedValueOnce(new Error("fetch error"));
 
-      const result = await tagCache.hasBeenStale("/key", 12345);
+      const result = await tagCache.isStale("/key", 12345);
 
       expect(result).toBe(false);
     });

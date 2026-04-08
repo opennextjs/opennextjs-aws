@@ -52,7 +52,7 @@ export default {
     debug("hasBeenRevalidated result:", hasRevalidatedTag);
     return hasRevalidatedTag;
   },
-  hasBeenStale: async (tags: string[], lastModified?: number) => {
+  isStale: async (tags: string[], lastModified?: number) => {
     if (globalThis.openNextConfig.dangerous?.disableTagCache) {
       return false;
     }
@@ -63,7 +63,7 @@ export default {
       }
       return tagData.stale > (lastModified ?? 0);
     });
-    debug("hasBeenStale result:", hasStaleTag);
+    debug("isStale result:", hasStaleTag);
     return hasStaleTag;
   },
   writeTags: async (tags) => {
