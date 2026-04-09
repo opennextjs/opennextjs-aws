@@ -64,7 +64,7 @@
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "next": "~15.0.8 || ~15.1.12 || ~15.2.9 || ~15.3.9 || ~15.4.11 || ~15.5.10 || ~16.0.11 || ^16.1.5"
+    "next": ">=15.5.15 || >=16.2.3"
   },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"
