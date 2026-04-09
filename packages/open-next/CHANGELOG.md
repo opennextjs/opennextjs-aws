@@ -1,5 +1,15 @@
 # open-next
 
+## 3.10.1
+
+### Patch Changes
+
+- [#1137](https://github.com/opennextjs/opennextjs-aws/pull/1137) [`4db87785105bf1fe4fbb344ca76dd9ea83b084cd`](https://github.com/opennextjs/opennextjs-aws/commit/4db87785105bf1fe4fbb344ca76dd9ea83b084cd) Thanks [@vicb](https://github.com/vicb)! - fix for Next.js CVE-2026-23869
+
+  See the [CVE-2026-23869 summary](https://vercel.com/changelog/summary-of-cve-2026-23869) for details.
+
+  This CVE is fixed by bumping the minium Next.js release version to 15.5.15/16.2.3
+
 ## 3.10.0
 
 ### Minor Changes
