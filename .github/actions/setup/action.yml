@@ -20,9 +20,13 @@ runs:
     # Ensure npm 11.5.1 or later is installed
     # See https://docs.npmjs.com/trusted-publishers
     # Note that pnpm publish runs npm publish
+    #
+    # Pinned to 11.5.1 because `npm install -g npm@latest` fails on Node 22
+    # with "Cannot find module 'promise-retry'" (npm self-upgrade incompatibility).
+    # TODO: Update node-version to 24 in pre-release.yml instead.
     - name: Update npm
       shell: bash
-      run: npm install -g npm@latest
+      run: npm install -g npm@11.5.1
 
     # Install pnpm. https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v4
