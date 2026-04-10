@@ -22,9 +22,11 @@ export type RuleConfig = NapiConfig & { fix?: string };
 /**
  * Returns the `Edit`s and `Match`es for an ast-grep rule in yaml format
  *
- * The rule must have a `fix` to rewrite the matched node.
- *
- * Tip: use https://ast-grep.github.io/playground.html to create rules.
+ * Notes:
+ * - The rule must not contain a `transform` field
+ * - The rule may contain a `fix` field, which is used to generate the edits.
+ *   If not provided, no edits will be generated and the matches will be returned as is.
+ * - You can use https://ast-grep.github.io/playground.html to create and verify rules.
  *
  * @param rule The rule. Either a yaml string or an instance of `RuleConfig`
  * @param root The root node
@@ -44,11 +46,6 @@ export function applyRule(
   if (ruleConfig.transform) {
     throw new Error("transform is not supported");
   }
-  if (!ruleConfig.fix) {
-    throw new Error("no fix to apply");
-  }
-
-  const fix = ruleConfig.fix;
 
   const matches = once
     ? [root.find(ruleConfig)].filter((m) => m !== null)
@@ -56,24 +53,28 @@ export function applyRule(
 
   const edits: Edit[] = [];
 
-  matches.forEach((match) => {
-    edits.push(
-      match.replace(
-        // Replace known placeholders by their value
-        fix
-          .replace(/\$\$\$([A-Z0-9_]+)/g, (_m, name) =>
-            match
-              .getMultipleMatches(name)
-              .map((n) => n.text())
-              .join(""),
-          )
-          .replace(
-            /\$([A-Z0-9_]+)/g,
-            (m, name) => match.getMatch(name)?.text() ?? m,
-          ),
-      ),
-    );
-  });
+  const fix = ruleConfig.fix;
+
+  if (fix !== undefined) {
+    matches.forEach((match) => {
+      edits.push(
+        match.replace(
+          // Replace known placeholders by their value
+          fix
+            .replace(/\$\$\$([A-Z0-9_]+)/g, (_m, name) =>
+              match
+                .getMultipleMatches(name)
+                .map((n) => n.text())
+                .join(""),
+            )
+            .replace(
+              /\$([A-Z0-9_]+)/g,
+              (m, name) => match.getMatch(name)?.text() ?? m,
+            ),
+        ),
+      );
+    });
+  }
 
   return { edits, matches };
 }
@@ -83,10 +84,21 @@ export function applyRule(
  *
  * @param path The file path
  * @param lang The language to parse. Defaults to TypeScript.
- * @returns The root for the file.
+ * @returns The root node for the file.
  */
 export function parseFile(path: string, lang = Lang.TypeScript): SgNode {
-  return parse(lang, readFileSync(path, { encoding: "utf-8" })).root();
+  return parseCode(readFileSync(path, { encoding: "utf-8" }), lang);
+}
+
+/**
+ * Parse a code string and obtain its root.
+ *
+ * @param code The code string
+ * @param lang The language to parse. Defaults to TypeScript.
+ * @returns The root node for the code string.
+ */
+export function parseCode(code: string, lang = Lang.TypeScript): SgNode {
+  return parse(lang, code).root();
 }
 
 /**
