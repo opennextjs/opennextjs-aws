@@ -209,8 +209,9 @@ export default {
     const compute = (item: any): boolean => {
       if (!item?.stale?.N) return false;
       const revalidatedAt = Number.parseInt(item.revalidatedAt?.N ?? "0");
-      // Only stale if the tag was revalidated after the cache entry was built
-      // and lastModified is before the stale window.
+      // A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+				// revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+				// after the page was generated, preventing a stale signal from a previous ISR cycle.
       return (
         revalidatedAt > (lastModified ?? 0) &&
         Number.parseInt(item.stale.N) >= (lastModified ?? 0)

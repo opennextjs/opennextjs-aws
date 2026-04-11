@@ -61,8 +61,9 @@ export default {
       if (!tagData || typeof tagData.stale !== "number") {
         return false;
       }
-      // Only stale if the tag was revalidated after the cache entry was built
-      // and lastModified is before the stale window.
+      // A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+      // revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+      // after the page was generated, preventing a stale signal from a previous ISR cycle.
       return (
         tagData.revalidatedAt > (lastModified ?? 0) &&
         tagData.stale >= (lastModified ?? 0)
