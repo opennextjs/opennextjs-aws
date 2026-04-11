@@ -208,7 +208,13 @@ export default {
 
     const compute = (item: any): boolean => {
       if (!item?.stale?.N) return false;
-      return Number.parseInt(item.stale.N) > (lastModified ?? 0);
+      const revalidatedAt = Number.parseInt(item.revalidatedAt?.N ?? "0");
+      // Only stale if the tag was revalidated after the cache entry was built
+      // and lastModified is before the stale window.
+      return (
+        revalidatedAt > (lastModified ?? 0) &&
+        Number.parseInt(item.stale.N) >= (lastModified ?? 0)
+      );
     };
 
     const { uncachedTags, hasMatch } = checkItemsCache(

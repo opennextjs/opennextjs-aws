@@ -68,7 +68,12 @@ const tagCache: TagCache = {
     return tags.some((entry) => {
       if (entry.path.S !== buildKey(path)) return false;
       if (!entry.stale?.N) return false;
-      return Number.parseInt(entry.stale.N) > (lastModified ?? 0);
+      // Only stale if the tag was revalidated after the cache entry was built
+      // and lastModified is before the stale window.
+      return (
+        Number.parseInt(entry.revalidatedAt.N) > (lastModified ?? 0) &&
+        Number.parseInt(entry.stale.N) > (lastModified ?? 0)
+      );
     });
   },
   writeTags: async (newTags) => {

@@ -249,9 +249,10 @@ describe("dynamodb-nextMode tagCache", () => {
       expect(result).toBe(false);
     });
 
-    it("returns true when a tag has a stale timestamp after lastModified", async () => {
+    it("returns true when a tag has a stale timestamp after lastModified and revalidatedAt is also after lastModified", async () => {
       const lastModified = 50000;
-      const stale = 80000;
+      const revalidatedAt = 60000; // after lastModified
+      const stale = 80000; // >= lastModified
 
       mockFetch.mockResolvedValueOnce(
         makeJsonResponse({
@@ -259,7 +260,7 @@ describe("dynamodb-nextMode tagCache", () => {
             [TABLE_NAME]: [
               {
                 tag: { S: buildKey("tag1") },
-                revalidatedAt: { N: "1000" },
+                revalidatedAt: { N: String(revalidatedAt) },
                 stale: { N: String(stale) },
               },
             ],
@@ -270,6 +271,30 @@ describe("dynamodb-nextMode tagCache", () => {
       const result = await tagCache.isStale(["tag1"], lastModified);
 
       expect(result).toBe(true);
+    });
+
+    it("returns false when stale >= lastModified but revalidatedAt <= lastModified", async () => {
+      const lastModified = 50000;
+      const revalidatedAt = 40000; // before lastModified
+      const stale = 80000; // >= lastModified, but revalidatedAt fails the check
+
+      mockFetch.mockResolvedValueOnce(
+        makeJsonResponse({
+          Responses: {
+            [TABLE_NAME]: [
+              {
+                tag: { S: buildKey("tag1") },
+                revalidatedAt: { N: String(revalidatedAt) },
+                stale: { N: String(stale) },
+              },
+            ],
+          },
+        }),
+      );
+
+      const result = await tagCache.isStale(["tag1"], lastModified);
+
+      expect(result).toBe(false);
     });
 
     it("returns false when the tag has no stale field", async () => {

@@ -61,7 +61,12 @@ export default {
       if (!tagData || typeof tagData.stale !== "number") {
         return false;
       }
-      return tagData.stale > (lastModified ?? 0);
+      // Only stale if the tag was revalidated after the cache entry was built
+      // and lastModified is before the stale window.
+      return (
+        tagData.revalidatedAt > (lastModified ?? 0) &&
+        tagData.stale >= (lastModified ?? 0)
+      );
     });
     debug("isStale result:", hasStaleTag);
     return hasStaleTag;
