@@ -68,11 +68,15 @@ async function computeCacheControl(
       etag,
     };
   }
-  const isTimeStale = finalRevalidate !== CACHE_ONE_YEAR && Math.max(finalRevalidate - age, 1) === 1;
+  const isTimeStale =
+    finalRevalidate !== CACHE_ONE_YEAR &&
+    Math.max(finalRevalidate - age, 1) === 1;
   const isStale = isTimeStale || isStaleFromTagCache;
 
   if (finalRevalidate !== CACHE_ONE_YEAR || isStaleFromTagCache) {
-    const sMaxAge = isStaleFromTagCache ? 1 : Math.max(finalRevalidate - age, 1);
+    const sMaxAge = isStaleFromTagCache
+      ? 1
+      : Math.max(finalRevalidate - age, 1);
     debug("sMaxAge", {
       finalRevalidate,
       age,

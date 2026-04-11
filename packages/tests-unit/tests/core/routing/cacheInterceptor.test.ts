@@ -763,7 +763,8 @@ describe("cacheInterceptor", () => {
       expect(result).toEqual(
         expect.objectContaining({
           headers: expect.objectContaining({
-            "cache-control": "s-maxage=31536000, stale-while-revalidate=2592000",
+            "cache-control":
+              "s-maxage=31536000, stale-while-revalidate=2592000",
             "x-opennext-cache": "HIT",
           }),
         }),
