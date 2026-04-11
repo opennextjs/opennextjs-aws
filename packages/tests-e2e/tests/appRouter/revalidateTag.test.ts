@@ -139,17 +139,20 @@ test("Revalidate tag - stale data served first", async ({ page, request }) => {
   expect(freshTime).not.toEqual(originalTime);
 
   // Now we want to verfiy that the next entries stays fresh (HIT) after the first stale entry
-	responsePromise = page.waitForResponse(
-		(response) => response.url().includes("/revalidate-tag/stale") && response.status() === 200
-	);
-	await page.goto("/revalidate-tag/stale");
-	const finalResponse = await responsePromise;
-	const finalHeaders = finalResponse.headers();
-	const finalCache = finalHeaders["x-nextjs-cache"] ?? finalHeaders["x-opennext-cache"];
-	expect(finalCache).toEqual("HIT");
+  responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/revalidate-tag/stale") &&
+      response.status() === 200,
+  );
+  await page.goto("/revalidate-tag/stale");
+  const finalResponse = await responsePromise;
+  const finalHeaders = finalResponse.headers();
+  const finalCache =
+    finalHeaders["x-nextjs-cache"] ?? finalHeaders["x-opennext-cache"];
+  expect(finalCache).toEqual("HIT");
 
-	const finalTime = await page.getByTestId("cached-time").textContent();
-	expect(finalTime).toEqual(freshTime);
+  const finalTime = await page.getByTestId("cached-time").textContent();
+  expect(finalTime).toEqual(freshTime);
 });
 
 test("Revalidate path", async ({ page, request }) => {
