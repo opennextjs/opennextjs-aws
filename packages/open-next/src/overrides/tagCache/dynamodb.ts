@@ -15,7 +15,8 @@ import {
   getDynamoBatchWriteCommandConcurrency,
 } from "./constants";
 
-const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, OPEN_NEXT_BUILD_ID } = process.env;
+const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, OPEN_NEXT_BUILD_ID } =
+  process.env;
 
 function parseDynamoClientConfigFromEnv(): DynamoDBClientConfig {
   return {
@@ -117,7 +118,8 @@ const tagCache: TagCache = {
       // We need to remove the buildId from the path
       const paths =
         Items?.map(
-          ({ path: { S: key } }) => key?.replace(`${OPEN_NEXT_BUILD_ID}/`, "") ?? "",
+          ({ path: { S: key } }) =>
+            key?.replace(`${OPEN_NEXT_BUILD_ID}/`, "") ?? "",
         ) ?? [];
       cache?.set(tag, paths);
       return paths;
