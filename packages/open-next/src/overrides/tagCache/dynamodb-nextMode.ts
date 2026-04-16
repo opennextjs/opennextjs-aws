@@ -50,10 +50,10 @@ const awsFetch = (
 };
 
 function buildDynamoKey(key: string) {
-  const { NEXT_BUILD_ID } = process.env;
+  const { OPEN_NEXT_BUILD_ID } = process.env;
   // FIXME: We should probably use something else than path.join here
   // this could transform some fetch cache key into a valid path
-  return path.posix.join(NEXT_BUILD_ID ?? "", "_tag", key);
+  return path.posix.join(OPEN_NEXT_BUILD_ID ?? "", "_tag", key);
 }
 
 // We use the same key for both path and tag

@@ -4,7 +4,7 @@ import path from "node:path";
 import type { IncrementalCache } from "types/overrides.js";
 import { getMonorepoRelativePath } from "utils/normalize-path";
 
-const buildId = process.env.NEXT_BUILD_ID;
+const buildId = process.env.OPEN_NEXT_BUILD_ID;
 const basePath = path.join(getMonorepoRelativePath(), `cache/${buildId}`);
 
 const getCacheKey = (key: string) => {

@@ -41,8 +41,8 @@ const awsFetch = (body: RequestInit["body"], type: "get" | "set" = "get") => {
 };
 
 const buildDynamoKey = (key: string) => {
-  const { NEXT_BUILD_ID } = process.env;
-  return `__meta_${NEXT_BUILD_ID}_${key}`;
+  const { OPEN_NEXT_BUILD_ID } = process.env;
+  return `__meta_${OPEN_NEXT_BUILD_ID}_${key}`;
 };
 
 /**

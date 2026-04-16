@@ -15,7 +15,7 @@ import {
   getDynamoBatchWriteCommandConcurrency,
 } from "./constants";
 
-const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+const { CACHE_BUCKET_REGION, CACHE_DYNAMO_TABLE, OPEN_NEXT_BUILD_ID } = process.env;
 
 function parseDynamoClientConfigFromEnv(): DynamoDBClientConfig {
   return {
@@ -30,7 +30,7 @@ const dynamoClient = new DynamoDBClient(parseDynamoClientConfigFromEnv());
 function buildDynamoKey(key: string) {
   // FIXME: We should probably use something else than path.join here
   // this could transform some fetch cache key into a valid path
-  return path.posix.join(NEXT_BUILD_ID ?? "", key);
+  return path.posix.join(OPEN_NEXT_BUILD_ID ?? "", key);
 }
 
 function buildDynamoObject(
@@ -81,7 +81,7 @@ const tagCache: TagCache = {
       debug("tags for path", path, tags);
       // We need to remove the buildId from the path
       const resultTags = tags.map((tag) =>
-        tag.replace(`${NEXT_BUILD_ID}/`, ""),
+        tag.replace(`${OPEN_NEXT_BUILD_ID}/`, ""),
       );
       cache?.set(path, resultTags);
       return resultTags;
@@ -117,7 +117,7 @@ const tagCache: TagCache = {
       // We need to remove the buildId from the path
       const paths =
         Items?.map(
-          ({ path: { S: key } }) => key?.replace(`${NEXT_BUILD_ID}/`, "") ?? "",
+          ({ path: { S: key } }) => key?.replace(`${OPEN_NEXT_BUILD_ID}/`, "") ?? "",
         ) ?? [];
       cache?.set(tag, paths);
       return paths;
