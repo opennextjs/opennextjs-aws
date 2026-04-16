@@ -68,15 +68,16 @@ async function computeCacheControl(
       etag,
     };
   }
-  const isTimeStale =
-    finalRevalidate !== CACHE_ONE_YEAR &&
-    Math.max(finalRevalidate - age, 1) === 1;
-  const isStale = isTimeStale || isStaleFromTagCache;
 
-  if (finalRevalidate !== CACHE_ONE_YEAR || isStaleFromTagCache) {
-    const sMaxAge = isStaleFromTagCache
-      ? 1
-      : Math.max(finalRevalidate - age, 1);
+  // SSG uses one year cache
+  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
+  const remainingTtl = Math.max(finalRevalidate - age, 1);
+
+  const isStaleFromTime = !isSSG && remainingTtl === 1;
+  const isStale = isStaleFromTime || isStaleFromTagCache;
+
+  if (!isSSG || isStaleFromTagCache) {
+    const sMaxAge = isStaleFromTagCache ? 1 : remainingTtl;
     debug("sMaxAge", {
       finalRevalidate,
       age,
@@ -286,13 +287,12 @@ export async function cacheInterceptor(
       if (!cachedData?.value) {
         return event;
       }
+      const tags = getTagsFromValue(cachedData.value);
       // We need to check the tag cache now
       if (
         cachedData.value?.type === "app" ||
         cachedData.value?.type === "route"
       ) {
-        const tags = getTagsFromValue(cachedData.value);
-
         const _hasBeenRevalidated = cachedData.shouldBypassTagCache
           ? false
           : await hasBeenRevalidated(localizedPath, tags, cachedData);
@@ -303,7 +303,6 @@ export async function cacheInterceptor(
       }
 
       // Check if the cache entry is stale (valid but needs background revalidation)
-      const tags = getTagsFromValue(cachedData.value);
       const _isStale = cachedData.shouldBypassTagCache
         ? false
         : await isStale(
