@@ -59,9 +59,11 @@ const incrementalCache = {
 
 const tagCache = {
   name: "mock",
+  mode: "original",
   getByTag: vi.fn(),
   getByPath: vi.fn(),
   getLastModified: vi.fn(),
+  isStale: vi.fn().mockResolvedValue(false),
   writeTags: vi.fn(),
 };
 
@@ -74,6 +76,7 @@ declare global {
   var queue: Queue;
   var incrementalCache: any;
   var tagCache: any;
+  var nextVersion: string;
 }
 
 globalThis.incrementalCache = incrementalCache;
@@ -83,6 +86,7 @@ globalThis.queue = queue;
 beforeEach(() => {
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
   vi.clearAllMocks();
+  globalThis.nextVersion = "16.0.0";
   globalThis.openNextConfig = {
     dangerous: {
       disableTagCache: false,
@@ -651,6 +655,121 @@ describe("cacheInterceptor", () => {
       expect(body).toEqual("RSC content");
       expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+  });
+
+  describe("isStale", () => {
+    it("should serve stale app content when isStale returns true", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      const result = await cacheInterceptor(event);
+
+      const body = await fromReadableStream(result.body);
+      expect(body).toEqual("Hello, world!");
+      expect(result).toEqual(
+        expect.objectContaining({
+          type: "core",
+          headers: expect.objectContaining({
+            "cache-control": "s-maxage=1, stale-while-revalidate=2592000",
+            "x-opennext-cache": "STALE",
+          }),
+        }),
+      );
+      expect(queue.send).toHaveBeenCalled();
+    });
+
+    it("should serve stale route content when isStale returns true", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "route",
+          body: "API response",
+          meta: {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+          revalidate: 300,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "cache-control": "s-maxage=1, stale-while-revalidate=2592000",
+            "x-opennext-cache": "STALE",
+          }),
+        }),
+      );
+      expect(queue.send).toHaveBeenCalled();
+    });
+
+    it("should not check isStale when shouldBypassTagCache is true", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+        shouldBypassTagCache: true,
+      });
+
+      await cacheInterceptor(event);
+
+      expect(tagCache.isStale).not.toHaveBeenCalled();
+    });
+
+    it("should not call isStale when nextVersion is below 16", async () => {
+      globalThis.nextVersion = "15.0.0";
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(tagCache.isStale).not.toHaveBeenCalled();
+    });
+
+    it("should serve fresh content when isStale returns false", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+      tagCache.isStale.mockResolvedValueOnce(false);
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            "cache-control":
+              "s-maxage=31536000, stale-while-revalidate=2592000",
+            "x-opennext-cache": "HIT",
+          }),
+        }),
+      );
+      expect(queue.send).not.toHaveBeenCalled();
     });
   });
 });

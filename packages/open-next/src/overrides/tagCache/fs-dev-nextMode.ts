@@ -61,7 +61,13 @@ export default {
       if (!tagData || typeof tagData.stale !== "number") {
         return false;
       }
-      return tagData.stale > (lastModified ?? 0);
+      // A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+      // revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+      // after the page was generated, preventing a stale signal from a previous ISR cycle.
+      return (
+        tagData.revalidatedAt > (lastModified ?? 0) &&
+        tagData.stale >= (lastModified ?? 0)
+      );
     });
     debug("isStale result:", hasStaleTag);
     return hasStaleTag;

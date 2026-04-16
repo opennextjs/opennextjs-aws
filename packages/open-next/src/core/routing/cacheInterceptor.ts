@@ -10,7 +10,7 @@ import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
-import { getTagsFromValue, hasBeenRevalidated } from "utils/cache";
+import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
 import { debug, error } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
@@ -39,6 +39,7 @@ async function computeCacheControl(
   host: string,
   revalidate?: number | false,
   lastModified?: number,
+  isStaleFromTagCache = false,
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
@@ -67,19 +68,26 @@ async function computeCacheControl(
       etag,
     };
   }
-  if (finalRevalidate !== CACHE_ONE_YEAR) {
-    const sMaxAge = Math.max(finalRevalidate - age, 1);
+
+  // SSG uses one year cache
+  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
+  const remainingTtl = Math.max(finalRevalidate - age, 1);
+
+  const isStaleFromTime = !isSSG && remainingTtl === 1;
+  const isStale = isStaleFromTime || isStaleFromTagCache;
+
+  if (!isSSG || isStaleFromTagCache) {
+    const sMaxAge = isStaleFromTagCache ? 1 : remainingTtl;
     debug("sMaxAge", {
       finalRevalidate,
       age,
       lastModified,
       revalidate,
+      isStaleFromTagCache,
     });
-    const isStale = sMaxAge === 1;
     if (isStale) {
       let url = NextConfig.trailingSlash ? `${path}/` : path;
       if (NextConfig.basePath) {
-        // We need to add the basePath to the url
         url = `${NextConfig.basePath}${url}`;
       }
       await globalThis.queue.send({
@@ -140,6 +148,7 @@ async function generateResult(
   localizedPath: string,
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
+  isStaleFromTagCache = false,
 ): Promise<InternalResult> {
   debug("Returning result from experimental cache");
   let body = "";
@@ -172,6 +181,7 @@ async function generateResult(
     event.headers.host,
     cachedValue.revalidate,
     lastModified,
+    isStaleFromTagCache,
   );
   return {
     type: "core",
@@ -277,13 +287,12 @@ export async function cacheInterceptor(
       if (!cachedData?.value) {
         return event;
       }
+      const tags = getTagsFromValue(cachedData.value);
       // We need to check the tag cache now
       if (
         cachedData.value?.type === "app" ||
         cachedData.value?.type === "route"
       ) {
-        const tags = getTagsFromValue(cachedData.value);
-
         const _hasBeenRevalidated = cachedData.shouldBypassTagCache
           ? false
           : await hasBeenRevalidated(localizedPath, tags, cachedData);
@@ -292,6 +301,16 @@ export async function cacheInterceptor(
           return event;
         }
       }
+
+      // Check if the cache entry is stale (valid but needs background revalidation)
+      const _isStale = cachedData.shouldBypassTagCache
+        ? false
+        : await isStale(
+            localizedPath,
+            tags,
+            cachedData.lastModified ?? Date.now(),
+          );
+
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
         case "app":
@@ -301,6 +320,7 @@ export async function cacheInterceptor(
             localizedPath,
             cachedData.value,
             cachedData.lastModified,
+            _isStale,
           );
         case "redirect": {
           const cacheControl = await computeCacheControl(
@@ -309,6 +329,7 @@ export async function cacheInterceptor(
             host,
             cachedData.value.revalidate,
             cachedData.lastModified,
+            _isStale,
           );
           return {
             type: "core",
@@ -329,6 +350,7 @@ export async function cacheInterceptor(
             host,
             cachedData.value.revalidate,
             cachedData.lastModified,
+            _isStale,
           );
 
           const isBinary = isBinaryContentType(

@@ -68,7 +68,13 @@ const tagCache: TagCache = {
     return tags.some((entry) => {
       if (entry.path.S !== buildKey(path)) return false;
       if (!entry.stale?.N) return false;
-      return Number.parseInt(entry.stale.N) > (lastModified ?? 0);
+      // A tag is stale when both its stale timestamp and its revalidatedAt are newer than the page.
+      // revalidatedAt > lastModified ensures the revalidation that set this stale window happened
+      // after the page was generated, preventing a stale signal from a previous ISR cycle.
+      return (
+        Number.parseInt(entry.revalidatedAt.N) > (lastModified ?? 0) &&
+        Number.parseInt(entry.stale.N) > (lastModified ?? 0)
+      );
     });
   },
   writeTags: async (newTags) => {
