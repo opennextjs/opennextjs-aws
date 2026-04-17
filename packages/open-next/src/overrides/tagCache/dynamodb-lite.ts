@@ -51,10 +51,10 @@ const awsFetch = (
 };
 
 function buildDynamoKey(key: string) {
-  const { NEXT_BUILD_ID } = process.env;
+  const { OPEN_NEXT_BUILD_ID } = process.env;
   // FIXME: We should probably use something else than path.join here
   // this could transform some fetch cache key into a valid path
-  return path.posix.join(NEXT_BUILD_ID ?? "", key);
+  return path.posix.join(OPEN_NEXT_BUILD_ID ?? "", key);
 }
 
 function buildDynamoObject(
@@ -81,7 +81,7 @@ const tagCache: TagCache = {
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {
         return [];
       }
-      const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+      const { CACHE_DYNAMO_TABLE, OPEN_NEXT_BUILD_ID } = process.env;
       const store = globalThis.__openNextAls.getStore();
       const cache = store?.requestCache.getOrCreate<string, string[]>(
         "dynamoDb:getByPath",
@@ -113,7 +113,7 @@ const tagCache: TagCache = {
       debug("tags for path", path, tags);
       // We need to remove the buildId from the path
       const resultTags = tags.map((tag: string) =>
-        tag.replace(`${NEXT_BUILD_ID}/`, ""),
+        tag.replace(`${OPEN_NEXT_BUILD_ID}/`, ""),
       );
       cache?.set(path, resultTags);
       return resultTags;
@@ -127,7 +127,7 @@ const tagCache: TagCache = {
       if (globalThis.openNextConfig.dangerous?.disableTagCache) {
         return [];
       }
-      const { CACHE_DYNAMO_TABLE, NEXT_BUILD_ID } = process.env;
+      const { CACHE_DYNAMO_TABLE, OPEN_NEXT_BUILD_ID } = process.env;
       const store = globalThis.__openNextAls.getStore();
       const cache = store?.requestCache.getOrCreate<string, string[]>(
         "dynamoDb:getByTag",
@@ -155,7 +155,7 @@ const tagCache: TagCache = {
       const paths =
         Items?.map(
           ({ path: { S: key } }: any) =>
-            key?.replace(`${NEXT_BUILD_ID}/`, "") ?? "",
+            key?.replace(`${OPEN_NEXT_BUILD_ID}/`, "") ?? "",
         ) ?? [];
       cache?.set(tag, paths);
       return paths;

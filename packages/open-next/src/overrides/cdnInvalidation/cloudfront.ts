@@ -19,7 +19,7 @@ export default {
           ? [`/${path}`, `/${path}?_rsc=*`]
           : [
               `/${path}`,
-              `/_next/data/${process.env.NEXT_BUILD_ID}${path === "/" ? "/index" : `/${path}`}.json*`,
+              `/_next/data/${process.env.OPEN_NEXT_BUILD_ID}${path === "/" ? "/index" : `/${path}`}.json*`,
             ];
       },
     );

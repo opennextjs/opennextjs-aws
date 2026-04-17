@@ -34,11 +34,11 @@ const awsFetch = async (key: string, options: RequestInit) => {
 };
 
 function buildS3Key(key: string, extension: Extension) {
-  const { CACHE_BUCKET_KEY_PREFIX, NEXT_BUILD_ID } = process.env;
+  const { CACHE_BUCKET_KEY_PREFIX, OPEN_NEXT_BUILD_ID } = process.env;
   return path.posix.join(
     CACHE_BUCKET_KEY_PREFIX ?? "",
     extension === "fetch" ? "__fetch" : "",
-    NEXT_BUILD_ID ?? "",
+    OPEN_NEXT_BUILD_ID ?? "",
     extension === "fetch" ? key : `${key}.${extension}`,
   );
 }

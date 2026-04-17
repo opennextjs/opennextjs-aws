@@ -195,6 +195,7 @@ ${contents}
   export const PagesManifest = ${JSON.stringify(PagesManifest)};
 
   process.env.NEXT_BUILD_ID = BuildId;
+  process.env.OPEN_NEXT_BUILD_ID = NextConfig.deploymentId ?? BuildId;
   process.env.NEXT_PREVIEW_MODE_ID = PrerenderManifest?.preview?.previewModeId;
 `;
           return { contents };
