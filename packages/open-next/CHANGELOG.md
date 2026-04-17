@@ -1,5 +1,20 @@
 # open-next
 
+## 3.10.2
+
+### Patch Changes
+
+- [#1142](https://github.com/opennextjs/opennextjs-aws/pull/1142) [`d7286a305477f7c967ae9c34ff9d2c63ee782dc0`](https://github.com/opennextjs/opennextjs-aws/commit/d7286a305477f7c967ae9c34ff9d2c63ee782dc0) Thanks [@conico974](https://github.com/conico974)! - Fix cache interceptor isStale handling for Next 16+
+  Fix next mode tag cache not retrieving stale data properly
+
+- [#1140](https://github.com/opennextjs/opennextjs-aws/pull/1140) [`ae93c945788ba2c92d8a2b74b537b5ba917aee72`](https://github.com/opennextjs/opennextjs-aws/commit/ae93c945788ba2c92d8a2b74b537b5ba917aee72) Thanks [@vicb](https://github.com/vicb)! - fix(ci): pin npm@11.5.1 to fix pre-release workflow
+
+  `npm install -g npm@latest` fails on Node 22 with "Cannot find module 'promise-retry'".
+
+- [#1139](https://github.com/opennextjs/opennextjs-aws/pull/1139) [`4bdfd292f985913f3298eb3f30a7790b877e0464`](https://github.com/opennextjs/opennextjs-aws/commit/4bdfd292f985913f3298eb3f30a7790b877e0464) Thanks [@vicb](https://github.com/vicb)! - `applyRule` does not require a `fix` field
+
+- [#1144](https://github.com/opennextjs/opennextjs-aws/pull/1144) [`1b5a6595dd0226e4bedcf34f8c7a4b3f37621063`](https://github.com/opennextjs/opennextjs-aws/commit/1b5a6595dd0226e4bedcf34f8c7a4b3f37621063) Thanks [@conico974](https://github.com/conico974)! - Deprecate NEXT_BUILD_ID env variable, and replace it with OPEN_NEXT_BUILD_ID
+
 ## 3.10.1
 
 ### Patch Changes
