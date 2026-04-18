@@ -19,10 +19,10 @@ let tags = JSON.parse(tagContent) as {
   expire?: { N: string };
 }[];
 
-const { NEXT_BUILD_ID } = process.env;
+const { OPEN_NEXT_BUILD_ID } = process.env;
 
 function buildKey(key: string) {
-  return path.posix.join(NEXT_BUILD_ID ?? "", key);
+  return path.posix.join(OPEN_NEXT_BUILD_ID ?? "", key);
 }
 
 const tagCache: TagCache = {
@@ -31,12 +31,12 @@ const tagCache: TagCache = {
   getByPath: async (path: string) => {
     return tags
       .filter((tagPathMapping) => tagPathMapping.path.S === buildKey(path))
-      .map((tag) => tag.tag.S.replace(`${NEXT_BUILD_ID}/`, ""));
+      .map((tag) => tag.tag.S.replace(`${OPEN_NEXT_BUILD_ID}/`, ""));
   },
   getByTag: async (tag: string) => {
     return tags
       .filter((tagPathMapping) => tagPathMapping.tag.S === buildKey(tag))
-      .map((tagEntry) => tagEntry.path.S.replace(`${NEXT_BUILD_ID}/`, ""));
+      .map((tagEntry) => tagEntry.path.S.replace(`${OPEN_NEXT_BUILD_ID}/`, ""));
   },
   getLastModified: async (path: string, lastModified?: number) => {
     // Check if any tag has expired

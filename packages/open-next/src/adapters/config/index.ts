@@ -41,5 +41,10 @@ export const AppPathRoutesManifest =
 export const FunctionsConfigManifest =
   /* @__PURE__ */ loadFunctionsConfigManifest(NEXT_DIR);
 
+/**
+ * @deprecated Do not use NEXT_BUILD_ID above Next 16.2, as it could be a fixed value if used in conjonction with deploymentId
+ * We keep it for backward compatibility
+ */
 process.env.NEXT_BUILD_ID = BuildId;
+process.env.OPEN_NEXT_BUILD_ID = NextConfig.deploymentId ?? BuildId;
 process.env.NEXT_PREVIEW_MODE_ID = PrerenderManifest?.preview?.previewModeId;

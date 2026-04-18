@@ -42,7 +42,7 @@ function makeJsonResponse(body: unknown, status = 200) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_BUILD_ID = BUILD_ID;
+  process.env.OPEN_NEXT_BUILD_ID = BUILD_ID;
   process.env.CACHE_DYNAMO_TABLE = TABLE_NAME;
   process.env.CACHE_BUCKET_REGION = "us-east-1";
   process.env.AWS_ACCESS_KEY_ID = "test-key";

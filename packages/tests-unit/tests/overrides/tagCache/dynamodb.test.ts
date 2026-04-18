@@ -8,10 +8,10 @@ vi.mock("@opennextjs/aws/adapters/logger.js", () => ({
   error: vi.fn(),
 }));
 
-// dynamodb.ts captures NEXT_BUILD_ID, CACHE_DYNAMO_TABLE, and CACHE_BUCKET_REGION
+// dynamodb.ts captures OPEN_NEXT_BUILD_ID, CACHE_DYNAMO_TABLE, and CACHE_BUCKET_REGION
 // from process.env at module load time, so they must be set before the import.
 const mockSend = vi.hoisted(() => {
-  process.env.NEXT_BUILD_ID = "test-build-id";
+  process.env.OPEN_NEXT_BUILD_ID = "test-build-id";
   process.env.CACHE_DYNAMO_TABLE = "test-table";
   process.env.CACHE_BUCKET_REGION = "us-east-1";
   return vi.fn();
@@ -41,7 +41,7 @@ function makeStore() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.NEXT_BUILD_ID = BUILD_ID;
+  process.env.OPEN_NEXT_BUILD_ID = BUILD_ID;
   process.env.CACHE_DYNAMO_TABLE = TABLE_NAME;
   process.env.CACHE_BUCKET_REGION = "us-east-1";
   globalThis.openNextConfig = { dangerous: { disableTagCache: false } };
