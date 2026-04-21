@@ -97,14 +97,14 @@ export async function createImageOptimizationBundle(
   );
 
   // Copy over .next/required-server-files.json file and BUILD_ID
-  fs.mkdirSync(path.join(outputPath, ".next"));
+  fs.mkdirSync(path.join(outputPath, options.nextDistDir));
   fs.copyFileSync(
-    path.join(appBuildOutputPath, ".next/required-server-files.json"),
-    path.join(outputPath, ".next/required-server-files.json"),
+    path.join(appBuildOutputPath, options.nextDistDir, "required-server-files.json"),
+    path.join(outputPath, options.nextDistDir, "required-server-files.json"),
   );
   fs.copyFileSync(
-    path.join(appBuildOutputPath, ".next/BUILD_ID"),
-    path.join(outputPath, ".next/BUILD_ID"),
+    path.join(appBuildOutputPath, options.nextDistDir, "BUILD_ID"),
+    path.join(outputPath, options.nextDistDir, "BUILD_ID"),
   );
 
   // Sharp provides pre-build binaries for all platforms. https://github.com/lovell/sharp/blob/main/docs/install.md#cross-platform

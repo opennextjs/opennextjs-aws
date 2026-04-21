@@ -27,6 +27,7 @@ export interface IPluginSettings {
   nextDir: string;
   middlewareInfo?: MiddlewareInfo;
   isInCloudflare?: boolean;
+  distDir?: string;
 }
 
 /**
@@ -39,6 +40,7 @@ export function openNextEdgePlugins({
   nextDir,
   middlewareInfo,
   isInCloudflare,
+  distDir = ".next",
 }: IPluginSettings): Plugin {
   const entryFiles =
     middlewareInfo?.files.map((file: string) =>
@@ -176,7 +178,7 @@ ${contents}
 
   globalThis.__dirname ??= "";
 
-  export const NEXT_DIR = path.join(__dirname, ".next");
+  export const NEXT_DIR = path.join(__dirname, "${distDir}");
   export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 
   debug({ NEXT_DIR, OPEN_NEXT_DIR });

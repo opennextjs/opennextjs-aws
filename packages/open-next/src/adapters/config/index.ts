@@ -16,7 +16,10 @@ import {
   loadRoutesManifest,
 } from "./util.js";
 
-export const NEXT_DIR = path.join(__dirname, ".next");
+export const NEXT_DIR = path.join(
+  __dirname,
+  globalThis.nextDistDir || ".next",
+);
 export const OPEN_NEXT_DIR = path.join(__dirname, ".open-next");
 
 debug({ NEXT_DIR, OPEN_NEXT_DIR });
