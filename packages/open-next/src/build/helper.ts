@@ -113,7 +113,7 @@ export function esbuildSync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug, minify } = options;
+  const { openNextVersion, debug, minify, nextVersion } = options;
   const result = buildSync({
     target: "esnext",
     format: "esm",
@@ -131,6 +131,7 @@ export function esbuildSync(
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
+        `globalThis.nextVersion = "${nextVersion}";`,
       ].join(""),
     },
   });
@@ -149,7 +150,7 @@ export async function esbuildAsync(
   esbuildOptions: ESBuildOptions,
   options: BuildOptions,
 ) {
-  const { openNextVersion, debug, minify } = options;
+  const { openNextVersion, debug, minify, nextVersion } = options;
   // Dump ESBuild build metadata to file in debug mode
   const metafile = debug && esbuildOptions.outfile !== undefined;
   const result = await buildAsync({
@@ -174,6 +175,7 @@ export async function esbuildAsync(
         esbuildOptions.banner?.js || "",
         `globalThis.openNextDebug = ${debug};`,
         `globalThis.openNextVersion = "${openNextVersion}";`,
+        `globalThis.nextVersion = "${nextVersion}";`,
       ].join(""),
     },
   });
