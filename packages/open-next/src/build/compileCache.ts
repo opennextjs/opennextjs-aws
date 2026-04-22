@@ -33,7 +33,6 @@ export function compileCache(
           `globalThis.disableDynamoDBCache = ${
             config.dangerous?.disableTagCache ?? false
           };`,
-          `globalThis.nextVersion = "${options.nextVersion}";`,
         ].join(""),
       },
     },
@@ -63,7 +62,6 @@ export function compileCache(
           `globalThis.disableDynamoDBCache = ${
             config.dangerous?.disableTagCache ?? false
           };`,
-          `globalThis.nextVersion = "${options.nextVersion}";`,
         ].join(""),
       },
     },

@@ -109,13 +109,6 @@ declare global {
   var disableIncrementalCache: boolean;
 
   /**
-   * The Next.js version of the application.
-   * Only available in the cache adapter.
-   * Defined in the esbuild banner for the cache adapter.
-   */
-  var nextVersion: string;
-
-  /**
    * A boolean that indicates if the runtime is Edge.
    * Only available in `edge` runtime functions (i.e. external middleware or function with edge runtime).
    * Defined in `adapters/edge-adapter.ts`.
@@ -198,11 +191,12 @@ declare global {
   var AsyncLocalStorage: any;
 
   /**
-   * The version of the Open Next runtime.
+   * The versions of Open Next and Next.js.
    * Available everywhere.
    * Defined in the esbuild banner.
    */
   var openNextVersion: string;
+  var nextVersion: string;
 
   /**
    * The function that is used when resolving external rewrite requests.
