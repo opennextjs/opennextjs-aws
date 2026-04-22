@@ -191,7 +191,7 @@ declare global {
   var AsyncLocalStorage: any;
 
   /**
-   * The versions of the Open Next and Next.js.
+   * The versions of Open Next and Next.js.
    * Available everywhere.
    * Defined in the esbuild banner.
    */
