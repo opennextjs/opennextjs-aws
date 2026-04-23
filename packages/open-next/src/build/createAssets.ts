@@ -24,8 +24,8 @@ export function createStaticAssets(
 
   const { appBuildOutputPath, appPublicPath, outputDir, appPath } = options;
 
-  const NextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
-  const basePath = useBasePath ? (NextConfig.basePath ?? "") : "";
+  const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const basePath = useBasePath ? (nextConfig.basePath ?? "") : "";
 
   // Create output folder
   const outputPath = path.join(outputDir, "assets", basePath);
@@ -88,6 +88,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = buildHelper.getPackagePath(options);
   const buildId = buildHelper.getBuildId(options);
+  const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
+  const openNextBuildId = nextConfig.deploymentId ?? buildId;
+
   let useTagCache = false;
 
   const dotNextPath = path.join(
@@ -96,7 +99,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     packagePath,
   );
 
-  const outputCachePath = path.join(outputDir, "cache", buildId);
+  const outputCachePath = path.join(outputDir, "cache", openNextBuildId);
   fs.mkdirSync(outputCachePath, { recursive: true });
 
   const sourceDirs = [".next/server/pages", ".next/server/app"]
