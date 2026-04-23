@@ -1,5 +1,11 @@
 # open-next
 
+## 3.10.4
+
+### Patch Changes
+
+- [#1149](https://github.com/opennextjs/opennextjs-aws/pull/1149) [`c5a29c7879d135ef5f5f859066a455aaf6d15a09`](https://github.com/opennextjs/opennextjs-aws/commit/c5a29c7879d135ef5f5f859066a455aaf6d15a09) Thanks [@vicb](https://github.com/vicb)! - fix(cache): use the Open Next Build Id for the cache assets folder
+
 ## 3.10.3
 
 ### Patch Changes
