@@ -1,5 +1,25 @@
 # open-next
 
+## 3.10.4
+
+### Patch Changes
+
+- [#1149](https://github.com/opennextjs/opennextjs-aws/pull/1149) [`c5a29c7879d135ef5f5f859066a455aaf6d15a09`](https://github.com/opennextjs/opennextjs-aws/commit/c5a29c7879d135ef5f5f859066a455aaf6d15a09) Thanks [@vicb](https://github.com/vicb)! - fix(cache): use the Open Next Build Id for the cache assets folder
+
+## 3.10.3
+
+### Patch Changes
+
+- [#1145](https://github.com/opennextjs/opennextjs-aws/pull/1145) [`1e19ae2f5427c56d882c6393a1cdd77c6a5a4a0f`](https://github.com/opennextjs/opennextjs-aws/commit/1e19ae2f5427c56d882c6393a1cdd77c6a5a4a0f) Thanks [@314systems](https://github.com/314systems)! - fix: exclude unsupported Next.js 16 releases from peer dependencies.
+
+  The previous range allowed Next.js 16.0.0 through 16.2.2 without a peer dependency warning because `>=16.2.3` was already covered by `>=15.5.15`.
+
+  The range now explicitly supports Next.js 15.5.15 and above in the 15.x line, and Next.js 16.2.3 and above in the 16.x line.
+
+- [#1148](https://github.com/opennextjs/opennextjs-aws/pull/1148) [`4836a91e2e04b5e168b66c1f84c8679f777a913d`](https://github.com/opennextjs/opennextjs-aws/commit/4836a91e2e04b5e168b66c1f84c8679f777a913d) Thanks [@vicb](https://github.com/vicb)! - Define `globalThis.nextVersion` globally
+
+  Before `globalThis.nextVersion` was defined in the cache handler only and then not accessible from the OpenNext config.
+
 ## 3.10.2
 
 ### Patch Changes
