@@ -1,6 +1,7 @@
 import url from "node:url";
 
 import {
+  type Dirent,
   chmodSync,
   copyFileSync,
   cpSync,
@@ -13,6 +14,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 
 import {
@@ -85,6 +87,152 @@ export function isNonLinuxPlatformPackage(srcPath: string): boolean {
   return nonLinuxPlatformRegex.test(srcPath);
 }
 
+const packageJsonPathRegex = getCrossPlatformPathRegex(
+  String.raw`/package\.json$`,
+  { escape: false },
+);
+
+function collectImportTargets(value: unknown, out: string[]): void {
+  if (typeof value === "string") {
+    out.push(value);
+  } else if (Array.isArray(value)) {
+    value.forEach((v) => collectImportTargets(v, out));
+  } else if (value && typeof value === "object") {
+    Object.values(value).forEach((v) => collectImportTargets(v, out));
+  }
+}
+
+function resolveConsumerDir(
+  name: string,
+  require_: NodeRequire,
+): string | null {
+  if (!name) return null;
+  try {
+    return path.dirname(require_.resolve(`${name}/package.json`));
+  } catch {
+    return null;
+  }
+}
+
+function walkTargetPackage(
+  targetSrcDir: string,
+  targetDstDir: string,
+  filesToCopy: Map<string, string>,
+  pending: Array<[string, string]>,
+): void {
+  let entries: Dirent[];
+  try {
+    entries = readdirSync(targetSrcDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const srcEntry = path.join(targetSrcDir, entry.name);
+    const dstEntry = path.join(targetDstDir, entry.name);
+
+    if (entry.isDirectory()) {
+      if (entry.name === "node_modules") continue;
+      walkTargetPackage(srcEntry, dstEntry, filesToCopy, pending);
+    } else if (entry.isFile()) {
+      if (filesToCopy.has(srcEntry)) continue;
+      filesToCopy.set(srcEntry, dstEntry);
+      if (packageJsonPathRegex.test(srcEntry))
+        pending.push([srcEntry, dstEntry]);
+    }
+  }
+}
+
+// Augment traced files with targets of `package.json#imports` subpath remaps.
+// Next's NFT tracer does not follow the `imports` field, so packages that are
+// only reachable via remaps (e.g. @mathjax/src's "#mhchem/*" → "mhchemparser/esm/*")
+// are missing from the trace. Scan every traced package.json for an `imports`
+// field and pull in any bare-specifier remap targets from source.
+function augmentWithImportsRemaps(
+  filesToCopy: Map<string, string>,
+  buildOutputPath: string,
+): void {
+  const visitedConsumers = new Set<string>();
+  const visitedTargets = new Set<string>();
+  const requireCache = new Map<string, NodeRequire>();
+
+  const projectRequire = createRequire(
+    path.join(buildOutputPath, "package.json"),
+  );
+
+  const pending: Array<[string, string]> = [];
+  for (const [src, dst] of filesToCopy) {
+    if (packageJsonPathRegex.test(src)) pending.push([src, dst]);
+  }
+
+  while (pending.length) {
+    const [pkgSrc, pkgDst] = pending.pop()!;
+    if (visitedConsumers.has(pkgSrc)) continue;
+    visitedConsumers.add(pkgSrc);
+
+    let pkg: { name?: unknown; imports?: unknown };
+    try {
+      pkg = JSON.parse(readFileSync(pkgSrc, "utf-8"));
+    } catch {
+      continue;
+    }
+    if (!pkg.imports || typeof pkg.imports !== "object") continue;
+
+    const consumerName = typeof pkg.name === "string" ? pkg.name : "";
+    const consumerSrcDir = path.dirname(pkgSrc);
+    const consumerDstDir = path.dirname(pkgDst);
+    const dstNodeModules = path.resolve(
+      consumerDstDir,
+      // traverse up from `node_modules/<name>` or `node_modules/@scope/<name>`
+      path.basename(path.dirname(consumerDstDir)).startsWith("@")
+        ? "../.."
+        : "..",
+    );
+
+    // Consumer resolves deps via its own source location in the real project.
+    const realConsumerDir =
+      resolveConsumerDir(consumerName, projectRequire) ?? consumerSrcDir;
+    let consumerRequire = requireCache.get(realConsumerDir);
+    if (!consumerRequire) {
+      consumerRequire = createRequire(
+        path.join(realConsumerDir, "package.json"),
+      );
+      requireCache.set(realConsumerDir, consumerRequire);
+    }
+
+    const targets: string[] = [];
+    for (const v of Object.values(pkg.imports)) {
+      collectImportTargets(v, targets);
+    }
+
+    for (const target of targets) {
+      if (
+        !target ||
+        target.startsWith("./") ||
+        target.startsWith("../") ||
+        target.startsWith("/") ||
+        target.startsWith("#")
+      ) {
+        continue;
+      }
+
+      const parts = target.split("/");
+
+      const isScoped = parts[0].startsWith("@");
+      if (isScoped && parts.length < 2) continue;
+      const targetPkg = isScoped ? `${parts[0]}/${parts[1]}` : parts[0];
+      if (!targetPkg) continue;
+
+      const targetSrcDir = resolveConsumerDir(targetPkg, consumerRequire);
+      if (!targetSrcDir || visitedTargets.has(targetSrcDir)) continue;
+      visitedTargets.add(targetSrcDir);
+
+      const targetDstDir = path.join(dstNodeModules, targetPkg);
+      walkTargetPackage(targetSrcDir, targetDstDir, filesToCopy, pending);
+    }
+  }
+}
+
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
   const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
@@ -153,7 +301,7 @@ export async function copyTracedFiles({
       filesToCopy.set(src, dst);
 
       const module = path.join(dotNextDir, subDir, tracedPath);
-      if (module.endsWith("package.json")) {
+      if (packageJsonPathRegex.test(module)) {
         nodePackages.set(path.dirname(module), path.dirname(dst));
       }
     });
@@ -190,7 +338,7 @@ export async function copyTracedFiles({
 
     try {
       processNftFile(`${serverPath}.nft.json`);
-    } catch (e) {
+    } catch {
       if (existsSync(path.join(dotNextDir, serverPath))) {
         //TODO: add a link to the docs
         throw new Error(
@@ -229,7 +377,7 @@ File ${serverPath} does not exist
   ) => {
     try {
       computeCopyFilesForPage(pagePath);
-    } catch (e) {
+    } catch {
       if (alternativePath) {
         safeComputeCopyFilesForPage(alternativePath);
       }
@@ -286,6 +434,8 @@ File ${serverPath} does not exist
     computeCopyFilesForPage(route);
   });
 
+  augmentWithImportsRemaps(filesToCopy, buildOutputPath);
+
   // Only files that are actually copied
   const tracedFiles: string[] = [];
   const erroredFiles: string[] = [];
@@ -317,7 +467,7 @@ File ${serverPath} does not exist
     // see https://github.com/vercel/next.js/blob/498f342b3552d6fc6f1566a1cc5acea324ce0dec/packages/next/src/build/utils.ts#L1932
     try {
       symlink = readlinkSync(from);
-    } catch (e) {
+    } catch {
       //Ignore
     }
     if (symlink) {
