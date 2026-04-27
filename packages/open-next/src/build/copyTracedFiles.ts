@@ -92,6 +92,15 @@ const packageJsonPathRegex = getCrossPlatformPathRegex(
   { escape: false },
 );
 
+/**
+ * Recursively flatten the value side of a `package.json#imports` entry into
+ * a list of remap targets.
+ *
+ * Values can be a string, a conditional-exports object, or an array of either.
+ *
+ * @param value - The raw value from a single `imports` entry.
+ * @param out - Array that the leaf string targets are appended to (mutated in place).
+ */
 function collectImportTargets(value: unknown, out: string[]): void {
   if (typeof value === "string") {
     out.push(value);
@@ -102,6 +111,13 @@ function collectImportTargets(value: unknown, out: string[]): void {
   }
 }
 
+/**
+ * Resolve a package's directory using a require instance.
+ *
+ * @param name - Bare package specifier to resolve (e.g. `"foo"` or `"@scope/foo"`).
+ * @param require_ - `NodeRequire` rooted at the location to resolve from.
+ * @returns The package's directory, or `null` when `name` is empty or not resolvable.
+ */
 function resolveConsumerDir(
   name: string,
   require_: NodeRequire,
@@ -114,6 +130,20 @@ function resolveConsumerDir(
   }
 }
 
+/**
+ * Recursively register every file in a source directory as candidates to copy
+ * to a target directory, skipping nested `node_modules` and files tracked via
+ * NFT manifests.
+ *
+ * Discovered `package.json` files are tracked so that `imports` can be resolved.
+ *
+ * @param targetSrcDir - Source directory to walk.
+ * @param targetDstDir - Destination directory for source files to be copied to.
+ * @param filesToCopy - Source-to-destination map; mutated with newly-found files.
+ * Existing entries are preserved (never overwritten).
+ * @param pending - Queue of `[src, dst]` `package.json` pairs to revisit so the
+ * caller can follow transitive `imports` remaps; mutated.
+ */
 function walkTargetPackage(
   targetSrcDir: string,
   targetDstDir: string,
@@ -143,12 +173,27 @@ function walkTargetPackage(
   }
 }
 
-// Augment traced files with targets of `package.json#imports` subpath remaps.
-// Next's NFT tracer does not follow the `imports` field, so packages that are
-// only reachable via remaps (e.g. @mathjax/src's "#mhchem/*" → "mhchemparser/esm/*")
-// are missing from the trace. Scan every traced package.json for an `imports`
-// field and pull in any bare-specifier remap targets from source.
-function augmentWithImportsRemaps(
+/**
+ * Augment `filesToCopy` with targets of `package.json#imports` subpath remaps.
+ *
+ * Next's NFT tracer does not follow the `imports` field, so packages that
+ * are only reachable via a remap (e.g. `@mathjax/src`'s `"#mhchem/*"` ->
+ * `"mhchemparser/esm/*"`) are missing from the trace and the runtime fails
+ * to resolve them.
+ *
+ * For every traced `package.json` with an `imports` field, this scans the
+ * remap values for bare-specifier targets, resolves each target package
+ * from the consumer's real location, and walks its source files into
+ * `filesToCopy`. Newly-discovered `package.json` files are re-queued so
+ * transitive remaps are followed. Existing entries in `filesToCopy` are
+ * never overwritten.
+ *
+ * @param filesToCopy - Map from source path to destination path; mutated in place
+ * with files of every discovered remap target.
+ * @param buildOutputPath - Project root used to seed the resolver for traced
+ * consumers.
+ */
+export function augmentWithImportsRemaps(
   filesToCopy: Map<string, string>,
   buildOutputPath: string,
 ): void {
