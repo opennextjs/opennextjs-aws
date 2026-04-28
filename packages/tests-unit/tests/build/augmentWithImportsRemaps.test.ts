@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { augmentWithImportsRemaps } from "@opennextjs/aws/build/copyTracedFiles.js";
+import { augmentWithImportsRemaps } from "@opennextjs/aws/build/augmentWithImportsRemaps.js";
 
 function ensureDir(...parts: string[]): string {
   const dir = path.join(...parts);
