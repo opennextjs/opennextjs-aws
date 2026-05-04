@@ -27,10 +27,6 @@ import {
 import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
 import {
-  augmentWithImportsRemaps,
-  packageJsonPathRegex,
-} from "./augmentWithImportsRemaps.js";
-import {
   INSTRUMENTATION_TRACE_FILE,
   MIDDLEWARE_TRACE_FILE,
 } from "./constant.js";
@@ -157,7 +153,7 @@ export async function copyTracedFiles({
       filesToCopy.set(src, dst);
 
       const module = path.join(dotNextDir, subDir, tracedPath);
-      if (packageJsonPathRegex.test(module)) {
+      if (module.endsWith("package.json")) {
         nodePackages.set(path.dirname(module), path.dirname(dst));
       }
     });
@@ -194,7 +190,7 @@ export async function copyTracedFiles({
 
     try {
       processNftFile(`${serverPath}.nft.json`);
-    } catch {
+    } catch (e) {
       if (existsSync(path.join(dotNextDir, serverPath))) {
         //TODO: add a link to the docs
         throw new Error(
@@ -233,7 +229,7 @@ File ${serverPath} does not exist
   ) => {
     try {
       computeCopyFilesForPage(pagePath);
-    } catch {
+    } catch (e) {
       if (alternativePath) {
         safeComputeCopyFilesForPage(alternativePath);
       }
@@ -290,8 +286,6 @@ File ${serverPath} does not exist
     computeCopyFilesForPage(route);
   });
 
-  augmentWithImportsRemaps(filesToCopy, buildOutputPath);
-
   // Only files that are actually copied
   const tracedFiles: string[] = [];
   const erroredFiles: string[] = [];
@@ -323,7 +317,7 @@ File ${serverPath} does not exist
     // see https://github.com/vercel/next.js/blob/498f342b3552d6fc6f1566a1cc5acea324ce0dec/packages/next/src/build/utils.ts#L1932
     try {
       symlink = readlinkSync(from);
-    } catch {
+    } catch (e) {
       //Ignore
     }
     if (symlink) {
