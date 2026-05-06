@@ -47,8 +47,8 @@ export async function optimizeImage(
             // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.
             { headers },
             {}, // res object is not necessary as it's not actually used.
-            handleRequest,
             maximumResponseBody,
+            handleRequest,
           )
         : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 16.2.5
           fetchInternalImage(
