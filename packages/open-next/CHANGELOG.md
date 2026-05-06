@@ -1,5 +1,11 @@
 # open-next
 
+## 4.0.0
+
+### Major Changes
+
+- [#1155](https://github.com/opennextjs/opennextjs-aws/pull/1155) [`da5004fa4ca21a35a380d138809e2fbca7a11aaa`](https://github.com/opennextjs/opennextjs-aws/commit/da5004fa4ca21a35a380d138809e2fbca7a11aaa) Thanks [@vicb](https://github.com/vicb)! - Bump react and next
+
 ## 3.10.4
 
 ### Patch Changes
