@@ -26,6 +26,8 @@ export async function optimizeImage(
 ) {
   const { isAbsolute, href } = imageParams;
 
+  const maximumResponeBody = nextConfig.images?.maximumResponseBody || 50_000;
+
   const imageUpstream = isAbsolute
     ? //@ts-expect-error - fetchExternalImage signature has changed in Next.js 16, it has an extra boolean parameter.
       // https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
@@ -36,7 +38,7 @@ export async function optimizeImage(
         { headers },
         {}, // res object is not necessary as it's not actually used.
         handleRequest,
-        50_000, // maximumResponseBody, same as in Next.js default 
+        maximumResponeBody,
       );
 
   const result = await imageOptimizer(
