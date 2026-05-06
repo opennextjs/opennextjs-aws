@@ -29,7 +29,9 @@ export async function optimizeImage(
 
   // Signature for the fetch Image functions have changed in Next.js 15.5.16 and 16.2.5, so we need to check the version to determine how to call them.
   const isAfter1625 = compareSemver(globalThis.nextVersion, ">=", "16.2.5");
-  const isAfter15516 = compareSemver(globalThis.nextVersion, ">=", "15.5.16") && compareSemver(globalThis.nextVersion, "<", "16");
+  const isAfter15516 =
+    compareSemver(globalThis.nextVersion, ">=", "15.5.16") &&
+    compareSemver(globalThis.nextVersion, "<", "16");
   const isNewArgsForInternalFetch = isAfter1625 || isAfter15516;
 
   // The default value for maximumResponseBody is 50KB in Next code
