@@ -36,6 +36,7 @@ export async function optimizeImage(
         { headers },
         {}, // res object is not necessary as it's not actually used.
         handleRequest,
+        50_000, // maximumResponseBody, same as in Next.js default 
       );
 
   const result = await imageOptimizer(
