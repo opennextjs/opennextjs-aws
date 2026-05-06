@@ -27,10 +27,10 @@ export async function optimizeImage(
 ) {
   const { isAbsolute, href } = imageParams;
 
-  // Signature for the fetch Image functions have changed in Next.js 16.2.5, so we need to check the version to determine how to call them.
+  // Signature for the fetch Image functions have changed in Next.js 15.5.16 and 16.2.5, so we need to check the version to determine how to call them.
   const isAfter1625 = compareSemver(globalThis.nextVersion, ">=", "16.2.5");
   const isAfter15516 = compareSemver(globalThis.nextVersion, ">=", "15.5.16") && compareSemver(globalThis.nextVersion, "<", "16");
-  const isNewArgsForInternalFetch = isAfter1625 || (isAfter15516 && !isAfter1625);
+  const isNewArgsForInternalFetch = isAfter1625 || isAfter15516;
 
   // The default value for maximumResponseBody is 50KB in Next code
   // https://github.com/vercel/next.js/blob/0f38c522/packages/next/src/shared/lib/image-config.ts#L164
@@ -52,7 +52,7 @@ export async function optimizeImage(
             maximumResponseBody,
             handleRequest,
           )
-        : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 16.2.5
+        : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 15.5.16 and 16.2.5
           fetchInternalImage(
             href,
             { headers },
