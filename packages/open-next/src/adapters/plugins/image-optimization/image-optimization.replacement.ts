@@ -26,7 +26,10 @@ export async function optimizeImage(
 ) {
   const { isAbsolute, href } = imageParams;
 
-  const maximumResponeBody = nextConfig.images?.maximumResponseBody || 50_000;
+  // The default value for maximumResponseBody is 50KB in Next code
+  // https://github.com/vercel/next.js/blob/0f38c522/packages/next/src/shared/lib/image-config.ts#L164
+  const maximumResponeBody =
+    nextConfig.images?.maximumResponseBody || 50_000_000;
 
   const imageUpstream = isAbsolute
     ? //@ts-expect-error - fetchExternalImage signature has changed in Next.js 16, it has an extra boolean parameter.
