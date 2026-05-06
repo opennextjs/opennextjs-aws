@@ -2,6 +2,9 @@
 
 ## 4.0.0
 
+Note that 4.0.0 should really have been 3.10.5 as [#1155](https://github.com/opennextjs/opennextjs-aws/pull/1155) has no breaking changes.
+It was released as a major due to an error during the release process.
+
 ### Major Changes
 
 - [#1155](https://github.com/opennextjs/opennextjs-aws/pull/1155) [`da5004fa4ca21a35a380d138809e2fbca7a11aaa`](https://github.com/opennextjs/opennextjs-aws/commit/da5004fa4ca21a35a380d138809e2fbca7a11aaa) Thanks [@vicb](https://github.com/vicb)! - Bump react and next
