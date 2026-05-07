@@ -156,7 +156,7 @@ async function generateResult(
   let isDataRequest = false;
   let additionalHeaders = {};
   if (cachedValue.type === "app") {
-    isDataRequest = Boolean(event.headers.rsc);
+    isDataRequest = event.headers.rsc === "1";
     if (isDataRequest) {
       const { body: appRouterBody, additionalHeaders: appHeaders } =
         getBodyForAppRouter(event, cachedValue);
