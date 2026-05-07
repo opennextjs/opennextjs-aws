@@ -12,7 +12,7 @@ const changes = new Set();
 const changelog = path.join("packages", "open-next", "CHANGELOG.md");
 const lines = (await fs.readFile(changelog)).toString().split("\n");
 let start = false;
-for (let line of lines) {
+for (const line of lines) {
   if (!start) {
     if (line === `## ${version}`) {
       start = true;
