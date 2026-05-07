@@ -312,7 +312,7 @@ function handleTrailingSlashRedirect(
 
   if (
     NextConfig.trailingSlash &&
-    !event.headers["x-nextjs-data"] &&
+    !(event.query.__nextDataReq === "1") &&
     !event.rawPath.endsWith("/") &&
     !event.rawPath.match(/[\w-]+\.[\w]+$/g)
   ) {
