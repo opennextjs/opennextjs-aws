@@ -2,8 +2,6 @@ import { execSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const THANKLESS_COMMITTERS = ["thdxr", "fwang", "jayair", "conico974"];
-
 const { version } = JSON.parse(
   await fs.readFile("./packages/open-next/package.json"),
 );
@@ -27,12 +25,6 @@ for (let line of lines) {
       if (line.includes("Updated dependencies")) continue;
       if (line.includes("@serverless-stack/")) continue;
 
-      for (const user of THANKLESS_COMMITTERS) {
-        line = line.replace(
-          `Thanks [@${user}](https://github.com/${user})! `,
-          "",
-        );
-      }
       changes.add(line);
       continue;
     }
