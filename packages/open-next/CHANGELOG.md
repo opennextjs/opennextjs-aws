@@ -6,9 +6,9 @@
 
 - [#1157](https://github.com/opennextjs/opennextjs-aws/pull/1157) [`db965fb3edc4785913546ee032ef60cd0da895ee`](https://github.com/opennextjs/opennextjs-aws/commit/db965fb3edc4785913546ee032ef60cd0da895ee) Thanks [@vicb](https://github.com/vicb)! - fix(cacheInterceptor): tighten the check for RSC header === "1"
 
-- [#1158](https://github.com/opennextjs/opennextjs-aws/pull/1158) [`33673d298e0883bc8289e22e0188050b57abbfac`](https://github.com/opennextjs/opennextjs-aws/commit/33673d298e0883bc8289e22e0188050b57abbfac) Thanks [@vicb](https://github.com/vicb)! - fix: strip Next internal headers
+- [#1158](https://github.com/opennextjs/opennextjs-aws/pull/1158) [`33673d298e0883bc8289e22e0188050b57abbfac`](https://github.com/opennextjs/opennextjs-aws/commit/33673d298e0883bc8289e22e0188050b57abbfac) Thanks [@conico974](https://github.com/conico974)! - fix: strip Next internal headers
 
-- [#1158](https://github.com/opennextjs/opennextjs-aws/pull/1158) [`33673d298e0883bc8289e22e0188050b57abbfac`](https://github.com/opennextjs/opennextjs-aws/commit/33673d298e0883bc8289e22e0188050b57abbfac) Thanks [@vicb](https://github.com/vicb)! - fix: update trailing slash redirect condition
+- [#1158](https://github.com/opennextjs/opennextjs-aws/pull/1158) [`33673d298e0883bc8289e22e0188050b57abbfac`](https://github.com/opennextjs/opennextjs-aws/commit/33673d298e0883bc8289e22e0188050b57abbfac) Thanks [@conico974](https://github.com/conico974)! - fix: update trailing slash redirect condition
 
 ## 4.0.0
 
