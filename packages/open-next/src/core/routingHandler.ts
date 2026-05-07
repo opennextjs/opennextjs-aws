@@ -49,6 +49,23 @@ const geoHeaderToNextHeader = {
   "x-open-next-longitude": "x-vercel-ip-longitude",
 };
 
+// Those are internal headers from Next.js that should not be set by users
+// We strip them for the incoming request - To be updated when Next.js adds new internal headers
+// https://github.com/vercel/next.js/blob/ed1c6cc/packages/next/src/server/lib/server-ipc/utils.ts#L42-L53
+// NOTE: Use lowercase format.
+const NEXT_INTERNAL_HEADERS = [
+  "x-middleware-rewrite",
+  "x-middleware-redirect",
+  "x-middleware-set-cookie",
+  "x-middleware-skip",
+  "x-middleware-override-headers",
+  "x-middleware-next",
+  "x-now-route-matches",
+  "x-matched-path",
+  "x-nextjs-data",
+  "x-next-resume-state-length",
+];
+
 /**
  * Adds the middleware headers to an event or result.
  *
@@ -89,9 +106,11 @@ export default async function routingHandler(
     // First we remove internal headers
     // We don't want to allow users to set these headers
     for (const key of Object.keys(event.headers)) {
+      const lowerCaseKey = key.toLowerCase();
       if (
-        key.startsWith(INTERNAL_HEADER_PREFIX) ||
-        key.startsWith(MIDDLEWARE_HEADER_PREFIX)
+        lowerCaseKey.startsWith(INTERNAL_HEADER_PREFIX) ||
+        lowerCaseKey.startsWith(MIDDLEWARE_HEADER_PREFIX) ||
+        NEXT_INTERNAL_HEADERS.includes(lowerCaseKey)
       ) {
         delete event.headers[key];
       }
