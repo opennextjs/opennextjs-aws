@@ -31,12 +31,17 @@ export async function optimizeImage(
   const isV15After15510 =
     compareSemver(globalThis.nextVersion, ">=", "15.5.10") &&
     compareSemver(globalThis.nextVersion, "<", "16");
+  const isV15After15516 =
+    compareSemver(globalThis.nextVersion, ">=", "15.5.16") &&
+    compareSemver(globalThis.nextVersion, "<", "16");
   const isV16Plus = compareSemver(globalThis.nextVersion, ">=", "16");
   const isAfter1615 = compareSemver(globalThis.nextVersion, ">=", "16.1.5");
   const isAfter1625 = compareSemver(globalThis.nextVersion, ">=", "16.2.5");
 
-  // fetchInternalImage: maximumResponseBody added in v15.5.10 and v16.2.5.
-  const isNewArgsForInternalFetch = isAfter1625 || isV15After15510;
+  // fetchInternalImage signature varies across Next.js versions:
+  //   <=v15.5.15, v16.0.0–v16.2.4: fetchInternalImage(href, req, res, handleRequest)
+  //   v15.5.16–v15.x, v16.2.5+:    fetchInternalImage(href, req, res, maximumResponseBody, handleRequest)
+  const isNewArgsForInternalFetch = isAfter1625 || isV15After15516;
 
   // fetchExternalImage signature varies across Next.js versions:
   //   <=v15.5.9:       fetchExternalImage(href)
@@ -68,7 +73,7 @@ export async function optimizeImage(
             maximumResponseBody,
             handleRequest,
           )
-        : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 15.5.10 and 16.2.5
+        : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 15.5.16 and 16.2.5
           fetchInternalImage(
             href,
             { headers },
