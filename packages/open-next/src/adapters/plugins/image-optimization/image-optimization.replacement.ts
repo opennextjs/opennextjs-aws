@@ -31,7 +31,7 @@ export async function optimizeImage(
   const isV15After15510 =
     compareSemver(globalThis.nextVersion, ">=", "15.5.10") &&
     compareSemver(globalThis.nextVersion, "<", "16");
-  const isV15After15516 =
+  const isV15After15515 =
     compareSemver(globalThis.nextVersion, ">=", "15.5.16") &&
     compareSemver(globalThis.nextVersion, "<", "16");
   const isV16Plus = compareSemver(globalThis.nextVersion, ">=", "16");
@@ -41,7 +41,7 @@ export async function optimizeImage(
   // fetchInternalImage signature varies across Next.js versions:
   //   <=v15.5.15, v16.0.0–v16.2.4: fetchInternalImage(href, req, res, handleRequest)
   //   v15.5.16–v15.x, v16.2.5+:    fetchInternalImage(href, req, res, maximumResponseBody, handleRequest)
-  const isNewArgsForInternalFetch = isAfter1625 || isV15After15516;
+  const isNewArgsForInternalFetch = isAfter1625 || isV15After15515;
 
   // fetchExternalImage signature varies across Next.js versions:
   //   <=v15.5.9:       fetchExternalImage(href)
