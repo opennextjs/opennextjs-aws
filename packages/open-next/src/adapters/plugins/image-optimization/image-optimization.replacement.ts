@@ -56,14 +56,16 @@ export async function optimizeImage(
 
   const imageUpstream = isAbsolute
     ? // https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
-      // @ts-ignore - fetchExternalImage signature varies across Next.js versions
       await (isAfter1615
         ? fetchExternalImage(href, false, maximumResponseBody)
         : isV16Plus
-          ? fetchExternalImage(href, false)
+          ? // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+            fetchExternalImage(href, false)
           : isV15After15510
-            ? fetchExternalImage(href, maximumResponseBody)
-            : fetchExternalImage(href))
+            ? // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+              fetchExternalImage(href, maximumResponseBody)
+            : // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+              fetchExternalImage(href))
     : await (isNewArgsForInternalFetch
         ? fetchInternalImage(
             href,
