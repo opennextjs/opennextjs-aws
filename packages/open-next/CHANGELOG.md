@@ -1,5 +1,13 @@
 # open-next
 
+## 4.0.2
+
+### Patch Changes
+
+- [#1162](https://github.com/opennextjs/opennextjs-aws/pull/1162) [`c327435e5c235762f9e5c25e146b8c0caeb97c61`](https://github.com/opennextjs/opennextjs-aws/commit/c327435e5c235762f9e5c25e146b8c0caeb97c61) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Fix next 15.5.18 usage of fetchExternalImage
+
+- [#1163](https://github.com/opennextjs/opennextjs-aws/pull/1163) [`95782abc809da6c87aa72795e3d2eaccee7973e1`](https://github.com/opennextjs/opennextjs-aws/commit/95782abc809da6c87aa72795e3d2eaccee7973e1) Thanks [@conico974](https://github.com/conico974)! - Bump minimum next dependencies
+
 ## 4.0.1
 
 ### Patch Changes
