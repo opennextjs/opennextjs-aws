@@ -27,12 +27,24 @@ export async function optimizeImage(
 ) {
   const { isAbsolute, href } = imageParams;
 
-  // Signature for the fetch Image functions have changed in Next.js 15.5.16 and 16.2.5, so we need to check the version to determine how to call them.
-  const isAfter1625 = compareSemver(globalThis.nextVersion, ">=", "16.2.5");
-  const isAfter15516 =
-    compareSemver(globalThis.nextVersion, ">=", "15.5.16") &&
+  const isVersion15 =
+    compareSemver(globalThis.nextVersion, ">=", "15") &&
     compareSemver(globalThis.nextVersion, "<", "16");
-  const isNewArgsForInternalFetch = isAfter1625 || isAfter15516;
+  const isV16Plus = compareSemver(globalThis.nextVersion, ">=", "16");
+
+  // fetchExternalImage signature varies across Next.js versions:
+  //   <=v15.5.9:       fetchExternalImage(href)
+  //   v15.5.10–v15.x:  fetchExternalImage(href, maximumResponseBody)
+  //   v16.0.0–v16.1.4: fetchExternalImage(href, dangerouslyAllowLocalIP)
+  //   v16.1.5+:        fetchExternalImage(href, dangerouslyAllowLocalIP, maximumResponseBody)
+  const externalNeedsDangerouslyAllowLocalIP = isV16Plus;
+  const externalNeedsMaxBody =
+    (isVersion15 && compareSemver(globalThis.nextVersion, ">=", "15.5.10")) ||
+    compareSemver(globalThis.nextVersion, ">=", "16.1.5");
+
+  // fetchInternalImage added maximumResponseBody in all v15 and v16.2.5+.
+  const internalNeedsMaxBody =
+    isVersion15 || compareSemver(globalThis.nextVersion, ">=", "16.2.5");
 
   // The default value for maximumResponseBody is 50KB in Next code
   // https://github.com/vercel/next.js/blob/0f38c522/packages/next/src/shared/lib/image-config.ts#L164
@@ -41,11 +53,15 @@ export async function optimizeImage(
 
   const imageUpstream = isAbsolute
     ? // https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
-      await (isNewArgsForInternalFetch
-        ? fetchExternalImage(href, false, maximumResponseBody)
-        : //@ts-expect-error - fetchExternalImage signature has changed in Next.js 16, it has an extra boolean parameter.
-          fetchExternalImage(href))
-    : await (isNewArgsForInternalFetch
+      // @ts-ignore - fetchExternalImage signature varies across Next.js versions
+      await (externalNeedsDangerouslyAllowLocalIP
+        ? externalNeedsMaxBody
+          ? fetchExternalImage(href, false, maximumResponseBody)
+          : fetchExternalImage(href, false)
+        : externalNeedsMaxBody
+          ? fetchExternalImage(href, maximumResponseBody)
+          : fetchExternalImage(href))
+    : await (internalNeedsMaxBody
         ? fetchInternalImage(
             href,
             // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.
