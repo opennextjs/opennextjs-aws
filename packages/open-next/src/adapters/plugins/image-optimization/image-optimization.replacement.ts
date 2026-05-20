@@ -27,61 +27,82 @@ export async function optimizeImage(
 ) {
   const { isAbsolute, href } = imageParams;
 
-  // Signature for the fetch Image functions have changed across Next.js versions.
-  const isV15After15510 =
-    compareSemver(globalThis.nextVersion, ">=", "15.5.10") &&
-    compareSemver(globalThis.nextVersion, "<", "16");
-  const isV15After15515 =
-    compareSemver(globalThis.nextVersion, ">=", "15.5.16") &&
-    compareSemver(globalThis.nextVersion, "<", "16");
-  const isV16Plus = compareSemver(globalThis.nextVersion, ">=", "16");
-  const isAfter1615 = compareSemver(globalThis.nextVersion, ">=", "16.1.5");
-  const isAfter1625 = compareSemver(globalThis.nextVersion, ">=", "16.2.5");
-
-  // fetchInternalImage signature varies across Next.js versions:
-  //   <=v15.5.15, v16.0.0–v16.2.4: fetchInternalImage(href, req, res, handleRequest)
-  //   v15.5.16–v15.x, v16.2.5+:    fetchInternalImage(href, req, res, maximumResponseBody, handleRequest)
-  const isNewArgsForInternalFetch = isAfter1625 || isV15After15515;
-
-  // fetchExternalImage signature varies across Next.js versions:
-  //   <=v15.5.9:       fetchExternalImage(href)
-  //   v15.5.10–v15.x:  fetchExternalImage(href, maximumResponseBody)
-  //   v16.0.0–v16.1.4: fetchExternalImage(href, dangerouslyAllowLocalIP)
-  //   v16.1.5+:        fetchExternalImage(href, dangerouslyAllowLocalIP, maximumResponseBody)
-
   // The default value for maximumResponseBody is 50KB in Next code
   // https://github.com/vercel/next.js/blob/0f38c522/packages/next/src/shared/lib/image-config.ts#L164
   const maximumResponseBody =
     nextConfig.images?.maximumResponseBody || 50_000_000;
 
+  /**
+   * fetchExternalImage signature varies across Next.js versions:
+   *   <=v15.5.9:       fetchExternalImage(href)
+   *   v15.5.10–v15.x:  fetchExternalImage(href, maximumResponseBody)
+   *   v16.0.0–v16.1.4: fetchExternalImage(href, dangerouslyAllowLocalIP)
+   *   v16.1.5+:        fetchExternalImage(href, dangerouslyAllowLocalIP, maximumResponseBody)
+   *
+   * https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
+   */
+  const callFetchExternalImage = () => {
+    const version = globalThis.nextVersion;
+
+    // v16.1.5+
+    if (compareSemver(version, ">=", "16.1.5")) {
+      return fetchExternalImage(href, false, maximumResponseBody);
+    }
+
+    // v16.0.0–v16.1.4
+    if (compareSemver(version, ">=", "16")) {
+      // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+      return fetchExternalImage(href, false);
+    }
+
+    // v15.5.10–v15.x
+    if (compareSemver(version, ">=", "15.5.10")) {
+      // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+      return fetchExternalImage(href, maximumResponseBody);
+    }
+
+    // <=v15.5.9
+    // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
+    return fetchExternalImage(href);
+  };
+
+  /**
+   * fetchInternalImage signature varies across Next.js versions:
+   *   <=v15.5.15, v16.0.0–v16.2.4: fetchInternalImage(href, req, res, handleRequest)
+   *   v15.5.16–v15.x, v16.2.5+:    fetchInternalImage(href, req, res, maximumResponseBody, handleRequest)
+   */
+  const callFetchInternalImage = () => {
+    const version = globalThis.nextVersion;
+
+    const isV15WithNewArgs =
+      compareSemver(version, ">=", "15.5.16") &&
+      compareSemver(version, "<", "16");
+
+    // v15.5.16–v15.x, v16.2.5+
+    if (isV15WithNewArgs || compareSemver(version, ">=", "16.2.5")) {
+      return fetchInternalImage(
+        href,
+        // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.
+        { headers },
+        {}, // res object is not necessary as it's not actually used.
+        maximumResponseBody,
+        handleRequest,
+      );
+    }
+
+    // <=v15.5.15, v16.0.0–v16.2.4
+    // @ts-expect-error - fetchInternalImage signature has changed in Next.js 15.5.16 and 16.2.5
+    return fetchInternalImage(
+      href,
+      { headers },
+      {}, // res object is not necessary as it's not actually used.
+      handleRequest,
+    );
+  };
+
   const imageUpstream = isAbsolute
-    ? // https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
-      await (isAfter1615
-        ? fetchExternalImage(href, false, maximumResponseBody)
-        : isV16Plus
-          ? // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
-            fetchExternalImage(href, false)
-          : isV15After15510
-            ? // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
-              fetchExternalImage(href, maximumResponseBody)
-            : // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
-              fetchExternalImage(href))
-    : await (isNewArgsForInternalFetch
-        ? fetchInternalImage(
-            href,
-            // @ts-expect-error - It is supposed to be an IncomingMessage object, but only the headers are used.
-            { headers },
-            {}, // res object is not necessary as it's not actually used.
-            maximumResponseBody,
-            handleRequest,
-          )
-        : // @ts-expect-error - fetchInternalImage signature has changed in Next.js 15.5.16 and 16.2.5
-          fetchInternalImage(
-            href,
-            { headers },
-            {}, // res object is not necessary as it's not actually used.
-            handleRequest,
-          ));
+    ? await callFetchExternalImage()
+    : await callFetchInternalImage();
 
   const result = await imageOptimizer(
     imageUpstream,
