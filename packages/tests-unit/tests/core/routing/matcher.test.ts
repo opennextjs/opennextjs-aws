@@ -594,6 +594,7 @@ describe("fixDataPage", () => {
       ...event,
       rawPath: "/test/file",
       url: "https://on/test/file?hello=world&__nextDataReq=1",
+      headers: { "x-nextjs-data": "1" },
     });
   });
 
@@ -611,6 +612,7 @@ describe("fixDataPage", () => {
       ...event,
       rawPath: `${mockBasePath}/test/file`,
       url: `https://on${mockBasePath}/test/file?hello=world&__nextDataReq=1`,
+      headers: { "x-nextjs-data": "1" },
     });
 
     NextConfig.basePath = undefined;
