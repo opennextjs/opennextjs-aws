@@ -18,6 +18,13 @@ export default function Home() {
           <Nav href="/ssr" title="/SSR" icon="/static/frank.webp">
             SSR on each load
           </Nav>
+          <Nav
+            href="/rewrite-client-path/foo"
+            title="/rewrite-client-path/foo"
+            icon="/static/frank.webp"
+          >
+            Middleware rewrite to /rewrite-code-path
+          </Nav>
         </div>
       </main>
     </>
