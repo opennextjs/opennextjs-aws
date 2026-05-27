@@ -1,5 +1,13 @@
 # open-next
 
+## 4.0.3
+
+### Patch Changes
+
+- [#1171](https://github.com/opennextjs/opennextjs-aws/pull/1171) [`d9a217aab19759dac2a0c7c72b1d94b8bbed23fa`](https://github.com/opennextjs/opennextjs-aws/commit/d9a217aab19759dac2a0c7c72b1d94b8bbed23fa) Thanks [@troendheim](https://github.com/troendheim)! - fix: middleware rewrites breaking client-side navigation
+
+- [#1169](https://github.com/opennextjs/opennextjs-aws/pull/1169) [`c09dcdb5139553fe134bb8b42fdc6245ee8eda3d`](https://github.com/opennextjs/opennextjs-aws/commit/c09dcdb5139553fe134bb8b42fdc6245ee8eda3d) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Refactor image optimization replacement function to be more readable
+
 ## 4.0.2
 
 ### Patch Changes
