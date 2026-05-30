@@ -6,7 +6,7 @@ import { FatalError } from "utils/error";
 
 import { awsLogger } from "../../adapters/logger";
 
-const { BUCKET_NAME, BUCKET_KEY_PREFIX } = process.env;
+const { BUCKET_NAME, BUCKET_KEY_PREFIX, S3_REGION } = process.env;
 
 function ensureBucketExists() {
   if (!BUCKET_NAME) {
@@ -17,7 +17,7 @@ function ensureBucketExists() {
 const s3Loader: ImageLoader = {
   name: "s3",
   load: async (key: string) => {
-    const s3Client = new S3Client({ logger: awsLogger });
+    const s3Client = new S3Client({ region: S3_REGION || 'us-east-1', logger: awsLogger });
 
     ensureBucketExists();
     const keyPrefix = BUCKET_KEY_PREFIX?.replace(/^\/|\/$/g, "");
