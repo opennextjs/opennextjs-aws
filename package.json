@@ -17,6 +17,10 @@
     "version": "./.changeset/version",
     "release": "./.changeset/release"
   },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.0.0",
+    "@google-cloud/storage": "^7.0.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@changesets/changelog-github": "^0.4.8",
