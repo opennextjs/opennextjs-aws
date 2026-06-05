@@ -98,7 +98,10 @@ async function canStream(opts: FunctionOptions) {
     return false;
   }
   if (typeof opts.override.wrapper === "string") {
-    return opts.override.wrapper === "aws-lambda-streaming";
+    return (
+      opts.override.wrapper === "aws-lambda-streaming" ||
+      opts.override.wrapper === "aws-apigw-streaming"
+    );
   }
   const wrapper = await opts.override.wrapper();
   return wrapper.supportStreaming;
