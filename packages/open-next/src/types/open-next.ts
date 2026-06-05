@@ -126,6 +126,7 @@ export interface Origin {
 export type IncludedWrapper =
   | "aws-lambda"
   | "aws-lambda-streaming"
+  | "aws-apigw-streaming"
   | "aws-lambda-compressed"
   | "node"
   // @deprecated - use "cloudflare-edge" instead.

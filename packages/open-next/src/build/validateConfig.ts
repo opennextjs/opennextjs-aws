@@ -17,6 +17,7 @@ const compatibilityMatrix: Record<IncludedWrapper, IncludedConverter[]> = {
   ],
   "aws-lambda-compressed": ["aws-apigw-v2"],
   "aws-lambda-streaming": ["aws-apigw-v2"],
+  "aws-apigw-streaming": ["aws-apigw-v1", "aws-apigw-v2"],
   cloudflare: ["edge"],
   "cloudflare-edge": ["edge"],
   "cloudflare-node": ["edge"],
