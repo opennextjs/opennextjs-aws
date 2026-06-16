@@ -30,8 +30,10 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     const internalEvent = await converter.convertFrom(request);
     const url = new URL(request.url);
 
-    const { promise: promiseResponse, resolve: resolveResponse } =
-      Promise.withResolvers<Response>();
+    let resolveResponse!: (response: Response) => void;
+    const promiseResponse = new Promise<Response>((resolve) => {
+      resolveResponse = resolve;
+    });
 
     const streamCreator: StreamCreator = {
       writeHeaders(prelude: {
