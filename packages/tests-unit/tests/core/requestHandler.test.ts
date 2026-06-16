@@ -97,7 +97,7 @@ beforeEach(() => {
 });
 
 describe("requestHandler streaming", () => {
-  it("skips tee and remains bounded when chunks do not need retaining", async () => {
+  it("retains a tee branch and remains bounded when chunks do not need retaining", async () => {
     const source = createBody(20);
     const tee = vi.spyOn(source.body, "tee");
     const result = createResult(source.body);
@@ -127,15 +127,20 @@ describe("requestHandler streaming", () => {
 
     expect(source.produced).toBe(producedWhileStalled);
     expect(source.produced).toBeLessThan(20);
-    expect(tee).not.toHaveBeenCalled();
+    expect(tee).toHaveBeenCalledOnce();
 
     while (received.length < 20) {
       await waitFor(() => writeCallbacks.length > 0);
       writeCallbacks.shift()!();
     }
 
-    await expect(handlerPromise).resolves.toBe(result);
+    const returned = await handlerPromise;
+    expect(returned).toBe(result);
     expect(received).toEqual(Array.from({ length: 20 }, (_, index) => index));
+    expect(returned.body).not.toBe(source.body);
+    expect((await new Response(returned.body).arrayBuffer()).byteLength).toBe(
+      20 * 64 * 1024,
+    );
     expect(source.body.locked).toBe(true);
   });
 

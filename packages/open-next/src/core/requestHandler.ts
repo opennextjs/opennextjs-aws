@@ -161,13 +161,9 @@ export async function openNextHandler(
           );
           response.statusCode = routingResult.statusCode;
           response.flushHeaders();
-          let bodyToConsume = routingResult.body;
-          if (options.streamCreator.retainChunks !== false) {
-            const [bodyToStream, bodyToReturn] = routingResult.body.tee();
-            bodyToConsume = bodyToStream;
-            routingResult.body = bodyToReturn;
-          }
+          const [bodyToConsume, bodyToReturn] = routingResult.body.tee();
           await pipeline(Readable.fromWeb(bodyToConsume), response);
+          routingResult.body = bodyToReturn;
         }
         return routingResult;
       }
