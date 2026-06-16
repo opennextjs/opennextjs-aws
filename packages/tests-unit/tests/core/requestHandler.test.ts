@@ -121,7 +121,9 @@ describe("requestHandler streaming", () => {
     await waitFor(() => writeCallbacks.length > 0);
     await nextTurn();
     const producedWhileStalled = source.produced;
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    for (let i = 0; i < 25; i++) {
+      await nextTurn();
+    }
 
     expect(source.produced).toBe(producedWhileStalled);
     expect(source.produced).toBeLessThan(20);
