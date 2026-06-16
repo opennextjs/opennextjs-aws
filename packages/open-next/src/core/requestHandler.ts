@@ -162,6 +162,8 @@ export async function openNextHandler(
           response.statusCode = routingResult.statusCode;
           response.flushHeaders();
           const [bodyToConsume, bodyToReturn] = routingResult.body.tee();
+          // Use pipeline so the streamCreator Writable can apply backpressure
+          // instead of eagerly consuming the whole Web stream.
           await pipeline(Readable.fromWeb(bodyToConsume), response);
           routingResult.body = bodyToReturn;
         }

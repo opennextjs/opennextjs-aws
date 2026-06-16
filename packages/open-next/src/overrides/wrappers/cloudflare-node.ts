@@ -30,6 +30,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
     const internalEvent = await converter.convertFrom(request);
     const url = new URL(request.url);
 
+    // writeHeaders resolves this once Next has chosen status/headers; the body is
+    // streamed later through the Writable returned from streamCreator.
     let resolveResponse!: (response: Response) => void;
     const promiseResponse = new Promise<Response>((resolve) => {
       resolveResponse = resolve;
@@ -70,6 +72,11 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           });
         }
 
+        // Bridge Next's Node stream into Cloudflare's Web stream:
+        // - Next writes chunks to the Writable below.
+        // - Cloudflare reads chunks from the Response's ReadableStream.
+        // - Each Node write callback is held until the Web stream pulls again,
+        //   which propagates reader backpressure to the Node producer.
         let controller: ReadableStreamDefaultController<Uint8Array>;
         let controllerClosed = false;
         let producer: Readable | undefined;
@@ -79,6 +86,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           | ((error?: Error | null | undefined) => void)
           | undefined;
 
+        // Completing the parked callback tells Node the previous write finished,
+        // allowing a piped source to produce the next chunk.
         const settleParkedWrite = (error?: Error | null) => {
           const callback = parkedWriteCallback;
           parkedWriteCallback = undefined;
@@ -122,6 +131,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
               ? reason
               : new Error(String(reason));
 
+        // pull() means the Response consumer has capacity for more data; use that
+        // signal to release exactly one pending Node write.
         const readable = new ReadableStream({
           start(c) {
             controller = c;
@@ -130,6 +141,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
             settleParkedWrite();
           },
           cancel(reason) {
+            // The response reader went away. Destroy the original producer too,
+            // otherwise it may keep generating chunks into a closed bridge.
             controllerClosed = true;
             destructionError = normalizeError(reason);
             destroyProducer();
@@ -144,7 +157,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
         resolveResponse(response);
 
         const bridge = new Writable({
-          // Keep Node-side buffering minimal; write callbacks are released from pull().
+          // Keep the Writable queue small; backpressure is enforced by delaying
+          // each write callback until the Web stream pulls again.
           highWaterMark: 1,
           write(chunk, encoding, callback) {
             if (controllerClosed) {
@@ -159,6 +173,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
               callback(e);
               return;
             }
+            // Do not call the callback yet: parking it pauses the Node producer
+            // until pull() shows the Web stream wants another chunk.
             parkedWriteCallback = callback;
           },
           final(callback) {
@@ -179,6 +195,8 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           },
         });
 
+        // The source Readable is only exposed through the pipe event; keep it so
+        // Web stream cancellation can tear down upstream work.
         bridge.on("pipe", (source: Readable) => {
           producer = source;
           if (bridge.destroyed) {
