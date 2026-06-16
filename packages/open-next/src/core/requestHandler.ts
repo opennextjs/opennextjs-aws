@@ -1,4 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import type { OpenNextNodeResponse } from "http/index.js";
 import { IncomingMessage } from "http/index.js";
@@ -159,12 +161,13 @@ export async function openNextHandler(
           );
           response.statusCode = routingResult.statusCode;
           response.flushHeaders();
-          const [bodyToConsume, bodyToReturn] = routingResult.body.tee();
-          for await (const chunk of bodyToConsume) {
-            response.write(chunk);
+          let bodyToConsume = routingResult.body;
+          if (options.streamCreator.retainChunks !== false) {
+            const [bodyToStream, bodyToReturn] = routingResult.body.tee();
+            bodyToConsume = bodyToStream;
+            routingResult.body = bodyToReturn;
           }
-          response.end();
-          routingResult.body = bodyToReturn;
+          await pipeline(Readable.fromWeb(bodyToConsume), response);
         }
         return routingResult;
       }

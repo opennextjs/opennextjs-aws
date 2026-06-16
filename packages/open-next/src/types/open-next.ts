@@ -61,7 +61,8 @@ export interface StreamCreator {
    *
    * However some implementations use a fake `StreamCreator` and expect the chunks to be retained.
    * When your stream controller implementation doesn't need to retain the chunk, you can set this
-   * to `false` to reduce memory usage.
+   * to `false` to reduce memory usage. This also permits the handler to consume the returned response
+   * body directly instead of retaining an unused duplicate with `ReadableStream.tee()`.
    *
    * @see https://github.com/opennextjs/opennextjs-aws/blob/main/packages/open-next/src/overrides/wrappers/aws-lambda.ts
    *
