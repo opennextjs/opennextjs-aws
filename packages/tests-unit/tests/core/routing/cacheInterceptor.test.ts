@@ -11,6 +11,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
   PrerenderManifest: {
     routes: {
+      "/": {
+        initialRevalidateSeconds: 120,
+        srcRoute: "/",
+        dataRoute: "/index.rsc",
+      },
       "/albums": {
         initialRevalidateSeconds: false,
         srcRoute: "/albums",
@@ -144,6 +149,15 @@ describe("cacheInterceptor", () => {
 
     const body = await fromReadableStream(result.body);
     expect(body).toEqual("Hello, world!");
+    expect(incrementalCache.get).toHaveBeenCalledWith("/albums");
+    expect(tagCache.getLastModified).toHaveBeenCalledWith(
+      "/albums",
+      expect.any(Number),
+    );
+    expect(tagCache.isStale).toHaveBeenCalledWith(
+      "/albums",
+      expect.any(Number),
+    );
     expect(result).toEqual(
       expect.objectContaining({
         type: "core",
@@ -154,6 +168,70 @@ describe("cacheInterceptor", () => {
           "content-type": "text/html; charset=utf-8",
           etag: expect.any(String),
           "x-opennext-cache": "HIT",
+        }),
+      }),
+    );
+  });
+
+  it("should retrieve index app router content from the index cache key", async () => {
+    const event = createEvent({
+      url: "/",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Index page",
+      },
+      lastModified: new Date("2024-01-01T23:59:30Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const body = await fromReadableStream(result.body);
+    expect(body).toEqual("Index page");
+    expect(incrementalCache.get).toHaveBeenCalledWith("/index");
+    expect(tagCache.getLastModified).toHaveBeenCalledWith(
+      "/index",
+      expect.any(Number),
+    );
+    expect(tagCache.isStale).toHaveBeenCalledWith("/index", expect.any(Number));
+    expect(result).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=90, stale-while-revalidate=2592000",
+          "x-opennext-cache": "HIT",
+        }),
+      }),
+    );
+  });
+
+  it("should revalidate stale index content using the route path", async () => {
+    const event = createEvent({
+      url: "/",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Index page",
+      },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    expect(incrementalCache.get).toHaveBeenCalledWith("/index");
+    expect(queue.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        MessageBody: expect.objectContaining({
+          url: "/",
+        }),
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "cache-control": "s-maxage=1, stale-while-revalidate=2592000",
+          "x-opennext-cache": "STALE",
         }),
       }),
     );
