@@ -295,7 +295,7 @@ export async function cacheInterceptor(
       ) {
         const _hasBeenRevalidated = cachedData.shouldBypassTagCache
           ? false
-          : await hasBeenRevalidated(localizedPath, tags, cachedData);
+          : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
           return event;
@@ -305,11 +305,7 @@ export async function cacheInterceptor(
       // Check if the cache entry is stale (valid but needs background revalidation)
       const _isStale = cachedData.shouldBypassTagCache
         ? false
-        : await isStale(
-            localizedPath,
-            tags,
-            cachedData.lastModified ?? Date.now(),
-          );
+        : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
 
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
