@@ -130,11 +130,9 @@ export async function handleMiddleware(
       reqHeaders[k] = value;
     } else {
       if (filteredHeaders.includes(key.toLowerCase())) return;
-      if (key.toLowerCase() === "set-cookie") {
-        resHeaders[key] = resHeaders[key]
-          ? [...resHeaders[key], value]
-          : [value];
-      } else if (
+      // Headers.forEach folds same-name headers; use getSetCookie() below instead.
+      if (key.toLowerCase() === "set-cookie") return;
+      if (
         REDIRECTS.has(statusCode) &&
         key.toLowerCase() === "location"
       ) {
@@ -144,6 +142,10 @@ export async function handleMiddleware(
       }
     }
   });
+  const setCookies = responseHeaders.getSetCookie();
+  if (setCookies.length > 0) {
+    resHeaders["set-cookie"] = setCookies;
+  }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
