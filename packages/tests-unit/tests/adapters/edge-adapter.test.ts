@@ -46,7 +46,9 @@ describe("edge-adapter header harvest", () => {
       "appSession.1=BBB; HttpOnly; SameSite=Lax; Path=/",
       "appSession.2=CCC; HttpOnly; SameSite=Lax; Path=/",
     ];
-    const out = harvestHeaders(makeFoldingHeaders(cookies, { "x-custom": "value" }));
+    const out = harvestHeaders(
+      makeFoldingHeaders(cookies, { "x-custom": "value" }),
+    );
     expect(out["set-cookie"]).toEqual(cookies);
   });
 

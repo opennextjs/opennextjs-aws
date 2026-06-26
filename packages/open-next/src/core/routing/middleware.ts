@@ -132,10 +132,7 @@ export async function handleMiddleware(
       if (filteredHeaders.includes(key.toLowerCase())) return;
       // Headers.forEach folds same-name headers; use getSetCookie() below instead.
       if (key.toLowerCase() === "set-cookie") return;
-      if (
-        REDIRECTS.has(statusCode) &&
-        key.toLowerCase() === "location"
-      ) {
+      if (REDIRECTS.has(statusCode) && key.toLowerCase() === "location") {
         resHeaders[key] = normalizeLocationHeader(value, internalEvent.url);
       } else {
         resHeaders[key] = value;

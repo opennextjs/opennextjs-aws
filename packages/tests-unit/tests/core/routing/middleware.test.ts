@@ -389,7 +389,11 @@ describe("handleMiddleware", () => {
     };
 
     const event = createEvent({});
-    middleware.mockResolvedValue({ status: 302, headers: foldingHeaders, body: null });
+    middleware.mockResolvedValue({
+      status: 302,
+      headers: foldingHeaders,
+      body: null,
+    });
 
     const result = await handleMiddleware(event, "", middlewareLoader);
 
@@ -398,7 +402,7 @@ describe("handleMiddleware", () => {
       "appSession.1=BBB; HttpOnly; Path=/",
       "appSession.2=CCC; HttpOnly; Path=/",
     ]);
-    expect(result.headers["location"]).toEqual("https://example.com/");
+    expect(result.headers.location).toEqual("https://example.com/");
   });
 
   it("should preserve multiple set-cookie headers when middleware returns next() with a rewrite", async () => {
@@ -424,7 +428,11 @@ describe("handleMiddleware", () => {
     };
 
     const event = createEvent({ headers: { host: "localhost" } });
-    middleware.mockResolvedValue({ status: 200, headers: foldingHeaders, body: null });
+    middleware.mockResolvedValue({
+      status: 200,
+      headers: foldingHeaders,
+      body: null,
+    });
 
     const result = await handleMiddleware(event, "", middlewareLoader);
 
