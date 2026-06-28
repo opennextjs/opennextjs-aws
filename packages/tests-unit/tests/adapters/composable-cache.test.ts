@@ -25,6 +25,7 @@ describe("Composable cache handler", () => {
     }),
     set: vi.fn(),
     delete: vi.fn(),
+    getTagCacheResult: vi.fn().mockResolvedValue(undefined),
   };
   globalThis.incrementalCache = incrementalCache;
 
@@ -244,6 +245,76 @@ describe("Composable cache handler", () => {
 
       expect(result).toBeUndefined();
       expect(tagCache.isStale).not.toHaveBeenCalled();
+    });
+
+    describe("getTagCacheResult", () => {
+      it("should call getTagCacheResult with hasBeenRevalidated: false and isStaleFromTag: false in nextMode", async () => {
+        tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+        tagCache.isStale.mockResolvedValueOnce(false);
+
+        await ComposableCache.get("test-key");
+
+        expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+          key: "test-key",
+          hasBeenRevalidated: false,
+          isStaleFromTag: false,
+        });
+      });
+
+      it("should call getTagCacheResult with hasBeenRevalidated: true in nextMode when cache is expired", async () => {
+        tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(true);
+
+        await ComposableCache.get("test-key");
+
+        expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+          key: "test-key",
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+      });
+
+      it("should call getTagCacheResult with isStaleFromTag: true in nextMode when cache is stale", async () => {
+        tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+        tagCache.isStale.mockResolvedValueOnce(true);
+
+        await ComposableCache.get("test-key");
+
+        expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+          key: "test-key",
+          hasBeenRevalidated: false,
+          isStaleFromTag: true,
+        });
+      });
+
+      it("should call getTagCacheResult with hasBeenRevalidated: false and isStaleFromTag: false in original mode", async () => {
+        tagCache.mode = "original";
+        tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+        tagCache.isStale.mockResolvedValueOnce(false);
+
+        await ComposableCache.get("test-key");
+
+        expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+          key: "test-key",
+          hasBeenRevalidated: false,
+          isStaleFromTag: false,
+        });
+      });
+
+      it("should call getTagCacheResult with hasBeenRevalidated: true in original mode when cache is expired", async () => {
+        tagCache.mode = "original";
+        tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+        await ComposableCache.get("test-key");
+
+        expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+          key: "test-key",
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+      });
     });
 
     it("should return pending write promise if available", async () => {

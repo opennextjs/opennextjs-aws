@@ -75,7 +75,14 @@ export default class Cache {
         ? false
         : await hasBeenRevalidated(key, _tags, cachedEntry);
 
-      if (_hasBeenRevalidated) return null;
+      if (_hasBeenRevalidated) {
+        await globalThis.incrementalCache.getTagCacheResult?.({
+          key,
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+        return null;
+      }
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
       // We only need to check for the path as it should already contain all the tags
@@ -106,6 +113,12 @@ export default class Cache {
         ? false
         : await isStale(key, _tags, _lastModified);
 
+      await globalThis.incrementalCache.getTagCacheResult?.({
+        key,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+      });
+
       return {
         lastModified: _isStale ? 1 : _lastModified,
         value: cachedEntry.value,
@@ -133,11 +146,24 @@ export default class Cache {
       const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
-      if (_hasBeenRevalidated) return null;
+      if (_hasBeenRevalidated) {
+        await globalThis.incrementalCache.getTagCacheResult?.({
+          key,
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+        return null;
+      }
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
         : await isStale(key, tags, _lastModified);
+
+      await globalThis.incrementalCache.getTagCacheResult?.({
+        key,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+      });
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
