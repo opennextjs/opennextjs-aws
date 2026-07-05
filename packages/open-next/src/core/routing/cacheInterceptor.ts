@@ -130,8 +130,8 @@ function getBodyForAppRouter(
 
     const body = isSegmentResponse
       ? cachedValue.segmentData![segmentHeader]
-      // rsc can be empty, but in theory it should only happen when segmentData is used, so we can fallback to an empty string here
-      : (cachedValue.rsc ?? "");
+      : // rsc can be empty, but in theory it should only happen when segmentData is used, so we can fallback to an empty string here
+        (cachedValue.rsc ?? "");
     return {
       body,
       additionalHeaders: isSegmentResponse
