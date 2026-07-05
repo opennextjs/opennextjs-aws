@@ -181,7 +181,7 @@ export default class Cache {
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
-              rscData: Buffer.from(cacheData.rsc),
+              rscData: cacheData.rsc ? Buffer.from(cacheData.rsc) : undefined,
               status: meta?.status,
               headers: meta?.headers,
               postponed: meta?.postponed,
@@ -312,7 +312,7 @@ export default class Cache {
               {
                 type: "app",
                 html,
-                rsc: rscData.toString("utf8"),
+                rsc: rscData?.toString("utf8"),
                 meta: {
                   status,
                   headers,

@@ -65,7 +65,7 @@ export type CachedFile =
   | {
       type: "app";
       html: string;
-      rsc: string;
+      rsc?: string;
       meta?: Meta;
       segmentData?: Record<string, string>;
     }
