@@ -83,7 +83,6 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   try {
     const cacheTags =
       value.meta?.headers?.["x-next-cache-tags"]?.split(",") ?? [];
-    delete value.meta?.headers?.["x-next-cache-tags"];
     return cacheTags;
   } catch (e) {
     return [];
