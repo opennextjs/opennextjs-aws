@@ -66,7 +66,19 @@ export async function handleMiddleware(
 
   // We only need the normalizedPath to check if the middleware should run
   const normalizedPath = localizePath(internalEvent);
-  const hasMatch = middleMatch.some((r) => r.test(normalizedPath));
+  let decodedPath: string | undefined;
+  try {
+    decodedPath = decodeURIComponent(normalizedPath);
+  } catch {
+    // An invalid encoding cannot provide a decoded pathname to match.
+  }
+  // Next.js also tries the decoded pathname for matching, while preserving the
+  // encoded pathname in the request passed to middleware.
+  const hasMatch = middleMatch.some(
+    (r) =>
+      r.test(normalizedPath) ||
+      (decodedPath !== undefined && r.test(decodedPath)),
+  );
   if (!hasMatch) return internalEvent;
 
   const initialUrl = new URL(normalizedPath, internalEvent.url);

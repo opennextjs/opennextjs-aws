@@ -221,18 +221,13 @@ function escapePathDelimiters(
  *
  * SSG cache key needs to be decoded, but some characters needs to be properly escaped
  * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/server/lib/router-utils/decode-path-params.ts#L11-L26
+ * Decoding must be atomic, as in Next.js. Partially decoding a malformed path
+ * could select a different cache route than the one evaluated by middleware.
  */
 function decodePathParams(pathname: string): string {
   return pathname
     .split("/")
-    .map((segment) => {
-      try {
-        return escapePathDelimiters(decodeURIComponent(segment), true);
-      } catch (e) {
-        // If decodeURIComponent fails, we return the original segment
-        return segment;
-      }
-    })
+    .map((segment) => escapePathDelimiters(decodeURIComponent(segment), true))
     .join("/");
 }
 
@@ -265,7 +260,13 @@ export async function cacheInterceptor(
   localizedPath = localizedPath.replace(/\/$/, "");
 
   // Then we decode the path params
-  localizedPath = decodePathParams(localizedPath) || "/";
+  try {
+    localizedPath = decodePathParams(localizedPath) || "/";
+  } catch {
+    // Next.js rejects malformed path params. Do not let cache interception
+    // partially decode the path and select a different route identity.
+    return event;
+  }
 
   // The route is keyed as `/` in the prerender manifest, but the generated
   // cache asset for the app index route is uploaded as `/index`.
