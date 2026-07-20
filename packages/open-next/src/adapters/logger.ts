@@ -40,6 +40,42 @@ const isDownplayedErrorLog = (errorLog: AwsSdkClientCommandErrorLog) =>
         downplayedInput.errorName === errorLog?.error?.Code),
   );
 
+function serializeError(error: Error): Record<string, unknown> {
+  return {
+    ...error,
+    name: error.name,
+    message: error.message,
+    ...(error.stack ? { stack: error.stack } : {}),
+    ...(error.cause !== undefined
+      ? {
+          cause:
+            error.cause instanceof Error
+              ? serializeError(error.cause)
+              : error.cause,
+        }
+      : {}),
+  };
+}
+
+function writeError(args: any[]) {
+  const errorIndex = args.findIndex((arg) => arg instanceof Error);
+  if (args.length === 1 || errorIndex === -1) {
+    return console.error(...args);
+  }
+
+  const messageIndex = args.findIndex((arg) => typeof arg === "string");
+  const error = args[errorIndex] as Error;
+  const details = args.filter(
+    (_, index) => index !== messageIndex && index !== errorIndex,
+  );
+
+  console.error({
+    message: messageIndex === -1 ? error.message : args[messageIndex],
+    error: serializeError(error),
+    ...(details.length > 0 ? { details } : {}),
+  });
+}
+
 export function error(...args: any[]) {
   // we try to catch errors from the aws-sdk client and downplay some of them
   if (args.some((arg) => isDownplayedErrorLog(arg))) {
@@ -68,9 +104,9 @@ export function error(...args: any[]) {
         ),
       );
     }
-    return console.error(...args);
+    return writeError(args);
   }
-  console.error(...args);
+  writeError(args);
 }
 
 export const awsLogger = {
