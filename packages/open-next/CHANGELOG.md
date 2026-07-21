@@ -1,5 +1,21 @@
 # open-next
 
+## 4.1.0
+
+### Minor Changes
+
+- [#1181](https://github.com/opennextjs/opennextjs-aws/pull/1181) [`f4faa3bba504a21f827f057f2337951a08828ffd`](https://github.com/opennextjs/opennextjs-aws/commit/f4faa3bba504a21f827f057f2337951a08828ffd) Thanks [@osama-rizk](https://github.com/osama-rizk)! - Add `aws-apigw-streaming` wrapper for API Gateway response streaming
+
+  A new built-in streaming wrapper for fronting the server function with an API Gateway REST API in `ResponseTransferMode: STREAM` (now [supported by AWS](https://aws.amazon.com/about-aws/whats-new/2025/11/api-gateway-response-streaming-rest-apis/)), rather than a Lambda Function URL. Unlike `aws-lambda-streaming`, it omits the Function-URL-only `application/vnd.awslambda.http-integration-response` content type and never compresses the body (API Gateway streaming does not support content encoding). Pairs with `aws-apigw-v1` (REST) or `aws-apigw-v2` (HTTP) converters.
+
+### Patch Changes
+
+- [#1199](https://github.com/opennextjs/opennextjs-aws/pull/1199) [`7d9ab24658b7c5d127bb154d75e595a155f1f22c`](https://github.com/opennextjs/opennextjs-aws/commit/7d9ab24658b7c5d127bb154d75e595a155f1f22c) Thanks [@james-elicx](https://github.com/james-elicx)! - Match middleware and its bundled route lookup against decoded pathname equivalents, while preserving the encoded request URL. Skip cache interception for malformed path encodings, in parity with Next.js, so percent-encoded routes cannot bypass middleware.
+
+- [#1189](https://github.com/opennextjs/opennextjs-aws/pull/1189) [`8a2ebf2d83026493da1cd708222155f40ec373ed`](https://github.com/opennextjs/opennextjs-aws/commit/8a2ebf2d83026493da1cd708222155f40ec373ed) Thanks [@gaauwe](https://github.com/gaauwe)! - Fix cache interception for index routes by normalizing the route path to `/` while reading the generated cache asset from `/index`.
+
+- [#1201](https://github.com/opennextjs/opennextjs-aws/pull/1201) [`cccae71279b20232d656096829553cff83cf446d`](https://github.com/opennextjs/opennextjs-aws/commit/cccae71279b20232d656096829553cff83cf446d) Thanks [@james-elicx](https://github.com/james-elicx)! - bump Next.js peer dep
+
 ## 4.0.3
 
 ### Patch Changes
