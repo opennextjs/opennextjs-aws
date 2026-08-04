@@ -4,6 +4,7 @@ import type {
   IncrementalCacheValue,
 } from "types/cache";
 import {
+  getStaleLastModified,
   getTagsFromValue,
   hasBeenRevalidated,
   isStale,
@@ -141,8 +142,12 @@ export default class Cache {
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
+        // The sentinel is kept as is in the store so that the revalidation queue keeps
+        // deduplicating every stale request for the same path.
         store.lastModified = _isStale ? 1 : _lastModified;
-        _lastModified = store.lastModified;
+      }
+      if (_isStale) {
+        _lastModified = getStaleLastModified(cacheData.revalidate);
       }
 
       if (cacheData?.type === "route") {

@@ -36,6 +36,35 @@ export async function isStale(
 }
 
 /**
+ * Next.js has no explicit way for a cache handler to report an entry as stale,
+ * the only lever we have is the `lastModified` we hand back to the incremental cache.
+ *
+ * Up to Next 16.2 we return `1` (i.e. right after the epoch), which is enough for Next to
+ * compute `revalidateAfter` in the past and mark the entry as stale.
+ * Starting with Next 16.3 the incremental cache also compares `lastModified + expire` to now, and
+ * forces a blocking revalidation (`isStale === -1`, surfacing as `x-nextjs-cache: REVALIDATED`)
+ * when that is in the past. An epoch based value always trips that check, so from that version on
+ * we go back just far enough for the entry to be stale while remaining inside its expire window.
+ *
+ * @param revalidate The revalidate value stored alongside the cache entry, in seconds
+ * @returns The `lastModified` to report to Next.js for a stale entry
+ */
+export function getStaleLastModified(revalidate?: number | false): number {
+  // The `expire` check only exists from Next 16.3, before that the sentinel is what Next expects.
+  if (!compareSemver(globalThis.nextVersion, ">=", "16.3.0")) {
+    return 1;
+  }
+  if (typeof revalidate !== "number") {
+    // Without a revalidate value Next cannot derive an expire time either,
+    // so the historical sentinel is still safe here.
+    return 1;
+  }
+  // 1ms past the revalidate window. `expire` is always >= `revalidate`, so the entry is
+  // stale without being expired (when both are equal, being expired is the correct outcome).
+  return Date.now() - revalidate * 1000 - 1;
+}
+
+/**
  * @param key The key for that specific cache entry
  * @param tags Array of tags associated with that cache entry
  * @param cacheEntry The cache entry with its last modified time and value
