@@ -243,6 +243,20 @@ File ${serverPath} does not exist
       path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE),
       path.join(standaloneNextDir, INSTRUMENTATION_TRACE_FILE),
     );
+    // Next 16's standalone output no longer includes `server/instrumentation.js`
+    // in the standalone dir, but `computeCopyFilesForPage` asserts it exists
+    // there. Copy it from the build dir (mirroring the .nft.json copy above) so
+    // the assertion passes and the instrumentation file ships in the bundle.
+    const instrumentationServerFile = path.join("server", "instrumentation.js");
+    if (
+      existsSync(path.join(dotNextDir, instrumentationServerFile)) &&
+      !existsSync(path.join(standaloneNextDir, instrumentationServerFile))
+    ) {
+      copyFileAndMakeOwnerWritable(
+        path.join(dotNextDir, instrumentationServerFile),
+        path.join(standaloneNextDir, instrumentationServerFile),
+      );
+    }
     computeCopyFilesForPage("instrumentation");
     logger.debug("Adding instrumentation trace files");
   }
