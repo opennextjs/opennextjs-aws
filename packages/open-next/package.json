@@ -60,6 +60,7 @@
     "@types/express": "5.0.0",
     "@types/node": "catalog:",
     "concurrently": "^9.2.1",
+    "next": "catalog:",
     "tsc-alias": "^1.8.16",
     "typescript": "catalog:"
   },
