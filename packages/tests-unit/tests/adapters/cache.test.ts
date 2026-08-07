@@ -752,6 +752,55 @@ describe("CacheHandler", () => {
       );
     });
 
+    it.each([
+      {
+        cacheKind: "PAGE",
+        data: {
+          kind: "PAGE" as const,
+          html: "<html></html>",
+          pageData: {},
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+      {
+        cacheKind: "PAGES",
+        data: {
+          kind: "PAGES" as const,
+          html: "<html></html>",
+          pageData: "rsc",
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+      {
+        cacheKind: "APP_PAGE",
+        data: {
+          kind: "APP_PAGE" as const,
+          html: "<html></html>",
+          rscData: Buffer.from("rsc"),
+          status: 200,
+          headers: {
+            "x-next-cache-tags": ["existing-tag", "new-tag"],
+          },
+        },
+      },
+    ])("Should persist cache tags for $cacheKind entries", async ({ data }) => {
+      tagCache.getByPath.mockResolvedValueOnce(["existing-tag"]);
+
+      await cache.set("key", data);
+
+      expect(tagCache.getByPath).toHaveBeenCalledWith("key");
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "key",
+          tag: "new-tag",
+          revalidatedAt: 1,
+        },
+      ]);
+    });
+
     it("Should set cache when for FETCH", async () => {
       await cache.set("key", {
         kind: "FETCH",
