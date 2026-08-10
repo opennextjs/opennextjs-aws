@@ -182,3 +182,38 @@ test("Revalidate path", async ({ page, request }) => {
   const newDate = await elLayout.textContent();
   expect(newDate).not.toEqual(initialDate);
 });
+
+test("Revalidate tag invalidates an App Router page generated on demand", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(45000);
+  const path = `/revalidate-tag/on-demand/${Date.now()}`;
+
+  const initialResponse = await page.goto(path);
+  expect(initialResponse?.status()).toEqual(200);
+  await expect(page.getByTestId("on-demand-page")).toBeVisible();
+  const initialTime = await page.getByText("Fetched time:").textContent();
+
+  const result = await request.get("/api/revalidate-tag");
+  expect(result.status()).toEqual(200);
+  expect(await result.text()).toEqual("ok");
+
+  let refreshedResponse = initialResponse;
+  let refreshedTime = initialTime;
+  for (
+    let attempt = 0;
+    attempt < 10 && refreshedTime === initialTime;
+    attempt++
+  ) {
+    await page.waitForTimeout(1000);
+    refreshedResponse = await page.goto(path);
+    refreshedTime = await page.getByText("Fetched time:").textContent();
+  }
+
+  expect(refreshedTime).not.toEqual(initialTime);
+  const cacheHeader =
+    refreshedResponse?.headers()["x-nextjs-cache"] ??
+    refreshedResponse?.headers()["x-opennext-cache"];
+  expect(cacheHeader).toEqual("MISS");
+});

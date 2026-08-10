@@ -764,16 +764,6 @@ describe("CacheHandler", () => {
         },
       },
       {
-        cacheKind: "PAGES",
-        data: {
-          kind: "PAGES" as const,
-          html: "<html></html>",
-          pageData: "rsc",
-          status: 200,
-          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
-        },
-      },
-      {
         cacheKind: "APP_PAGE",
         data: {
           kind: "APP_PAGE" as const,

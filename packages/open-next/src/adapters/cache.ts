@@ -531,9 +531,7 @@ export default class Cache {
     // Write derivedTags to the tag cache
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
     const pageCacheTags =
-      data?.kind === "PAGE" ||
-      data?.kind === "PAGES" ||
-      data?.kind === "APP_PAGE"
+      data?.kind === "PAGE" || data?.kind === "APP_PAGE"
         ? data.headers?.["x-next-cache-tags"]
         : undefined;
     const derivedTags: string[] =

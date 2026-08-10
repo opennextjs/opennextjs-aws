@@ -46,6 +46,42 @@ test.describe("Composable Cache", () => {
     expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
   });
 
+  test("revalidateTag should invalidate an on-demand use cache page", async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(45000);
+    const path = `/use-cache/on-demand/${Date.now()}`;
+
+    const initialResponse = await page.goto(path);
+    expect(initialResponse?.status()).toEqual(200);
+    const taggedComponent = page.getByTestId("fully-cached-with-tag");
+    await expect(taggedComponent).toBeVisible();
+    const initialText = await taggedComponent.textContent();
+
+    const response = await request.get("/api/revalidate");
+    expect(response.status()).toEqual(200);
+    expect(await response.text()).toEqual("DONE");
+
+    let refreshedResponse = initialResponse;
+    let refreshedText = initialText;
+    for (
+      let attempt = 0;
+      attempt < 10 && refreshedText === initialText;
+      attempt++
+    ) {
+      await page.waitForTimeout(1000);
+      refreshedResponse = await page.goto(path);
+      refreshedText = await taggedComponent.textContent();
+    }
+
+    expect(refreshedText).not.toEqual(initialText);
+    const cacheHeader =
+      refreshedResponse?.headers()["x-nextjs-cache"] ??
+      refreshedResponse?.headers()["x-opennext-cache"];
+    expect(cacheHeader).toEqual("MISS");
+  });
+
   test("cached component should work in isr", async ({ page }) => {
     await page.goto("/use-cache/isr");
 
