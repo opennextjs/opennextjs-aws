@@ -14,6 +14,7 @@ import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
 const CANNOT_BE_USED = "This cannot be used in OpenNext";
+const ERROR_CODES = [401, 403, 404, 500];
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
@@ -415,15 +416,15 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     return this;
   }
 
-  // For some reason, next returns the 500 error page with some cache-control headers
+  // For some reason, next returns the error pages with some cache-control headers
   // We need to fix that
   private fixHeadersForError() {
     if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
       return;
     }
-    // We only check for 404 and 500 errors
+    // We only check for 401, 403, 404 and 500 errors
     // The rest should be errors that are handled by the user and they should set the cache headers themselves
-    if (this.statusCode === 404 || this.statusCode === 500) {
+    if (ERROR_CODES.includes(this.statusCode)) {
       // For some reason calling this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate") does not work here
       // The function is not even called, i'm probably missing something obvious
       this.headers["cache-control"] =
