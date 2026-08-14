@@ -20,5 +20,10 @@ export function buildNextjsApp(options: buildHelper.BuildOptions) {
   cp.execSync(command, {
     stdio: "inherit",
     cwd: path.dirname(options.appPackageJsonPath),
+    // `setStandaloneBuildMode` mutates `process.env` right before this call.
+    // Node forwards those mutations to the child by default, but Bun resolves
+    // the child environment from a snapshot taken at startup unless `env` is
+    // passed explicitly, so `NEXT_PRIVATE_STANDALONE` never reaches the build.
+    env: process.env,
   });
 }
