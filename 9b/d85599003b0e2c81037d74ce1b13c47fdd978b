@@ -1,0 +1,25 @@
+packages/open-next/src/adapters/cache.ts
+  s_06b713c9a58d7f::t_b8abccc2af9a32 172-177,195-200,208-215,223
+packages/open-next/src/core/routing/cacheInterceptor.ts
+  s_06b713c9a58d7f::t_f77d3c03b0e71e 14,133-137,139-153,155,178,181,186-187,201-206
+packages/open-next/src/types/overrides.ts
+  s_06b713c9a58d7f::t_398e42f0246357 61-62,68-76
+packages/tests-unit/tests/adapters/cache.test.ts
+  s_06b713c9a58d7f::t_fe8511f9d96d65 489,502-548,896-926
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9bd85599003b0e2c81037d74ce1b13c47fdd978b",
+  "prompts": {},
+  "sessions": {
+    "s_06b713c9a58d7f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe5b443dcffeGzejs5bpVGbBGG",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
