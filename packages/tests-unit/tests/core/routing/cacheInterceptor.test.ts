@@ -878,6 +878,71 @@ describe("cacheInterceptor", () => {
         expect(queue.send).not.toHaveBeenCalled();
       });
     });
+
+    // `html` is absent from the cached value when Next.js does not write the
+    // `.html` file at build time.
+    describe("missing html", () => {
+      it("should serve the RSC payload when html is missing on an RSC request", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("RSC content");
+      });
+
+      it("should take no action for a document request when html is missing", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for a page document request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should serve the json for a page data request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate?__nextDataReq=1" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual('{"hello":"world"}');
+      });
+    });
   });
 
   describe("isStale", () => {

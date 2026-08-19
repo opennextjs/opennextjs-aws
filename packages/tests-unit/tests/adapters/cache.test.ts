@@ -486,9 +486,7 @@ describe("CacheHandler", () => {
         expect((result as any).value.rscData).toBeUndefined();
       });
 
-      // TODO: an empty `rsc` should round-trip to an empty buffer, not to
-      // `undefined`, as `set` writes an empty string for an empty buffer.
-      it("Should return an undefined rscData when cache data type is app with an empty rsc (Next 15+)", async () => {
+      it("Should return an empty rscData when cache data type is app with an empty rsc (Next 15+)", async () => {
         globalThis.nextVersion = "15.0.0";
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -501,7 +499,53 @@ describe("CacheHandler", () => {
 
         const result = await cache.get("key", { kindHint: "app" });
 
-        expect((result as any).value.rscData).toBeUndefined();
+        // An empty `rsc` is a payload of its own, only an absent `rsc` maps to `undefined`.
+        expect((result as any).value.rscData).toEqual(Buffer.alloc(0));
+      });
+
+      it("Should return null when cache data type is app without html (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "rsc-data",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
+      });
+
+      it("Should return null when cache data type is page without html", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: {},
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toBeNull();
+      });
+
+      // On Next.js < 15 an app page is returned as a `PAGE` whose `pageData` holds the RSC
+      // payload, there is nothing to return when `rsc` is absent.
+      it("Should return null when cache data type is app without rsc (Next 14)", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
       });
 
       it("Should return value when cache data type is redirect", async () => {
@@ -837,8 +881,6 @@ describe("CacheHandler", () => {
       expect(incrementalCache.set.mock.calls[0][1].rsc).toBeUndefined();
     });
 
-    // TODO: an empty buffer should not round-trip to `undefined`, `get` turns an
-    // empty `rsc` into an undefined `rscData`.
     it("Should set cache when for APP_PAGE with an empty rscData", async () => {
       await cache.set("key", {
         kind: "APP_PAGE",
@@ -850,6 +892,37 @@ describe("CacheHandler", () => {
 
       expect(incrementalCache.set.mock.calls[0][1].rsc).toEqual("");
     });
+
+    // `get` maps an absent `rsc` to `undefined` and an empty `rsc` to an empty buffer, so
+    // both values written here come back unchanged.
+    it.each([
+      { rscData: undefined, rsc: undefined },
+      { rscData: Buffer.alloc(0), rsc: "" },
+    ])(
+      "Should round-trip an APP_PAGE with rscData: $rscData",
+      async ({ rscData, rsc }) => {
+        globalThis.nextVersion = "15.0.0";
+
+        await cache.set("key", {
+          kind: "APP_PAGE",
+          html: "<html></html>",
+          rscData,
+          status: 200,
+          headers: {},
+        });
+
+        const written = incrementalCache.set.mock.calls[0][1];
+        expect(written.rsc).toEqual(rsc);
+
+        incrementalCache.get.mockResolvedValueOnce({
+          value: written,
+          lastModified: Date.now(),
+        });
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect((result as any).value.rscData).toEqual(rscData);
+      },
+    );
 
     it("Should set cache when for FETCH", async () => {
       await cache.set("key", {
