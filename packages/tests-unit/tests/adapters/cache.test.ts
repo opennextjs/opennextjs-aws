@@ -504,6 +504,78 @@ describe("CacheHandler", () => {
           expect(store.lastModified).toEqual(1);
         });
 
+        it("Should set lastModified to 1 when tag is stale before 16.3", async () => {
+          tagCache.isStale.mockResolvedValueOnce(true);
+          const store: Record<string, any> = {
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+            requestCache: new RequestCache(),
+          };
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}", revalidate: 3600 },
+            lastModified: Date.now(),
+          });
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result?.lastModified).toEqual(1);
+          expect(store.lastModified).toEqual(1);
+        });
+
+        it("Should return a lastModified just past the revalidate window when tag is stale from 16.3", async () => {
+          globalThis.nextVersion = "16.3.0";
+          tagCache.isStale.mockResolvedValueOnce(true);
+          const store: Record<string, any> = {
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+            requestCache: new RequestCache(),
+          };
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}", revalidate: 3600 },
+            lastModified: Date.now(),
+          });
+
+          const now = Date.now();
+          const result = await cache.get("key", { kindHint: "app" });
+
+          // Stale, but still within the expire window - Next would otherwise force a
+          // blocking revalidation (`x-nextjs-cache: REVALIDATED`) from 16.3 on.
+          expect(result?.lastModified).toBeGreaterThanOrEqual(
+            now - 3600 * 1000 - 1,
+          );
+          expect(result?.lastModified).toBeLessThan(now - 3599 * 1000);
+          // The store keeps the sentinel so that the revalidation queue keeps deduplicating.
+          expect(store.lastModified).toEqual(1);
+        });
+
+        it("Should set lastModified to 1 from 16.3 when the entry has no revalidate", async () => {
+          globalThis.nextVersion = "16.3.0";
+          tagCache.isStale.mockResolvedValueOnce(true);
+          const store: Record<string, any> = {
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+            requestCache: new RequestCache(),
+          };
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+          });
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result?.lastModified).toEqual(1);
+          expect(store.lastModified).toEqual(1);
+        });
+
         it("Should set store.lastModified to original lastModified when tag is not stale", async () => {
           tagCache.isStale.mockResolvedValueOnce(false);
           const cachedLastModified = Date.now();

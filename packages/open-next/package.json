@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "@opennextjs/aws",
-  "version": "4.0.3",
+  "version": "4.1.0",
   "bin": {
     "open-next": "./dist/index.js"
   },
@@ -60,11 +60,12 @@
     "@types/express": "5.0.0",
     "@types/node": "catalog:",
     "concurrently": "^9.2.1",
+    "next": "catalog:",
     "tsc-alias": "^1.8.16",
     "typescript": "catalog:"
   },
   "peerDependencies": {
-    "next": ">=15.5.18 <16 || >=16.2.6"
+    "next": ">=15.5.21 <16 || >=16.2.11"
   },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"

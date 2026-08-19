@@ -26,6 +26,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         srcRoute: null,
         dataRoute: "/_next/data/abc/revalidate.json",
       },
+      "/admin/%ZZ": {
+        initialRevalidateSeconds: false,
+        srcRoute: "/admin/[slug]",
+        dataRoute: "/admin/%ZZ.rsc",
+      },
     },
     dynamicRoutes: {},
   },
@@ -121,6 +126,17 @@ describe("cacheInterceptor", () => {
     const result = await cacheInterceptor(event);
 
     expect(result).toEqual(event);
+  });
+
+  it("should not intercept a path containing a malformed escape", async () => {
+    const event = createEvent({
+      url: "/%61dmin/%ZZ",
+    });
+
+    const result = await cacheInterceptor(event);
+
+    expect(result).toEqual(event);
+    expect(incrementalCache.get).not.toHaveBeenCalled();
   });
 
   it("should take no action when incremental cache throws", async () => {
