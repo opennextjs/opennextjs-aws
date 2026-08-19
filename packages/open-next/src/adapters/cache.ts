@@ -8,6 +8,7 @@ import {
   getTagsFromValue,
   hasBeenRevalidated,
   isStale,
+  seedCacheControls,
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
@@ -149,6 +150,12 @@ export default class Cache {
       if (_isStale) {
         _lastModified = getStaleLastModified(cacheData.revalidate);
       }
+
+      // Next.js has no way for a cache handler to report the TTL of the entry it returns, it reads
+      // it from its own per route map instead. That map has no entry for a page rendered on demand,
+      // which makes Next.js fall back to a one second TTL and emit no `Cache-Control` header.
+      // It is read after this `get` resolves, so seeding it here applies to this request already.
+      seedCacheControls(key, cacheData.revalidate);
 
       if (cacheData?.type === "route") {
         return {
