@@ -1,0 +1,19 @@
+packages/open-next/src/core/routing/cacheInterceptor.ts
+  s_06b713c9a58d7f::t_62fc946fad9850 117-125,129,140-156,159-161,165-176,183,192-198,348-349,356-358
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1b8075ab297789ccfb08dc05038cdd77a2869377",
+  "prompts": {},
+  "sessions": {
+    "s_06b713c9a58d7f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fe5b443dcffeGzejs5bpVGbBGG",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
