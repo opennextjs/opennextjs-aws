@@ -750,6 +750,139 @@ describe("cacheInterceptor", () => {
       expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
     });
+
+    // `rsc` is absent from the cached value when Next.js does not write the
+    // `.rsc` file at build time, i.e. for fallback shells and for PPR routes
+    // that have a postponed state.
+    // See `file-system-cache.ts` in Next.js, `rscData` is only read when
+    // `!ctx.isFallback && (!ctx.isRoutePPREnabled || meta?.postponed == null)`.
+    describe("missing rsc", () => {
+      it("should serve segment data when rsc is missing and the segment key matches", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+        expect((result as any).headers["x-nextjs-prerender"]).toEqual("1");
+        expect((result as any).headers["x-nextjs-postponed"]).toEqual("2");
+      });
+
+      it("should serve the HTML when rsc is missing on a non-RSC request", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("HTML content");
+        expect((result as any).headers["content-type"]).toEqual(
+          "text/html; charset=utf-8",
+        );
+      });
+
+      // TODO: the interceptor should bypass the cache and let the server render
+      // the page instead of serving an empty RSC payload.
+      it("should serve an empty body for an RSC request when rsc is missing", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("");
+        expect(result).toEqual(
+          expect.objectContaining({
+            statusCode: 200,
+            headers: expect.objectContaining({
+              "content-type": "text/x-component",
+              // `/albums` is a SSG route, so the empty payload is served with a
+              // one year `s-maxage` and can be cached by the CDN.
+              "cache-control":
+                "s-maxage=31536000, stale-while-revalidate=2592000",
+              "x-opennext-cache": "HIT",
+            }),
+          }),
+        );
+      });
+
+      // TODO: same as above, this should bypass the cache.
+      it("should serve an empty body for an RSC request when rsc is missing and the segment key does not match", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/not-here",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("");
+        expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
+        expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+      });
+
+      // TODO: same as above, this should bypass the cache.
+      it("should serve an empty body for an RSC request when rsc is missing and prefetchInlining is enabled", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+        (NextConfig as any).experimental = { prefetchInlining: true };
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("");
+        expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
+        expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+      });
+    });
   });
 
   describe("isStale", () => {
