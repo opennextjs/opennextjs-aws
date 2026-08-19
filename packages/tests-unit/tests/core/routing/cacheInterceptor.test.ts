@@ -751,11 +751,10 @@ describe("cacheInterceptor", () => {
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
     });
 
-    // `rsc` is absent from the cached value when Next.js does not write the
-    // `.rsc` file at build time, i.e. for fallback shells and for PPR routes
-    // that have a postponed state.
-    // See `file-system-cache.ts` in Next.js, `rscData` is only read when
-    // `!ctx.isFallback && (!ctx.isRoutePPREnabled || meta?.postponed == null)`.
+    // `rsc` is absent from the cached value when the build collected neither a
+    // `.rsc` nor a `.prefetch.rsc` file for the entry. Note that a postponed PPR
+    // route is not one of those cases: Next.js skips its `.rsc` but does write a
+    // `.prefetch.rsc`, which `createAssets` stores in the same field.
     describe("missing rsc", () => {
       it("should serve segment data when rsc is missing and the segment key matches", async () => {
         const event = createEvent({

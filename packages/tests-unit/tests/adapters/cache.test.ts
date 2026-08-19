@@ -448,10 +448,10 @@ describe("CacheHandler", () => {
         });
       });
 
-      // `rsc` is absent from the cache file when Next.js does not write the
-      // `.rsc` file at build time, i.e. for fallback shells and for PPR routes
-      // that have a postponed state. Next.js also leaves `rscData` undefined in
-      // those cases, see `file-system-cache.ts`.
+      // `rsc` is absent from the cache file when the build collected neither a
+      // `.rsc` nor a `.prefetch.rsc` file for the entry. Next.js leaves `rscData`
+      // undefined for fallback shells and postponed PPR routes as well, see
+      // `file-system-cache.ts`, so an undefined value is expected downstream.
       it("Should return an undefined rscData when cache data type is app without rsc (Next 15+)", async () => {
         globalThis.nextVersion = "15.0.0";
         incrementalCache.get.mockResolvedValueOnce({

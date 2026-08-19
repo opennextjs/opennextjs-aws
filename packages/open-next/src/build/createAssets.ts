@@ -142,6 +142,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
           case ".json":
           case ".body":
           case ".rsc": {
+            // Stripping `.prefetch` maps both `<page>.rsc` and `<page>.prefetch.rsc` onto
+            // the same cache entry, so the `rsc` field can hold either payload. When both
+            // files exist the first one traversed wins, as the spread below keeps the value
+            // already recorded for that extension.
             const newFilePath = path
               .join(outputCachePath, relativePath)
               .substring(
