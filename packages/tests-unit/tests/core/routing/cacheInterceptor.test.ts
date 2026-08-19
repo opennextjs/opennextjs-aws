@@ -799,9 +799,7 @@ describe("cacheInterceptor", () => {
         );
       });
 
-      // TODO: the interceptor should bypass the cache and let the server render
-      // the page instead of serving an empty RSC payload.
-      it("should serve an empty body for an RSC request when rsc is missing", async () => {
+      it("should take no action for an RSC request when rsc is missing", async () => {
         const event = createEvent({
           url: "/albums",
           headers: { rsc: "1" },
@@ -815,25 +813,10 @@ describe("cacheInterceptor", () => {
 
         const result = await cacheInterceptor(event);
 
-        const body = await fromReadableStream(result.body);
-        expect(body).toEqual("");
-        expect(result).toEqual(
-          expect.objectContaining({
-            statusCode: 200,
-            headers: expect.objectContaining({
-              "content-type": "text/x-component",
-              // `/albums` is a SSG route, so the empty payload is served with a
-              // one year `s-maxage` and can be cached by the CDN.
-              "cache-control":
-                "s-maxage=31536000, stale-while-revalidate=2592000",
-              "x-opennext-cache": "HIT",
-            }),
-          }),
-        );
+        expect(result).toEqual(event);
       });
 
-      // TODO: same as above, this should bypass the cache.
-      it("should serve an empty body for an RSC request when rsc is missing and the segment key does not match", async () => {
+      it("should take no action for an RSC request when rsc is missing and the segment key does not match", async () => {
         const event = createEvent({
           url: "/albums",
           headers: {
@@ -851,14 +834,10 @@ describe("cacheInterceptor", () => {
 
         const result = await cacheInterceptor(event);
 
-        const body = await fromReadableStream(result.body);
-        expect(body).toEqual("");
-        expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
-        expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+        expect(result).toEqual(event);
       });
 
-      // TODO: same as above, this should bypass the cache.
-      it("should serve an empty body for an RSC request when rsc is missing and prefetchInlining is enabled", async () => {
+      it("should take no action for an RSC request when rsc is missing and prefetchInlining is enabled", async () => {
         const event = createEvent({
           url: "/albums",
           headers: {
@@ -877,10 +856,26 @@ describe("cacheInterceptor", () => {
 
         const result = await cacheInterceptor(event);
 
-        const body = await fromReadableStream(result.body);
-        expect(body).toEqual("");
-        expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
-        expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+        expect(result).toEqual(event);
+      });
+
+      it("should not queue a revalidation when falling back to the server", async () => {
+        const event = createEvent({
+          url: "/revalidate",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+          lastModified: new Date("2024-01-01T00:00:00Z").getTime(),
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+        expect(queue.send).not.toHaveBeenCalled();
       });
     });
   });
