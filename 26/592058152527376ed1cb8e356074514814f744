@@ -1,0 +1,21 @@
+packages/open-next/src/core/routing/util.ts
+  s_8e48b7804df4a3::t_3d5ab6005b84ae 59-68
+packages/tests-unit/tests/core/routing/matcher.test.ts
+  s_8e48b7804df4a3::t_5f163f4df0ab0b 382-401,502-555
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "26592058152527376ed1cb8e356074514814f744",
+  "prompts": {},
+  "sessions": {
+    "s_8e48b7804df4a3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fcc69f1dcffeSE02mV3TshBSss",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
