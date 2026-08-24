@@ -56,6 +56,16 @@ export function convertFromQueryString(query: string) {
 }
 
 /**
+ * Splits an URL into its parts
+ *
+ * The URL is a route destination, i.e. a `path-to-regexp` pattern rather than a
+ * well formed URL, so it can not be parsed with `new URL()` which would percent
+ * encode some of the pattern characters.
+ *
+ * @param url The URL to split
+ * @param isExternal Whether the URL points to an external host
+ * @returns The protocol, hostname, pathname and query string of the URL
+ * @throws When `isExternal` is true and the URL is not an absolute HTTP(S) URL
  *
  * @__PURE__
  */
@@ -65,13 +75,13 @@ export function getUrlParts(url: string, isExternal: boolean) {
     const match = url.match(regex);
     return {
       hostname: "",
-      pathname: match?.[1] ? `/${match[1]}` : url,
+      pathname: url == "" ? "" : `/${match?.[1] ?? ""}`,
       protocol: "",
       queryString: match?.[2] ?? "",
     };
   }
 
-  const regex = /^(https?:)\/\/?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
+  const regex = /^(https?:)\/\/?([^\/\s?]+)(\/[^?]*)?(\?.*)?/;
   const match = url.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
