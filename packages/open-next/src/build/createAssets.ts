@@ -146,6 +146,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             // the same cache entry, so the `rsc` field can hold either payload. When both
             // files exist the first one traversed wins, as the spread below keeps the value
             // already recorded for that extension.
+            //
+            // Next 16.1 removed `.prefetch.rsc`, so the strip is a no-op on Next 16 where
+            // the `rsc` field always holds a full payload.
             const newFilePath = path
               .join(outputCachePath, relativePath)
               .substring(

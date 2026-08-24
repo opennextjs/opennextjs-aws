@@ -172,6 +172,9 @@ export default class Cache {
         // Without the html there is no valid value to return, so we report a miss and let
         // the server render the page. Next.js behaves the same way, its file system cache
         // reads the `.html` file first and turns a read failure into a miss.
+        //
+        // The check is on `undefined` and not on falsiness because an empty string is a
+        // valid value: a PPR route with an empty static shell has an empty `.html` file.
         if (cacheData.html === undefined) {
           warn("No html in the cache entry", key);
           return null;
@@ -194,8 +197,9 @@ export default class Cache {
               kind: "APP_PAGE",
               html: cacheData.html,
               // `rsc` is absent when the build collected neither a `.rsc` nor a
-              // `.prefetch.rsc` file. Next.js also leaves `rscData` undefined for fallback
-              // shells and postponed PPR routes, so an undefined value is expected here.
+              // `.prefetch.rsc` file, see `CachedFile`. An undefined value is expected: the
+              // Next.js file system cache also leaves `rscData` undefined for fallback
+              // shells, and on 16.2+ for postponed PPR routes.
               rscData:
                 cacheData.rsc === undefined
                   ? undefined

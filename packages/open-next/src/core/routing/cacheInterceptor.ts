@@ -146,8 +146,9 @@ function getBodyForAppRouter(
     };
   }
   // `rsc` is absent when the build collected neither a `.rsc` nor a `.prefetch.rsc` file for
-  // this entry. There is nothing valid to serve, and falling back to an empty payload would
-  // break the router and let the CDN cache the empty response, so let the server generate it.
+  // this entry - fallback shells, and postponed PPR routes on Next 16.2+, see `CachedFile`.
+  // There is nothing valid to serve, and falling back to an empty payload would break the
+  // router and let the CDN cache the empty response, so let the server generate it.
   if (cachedValue.rsc === undefined) {
     return undefined;
   }

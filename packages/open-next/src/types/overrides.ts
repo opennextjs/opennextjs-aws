@@ -65,17 +65,27 @@ export type CachedFile =
     }
   | {
       type: "app";
-      /** Absent when the build did not collect an `.html` file for this entry. */
+      /**
+       * The prerendered HTML.
+       *
+       * Absent when the build did not collect an `.html` file for this entry. Note that
+       * Next.js writes the `.html` unconditionally when it prerenders an app page, so this
+       * is only expected to be absent for a malformed build output. A PPR route with an
+       * empty static shell is *not* one of those cases: the file is written, empty.
+       */
       html?: string;
       /**
        * The RSC payload.
        *
-       * Absent when the build collected neither a `.rsc` nor a `.prefetch.rsc` file for this
-       * entry - both are stored here, see `createAssets`.
+       * Both `<page>.rsc` and `<page>.prefetch.rsc` are stored here, see `createAssets`.
        *
-       * Note that a postponed PPR route is not one of those cases: Next.js skips its `.rsc`
-       * but emits a `.prefetch.rsc`, so the entry still has a payload here. It is the
-       * *prefetch* payload, which this type can not distinguish from a full one.
+       * Absent when the build emitted neither file, which depends on the Next.js version:
+       * - `15.x`: only for fallback shells. A PPR route emits a `.prefetch.rsc` in place of
+       *   its `.rsc`, so the field is set but holds the *prefetch* payload, which this type
+       *   can not distinguish from a full one.
+       * - `>= 16.2`: `.prefetch.rsc` no longer exists and a PPR route only emits a `.rsc`
+       *   when it is fully static, so the field is absent for postponed PPR routes and for
+       *   fallback shells, and holds a full payload otherwise.
        */
       rsc?: string;
       meta?: Meta;
