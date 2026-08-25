@@ -1,5 +1,50 @@
 # open-next
 
+## 4.1.1
+
+### Patch Changes
+
+- [#1209](https://github.com/opennextjs/opennextjs-aws/pull/1209) [`cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff`](https://github.com/opennextjs/opennextjs-aws/commit/cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff) Thanks [@cgcompassion](https://github.com/cgcompassion)! - Persist runtime cache tag associations for App Router `APP_PAGE` entries when using original-mode tag caches, including pages generated on demand and tags added after the build.
+
+- [#1195](https://github.com/opennextjs/opennextjs-aws/pull/1195) [`eb04b808731abdab6ed5c8dd30f0eb3b17355336`](https://github.com/opennextjs/opennextjs-aws/commit/eb04b808731abdab6ed5c8dd30f0eb3b17355336) Thanks [@JiahaoZhu11](https://github.com/JiahaoZhu11)! - Fix `server/instrumentation.js does not exist` build failure on Next.js 16
+
+  On Next.js 16 the standalone output no longer copies `server/instrumentation.js`
+  into the standalone directory, but `copyTracedFiles` copies the instrumentation
+  `.nft.json` trace and then asserts the `.js` file exists in the standalone dir,
+  throwing `File server/instrumentation.js does not exist` during the server
+  bundle. The instrumentation file is now copied from the build dir into the
+  standalone dir (mirroring the existing `.nft.json` copy) so the assertion passes
+  and the file ships in the bundle.
+
+- [#1194](https://github.com/opennextjs/opennextjs-aws/pull/1194) [`d8b13fa5a885d0e31d3c9cc72040c2b66784e07f`](https://github.com/opennextjs/opennextjs-aws/commit/d8b13fa5a885d0e31d3c9cc72040c2b66784e07f) Thanks [@conico974](https://github.com/conico974)! - Fix for undefined rsc data in the cache
+
+  A cache entry does not always hold every field: the build only stores `rsc` when it
+  collected a `.rsc` or a `.prefetch.rsc` file, and only stores `html` when it collected an
+  `.html` file. `CachedFile` claimed both were always present, so `Buffer.from(cacheData.rsc)`
+  threw on such an entry and the cache handler turned that into a permanent miss.
+
+  `rsc` and `html` are now optional and an entry that lacks the data needed to serve a
+  request is reported as a miss instead of being served incomplete. The cache interceptor
+  falls back to the server for those entries rather than serving an empty RSC payload, which
+  a CDN could otherwise cache.
+
+- [#1223](https://github.com/opennextjs/opennextjs-aws/pull/1223) [`a828810a5cb517d77cbe1b455f8b0b9d14a46610`](https://github.com/opennextjs/opennextjs-aws/commit/a828810a5cb517d77cbe1b455f8b0b9d14a46610) Thanks [@conico974](https://github.com/conico974)! - Update Next.js and sharp versions
+
+- [#1207](https://github.com/opennextjs/opennextjs-aws/pull/1207) [`33422799811e281a0882f2be24264730ae68fff0`](https://github.com/opennextjs/opennextjs-aws/commit/33422799811e281a0882f2be24264730ae68fff0) Thanks [@conico974](https://github.com/conico974)! - Fix stale entries being revalidated in a blocking way on Next.js 16.3
+
+  To flag a cache entry as stale, the incremental cache adapter reported a
+  `lastModified` of `1` (i.e. right after the epoch) to Next.js. Starting with
+  Next.js 16.3 the incremental cache also compares `lastModified + expire` to now
+  and forces a blocking revalidation (`x-nextjs-cache: REVALIDATED`) when that is
+  in the past, which an epoch based value always is. Stale entries were therefore
+  never served while revalidating in the background.
+
+  On Next.js 16.3 and above, stale entries now report a `lastModified` just past
+  their revalidate window, so they stay inside their expire window and are served
+  stale as intended. Earlier versions keep the previous behaviour.
+
+- [#1220](https://github.com/opennextjs/opennextjs-aws/pull/1220) [`1824810351c9c56880a1e57c77235b04c0982108`](https://github.com/opennextjs/opennextjs-aws/commit/1824810351c9c56880a1e57c77235b04c0982108) Thanks [@vicb](https://github.com/vicb)! - fix `getgetUrlParts()` when the path name is empty (root)
+
 ## 4.1.0
 
 ### Minor Changes
