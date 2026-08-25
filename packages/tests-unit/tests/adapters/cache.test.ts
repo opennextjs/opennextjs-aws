@@ -852,6 +852,48 @@ describe("CacheHandler", () => {
       );
     });
 
+    // `x-next-cache-tags` carries the tags collected during the render, as a comma
+    // separated string. Only entries reachable by `revalidateTag` are covered here: an App
+    // Router page is a `PAGE` with a string `pageData` before Next 15 and an `APP_PAGE`
+    // from Next 15 on. A `PAGE` with an object `pageData` is a Pages Router entry, which
+    // `revalidateTag` never reaches.
+    it.each([
+      {
+        cacheKind: "PAGE",
+        data: {
+          kind: "PAGE" as const,
+          html: "<html></html>",
+          pageData: "rsc",
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+      {
+        cacheKind: "APP_PAGE",
+        data: {
+          kind: "APP_PAGE" as const,
+          html: "<html></html>",
+          rscData: Buffer.from("rsc"),
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+    ])("Should persist cache tags for $cacheKind entries", async ({ data }) => {
+      tagCache.getByPath.mockResolvedValueOnce(["existing-tag"]);
+
+      await cache.set("key", data);
+
+      expect(tagCache.getByPath).toHaveBeenCalledWith("key");
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "key",
+          tag: "new-tag",
+          revalidatedAt: 1,
+        },
+      ]);
+    });
+
     it("Should set cache when for APP_PAGE without rscData", async () => {
       await cache.set("key", {
         kind: "APP_PAGE",

@@ -182,3 +182,63 @@ test("Revalidate path", async ({ page, request }) => {
   const newDate = await elLayout.textContent();
   expect(newDate).not.toEqual(initialDate);
 });
+
+test("Revalidate tag invalidates an App Router page generated on demand", async ({
+  page,
+  request,
+}) => {
+  // Two bounded polling loops (warm-up then revalidation), so this needs more headroom
+  // than the single-loop tests above.
+  test.setTimeout(90000);
+  const path = `/revalidate-tag/on-demand/${Date.now()}`;
+
+  // The first request generates the page on demand, and the path/tag association is
+  // written during that `set` - behind a detached promise, into an eventually consistent
+  // store. Wait until the entry is actually served from the cache before revalidating,
+  // otherwise `revalidateTag` may not see the association yet and would leave the page
+  // untouched.
+  let warmupCache: string | undefined;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const warmupResponse = await page.goto(path);
+    expect(warmupResponse?.status()).toEqual(200);
+    const warmupHeaders = warmupResponse?.headers() ?? {};
+    warmupCache =
+      warmupHeaders["x-nextjs-cache"] ?? warmupHeaders["x-opennext-cache"];
+    if (warmupCache === "HIT" || warmupCache === "STALE") {
+      break;
+    }
+    await page.waitForTimeout(1000);
+  }
+  expect(warmupCache).toMatch(/^(HIT|STALE)$/);
+
+  await expect(page.getByTestId("on-demand-page")).toBeVisible();
+  const initialTime = await page.getByText("Fetched time:").textContent();
+
+  const result = await request.get("/api/revalidate-tag");
+  expect(result.status()).toEqual(200);
+  expect(await result.text()).toEqual("ok");
+
+  let refreshedResponse = await page.goto(path);
+  let refreshedTime = await page.getByText("Fetched time:").textContent();
+  for (
+    let attempt = 0;
+    attempt < 10 && refreshedTime === initialTime;
+    attempt++
+  ) {
+    await page.waitForTimeout(1000);
+    refreshedResponse = await page.goto(path);
+    refreshedTime = await page.getByText("Fetched time:").textContent();
+  }
+
+  // The page embeds the layout's tagged `unstable_cache` value, so a changed time proves
+  // the enclosing page entry was invalidated and not just the inner cache entry.
+  expect(refreshedTime).not.toEqual(initialTime);
+  const cacheHeader =
+    refreshedResponse?.headers()["x-nextjs-cache"] ??
+    refreshedResponse?.headers()["x-opennext-cache"];
+  // `revalidateTag` is called with `expire: 0`, so the entry expires immediately and the
+  // request that returns the new content is normally a blocking MISS. If the revalidation
+  // marker lands late, an earlier request may be served from cache and the new content
+  // then surfaces on a later HIT.
+  expect(cacheHeader).toMatch(/^(MISS|HIT)$/);
+});
