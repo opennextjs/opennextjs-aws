@@ -111,7 +111,7 @@ export async function createImageOptimizationBundle(
   // Target should be same as used by Lambda, see https://github.com/sst/sst/blob/ca6f763fdfddd099ce2260202d0ce48c72e211ea/packages/sst/src/constructs/NextjsSite.ts#L114
   // For SHARP_IGNORE_GLOBAL_LIBVIPS see: https://github.com/lovell/sharp/blob/main/docs/install.md#aws-lambda
 
-  const sharpVersion = process.env.SHARP_VERSION ?? "0.32.6";
+  const sharpVersion = process.env.SHARP_VERSION ?? "0.35.3";
 
   // In development, we want to use the local machine settings
   const isDev = config.imageOptimization?.loader === "fs-dev";
