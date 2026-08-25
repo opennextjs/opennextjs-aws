@@ -554,6 +554,10 @@ export default class Cache {
     }
     // Write derivedTags to the tag cache
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
+    // `x-next-cache-tags` is always a comma separated string: Next.js sets it from
+    // `metadata.fetchTags`, which is a string. The header type allows an array because it
+    // is shared with headers that can legitimately repeat, so we narrow on `typeof` here.
+    // Next.js guards the same way when it reads the header back.
     const pageCacheTags =
       data?.kind === "PAGE" || data?.kind === "APP_PAGE"
         ? data.headers?.["x-next-cache-tags"]
@@ -562,9 +566,9 @@ export default class Cache {
       data?.kind === "FETCH"
         ? //@ts-expect-error - On older versions of next, ctx was a number, but for these cases we use data?.data?.tags
           (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
-        : Array.isArray(pageCacheTags)
-          ? pageCacheTags
-          : (pageCacheTags?.split(",") ?? []);
+        : typeof pageCacheTags === "string"
+          ? pageCacheTags.split(",")
+          : [];
     debug("derivedTags", derivedTags);
 
     // Get all tags stored in dynamodb for the given key
