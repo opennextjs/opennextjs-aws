@@ -171,6 +171,25 @@ describe("getUrlParts", () => {
         queryString: "query=1",
       });
     });
+
+    // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
+    it("returns url parts for / with a query string", () => {
+      expect(getUrlParts("/?ref=promo", false)).toEqual({
+        hostname: "",
+        pathname: "/",
+        protocol: "",
+        queryString: "ref=promo",
+      });
+    });
+
+    it("returns url parts for an empty query string", () => {
+      expect(getUrlParts("/relative?", false)).toEqual({
+        hostname: "",
+        pathname: "/relative",
+        protocol: "",
+        queryString: "",
+      });
+    });
   });
 
   describe("external", () => {
@@ -217,6 +236,25 @@ describe("getUrlParts", () => {
         hostname: "localhost:3000",
         pathname: "/relative/path",
         protocol: "http:",
+        queryString: "query=1",
+      });
+    });
+
+    // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
+    it("returns url parts with a query string but no path", () => {
+      expect(getUrlParts("https://localhost?query=1", true)).toEqual({
+        hostname: "localhost",
+        pathname: "",
+        protocol: "https:",
+        queryString: "query=1",
+      });
+    });
+
+    it("returns url parts for / with a query string", () => {
+      expect(getUrlParts("https://localhost/?query=1", true)).toEqual({
+        hostname: "localhost",
+        pathname: "/",
+        protocol: "https:",
         queryString: "query=1",
       });
     });

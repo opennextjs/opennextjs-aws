@@ -169,6 +169,16 @@ export default class Cache {
         } as CacheHandlerValue;
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
+        // Without the html there is no valid value to return, so we report a miss and let
+        // the server render the page. Next.js behaves the same way, its file system cache
+        // reads the `.html` file first and turns a read failure into a miss.
+        //
+        // The check is on `undefined` and not on falsiness because an empty string is a
+        // valid value: a PPR route with an empty static shell has an empty `.html` file.
+        if (cacheData.html === undefined) {
+          warn("No html in the cache entry", key);
+          return null;
+        }
         if (
           compareSemver(globalThis.nextVersion, ">=", "15.0.0") &&
           cacheData?.type === "app"
@@ -186,13 +196,28 @@ export default class Cache {
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
-              rscData: Buffer.from(cacheData.rsc),
+              // `rsc` is absent when the build collected neither a `.rsc` nor a
+              // `.prefetch.rsc` file, see `CachedFile`. An undefined value is expected: the
+              // Next.js file system cache also leaves `rscData` undefined for fallback
+              // shells, and on 16.2+ for postponed PPR routes.
+              rscData:
+                cacheData.rsc === undefined
+                  ? undefined
+                  : Buffer.from(cacheData.rsc),
               status: meta?.status,
               headers: meta?.headers,
               postponed: meta?.postponed,
               segmentData,
             },
           } as CacheHandlerValue;
+        }
+        const pageData =
+          cacheData.type === "page" ? cacheData.json : cacheData.rsc;
+        // Only reachable for an app page on Next.js < 15, where an absent `rsc` leaves us
+        // without any page data to return.
+        if (pageData === undefined) {
+          warn("No page data in the cache entry", key);
+          return null;
         }
         return {
           lastModified: _lastModified,
@@ -201,8 +226,7 @@ export default class Cache {
               ? "PAGES"
               : "PAGE",
             html: cacheData.html,
-            pageData:
-              cacheData.type === "page" ? cacheData.json : cacheData.rsc,
+            pageData,
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -317,7 +341,7 @@ export default class Cache {
               {
                 type: "app",
                 html,
-                rsc: rscData.toString("utf8"),
+                rsc: rscData?.toString("utf8"),
                 meta: {
                   status,
                   headers,

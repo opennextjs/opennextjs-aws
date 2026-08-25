@@ -448,6 +448,106 @@ describe("CacheHandler", () => {
         });
       });
 
+      // `rsc` is absent from the cache file when the build collected neither a
+      // `.rsc` nor a `.prefetch.rsc` file for the entry. Next.js leaves `rscData`
+      // undefined for fallback shells and postponed PPR routes as well, see
+      // `file-system-cache.ts`, so an undefined value is expected downstream.
+      it("Should return an undefined rscData when cache data type is app without rsc (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+            segmentData: {
+              segment1: "data1",
+            },
+            meta: {
+              status: 200,
+              postponed: "postponed-data",
+            },
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toEqual({
+          value: {
+            kind: "APP_PAGE",
+            html: "<html></html>",
+            rscData: undefined,
+            status: 200,
+            headers: undefined,
+            postponed: "postponed-data",
+            segmentData: new Map([["segment1", Buffer.from("data1")]]),
+          },
+          lastModified: Date.now(),
+        });
+        expect((result as any).value.rscData).toBeUndefined();
+      });
+
+      it("Should return an empty rscData when cache data type is app with an empty rsc (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+            rsc: "",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        // An empty `rsc` is a payload of its own, only an absent `rsc` maps to `undefined`.
+        expect((result as any).value.rscData).toEqual(Buffer.alloc(0));
+      });
+
+      it("Should return null when cache data type is app without html (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "rsc-data",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
+      });
+
+      it("Should return null when cache data type is page without html", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: {},
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toBeNull();
+      });
+
+      // On Next.js < 15 an app page is returned as a `PAGE` whose `pageData` holds the RSC
+      // payload, there is nothing to return when `rsc` is absent.
+      it("Should return null when cache data type is app without rsc (Next 14)", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
+      });
+
       it("Should return value when cache data type is redirect", async () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -790,6 +890,78 @@ describe("CacheHandler", () => {
         },
       ]);
     });
+
+    it("Should set cache when for APP_PAGE without rscData", async () => {
+      await cache.set("key", {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: undefined,
+        status: 200,
+        headers: {},
+        postponed: "postponed-data",
+      });
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "app",
+          html: "<html></html>",
+          rsc: undefined,
+          meta: {
+            status: 200,
+            headers: {},
+            postponed: "postponed-data",
+          },
+        },
+        "cache",
+      );
+      // `toHaveBeenCalledWith` ignores undefined properties, so we assert on the
+      // written value to make sure `rsc` is not serialized.
+      expect(incrementalCache.set.mock.calls[0][1].rsc).toBeUndefined();
+    });
+
+    it("Should set cache when for APP_PAGE with an empty rscData", async () => {
+      await cache.set("key", {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: Buffer.alloc(0),
+        status: 200,
+        headers: {},
+      });
+
+      expect(incrementalCache.set.mock.calls[0][1].rsc).toEqual("");
+    });
+
+    // `get` maps an absent `rsc` to `undefined` and an empty `rsc` to an empty buffer, so
+    // both values written here come back unchanged.
+    it.each([
+      { rscData: undefined, rsc: undefined },
+      { rscData: Buffer.alloc(0), rsc: "" },
+    ])(
+      "Should round-trip an APP_PAGE with rscData: $rscData",
+      async ({ rscData, rsc }) => {
+        globalThis.nextVersion = "15.0.0";
+
+        await cache.set("key", {
+          kind: "APP_PAGE",
+          html: "<html></html>",
+          rscData,
+          status: 200,
+          headers: {},
+        });
+
+        const written = incrementalCache.set.mock.calls[0][1];
+        expect(written.rsc).toEqual(rsc);
+
+        incrementalCache.get.mockResolvedValueOnce({
+          value: written,
+          lastModified: Date.now(),
+        });
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect((result as any).value.rscData).toEqual(rscData);
+      },
+    );
 
     it("Should set cache when for FETCH", async () => {
       await cache.set("key", {

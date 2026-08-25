@@ -750,6 +750,198 @@ describe("cacheInterceptor", () => {
       expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
     });
+
+    // `rsc` is absent from the cached value when the build collected neither a
+    // `.rsc` nor a `.prefetch.rsc` file for the entry. Note that a postponed PPR
+    // route is not one of those cases: Next.js skips its `.rsc` but does write a
+    // `.prefetch.rsc`, which `createAssets` stores in the same field.
+    describe("missing rsc", () => {
+      it("should serve segment data when rsc is missing and the segment key matches", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+        expect((result as any).headers["x-nextjs-prerender"]).toEqual("1");
+        expect((result as any).headers["x-nextjs-postponed"]).toEqual("2");
+      });
+
+      it("should serve the HTML when rsc is missing on a non-RSC request", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("HTML content");
+        expect((result as any).headers["content-type"]).toEqual(
+          "text/html; charset=utf-8",
+        );
+      });
+
+      it("should take no action for an RSC request when rsc is missing", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for an RSC request when rsc is missing and the segment key does not match", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/not-here",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for an RSC request when rsc is missing and prefetchInlining is enabled", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+        (NextConfig as any).experimental = { prefetchInlining: true };
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should not queue a revalidation when falling back to the server", async () => {
+        const event = createEvent({
+          url: "/revalidate",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+          lastModified: new Date("2024-01-01T00:00:00Z").getTime(),
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+        expect(queue.send).not.toHaveBeenCalled();
+      });
+    });
+
+    // `html` is absent from the cached value when Next.js does not write the
+    // `.html` file at build time.
+    describe("missing html", () => {
+      it("should serve the RSC payload when html is missing on an RSC request", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("RSC content");
+      });
+
+      it("should take no action for a document request when html is missing", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for a page document request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should serve the json for a page data request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate?__nextDataReq=1" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual('{"hello":"world"}');
+      });
+    });
   });
 
   describe("isStale", () => {

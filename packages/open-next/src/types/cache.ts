@@ -50,7 +50,7 @@ interface IncrementalCachedAppPageValue {
   // this needs to be a string since the cache expects to store
   // the string value
   html: string;
-  rscData: Buffer;
+  rscData: Buffer | undefined;
   headers?: Record<string, undefined | string | string[]>;
   postponed?: string;
   status?: number;

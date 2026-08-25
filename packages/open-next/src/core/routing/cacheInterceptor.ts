@@ -11,7 +11,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
-import { debug, error } from "../../adapters/logger";
+import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
 
@@ -114,54 +114,77 @@ async function computeCacheControl(
   };
 }
 
+/**
+ * Computes the body of an RSC response from a cached app router entry.
+ *
+ * @param event The incoming event, used to read the segment prefetch header
+ * @param cachedValue The cache entry, must be of type `app`
+ * @returns The body and the headers to add to the response, or `undefined` when
+ * the entry can not serve the request - the caller should then fallback to the server.
+ * @throws When `cachedValue` is not of type `app`
+ */
 function getBodyForAppRouter(
   event: MiddlewareEvent,
   cachedValue: CacheValue<"cache">,
-): { body: string; additionalHeaders: Record<string, string> } {
+): { body: string; additionalHeaders: Record<string, string> } | undefined {
   if (cachedValue.type !== "app") {
     throw new Error("getBodyForAppRouter called with non-app cache value");
   }
-  try {
-    const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
-    const isSegmentResponse =
-      Boolean(segmentHeader) &&
-      segmentHeader in (cachedValue.segmentData || {}) &&
-      !NextConfig.experimental?.prefetchInlining;
+  const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
+  const isSegmentResponse =
+    Boolean(segmentHeader) &&
+    segmentHeader in (cachedValue.segmentData || {}) &&
+    !NextConfig.experimental?.prefetchInlining;
 
-    const body = isSegmentResponse
-      ? cachedValue.segmentData![segmentHeader]
-      : cachedValue.rsc;
+  if (isSegmentResponse) {
     return {
-      body,
-      additionalHeaders: isSegmentResponse
-        ? { [NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2" }
-        : {},
+      body: cachedValue.segmentData![segmentHeader],
+      additionalHeaders: {
+        [NEXT_PRERENDER_HEADER]: "1",
+        [NEXT_POSTPONED_HEADER]: "2",
+      },
     };
-  } catch (e) {
-    error("Error while getting body for app router from cache:", e);
-    return { body: cachedValue.rsc, additionalHeaders: {} };
   }
+  // `rsc` is absent when the build collected neither a `.rsc` nor a `.prefetch.rsc` file for
+  // this entry - fallback shells, and postponed PPR routes on Next 16.2+, see `CachedFile`.
+  // There is nothing valid to serve, and falling back to an empty payload would break the
+  // router and let the CDN cache the empty response, so let the server generate it.
+  if (cachedValue.rsc === undefined) {
+    return undefined;
+  }
+  return { body: cachedValue.rsc, additionalHeaders: {} };
 }
 
+/**
+ * Generates the response to serve for a cached `app` or `page` entry.
+ *
+ * @param event The incoming event
+ * @param localizedPath The localized path, used to compute the cache control
+ * @param cachedValue The cache entry, must be of type `app` or `page`
+ * @param lastModified Time of the last update to the cache entry
+ * @param isStaleFromTagCache Whether the tag cache reported the entry as stale
+ * @returns The result to serve, or `undefined` when the entry can not serve the
+ * request - the caller should then fallback to the server.
+ * @throws When `cachedValue` is neither of type `app` nor `page`
+ */
 async function generateResult(
   event: MiddlewareEvent,
   localizedPath: string,
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
   isStaleFromTagCache = false,
-): Promise<InternalResult> {
+): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
-  let body = "";
+  let body: string | undefined;
   let type = "application/octet-stream";
   let isDataRequest = false;
-  let additionalHeaders = {};
+  let additionalHeaders: Record<string, string> = {};
   if (cachedValue.type === "app") {
     isDataRequest = event.headers.rsc === "1";
     if (isDataRequest) {
-      const { body: appRouterBody, additionalHeaders: appHeaders } =
-        getBodyForAppRouter(event, cachedValue);
-      body = appRouterBody;
-      additionalHeaders = appHeaders;
+      const appRouterResult = getBodyForAppRouter(event, cachedValue);
+      body = appRouterResult?.body;
+      additionalHeaders = appRouterResult?.additionalHeaders ?? {};
     } else {
       body = cachedValue.html;
     }
@@ -174,6 +197,12 @@ async function generateResult(
     throw new Error(
       "generateResult called with unsupported cache value type, only 'app' and 'page' are supported",
     );
+  }
+  // Next.js does not write every file for every route at build time, so the entry might
+  // not hold the data needed to serve this particular request.
+  if (body === undefined) {
+    debug("Missing body in the cache entry, falling back to the server");
+    return undefined;
   }
   const cacheControl = await computeCacheControl(
     localizedPath,
@@ -311,14 +340,17 @@ export async function cacheInterceptor(
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
         case "app":
-        case "page":
-          return generateResult(
+        case "page": {
+          const result = await generateResult(
             event,
             localizedPath,
             cachedData.value,
             cachedData.lastModified,
             _isStale,
           );
+          // The cache entry can not serve this request, fallback to the server.
+          return result ?? event;
+        }
         case "redirect": {
           const cacheControl = await computeCacheControl(
             localizedPath,
