@@ -852,19 +852,38 @@ describe("CacheHandler", () => {
       );
     });
 
+    // `x-next-cache-tags` carries the tags collected during the render. Only entries
+    // reachable by `revalidateTag` are covered here: an App Router page is a `PAGE` with a
+    // string `pageData` before Next 15 and an `APP_PAGE` from Next 15 on. A `PAGE` with an
+    // object `pageData` is a Pages Router entry, which `revalidateTag` never reaches.
     it.each([
       {
-        cacheKind: "PAGE",
+        // App Router entry before Next 15, where `pageData` holds the RSC payload.
+        name: "a PAGE with a comma separated header",
         data: {
           kind: "PAGE" as const,
           html: "<html></html>",
-          pageData: {},
+          pageData: "rsc",
           status: 200,
           headers: { "x-next-cache-tags": "existing-tag,new-tag" },
         },
       },
       {
-        cacheKind: "APP_PAGE",
+        // The shape Next.js actually produces: the header is set from
+        // `metadata.fetchTags`, typed as a string in `next/server/render-result`.
+        name: "an APP_PAGE with a comma separated header",
+        data: {
+          kind: "APP_PAGE" as const,
+          html: "<html></html>",
+          rscData: Buffer.from("rsc"),
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+      {
+        // `OutgoingHttpHeaders` allows an array, so the adapter accepts one even though
+        // Next.js only ever sets a string (it also reads the header back as a string only).
+        name: "an APP_PAGE with an array header",
         data: {
           kind: "APP_PAGE" as const,
           html: "<html></html>",
@@ -875,7 +894,7 @@ describe("CacheHandler", () => {
           },
         },
       },
-    ])("Should persist cache tags for $cacheKind entries", async ({ data }) => {
+    ])("Should persist cache tags for $name", async ({ data }) => {
       tagCache.getByPath.mockResolvedValueOnce(["existing-tag"]);
 
       await cache.set("key", data);
