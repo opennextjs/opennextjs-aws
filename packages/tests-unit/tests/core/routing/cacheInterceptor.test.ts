@@ -32,7 +32,16 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         dataRoute: "/admin/%ZZ.rsc",
       },
     },
-    dynamicRoutes: {},
+    dynamicRoutes: {
+      // A `dynamicParams: true` route. Entries for ids that `generateStaticParams` did
+      // not return are absent from `routes` above, they are runtime write-backs.
+      "/isr/[id]": {
+        routeRegex: "^/isr/([^/]+?)(?:/)?$",
+        dataRoute: null,
+        fallback: null,
+        dataRouteRegex: null,
+      },
+    },
   },
 }));
 
@@ -1056,6 +1065,242 @@ describe("cacheInterceptor", () => {
         }),
       );
       expect(queue.send).not.toHaveBeenCalled();
+    });
+  });
+
+  // Next.js writes `notFound()` results and other error responses to the incremental
+  // cache, so the interceptor can serve them. It must not let the CDN keep them:
+  // `OpenNextNodeResponse.fixHeadersForError` does this on the server path, and the
+  // interceptor bypasses it by returning a result directly.
+  describe("error status codes", () => {
+    const NO_STORE = "private, no-cache, no-store, max-age=0, must-revalidate";
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("should not cache a 404 app router response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      // The body and the status are still served from the cache, only the
+      // cache-control changes.
+      expect(await fromReadableStream(result.body)).toEqual("<html>404</html>");
+      expect(result).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          headers: expect.objectContaining({
+            "cache-control": NO_STORE,
+            "content-type": "text/html; charset=utf-8",
+          }),
+        }),
+      );
+    });
+
+    it("should not cache a 500 app router response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>500</html>",
+          meta: { status: 500 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(500);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    // The reported case: `notFound()` on a `dynamicParams: true` route. The entry is a
+    // runtime write-back so it is absent from the prerender manifest, and the route
+    // declares no `revalidate`, which used to make it look like SSG and earn a
+    // `s-maxage=31536000`.
+    it("should not cache a 404 for a dynamic route absent from the prerender manifest", async () => {
+      const event = createEvent({ url: "/isr/21" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(incrementalCache.get).toHaveBeenCalledWith("/isr/21");
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache a 404 page router response", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "page",
+          html: "<html>404</html>",
+          revalidate: 60,
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache a 404 route handler response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "route",
+          body: '{"error":"not found"}',
+          meta: {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          },
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(await fromReadableStream(result.body)).toEqual(
+        '{"error":"not found"}',
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          headers: expect.objectContaining({
+            "cache-control": NO_STORE,
+            "content-type": "application/json",
+          }),
+        }),
+      );
+    });
+
+    // The entry's own headers are spread after the computed cache control, so the
+    // override has to be applied last to win over both.
+    it("should override a cache-control stored in the entry headers", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: {
+            status: 404,
+            headers: { "cache-control": "s-maxage=31536000" },
+          },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache when the error status comes from rewriteStatusCode", async () => {
+      const event = createEvent({ url: "/albums", rewriteStatusCode: 404 });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    // A stale error entry must still be queued for revalidation, otherwise the 404
+    // stays in the incremental cache instead of merely being uncacheable at the CDN.
+    it("should still queue a revalidation for a stale 404", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          revalidate: 60,
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(queue.send).toHaveBeenCalled();
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+      expect(result.headers["x-opennext-cache"]).toBe("STALE");
+    });
+
+    // Only 404 and 500 are overridden, the rest are the application's own errors and
+    // it owns their cache headers.
+    it("should leave other error status codes cacheable", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Gone",
+          meta: { status: 410 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(410);
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
+    });
+
+    it("should leave a 200 untouched", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
+    });
+
+    it("should keep the cached headers when OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS is true", async () => {
+      vi.stubEnv("OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS", "true");
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
     });
   });
 });

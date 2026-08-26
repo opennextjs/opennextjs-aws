@@ -14,6 +14,7 @@ import type {
 
 import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
+import { NO_STORE_CACHE_CONTROL } from "../utils/cacheControl";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {
@@ -248,8 +249,7 @@ export default async function routingHandler(
         url: constructNextUrl(eventOrResult.url, "/404"),
         headers: {
           ...eventOrResult.headers,
-          "x-middleware-response-cache-control":
-            "private, no-cache, no-store, max-age=0, must-revalidate",
+          "x-middleware-response-cache-control": NO_STORE_CACHE_CONTROL,
         },
       };
     }

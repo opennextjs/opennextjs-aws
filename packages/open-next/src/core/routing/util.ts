@@ -20,6 +20,10 @@ import type {
 import { ReadableStream } from "node:stream/web";
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
+import {
+  NO_STORE_CACHE_CONTROL,
+  fixCacheControlForError,
+} from "../../utils/cacheControl.js";
 import { localizePath } from "./i18n/index.js";
 import { generateMessageGroupId } from "./queue.js";
 
@@ -259,11 +263,10 @@ export function fixCacheHeaderForHtmlPages(
 ) {
   // We don't want to cache error pages
   if (internalEvent.rawPath === "/404" || internalEvent.rawPath === "/500") {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
-      return;
-    }
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+    fixCacheControlForError(
+      headers,
+      internalEvent.rawPath === "/404" ? 404 : 500,
+    );
     return;
   }
   const localizedPath = localizePath(internalEvent);
@@ -382,8 +385,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     return;
   }
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+    headers[CommonHeaders.CACHE_CONTROL] = NO_STORE_CACHE_CONTROL;
     return;
   }
   const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;

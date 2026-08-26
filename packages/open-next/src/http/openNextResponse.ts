@@ -10,6 +10,7 @@ import { Transform } from "node:stream";
 
 import type { StreamCreator } from "types/open-next";
 import { debug } from "../adapters/logger";
+import { fixCacheControlForError } from "../utils/cacheControl";
 import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
@@ -418,16 +419,8 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   // For some reason, next returns the 500 error page with some cache-control headers
   // We need to fix that
   private fixHeadersForError() {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
-      return;
-    }
-    // We only check for 404 and 500 errors
-    // The rest should be errors that are handled by the user and they should set the cache headers themselves
-    if (this.statusCode === 404 || this.statusCode === 500) {
-      // For some reason calling this.setHeader("Cache-Control", "no-cache, no-store, must-revalidate") does not work here
-      // The function is not even called, i'm probably missing something obvious
-      this.headers["cache-control"] =
-        "private, no-cache, no-store, max-age=0, must-revalidate";
-    }
+    // NOTE: this assigns to `this.headers` directly rather than going through
+    // `this.setHeader()`, because for some reason `setHeader` is not even called from here.
+    fixCacheControlForError(this.headers, this.statusCode);
   }
 }
