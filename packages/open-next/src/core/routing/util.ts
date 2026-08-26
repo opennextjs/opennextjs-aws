@@ -314,6 +314,65 @@ export function addOpenNextHeader(headers: OutgoingHttpHeaders) {
   }
 }
 
+// Matches a last path segment that looks like a file, i.e. it has an extension.
+// Same pattern as `handleTrailingSlashRedirect` in `./matcher.ts`, which uses it to leave
+// those paths out of the trailing slash redirect.
+const PATH_WITH_EXTENSION_REGEX = /[\w-]+\.[\w]+$/;
+
+/**
+ * Adds the trailing slash to an URL that is about to be enqueued for revalidation when
+ * `trailingSlash` is enabled.
+ *
+ * `adapters/revalidate.ts` only counts a revalidation as successful when the `HEAD` request
+ * it sends comes back with `x-nextjs-cache: REVALIDATED`. With `trailingSlash: true` an URL
+ * that is missing its trailing slash never gets that far: `handleTrailingSlashRedirect`
+ * (`./matcher.ts`, mirroring the normalization Next.js does itself) answers with a 308 to the
+ * slashed variant, and a redirect carries no `x-nextjs-cache` header. The record is therefore
+ * reported as failed, requeued, and retried forever while the page never regenerates.
+ * `_nextRewroteUrl` is a route without a trailing slash, so every rewritten page hits this.
+ *
+ * The URL is left as is whenever the routing layer would not redirect it either:
+ * - Next.js data requests, matched on the `/_next/data/` prefix used by the caller rather than
+ *   on their `.json` suffix, which is not always what the URL we build for them ends with,
+ * - paths whose last segment looks like a file, e.g. a route serving `/sitemap.xml`.
+ *
+ * `trailingSlash: false` is deliberately not handled: `handleTrailingSlashRedirect` strips the
+ * trailing slash off the incoming request before we ever see it and `_nextRewroteUrl` never
+ * carries one, so there would be nothing left to normalize but the root path.
+ *
+ * `skipTrailingSlashRedirect` is not handled either, for the opposite reason: it makes
+ * `handleTrailingSlashRedirect` bail out, so the unslashed URL is served rather than redirected
+ * and the revalidation succeeds as is. Normalizing it would be at best pointless and at worst
+ * wrong, as those deployments handle the redirect themselves and may well canonicalize the
+ * other way around.
+ *
+ * @param url The URL to revalidate, with an optional query string
+ * @returns The URL the revalidation should be enqueued for
+ */
+function normalizeRevalidateUrl(url: string) {
+  // The url is read defensively by the caller, it can be empty when Next.js flagged a rewrite
+  // without exposing the rewritten url.
+  if (
+    !url ||
+    !NextConfig.trailingSlash ||
+    NextConfig.skipTrailingSlashRedirect
+  ) {
+    return url;
+  }
+  // The trailing slash belongs to the pathname, the query string is preserved as is.
+  const queryIndex = url.indexOf("?");
+  const pathname = queryIndex === -1 ? url : url.slice(0, queryIndex);
+  const query = queryIndex === -1 ? "" : url.slice(queryIndex);
+  if (
+    pathname.endsWith("/") ||
+    pathname.startsWith("/_next/data/") ||
+    PATH_WITH_EXTENSION_REGEX.test(pathname)
+  ) {
+    return url;
+  }
+  return `${pathname}/${query}`;
+}
+
 /**
  *
  * @__PURE__
@@ -336,11 +395,13 @@ export async function revalidateIfRequired(
     // 2. one for the json data: /_next/data/BUILD_ID/foo.json
     // The rewritten url is correct for 1, but that for the second request
     // does not include the "/_next/data/" prefix. Need to add it.
-    const revalidateUrl = internalMeta?._nextDidRewrite
-      ? rawPath.startsWith("/_next/data/")
-        ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
-        : internalMeta?._nextRewroteUrl
-      : rawPath;
+    const revalidateUrl = normalizeRevalidateUrl(
+      internalMeta?._nextDidRewrite
+        ? rawPath.startsWith("/_next/data/")
+          ? `/_next/data/${BuildId}${internalMeta?._nextRewroteUrl}.json`
+          : internalMeta?._nextRewroteUrl
+        : rawPath,
+    );
 
     // We need to pass etag to the revalidation queue to try to bypass the default 5 min deduplication window.
     // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html
@@ -370,15 +431,40 @@ export async function revalidateIfRequired(
 }
 
 /**
+ * The cache-control applied to a response served from a stale cache entry.
+ *
+ * In order for CloudFront SWR to work, the `s-maxage` value is set to 2 seconds.
+ * This will cause CloudFront to cache the stale data for a short period of time while we
+ * revalidate in the background. Once the revalidation is complete, CloudFront will serve the
+ * fresh data.
+ */
+const STALE_CACHE_CONTROL = "s-maxage=2, stale-while-revalidate=2592000";
+
+/**
  *
  * @__PURE__
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
+  const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
   const sMaxAgeRegex = /s-maxage=(\d+)/;
-  const match = headers[CommonHeaders.CACHE_CONTROL]?.match(sMaxAgeRegex);
+  const match = cacheControl?.match(sMaxAgeRegex);
   const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
   // We only apply the fix if the cache-control header contains s-maxage
   if (!sMaxAge) {
+    // A cache read can also come back with no cache-control at all. Next.js resolves the
+    // revalidate of a page through `SharedCacheControls`, which is only populated for the paths
+    // the current instance rendered itself and otherwise falls back to the prerender manifest -
+    // where a page generated on demand is not listed. An instance that serves such a page out of
+    // the shared cache instead of rendering it therefore has no `entry.cacheControl` and emits no
+    // `s-maxage`, leaving the response uncacheable for the CDN. That is the opposite of what we
+    // want for the cheapest responses we serve, so a stale read falls back to the cache-control
+    // the STALE branch at the end of this function would have applied.
+    // We only ever add the header and never replace one, so `no-store`/`private` responses are
+    // left alone, and only STALE is handled: without an s-maxage there is no revalidate window a
+    // HIT could derive its remaining TTL from.
+    if (!cacheControl && headers[CommonHeaders.NEXT_CACHE] === "STALE") {
+      headers[CommonHeaders.CACHE_CONTROL] = STALE_CACHE_CONTROL;
+    }
     return;
   }
   if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
@@ -407,11 +493,7 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
-  // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
-  // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
-  // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers[CommonHeaders.CACHE_CONTROL] =
-    "s-maxage=2, stale-while-revalidate=2592000";
+  headers[CommonHeaders.CACHE_CONTROL] = STALE_CACHE_CONTROL;
 }
 
 /**
