@@ -1,0 +1,43 @@
+packages/open-next/src/adapters/cache.ts
+  s_9e4d3fa099cb94::t_1fc628108316e5 14,564
+packages/open-next/src/adapters/middleware.ts
+  s_9e4d3fa099cb94::t_90b9789865505c 7,68
+packages/open-next/src/adapters/revalidate.ts
+  s_9e4d3fa099cb94::t_33bbb1f9879990 7-11,56-58,70
+packages/open-next/src/build/createAssets.ts
+  s_9e4d3fa099cb94::t_e534373e1cb93b 9,273-274
+packages/open-next/src/core/requestHandler.ts
+  s_9e4d3fa099cb94::t_b93de292c196a7 11,56
+packages/open-next/src/core/routing/cacheInterceptor.ts
+  s_9e4d3fa099cb94::t_5615c88c5f988e 15,17-18,20,72-73,111-112,117-118,281
+packages/open-next/src/core/routing/middleware.ts
+  s_9e4d3fa099cb94::t_22173c805b011f 14,62-63
+packages/open-next/src/core/routing/util.ts
+  s_9e4d3fa099cb94::t_756d9422055d66 24-26,29,278,289,295,328,379,385-386,390,393,403,407,413,458-459
+packages/open-next/src/core/routingHandler.ts
+  s_9e4d3fa099cb94::t_8529e05bd6384b 17
+packages/open-next/src/http/openNextResponse.ts
+  s_9e4d3fa099cb94::t_2fd4b97264c8a4 13
+packages/open-next/src/overrides/queue/direct.ts
+  s_9e4d3fa099cb94::t_62c9241f86c015 2,15-16
+packages/open-next/src/utils/cache.ts
+  s_9e4d3fa099cb94::t_1b8fb0cb3c540e 8,115-116
+packages/tests-unit/tests/utils/cacheHeaders.test.ts
+  s_9e4d3fa099cb94::t_9280ea7dbcc406 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "140bc3f085ba3d0d624da9795f90332d518e00b3",
+  "prompts": {},
+  "sessions": {
+    "s_9e4d3fa099cb94": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc237a778ffeLaEmezSu3qOo7Z",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
