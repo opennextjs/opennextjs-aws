@@ -40,13 +40,23 @@ function callOptimizeImage(
   overrides: {
     isAbsolute?: boolean;
     maximumResponseBody?: number;
+    dangerouslyAllowLocalIP?: boolean;
   } = {},
 ) {
-  const { isAbsolute = false, maximumResponseBody } = overrides;
+  const {
+    isAbsolute = false,
+    maximumResponseBody,
+    dangerouslyAllowLocalIP,
+  } = overrides;
   const headers = { "x-custom": "value" };
   const imageParams = { isAbsolute, href: HREF };
   const nextConfig = {
-    images: maximumResponseBody ? { maximumResponseBody } : {},
+    images: {
+      ...(maximumResponseBody ? { maximumResponseBody } : {}),
+      ...(dangerouslyAllowLocalIP !== undefined
+        ? { dangerouslyAllowLocalIP }
+        : {}),
+    },
   } as any;
 
   return optimizeImage(headers, imageParams, nextConfig, handleRequest);
@@ -127,6 +137,28 @@ describe("optimizeImage (replacement)", () => {
         maximumResponseBody: 1_234,
       });
       expect(mockFetchExternalImage).toHaveBeenCalledWith(HREF, false, 1_234);
+    });
+
+    it("forwards images.dangerouslyAllowLocalIP for v16.1.5+", async () => {
+      globalThis.nextVersion = "16.1.5";
+      await callOptimizeImage({
+        isAbsolute: true,
+        dangerouslyAllowLocalIP: true,
+      });
+      expect(mockFetchExternalImage).toHaveBeenCalledWith(
+        HREF,
+        true,
+        50_000_000,
+      );
+    });
+
+    it("forwards images.dangerouslyAllowLocalIP for v16.0.0–v16.1.4", async () => {
+      globalThis.nextVersion = "16.0.0";
+      await callOptimizeImage({
+        isAbsolute: true,
+        dangerouslyAllowLocalIP: true,
+      });
+      expect(mockFetchExternalImage).toHaveBeenCalledWith(HREF, true);
     });
 
     it("does not call fetchInternalImage", async () => {
