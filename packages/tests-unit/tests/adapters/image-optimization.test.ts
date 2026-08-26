@@ -161,6 +161,36 @@ describe("optimizeImage (replacement)", () => {
       expect(mockFetchExternalImage).toHaveBeenCalledWith(HREF, true);
     });
 
+    it("forwards images.dangerouslyAllowLocalIP alongside a custom maximumResponseBody", async () => {
+      globalThis.nextVersion = "16.1.5";
+      await callOptimizeImage({
+        isAbsolute: true,
+        dangerouslyAllowLocalIP: true,
+        maximumResponseBody: 1_234,
+      });
+      expect(mockFetchExternalImage).toHaveBeenCalledWith(HREF, true, 1_234);
+    });
+
+    // `dangerouslyAllowLocalIP` only exists from v16 on, where it takes the
+    // argument slot that v15.5.10+ uses for `maximumResponseBody`. Leaking it
+    // into a pre-16 call would pass a boolean where Next.js expects a number.
+    it.each<[version: string, expectedArgs: unknown[]]>([
+      ["15.5.9", [HREF]],
+      ["15.5.10", [HREF, 50_000_000]],
+      ["15.5.16", [HREF, 50_000_000]],
+      ["15.9.99", [HREF, 50_000_000]],
+    ])(
+      "ignores images.dangerouslyAllowLocalIP for v%s",
+      async (version, expectedArgs) => {
+        globalThis.nextVersion = version;
+        await callOptimizeImage({
+          isAbsolute: true,
+          dangerouslyAllowLocalIP: true,
+        });
+        expect(mockFetchExternalImage).toHaveBeenCalledWith(...expectedArgs);
+      },
+    );
+
     it("does not call fetchInternalImage", async () => {
       globalThis.nextVersion = "16.2.5";
       await callOptimizeImage({ isAbsolute: true });
@@ -218,6 +248,23 @@ describe("optimizeImage (replacement)", () => {
     it("uses the new signature for v16.2.5+", async () => {
       globalThis.nextVersion = "16.2.5";
       await callOptimizeImage({ isAbsolute: false });
+      expect(mockFetchInternalImage).toHaveBeenCalledWith(
+        HREF,
+        { headers: { "x-custom": "value" } },
+        {},
+        50_000_000,
+        handleRequest,
+      );
+    });
+
+    // The private IP guard is an upstream-fetch concern only, so the flag must
+    // never reach the internal path.
+    it("ignores images.dangerouslyAllowLocalIP", async () => {
+      globalThis.nextVersion = "16.2.5";
+      await callOptimizeImage({
+        isAbsolute: false,
+        dangerouslyAllowLocalIP: true,
+      });
       expect(mockFetchInternalImage).toHaveBeenCalledWith(
         HREF,
         { headers: { "x-custom": "value" } },
