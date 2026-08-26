@@ -1,0 +1,19 @@
+packages/tests-unit/tests/adapters/image-optimization.test.ts
+  s_39cfc9c79de1eb::t_24dd5b775d7348 164-193,260-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "658bb22c2c033a99f7218deb277db6fa5498cd15",
+  "prompts": {},
+  "sessions": {
+    "s_39cfc9c79de1eb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fc1ac2879ffeypJ81ET9yWB6HA",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
