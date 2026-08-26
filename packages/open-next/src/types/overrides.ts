@@ -149,6 +149,17 @@ export type IncrementalCache = {
   ): Promise<void>;
   delete(key: string): Promise<void>;
   name: string;
+  /**
+   * Optional observer hook called after the tag cache has been consulted.
+   * Receives the combined tag-cache verdict for the given cache key.
+   * `isStaleFromTime` is only provided by the cache interceptor.
+   */
+  getTagCacheResult?: (params: {
+    key: string;
+    hasBeenRevalidated: boolean;
+    isStaleFromTag: boolean;
+    isStaleFromTime?: boolean;
+  }) => Promise<void>;
 };
 
 // Tag cache

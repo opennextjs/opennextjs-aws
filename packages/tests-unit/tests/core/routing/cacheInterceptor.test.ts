@@ -65,6 +65,7 @@ const incrementalCache = {
   get: vi.fn(),
   set: vi.fn(),
   delete: vi.fn(),
+  getTagCacheResult: vi.fn().mockResolvedValue(undefined),
 };
 
 const tagCache = {
@@ -1056,6 +1057,104 @@ describe("cacheInterceptor", () => {
         }),
       );
       expect(queue.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getTagCacheResult", () => {
+    it("should call getTagCacheResult with isStaleFromTime: false on a fresh SSG cache hit", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+        key: "/albums",
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+    });
+
+    it("should call getTagCacheResult with isStaleFromTime: true when entry is time-stale", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      // /revalidate has initialRevalidateSeconds: 60; lastModified is 2 minutes ago
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: 60,
+        },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+        key: "/revalidate",
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: true,
+      });
+    });
+
+    it("should call getTagCacheResult with isStaleFromTag: true when tag cache reports stale", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      await cacheInterceptor(event);
+
+      expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "/albums",
+          isStaleFromTag: true,
+        }),
+      );
+    });
+
+    it("should call getTagCacheResult with hasBeenRevalidated: true when app cache has been revalidated", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+      await cacheInterceptor(event);
+
+      expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "/albums",
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        }),
+      );
+    });
+
+    it("should not call getTagCacheResult when request is bypassed by next-action header", async () => {
+      const event = createEvent({
+        headers: { "next-action": "something" },
+      });
+
+      await cacheInterceptor(event);
+
+      expect(incrementalCache.getTagCacheResult).not.toHaveBeenCalled();
     });
   });
 });

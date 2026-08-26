@@ -18,6 +18,47 @@ import { generateMessageGroupId } from "./queue";
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
 
+/**
+ * Determines the effective revalidate duration for a given path/value combination,
+ * consulting the prerender manifest when `revalidate` is not explicitly set.
+ */
+function computeFinalRevalidate(
+  path: string,
+  revalidate?: number | false,
+): number {
+  let finalRevalidate = CACHE_ONE_YEAR;
+  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
+    (p) => p[0] === path,
+  )?.[1];
+  if (revalidate === undefined && existingRoute) {
+    finalRevalidate =
+      existingRoute.initialRevalidateSeconds === false
+        ? CACHE_ONE_YEAR
+        : existingRoute.initialRevalidateSeconds;
+    // eslint-disable-next-line sonarjs/elseif-without-else
+  } else if (revalidate !== undefined) {
+    finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
+  }
+  return finalRevalidate;
+}
+
+/**
+ * Returns whether a cache entry is stale purely due to time (TTL expiry),
+ * independent of any tag-based revalidation.
+ */
+function computeIsStaleFromTime(
+  path: string,
+  revalidate: number | false | undefined,
+  lastModified: number | undefined,
+): boolean {
+  const finalRevalidate = computeFinalRevalidate(path, revalidate);
+  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
+  if (isSSG) return false;
+  const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
+  const remainingTtl = Math.max(finalRevalidate - age, 1);
+  return remainingTtl === 1;
+}
+
 /*
  * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
  * This can especially happen when there's a redirect in the middleware as the `_rsc` query parameter is not visible there.
@@ -41,20 +82,7 @@ async function computeCacheControl(
   lastModified?: number,
   isStaleFromTagCache = false,
 ) {
-  let finalRevalidate = CACHE_ONE_YEAR;
-
-  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
-    (p) => p[0] === path,
-  )?.[1];
-  if (revalidate === undefined && existingRoute) {
-    finalRevalidate =
-      existingRoute.initialRevalidateSeconds === false
-        ? CACHE_ONE_YEAR
-        : existingRoute.initialRevalidateSeconds;
-    // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (revalidate !== undefined) {
-    finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
-  }
+  const finalRevalidate = computeFinalRevalidate(path, revalidate);
   // calculate age
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
   const hash = (str: string) => createHash("md5").update(str).digest("hex");
@@ -328,6 +356,17 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
+          const isStaleFromTime = computeIsStaleFromTime(
+            localizedPath,
+            cachedData.value.revalidate,
+            cachedData.lastModified,
+          );
+          await globalThis.incrementalCache.getTagCacheResult?.({
+            key: cacheKey,
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+            isStaleFromTime,
+          });
           return event;
         }
       }
@@ -336,6 +375,19 @@ export async function cacheInterceptor(
       const _isStale = cachedData.shouldBypassTagCache
         ? false
         : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
+
+      const isStaleFromTime = computeIsStaleFromTime(
+        localizedPath,
+        cachedData.value.revalidate,
+        cachedData.lastModified,
+      );
+
+      await globalThis.incrementalCache.getTagCacheResult?.({
+        key: cacheKey,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+        isStaleFromTime,
+      });
 
       const host = event.headers.host;
       switch (cachedData?.value?.type) {

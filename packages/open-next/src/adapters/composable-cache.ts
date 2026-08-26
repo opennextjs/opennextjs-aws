@@ -39,18 +39,27 @@ export default {
         result.value.tags.length > 0
       ) {
         // We need to check if the tags associated with this entry has been revalidated
-        const hasBeenRevalidated = result.shouldBypassTagCache
+        const _hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : await globalThis.tagCache.hasBeenRevalidated(
               result.value.tags,
               result.lastModified,
             );
-        if (hasBeenRevalidated) return undefined;
 
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = result.shouldBypassTagCache
+        const isCacheStale = _hasBeenRevalidated
           ? false
-          : await isStale(cacheKey, result.value.tags, result.lastModified);
+          : result.shouldBypassTagCache
+            ? false
+            : await isStale(cacheKey, result.value.tags, result.lastModified);
+
+        await globalThis.incrementalCache.getTagCacheResult?.({
+          key: cacheKey,
+          hasBeenRevalidated: _hasBeenRevalidated,
+          isStaleFromTag: isCacheStale,
+        });
+
+        if (_hasBeenRevalidated) return undefined;
         if (isCacheStale) {
           revalidate = -1;
         }
@@ -58,18 +67,27 @@ export default {
         globalThis.tagCache.mode === "original" ||
         globalThis.tagCache.mode === undefined
       ) {
-        const hasBeenRevalidated = result.shouldBypassTagCache
+        const _hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : (await globalThis.tagCache.getLastModified(
               cacheKey,
               result.lastModified,
             )) === -1;
-        if (hasBeenRevalidated) return undefined;
 
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = result.shouldBypassTagCache
+        const isCacheStale = _hasBeenRevalidated
           ? false
-          : await isStale(cacheKey, result.value.tags, result.lastModified);
+          : result.shouldBypassTagCache
+            ? false
+            : await isStale(cacheKey, result.value.tags, result.lastModified);
+
+        await globalThis.incrementalCache.getTagCacheResult?.({
+          key: cacheKey,
+          hasBeenRevalidated: _hasBeenRevalidated,
+          isStaleFromTag: isCacheStale,
+        });
+
+        if (_hasBeenRevalidated) return undefined;
         if (isCacheStale) {
           revalidate = -1;
         }
