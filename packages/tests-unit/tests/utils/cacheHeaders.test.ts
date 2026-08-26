@@ -1,7 +1,7 @@
 import {
   NO_STORE_CACHE_CONTROL,
   fixCacheControlForError,
-} from "@opennextjs/aws/utils/cacheControl.js";
+} from "@opennextjs/aws/utils/cacheHeaders.js";
 import { vi } from "vitest";
 
 describe("fixCacheControlForError", () => {

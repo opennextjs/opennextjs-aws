@@ -12,9 +12,12 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
 import {
+  CACHE_CONTROL_HEADER,
   NO_STORE_CACHE_CONTROL,
+  OPEN_NEXT_CACHE_HEADER,
+  PRERENDER_REVALIDATE_HEADER,
   fixCacheControlForError,
-} from "utils/cacheControl";
+} from "utils/cacheHeaders";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
@@ -66,8 +69,8 @@ async function computeCacheControl(
   if (revalidate === 0) {
     // This one should never happen
     return {
-      "cache-control": NO_STORE_CACHE_CONTROL,
-      "x-opennext-cache": "ERROR",
+      [CACHE_CONTROL_HEADER]: NO_STORE_CACHE_CONTROL,
+      [OPEN_NEXT_CACHE_HEADER]: "ERROR",
       etag,
     };
   }
@@ -105,14 +108,14 @@ async function computeCacheControl(
       });
     }
     return {
-      "cache-control": `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-      "x-opennext-cache": isStale ? "STALE" : "HIT",
+      [CACHE_CONTROL_HEADER]: `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+      [OPEN_NEXT_CACHE_HEADER]: isStale ? "STALE" : "HIT",
       etag,
     };
   }
   return {
-    "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-    "x-opennext-cache": "HIT",
+    [CACHE_CONTROL_HEADER]: `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+    [OPEN_NEXT_CACHE_HEADER]: "HIT",
     etag,
   };
 }
@@ -275,7 +278,7 @@ export async function cacheInterceptor(
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
-    Boolean(event.headers["x-prerender-revalidate"])
+    Boolean(event.headers[PRERENDER_REVALIDATE_HEADER])
   )
     return event;
 

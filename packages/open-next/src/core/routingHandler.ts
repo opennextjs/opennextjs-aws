@@ -14,7 +14,7 @@ import type {
 
 import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
-import { NO_STORE_CACHE_CONTROL } from "../utils/cacheControl";
+import { NO_STORE_CACHE_CONTROL } from "../utils/cacheHeaders";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {

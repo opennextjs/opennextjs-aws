@@ -11,6 +11,7 @@ import {
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
+import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -560,7 +561,7 @@ export default class Cache {
     // Next.js guards the same way when it reads the header back.
     const pageCacheTags =
       data?.kind === "PAGE" || data?.kind === "APP_PAGE"
-        ? data.headers?.["x-next-cache-tags"]
+        ? data.headers?.[CACHE_TAGS_HEADER]
         : undefined;
     const derivedTags: string[] =
       data?.kind === "FETCH"

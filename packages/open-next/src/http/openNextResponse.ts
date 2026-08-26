@@ -10,7 +10,7 @@ import { Transform } from "node:stream";
 
 import type { StreamCreator } from "types/open-next";
 import { debug } from "../adapters/logger";
-import { fixCacheControlForError } from "../utils/cacheControl";
+import { fixCacheControlForError } from "../utils/cacheHeaders";
 import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";

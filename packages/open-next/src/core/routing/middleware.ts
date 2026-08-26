@@ -11,6 +11,7 @@ import type {
   InternalResult,
   MiddlewareEvent,
 } from "types/open-next.js";
+import { ISR_HEADER, PRERENDER_REVALIDATE_HEADER } from "utils/cacheHeaders.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
@@ -58,8 +59,8 @@ export async function handleMiddleware(
   // We should only do that if the request has the correct `x-prerender-revalidate` header
   // The `x-prerender-revalidate` header is set at build time and should be safe to trust
   if (
-    headers["x-isr"] &&
-    headers["x-prerender-revalidate"] ===
+    headers[ISR_HEADER] &&
+    headers[PRERENDER_REVALIDATE_HEADER] ===
       PrerenderManifest?.preview?.previewModeId
   )
     return internalEvent;
