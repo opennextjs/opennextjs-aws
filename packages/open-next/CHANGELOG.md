@@ -1,5 +1,15 @@
 # open-next
 
+## 4.1.2
+
+### Patch Changes
+
+- [#1227](https://github.com/opennextjs/opennextjs-aws/pull/1227) [`dd6ea23dfdc84c54c7d27950794faf67b4d930f1`](https://github.com/opennextjs/opennextjs-aws/commit/dd6ea23dfdc84c54c7d27950794faf67b4d930f1) Thanks [@vicb](https://github.com/vicb)! - Stop the cache interceptor from serving cached 404 and 500 responses with a cacheable `cache-control`.
+
+  `notFound()` results on ISR routes are written to the incremental cache by Next.js, and the interceptor served them with the entry's own `cache-control` — up to `s-maxage=31536000` for a route that declares no `revalidate`. A transient 404 could therefore be held at the CDN for a year. The interceptor now applies the same override the server path already applies in `OpenNextNodeResponse.fixHeadersForError`, which it was bypassing by returning a result directly. As on the server path, only 404 and 500 are overridden, and `OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS=true` opts out.
+
+- [#1226](https://github.com/opennextjs/opennextjs-aws/pull/1226) [`78ca8fe40d80fbe950e8478fc3400d40614e195d`](https://github.com/opennextjs/opennextjs-aws/commit/78ca8fe40d80fbe950e8478fc3400d40614e195d) Thanks [@lcordier42](https://github.com/lcordier42)! - Forward `images.dangerouslyAllowLocalIP` to `fetchExternalImage` on Next.js 16 instead of hardcoding `false`, so external images served from hosts resolving to private IPs (e.g. an internal media proxy) can be optimized again when the user has explicitly opted out of the SSRF guard in their Next.js config.
+
 ## 4.1.1
 
 ### Patch Changes
