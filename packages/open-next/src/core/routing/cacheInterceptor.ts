@@ -11,6 +11,13 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
+import {
+  CACHE_CONTROL_HEADER,
+  NO_STORE_CACHE_CONTROL,
+  OPEN_NEXT_CACHE_HEADER,
+  PRERENDER_REVALIDATE_HEADER,
+  fixCacheControlForError,
+} from "utils/cacheHeaders";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
@@ -62,9 +69,8 @@ async function computeCacheControl(
   if (revalidate === 0) {
     // This one should never happen
     return {
-      "cache-control":
-        "private, no-cache, no-store, max-age=0, must-revalidate",
-      "x-opennext-cache": "ERROR",
+      [CACHE_CONTROL_HEADER]: NO_STORE_CACHE_CONTROL,
+      [OPEN_NEXT_CACHE_HEADER]: "ERROR",
       etag,
     };
   }
@@ -102,14 +108,14 @@ async function computeCacheControl(
       });
     }
     return {
-      "cache-control": `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-      "x-opennext-cache": isStale ? "STALE" : "HIT",
+      [CACHE_CONTROL_HEADER]: `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+      [OPEN_NEXT_CACHE_HEADER]: isStale ? "STALE" : "HIT",
       etag,
     };
   }
   return {
-    "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-    "x-opennext-cache": "HIT",
+    [CACHE_CONTROL_HEADER]: `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+    [OPEN_NEXT_CACHE_HEADER]: "HIT",
     etag,
   };
 }
@@ -212,23 +218,30 @@ async function generateResult(
     lastModified,
     isStaleFromTagCache,
   );
+  // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
+  // Also set the status code to the rewriteStatusCode if defined
+  // This can happen in handleMiddleware in routingHandler.
+  // `NextResponse.rewrite(url, { status: xxx})
+  // The rewrite status code should take precedence over the cached one
+  const statusCode = event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200;
+  const headers: Record<string, string | string[]> = {
+    ...cacheControl,
+    "content-type": type,
+    ...cachedValue.meta?.headers,
+    vary: VARY_HEADER,
+    ...additionalHeaders,
+  };
+  // Applied last so that it wins over both the computed cache control and the one
+  // that could be stored in the entry's own headers. This is the same override the
+  // server path applies in `OpenNextNodeResponse.fixHeadersForError`, which the
+  // interceptor bypasses by returning a result directly.
+  fixCacheControlForError(headers, statusCode);
   return {
     type: "core",
-    // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
-    // Also set the status code to the rewriteStatusCode if defined
-    // This can happen in handleMiddleware in routingHandler.
-    // `NextResponse.rewrite(url, { status: xxx})
-    // The rewrite status code should take precedence over the cached one
-    statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+    statusCode,
     body: toReadableStream(body, false),
     isBase64Encoded: false,
-    headers: {
-      ...cacheControl,
-      "content-type": type,
-      ...cachedValue.meta?.headers,
-      vary: VARY_HEADER,
-      ...additionalHeaders,
-    },
+    headers,
   };
 }
 
@@ -265,7 +278,7 @@ export async function cacheInterceptor(
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
-    Boolean(event.headers["x-prerender-revalidate"])
+    Boolean(event.headers[PRERENDER_REVALIDATE_HEADER])
   )
     return event;
 
@@ -386,16 +399,20 @@ export async function cacheInterceptor(
             String(cachedData.value.meta?.headers?.["content-type"]),
           );
 
+          const statusCode =
+            event.rewriteStatusCode ?? cachedData.value.meta?.status ?? 200;
+          const headers: Record<string, string | string[]> = {
+            ...cacheControl,
+            ...cachedData.value.meta?.headers,
+            vary: VARY_HEADER,
+          };
+          // See the note in `generateResult`.
+          fixCacheControlForError(headers, statusCode);
           return {
             type: "core",
-            statusCode:
-              event.rewriteStatusCode ?? cachedData.value.meta?.status ?? 200,
+            statusCode,
             body: toReadableStream(cachedData.value.body, isBinary),
-            headers: {
-              ...cacheControl,
-              ...cachedData.value.meta?.headers,
-              vary: VARY_HEADER,
-            },
+            headers,
             isBase64Encoded: isBinary,
           };
         }

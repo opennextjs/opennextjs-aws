@@ -20,6 +20,13 @@ import type {
 import { ReadableStream } from "node:stream/web";
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
+import {
+  CACHE_CONTROL_HEADER,
+  ISR_HEADER,
+  NEXTJS_CACHE_HEADER,
+  NO_STORE_CACHE_CONTROL,
+  fixCacheControlForError,
+} from "../../utils/cacheHeaders.js";
 import { localizePath } from "./i18n/index.js";
 import { generateMessageGroupId } from "./queue.js";
 
@@ -244,11 +251,6 @@ export function convertBodyToReadableStream(
   });
 }
 
-enum CommonHeaders {
-  CACHE_CONTROL = "cache-control",
-  NEXT_CACHE = "x-nextjs-cache",
-}
-
 /**
  *
  * @__PURE__
@@ -259,11 +261,10 @@ export function fixCacheHeaderForHtmlPages(
 ) {
   // We don't want to cache error pages
   if (internalEvent.rawPath === "/404" || internalEvent.rawPath === "/500") {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
-      return;
-    }
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+    fixCacheControlForError(
+      headers,
+      internalEvent.rawPath === "/404" ? 404 : 500,
+    );
     return;
   }
   const localizedPath = localizePath(internalEvent);
@@ -274,7 +275,7 @@ export function fixCacheHeaderForHtmlPages(
     HtmlPages.includes(localizedPath) &&
     !internalEvent.headers["x-middleware-prefetch"]
   ) {
-    headers[CommonHeaders.CACHE_CONTROL] =
+    headers[CACHE_CONTROL_HEADER] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
@@ -285,13 +286,13 @@ export function fixCacheHeaderForHtmlPages(
  */
 export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/sst/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
+  let cacheControl = headers[CACHE_CONTROL_HEADER];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {
     cacheControl = cacheControl.join(",");
   }
   if (typeof cacheControl !== "string") return;
-  headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
+  headers[CACHE_CONTROL_HEADER] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
     "stale-while-revalidate=2592000", // 30 days
   );
@@ -324,7 +325,7 @@ export async function revalidateIfRequired(
   headers: OutgoingHttpHeaders,
   req?: IncomingMessage,
 ) {
-  if (headers[CommonHeaders.NEXT_CACHE] === "STALE") {
+  if (headers[NEXTJS_CACHE_HEADER] === "STALE") {
     // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
     // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
     // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
@@ -375,22 +376,21 @@ export async function revalidateIfRequired(
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   const sMaxAgeRegex = /s-maxage=(\d+)/;
-  const match = headers[CommonHeaders.CACHE_CONTROL]?.match(sMaxAgeRegex);
+  const match = headers[CACHE_CONTROL_HEADER]?.match(sMaxAgeRegex);
   const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
   // We only apply the fix if the cache-control header contains s-maxage
   if (!sMaxAge) {
     return;
   }
-  if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+  if (headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
+    headers[CACHE_CONTROL_HEADER] = NO_STORE_CACHE_CONTROL;
     return;
   }
   const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
-  if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
+  if (headers[NEXTJS_CACHE_HEADER] === "HIT" && _lastModified > 0) {
     debug(
       "cache-control",
-      headers[CommonHeaders.CACHE_CONTROL],
+      headers[CACHE_CONTROL_HEADER],
       _lastModified,
       Date.now(),
     );
@@ -400,18 +400,17 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       // calculate age
       const age = Math.round((Date.now() - _lastModified) / 1000);
       const remainingTtl = Math.max(sMaxAge - age, 1);
-      headers[CommonHeaders.CACHE_CONTROL] =
+      headers[CACHE_CONTROL_HEADER] =
         `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
     }
   }
-  if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
+  if (headers[NEXTJS_CACHE_HEADER] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
   // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers[CommonHeaders.CACHE_CONTROL] =
-    "s-maxage=2, stale-while-revalidate=2592000";
+  headers[CACHE_CONTROL_HEADER] = "s-maxage=2, stale-while-revalidate=2592000";
 }
 
 /**
@@ -456,11 +455,8 @@ export async function invalidateCDNOnRequest(
 ) {
   const { internalEvent, resolvedRoutes, initialURL } = params;
   const initialPath = new URL(initialURL).pathname;
-  const isIsrRevalidation = internalEvent.headers["x-isr"] === "1";
-  if (
-    !isIsrRevalidation &&
-    headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED"
-  ) {
+  const isIsrRevalidation = internalEvent.headers[ISR_HEADER] === "1";
+  if (!isIsrRevalidation && headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
     await globalThis.cdnInvalidationHandler.invalidatePaths([
       {
         initialPath,

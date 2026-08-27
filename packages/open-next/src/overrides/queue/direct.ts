@@ -1,4 +1,5 @@
 import type { Queue } from "types/overrides.js";
+import { ISR_HEADER, PRERENDER_REVALIDATE_HEADER } from "utils/cacheHeaders.js";
 
 const queue: Queue = {
   name: "dev-queue",
@@ -11,8 +12,8 @@ const queue: Queue = {
     await globalThis.internalFetch(`${protocol}://${host}${url}`, {
       method: "HEAD",
       headers: {
-        "x-prerender-revalidate": revalidateId,
-        "x-isr": "1",
+        [PRERENDER_REVALIDATE_HEADER]: revalidateId,
+        [ISR_HEADER]: "1",
       },
     });
   },

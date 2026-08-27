@@ -8,6 +8,7 @@ import type {
   ResolvedRoute,
   RoutingResult,
 } from "types/open-next";
+import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
 import { NextConfig } from "config/index";
@@ -52,7 +53,7 @@ export async function openNextHandler(
   // We run everything in the async local storage context so that it is available in the middleware as well as in NextServer
   return runWithOpenNextRequestContext(
     {
-      isISRRevalidation: initialHeaders["x-isr"] === "1",
+      isISRRevalidation: initialHeaders[ISR_HEADER] === "1",
       waitUntil: options?.waitUntil,
       requestId,
     },

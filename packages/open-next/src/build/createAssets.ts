@@ -6,6 +6,7 @@ import { safeParseJsonFile } from "utils/safe-json-parse.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
+import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders.js";
 import * as buildHelper from "./helper.js";
 
 /**
@@ -269,8 +270,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         ({ absolutePath, relativePath }) => {
           const fileContent = fs.readFileSync(absolutePath, "utf8");
           const fileData = safeParseJsonFile(fileContent, absolutePath);
-          if (fileData?.headers?.["x-next-cache-tags"]) {
-            fileData.headers["x-next-cache-tags"]
+          if (fileData?.headers?.[CACHE_TAGS_HEADER]) {
+            fileData.headers[CACHE_TAGS_HEADER]
               .split(",")
               .forEach((tag: string) => {
                 // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
