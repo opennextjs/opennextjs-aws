@@ -1,5 +1,13 @@
 # open-next
 
+## 4.1.3
+
+### Patch Changes
+
+- [#1231](https://github.com/opennextjs/opennextjs-aws/pull/1231) [`a4dbe4d6702b3b4a99a7548f6268155c55ed7e35`](https://github.com/opennextjs/opennextjs-aws/commit/a4dbe4d6702b3b4a99a7548f6268155c55ed7e35) Thanks [@conico974](https://github.com/conico974)! - Improve status code handling in cacheInterceptor
+
+- [#1191](https://github.com/opennextjs/opennextjs-aws/pull/1191) [`1d90a751868410575a141409bff7e2d713297b58`](https://github.com/opennextjs/opennextjs-aws/commit/1d90a751868410575a141409bff7e2d713297b58) Thanks [@jdnurmi](https://github.com/jdnurmi)! - fix: use getSetCookie() to preserve multiple Set-Cookie headers in middleware
+
 ## 4.1.2
 
 ### Patch Changes
