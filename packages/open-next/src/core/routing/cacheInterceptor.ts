@@ -218,12 +218,10 @@ async function generateResult(
     lastModified,
     isStaleFromTagCache,
   );
-  // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
-  // Also set the status code to the rewriteStatusCode if defined
-  // This can happen in handleMiddleware in routingHandler.
-  // `NextResponse.rewrite(url, { status: xxx})
-  // The rewrite status code should take precedence over the cached one
-  const statusCode = event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200;
+  const statusCode = computeStatusCode(
+    event.rewriteStatusCode,
+    cachedValue.meta?.status,
+  );
   const headers: Record<string, string | string[]> = {
     ...cacheControl,
     "content-type": type,
@@ -243,6 +241,30 @@ async function generateResult(
     isBase64Encoded: false,
     headers,
   };
+}
+
+/**
+ * Computes the status code to return for a cache hit.
+ *
+ * Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code.
+ * The rewrite status code can be set in handleMiddleware in routingHandler with
+ * `NextResponse.rewrite(url, { status: xxx })`.
+ *
+ * A meaningful cached status code (i.e. anything but the implicit 200) wins over the rewrite
+ * status code, otherwise a rewrite would turn a cached error page into a successful response.
+ *
+ * @param rewriteStatusCode The status code from the middleware rewrite, if any.
+ * @param cachedStatusCode The status code stored in the cache entry meta, if any.
+ * @returns The status code to return.
+ */
+function computeStatusCode(
+  rewriteStatusCode: number | undefined,
+  cachedStatusCode: number | undefined,
+): number {
+  if (cachedStatusCode !== undefined && cachedStatusCode !== 200) {
+    return cachedStatusCode;
+  }
+  return rewriteStatusCode ?? cachedStatusCode ?? 200;
 }
 
 /**
@@ -399,8 +421,10 @@ export async function cacheInterceptor(
             String(cachedData.value.meta?.headers?.["content-type"]),
           );
 
-          const statusCode =
-            event.rewriteStatusCode ?? cachedData.value.meta?.status ?? 200;
+          const statusCode = computeStatusCode(
+            event.rewriteStatusCode,
+            cachedData.value.meta?.status,
+          );
           const headers: Record<string, string | string[]> = {
             ...cacheControl,
             ...cachedData.value.meta?.headers,

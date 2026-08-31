@@ -595,7 +595,7 @@ describe("cacheInterceptor", () => {
     expect(result.statusCode).toBe(403);
   });
 
-  it("should return the rewriteStatusCode if there is a cached status code", async () => {
+  it("should return the cached status code over the rewriteStatusCode", async () => {
     const event = createEvent({
       url: "/albums",
       rewriteStatusCode: 203,
@@ -606,6 +606,25 @@ describe("cacheInterceptor", () => {
         html: "Hello, world!",
         meta: {
           status: 404,
+        },
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(404);
+  });
+
+  it("should return the rewriteStatusCode if the cached status code is 200", async () => {
+    const event = createEvent({
+      url: "/albums",
+      rewriteStatusCode: 203,
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+        meta: {
+          status: 200,
         },
       },
     });
