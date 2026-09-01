@@ -1,8 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { validateMd5 } from "../utils";
-
-// md5sum of examples/app-router/public/static/kimono.avif
-const KIMONO_AVIF_MD5 = "4d1c462db1d47d8db425821c86d5c473";
 
 test("Image Optimization", async ({ page }) => {
   await page.goto("/");
@@ -32,16 +28,14 @@ test("should return 400 when validateParams returns an errorMessage", async ({
   expect(await res.text()).toBe(`"url" parameter is required`);
 });
 
-test("should not optimize avif images", async ({ request }) => {
-  // Only accept webp: if the image were optimized, Next would transcode it to
-  // image/webp. Instead avif is in Next's BYPASS_TYPES and returned as-is.
+test("should optimize avif images", async ({ request }) => {
+  // https://github.com/vercel/next.js/releases/tag/v16.3.4
+  // The AVIF image optimization renabled in Next.js v16.3.4
   const res = await request.get(
     "/_next/image?url=%2Fstatic%2Fkimono.avif&w=384&q=75",
     { headers: { accept: "image/webp" } },
   );
 
   expect(res.status()).toBe(200);
-  expect(res.headers()["content-type"]).toBe("image/avif");
-  // Byte-identical to the source asset => no re-encoding happened at all.
-  expect(validateMd5(await res.body(), KIMONO_AVIF_MD5)).toBe(true);
+  expect(res.headers()["content-type"]).toBe("image/webp");
 });
