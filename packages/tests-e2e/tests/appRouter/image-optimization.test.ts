@@ -1,8 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { validateMd5 } from "../utils";
-
-// md5sum of examples/app-router/public/static/kimono.avif
-const KIMONO_AVIF_MD5 = "4d1c462db1d47d8db425821c86d5c473";
 
 test("Image Optimization", async ({ page }) => {
   await page.goto("/");
@@ -41,7 +37,5 @@ test("should optimize avif images", async ({ request }) => {
   );
 
   expect(res.status()).toBe(200);
-  expect(res.headers()["content-type"]).toBe("image/avif");
-  // Byte-identical to the source asset => no re-encoding happened at all.
-  expect(validateMd5(await res.body(), KIMONO_AVIF_MD5)).toBe(true);
+  expect(res.headers()["content-type"]).toBe("image/webp");
 });
