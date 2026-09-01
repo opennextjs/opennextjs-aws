@@ -27,9 +27,23 @@ export function extractHostFromHeaders(
 /**
  * Get the query object from an URLSearchParams
  *
+ * The values are kept percent-encoded so that they can be reused as-is by
+ * `convertToQueryString` (which does not re-encode). Iterating over
+ * `searchParams.entries()` would decode the values, and since
+ * `convertToQueryString` does not re-encode them, values containing
+ * reserved characters (`&`, `=`, `+`, spaces, ...) would corrupt the
+ * rebuilt query string.
+ *
  * @param searchParams
  * @returns
  */
 export function getQueryFromSearchParams(searchParams: URLSearchParams) {
-  return getQueryFromIterator(searchParams.entries());
+  const querystring = searchParams.toString();
+  if (querystring === "") return {};
+  return getQueryFromIterator(
+    querystring.split("&").map((part) => {
+      const [key, value] = part.split("=");
+      return [key, value] as const;
+    }),
+  );
 }

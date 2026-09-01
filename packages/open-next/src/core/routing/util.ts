@@ -172,19 +172,26 @@ export function convertToQueryString(query: Record<string, string | string[]>) {
 /**
  * Given a raw query string, returns a record with key value-array pairs
  * similar to how multiValueQueryStringParameters are structured
+ *
+ * The values are kept percent-encoded so that they can be reused as-is by
+ * `convertToQueryString` (which does not re-encode). Reading the values
+ * through `URLSearchParams` getters would decode them, and values containing
+ * reserved characters (`&`, `=`, `+`, spaces, ...) would corrupt the rebuilt
+ * query string.
  * @__PURE__
  */
 export function convertToQuery(querystring: string) {
   if (!querystring) return {};
-  const query = new URLSearchParams(querystring);
-  const queryObject: Record<string, string[] | string> = {};
-
-  for (const key of query.keys()) {
-    const queries = query.getAll(key);
-    queryObject[key] = queries.length > 1 ? queries : queries[0];
-  }
-
-  return queryObject;
+  // URLSearchParams normalizes the string to a fully percent-encoded form
+  // (and strips a leading "?"), so splitting on "&" and "=" is safe.
+  const normalized = new URLSearchParams(querystring).toString();
+  if (normalized === "") return {};
+  return getQueryFromIterator(
+    normalized.split("&").map((part) => {
+      const [key, value] = part.split("=");
+      return [key, value] as const;
+    }),
+  );
 }
 
 /**
