@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- [#1234](https://github.com/opennextjs/opennextjs-aws/pull/1234) [`e5bbbae09d6d686e2728810b21a27e9bbf217fd6`](https://github.com/opennextjs/opennextjs-aws/commit/e5bbbae09d6d686e2728810b21a27e9bbf217fd6) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(e2e): AVIF was renabled for optimization in Next 16.3.4
+- [#1234](https://github.com/opennextjs/opennextjs-aws/pull/1234) [`ff83cbe`](https://github.com/opennextjs/opennextjs-aws/commit/ff83cbef2577209e8d00ee0bcea559288c9d9fe5) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(e2e): AVIF was renabled for optimization in Next 16.3.4
 
 ## 4.1.3
 
