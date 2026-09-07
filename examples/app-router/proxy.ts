@@ -1,16 +1,24 @@
+import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
   const host = request.headers.get("host");
   const protocol = host?.startsWith("localhost") ? "http" : "https";
   if (path === "/redirect") {
     const u = new URL("/redirect-destination", `${protocol}://${host}`);
-    return NextResponse.redirect(u, {
-      headers: { "set-cookie": "test=success" },
+    // Next folds the cookies set through `cookies()` into a single comma-joined
+    // `set-cookie` header, they have to be split back.
+    // For: middleware.cookies.test.ts
+    const cookieStore = await cookies();
+    cookieStore.set("test", "success");
+    // `Expires` contains a comma, it must not be mistaken for a cookie separator.
+    cookieStore.set("test2", "success2", {
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
+    return NextResponse.redirect(u);
   }
   if (path === "/rewrite") {
     const u = new URL("/rewrite-destination", `${protocol}://${host}`);

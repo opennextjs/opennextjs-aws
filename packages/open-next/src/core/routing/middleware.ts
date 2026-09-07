@@ -6,6 +6,7 @@ import {
   NextConfig,
   PrerenderManifest,
 } from "config/index.js";
+import { parseSetCookieHeader } from "http/util.js";
 import type {
   InternalEvent,
   InternalResult,
@@ -152,7 +153,14 @@ export async function handleMiddleware(
       }
     }
   });
-  const setCookies = responseHeaders.getSetCookie();
+  // Next folds the cookies set through `cookies()` in the middleware into a single
+  // comma-joined `set-cookie` header, so each entry here may be compound.
+  // Next itself splits them back in `runMiddleware` (`next-server.ts`).
+  const setCookies = responseHeaders
+    .getSetCookie()
+    .flatMap((maybeCompoundCookie) =>
+      parseSetCookieHeader(maybeCompoundCookie),
+    );
   if (setCookies.length > 0) {
     resHeaders["set-cookie"] = setCookies;
   }

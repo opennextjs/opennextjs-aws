@@ -405,6 +405,41 @@ describe("handleMiddleware", () => {
     expect(result.headers.location).toEqual("https://example.com/");
   });
 
+  it("should split the compound set-cookie header Next uses for cookies() in the middleware", async () => {
+    // Next folds the cookies set through `cookies()` in the middleware into a
+    // single comma-joined `set-cookie` header.
+    const compoundCookie =
+      "compound1=value1; Path=/; Expires=Thu, 01 Jan 2026 00:00:00 GMT, compound2=value2; Path=/; HttpOnly";
+    const foldingHeaders = {
+      forEach(fn: (value: string, key: string) => void) {
+        fn(compoundCookie, "set-cookie");
+        fn("http://localhost/rewrite", "x-middleware-rewrite");
+      },
+      get(name: string) {
+        if (name.toLowerCase() === "x-middleware-rewrite")
+          return "http://localhost/rewrite";
+        return null;
+      },
+      getSetCookie() {
+        return [compoundCookie];
+      },
+    };
+
+    const event = createEvent({ headers: { host: "localhost" } });
+    middleware.mockResolvedValue({
+      status: 200,
+      headers: foldingHeaders,
+      body: null,
+    });
+
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result.responseHeaders?.["set-cookie"]).toEqual([
+      "compound1=value1; Path=/; Expires=Thu, 01 Jan 2026 00:00:00 GMT",
+      "compound2=value2; Path=/; HttpOnly",
+    ]);
+  });
+
   it("should preserve multiple set-cookie headers when middleware returns next() with a rewrite", async () => {
     const foldingHeaders = {
       forEach(fn: (value: string, key: string) => void) {
