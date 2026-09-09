@@ -6,11 +6,13 @@ import {
   NextConfig,
   PrerenderManifest,
 } from "config/index.js";
+import { parseSetCookieHeader } from "http/util.js";
 import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
 } from "types/open-next.js";
+import { ISR_HEADER, PRERENDER_REVALIDATE_HEADER } from "utils/cacheHeaders.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
@@ -58,8 +60,8 @@ export async function handleMiddleware(
   // We should only do that if the request has the correct `x-prerender-revalidate` header
   // The `x-prerender-revalidate` header is set at build time and should be safe to trust
   if (
-    headers["x-isr"] &&
-    headers["x-prerender-revalidate"] ===
+    headers[ISR_HEADER] &&
+    headers[PRERENDER_REVALIDATE_HEADER] ===
       PrerenderManifest?.preview?.previewModeId
   )
     return internalEvent;
@@ -142,20 +144,26 @@ export async function handleMiddleware(
       reqHeaders[k] = value;
     } else {
       if (filteredHeaders.includes(key.toLowerCase())) return;
-      if (key.toLowerCase() === "set-cookie") {
-        resHeaders[key] = resHeaders[key]
-          ? [...resHeaders[key], value]
-          : [value];
-      } else if (
-        REDIRECTS.has(statusCode) &&
-        key.toLowerCase() === "location"
-      ) {
+      // Headers.forEach folds same-name headers; use getSetCookie() below instead.
+      if (key.toLowerCase() === "set-cookie") return;
+      if (REDIRECTS.has(statusCode) && key.toLowerCase() === "location") {
         resHeaders[key] = normalizeLocationHeader(value, internalEvent.url);
       } else {
         resHeaders[key] = value;
       }
     }
   });
+  // Next folds the cookies set through `cookies()` in the middleware into a single
+  // comma-joined `set-cookie` header, so each entry here may be compound.
+  // Next itself splits them back in `runMiddleware` (`next-server.ts`).
+  const setCookies = responseHeaders
+    .getSetCookie()
+    .flatMap((maybeCompoundCookie) =>
+      parseSetCookieHeader(maybeCompoundCookie),
+    );
+  if (setCookies.length > 0) {
+    resHeaders["set-cookie"] = setCookies;
+  }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above

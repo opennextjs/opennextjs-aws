@@ -5,6 +5,7 @@ import type {
   WithLastModified,
 } from "types/overrides";
 import { debug } from "../adapters/logger";
+import { CACHE_TAGS_HEADER } from "./cacheHeaders";
 import { compareSemver } from "./semver";
 /**
  *
@@ -240,8 +241,8 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   // The try catch is necessary for older version of next.js that may fail on this
   try {
     const cacheTags =
-      value.meta?.headers?.["x-next-cache-tags"]?.split(",") ?? [];
-    delete value.meta?.headers?.["x-next-cache-tags"];
+      value.meta?.headers?.[CACHE_TAGS_HEADER]?.split(",") ?? [];
+    delete value.meta?.headers?.[CACHE_TAGS_HEADER];
     return cacheTags;
   } catch (e) {
     return [];

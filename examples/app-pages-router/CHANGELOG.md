@@ -1,5 +1,33 @@
 # app-pages-router
 
+## 0.1.68
+
+### Patch Changes
+
+- Updated dependencies [[`064b72c323af0cc18d718e98e3713d55336cfc06`](https://github.com/opennextjs/opennextjs-aws/commit/064b72c323af0cc18d718e98e3713d55336cfc06)]:
+  - @opennextjs/aws@4.1.4
+
+## 0.1.67
+
+### Patch Changes
+
+- Updated dependencies [[`a4dbe4d6702b3b4a99a7548f6268155c55ed7e35`](https://github.com/opennextjs/opennextjs-aws/commit/a4dbe4d6702b3b4a99a7548f6268155c55ed7e35), [`1d90a751868410575a141409bff7e2d713297b58`](https://github.com/opennextjs/opennextjs-aws/commit/1d90a751868410575a141409bff7e2d713297b58)]:
+  - @opennextjs/aws@4.1.3
+
+## 0.1.66
+
+### Patch Changes
+
+- Updated dependencies [[`dd6ea23dfdc84c54c7d27950794faf67b4d930f1`](https://github.com/opennextjs/opennextjs-aws/commit/dd6ea23dfdc84c54c7d27950794faf67b4d930f1), [`78ca8fe40d80fbe950e8478fc3400d40614e195d`](https://github.com/opennextjs/opennextjs-aws/commit/78ca8fe40d80fbe950e8478fc3400d40614e195d)]:
+  - @opennextjs/aws@4.1.2
+
+## 0.1.65
+
+### Patch Changes
+
+- Updated dependencies [[`cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff`](https://github.com/opennextjs/opennextjs-aws/commit/cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff), [`eb04b808731abdab6ed5c8dd30f0eb3b17355336`](https://github.com/opennextjs/opennextjs-aws/commit/eb04b808731abdab6ed5c8dd30f0eb3b17355336), [`d8b13fa5a885d0e31d3c9cc72040c2b66784e07f`](https://github.com/opennextjs/opennextjs-aws/commit/d8b13fa5a885d0e31d3c9cc72040c2b66784e07f), [`a828810a5cb517d77cbe1b455f8b0b9d14a46610`](https://github.com/opennextjs/opennextjs-aws/commit/a828810a5cb517d77cbe1b455f8b0b9d14a46610), [`33422799811e281a0882f2be24264730ae68fff0`](https://github.com/opennextjs/opennextjs-aws/commit/33422799811e281a0882f2be24264730ae68fff0), [`1824810351c9c56880a1e57c77235b04c0982108`](https://github.com/opennextjs/opennextjs-aws/commit/1824810351c9c56880a1e57c77235b04c0982108)]:
+  - @opennextjs/aws@4.1.1
+
 ## 0.1.64
 
 ### Patch Changes

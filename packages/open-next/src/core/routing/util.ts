@@ -20,6 +20,13 @@ import type {
 import { ReadableStream } from "node:stream/web";
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
+import {
+  CACHE_CONTROL_HEADER,
+  ISR_HEADER,
+  NEXTJS_CACHE_HEADER,
+  NO_STORE_CACHE_CONTROL,
+  fixCacheControlForError,
+} from "../../utils/cacheHeaders.js";
 import { localizePath } from "./i18n/index.js";
 import { generateMessageGroupId } from "./queue.js";
 
@@ -56,6 +63,16 @@ export function convertFromQueryString(query: string) {
 }
 
 /**
+ * Splits an URL into its parts
+ *
+ * The URL is a route destination, i.e. a `path-to-regexp` pattern rather than a
+ * well formed URL, so it can not be parsed with `new URL()` which would percent
+ * encode some of the pattern characters.
+ *
+ * @param url The URL to split
+ * @param isExternal Whether the URL points to an external host
+ * @returns The protocol, hostname, pathname and query string of the URL
+ * @throws When `isExternal` is true and the URL is not an absolute HTTP(S) URL
  *
  * @__PURE__
  */
@@ -65,13 +82,13 @@ export function getUrlParts(url: string, isExternal: boolean) {
     const match = url.match(regex);
     return {
       hostname: "",
-      pathname: match?.[1] ? `/${match[1]}` : url,
+      pathname: url.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
       protocol: "",
       queryString: match?.[2] ?? "",
     };
   }
 
-  const regex = /^(https?:)\/\/?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
+  const regex = /^(https?:)\/\/?([^\/\s?]+)(\/[^?]*)?(\?.*)?/;
   const match = url.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
@@ -234,11 +251,6 @@ export function convertBodyToReadableStream(
   });
 }
 
-enum CommonHeaders {
-  CACHE_CONTROL = "cache-control",
-  NEXT_CACHE = "x-nextjs-cache",
-}
-
 /**
  *
  * @__PURE__
@@ -249,11 +261,10 @@ export function fixCacheHeaderForHtmlPages(
 ) {
   // We don't want to cache error pages
   if (internalEvent.rawPath === "/404" || internalEvent.rawPath === "/500") {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
-      return;
-    }
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+    fixCacheControlForError(
+      headers,
+      internalEvent.rawPath === "/404" ? 404 : 500,
+    );
     return;
   }
   const localizedPath = localizePath(internalEvent);
@@ -264,7 +275,7 @@ export function fixCacheHeaderForHtmlPages(
     HtmlPages.includes(localizedPath) &&
     !internalEvent.headers["x-middleware-prefetch"]
   ) {
-    headers[CommonHeaders.CACHE_CONTROL] =
+    headers[CACHE_CONTROL_HEADER] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
@@ -275,13 +286,13 @@ export function fixCacheHeaderForHtmlPages(
  */
 export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/sst/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
+  let cacheControl = headers[CACHE_CONTROL_HEADER];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {
     cacheControl = cacheControl.join(",");
   }
   if (typeof cacheControl !== "string") return;
-  headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
+  headers[CACHE_CONTROL_HEADER] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
     "stale-while-revalidate=2592000", // 30 days
   );
@@ -373,7 +384,7 @@ export async function revalidateIfRequired(
   headers: OutgoingHttpHeaders,
   req?: IncomingMessage,
 ) {
-  if (headers[CommonHeaders.NEXT_CACHE] === "STALE") {
+  if (headers[NEXTJS_CACHE_HEADER] === "STALE") {
     // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
     // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
     // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
@@ -435,7 +446,7 @@ const STALE_CACHE_CONTROL = "s-maxage=2, stale-while-revalidate=2592000";
  * @__PURE__
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
-  const cacheControl = headers[CommonHeaders.CACHE_CONTROL];
+  const cacheControl = headers[CACHE_CONTROL_HEADER];
   const sMaxAgeRegex = /s-maxage=(\d+)/;
   const match = cacheControl?.match(sMaxAgeRegex);
   const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
@@ -452,21 +463,20 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
     // We only ever add the header and never replace one, so `no-store`/`private` responses are
     // left alone, and only STALE is handled: without an s-maxage there is no revalidate window a
     // HIT could derive its remaining TTL from.
-    if (!cacheControl && headers[CommonHeaders.NEXT_CACHE] === "STALE") {
-      headers[CommonHeaders.CACHE_CONTROL] = STALE_CACHE_CONTROL;
+    if (!cacheControl && headers[NEXTJS_CACHE_HEADER] === "STALE") {
+      headers[CACHE_CONTROL_HEADER] = STALE_CACHE_CONTROL;
     }
     return;
   }
-  if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+  if (headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
+    headers[CACHE_CONTROL_HEADER] = NO_STORE_CACHE_CONTROL;
     return;
   }
   const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
-  if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
+  if (headers[NEXTJS_CACHE_HEADER] === "HIT" && _lastModified > 0) {
     debug(
       "cache-control",
-      headers[CommonHeaders.CACHE_CONTROL],
+      headers[CACHE_CONTROL_HEADER],
       _lastModified,
       Date.now(),
     );
@@ -476,14 +486,14 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       // calculate age
       const age = Math.round((Date.now() - _lastModified) / 1000);
       const remainingTtl = Math.max(sMaxAge - age, 1);
-      headers[CommonHeaders.CACHE_CONTROL] =
+      headers[CACHE_CONTROL_HEADER] =
         `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
     }
   }
-  if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
+  if (headers[NEXTJS_CACHE_HEADER] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
-  headers[CommonHeaders.CACHE_CONTROL] = STALE_CACHE_CONTROL;
+  headers[CACHE_CONTROL_HEADER] = STALE_CACHE_CONTROL;
 }
 
 /**
@@ -528,11 +538,8 @@ export async function invalidateCDNOnRequest(
 ) {
   const { internalEvent, resolvedRoutes, initialURL } = params;
   const initialPath = new URL(initialURL).pathname;
-  const isIsrRevalidation = internalEvent.headers["x-isr"] === "1";
-  if (
-    !isIsrRevalidation &&
-    headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED"
-  ) {
+  const isIsrRevalidation = internalEvent.headers[ISR_HEADER] === "1";
+  if (!isIsrRevalidation && headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
     await globalThis.cdnInvalidationHandler.invalidatePaths([
       {
         initialPath,

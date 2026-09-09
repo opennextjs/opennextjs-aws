@@ -379,6 +379,26 @@ describe("handleRedirects", () => {
       "https://on/search?bar=hello+world&baz=new%2C+earth",
     );
   });
+
+  // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
+  it("should redirect to the root with a query string", () => {
+    const event = createEvent({
+      url: "https://on/promo/anything",
+    });
+
+    const result = handleRedirects(event, [
+      {
+        source: "/promo/:path*",
+        destination: "/?ref=promo",
+        locale: false,
+        statusCode: 308,
+        regex: "^(?!/_next)/promo(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ]);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual("https://on/?ref=promo");
+  });
 });
 
 describe("handleRewrites", () => {
@@ -473,6 +493,60 @@ describe("handleRewrites", () => {
         },
         rawPath: "/search",
         url: "https://external.com/search?album=foo&song=bar",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: true,
+    });
+  });
+
+  // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
+  it("should rewrite to the root with a query string", () => {
+    const event = createEvent({
+      url: "https://on/promo/anything",
+    });
+
+    const rewrites = [
+      {
+        source: "/promo/:path*",
+        destination: "/?ref=promo",
+        regex: "^/promo(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        query: { ref: "promo" },
+        rawPath: "/",
+        url: "https://on/?ref=promo",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: false,
+    });
+  });
+
+  // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
+  it("should rewrite externally to a query string without a path", () => {
+    const event = createEvent({
+      url: "https://on/albums/foo",
+    });
+
+    const rewrites = [
+      {
+        source: "/albums/:album",
+        destination: "https://external.com?album=:album",
+        regex: "^/albums(?:/([^/]+?))(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        query: { album: "foo" },
+        rawPath: "/",
+        url: "https://external.com?album=foo",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: true,

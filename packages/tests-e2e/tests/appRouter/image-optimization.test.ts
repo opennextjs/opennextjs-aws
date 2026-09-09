@@ -27,3 +27,15 @@ test("should return 400 when validateParams returns an errorMessage", async ({
   expect(res.headers()["cache-control"]).toBe("public,max-age=60,immutable");
   expect(await res.text()).toBe(`"url" parameter is required`);
 });
+
+test("should optimize avif images", async ({ request }) => {
+  // https://github.com/vercel/next.js/releases/tag/v16.3.4
+  // The AVIF image optimization renabled in Next.js v16.3.4
+  const res = await request.get(
+    "/_next/image?url=%2Fstatic%2Fkimono.avif&w=384&q=75",
+    { headers: { accept: "image/webp" } },
+  );
+
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("image/webp");
+});

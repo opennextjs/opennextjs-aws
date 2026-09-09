@@ -11,7 +11,14 @@ import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
-import { debug, error } from "../../adapters/logger";
+import {
+  CACHE_CONTROL_HEADER,
+  NO_STORE_CACHE_CONTROL,
+  OPEN_NEXT_CACHE_HEADER,
+  PRERENDER_REVALIDATE_HEADER,
+  fixCacheControlForError,
+} from "utils/cacheHeaders";
+import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
 
@@ -62,9 +69,8 @@ async function computeCacheControl(
   if (revalidate === 0) {
     // This one should never happen
     return {
-      "cache-control":
-        "private, no-cache, no-store, max-age=0, must-revalidate",
-      "x-opennext-cache": "ERROR",
+      [CACHE_CONTROL_HEADER]: NO_STORE_CACHE_CONTROL,
+      [OPEN_NEXT_CACHE_HEADER]: "ERROR",
       etag,
     };
   }
@@ -102,66 +108,89 @@ async function computeCacheControl(
       });
     }
     return {
-      "cache-control": `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-      "x-opennext-cache": isStale ? "STALE" : "HIT",
+      [CACHE_CONTROL_HEADER]: `s-maxage=${sMaxAge}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+      [OPEN_NEXT_CACHE_HEADER]: isStale ? "STALE" : "HIT",
       etag,
     };
   }
   return {
-    "cache-control": `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
-    "x-opennext-cache": "HIT",
+    [CACHE_CONTROL_HEADER]: `s-maxage=${CACHE_ONE_YEAR}, stale-while-revalidate=${CACHE_ONE_MONTH}`,
+    [OPEN_NEXT_CACHE_HEADER]: "HIT",
     etag,
   };
 }
 
+/**
+ * Computes the body of an RSC response from a cached app router entry.
+ *
+ * @param event The incoming event, used to read the segment prefetch header
+ * @param cachedValue The cache entry, must be of type `app`
+ * @returns The body and the headers to add to the response, or `undefined` when
+ * the entry can not serve the request - the caller should then fallback to the server.
+ * @throws When `cachedValue` is not of type `app`
+ */
 function getBodyForAppRouter(
   event: MiddlewareEvent,
   cachedValue: CacheValue<"cache">,
-): { body: string; additionalHeaders: Record<string, string> } {
+): { body: string; additionalHeaders: Record<string, string> } | undefined {
   if (cachedValue.type !== "app") {
     throw new Error("getBodyForAppRouter called with non-app cache value");
   }
-  try {
-    const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
-    const isSegmentResponse =
-      Boolean(segmentHeader) &&
-      segmentHeader in (cachedValue.segmentData || {}) &&
-      !NextConfig.experimental?.prefetchInlining;
+  const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
+  const isSegmentResponse =
+    Boolean(segmentHeader) &&
+    segmentHeader in (cachedValue.segmentData || {}) &&
+    !NextConfig.experimental?.prefetchInlining;
 
-    const body = isSegmentResponse
-      ? cachedValue.segmentData![segmentHeader]
-      : cachedValue.rsc;
+  if (isSegmentResponse) {
     return {
-      body,
-      additionalHeaders: isSegmentResponse
-        ? { [NEXT_PRERENDER_HEADER]: "1", [NEXT_POSTPONED_HEADER]: "2" }
-        : {},
+      body: cachedValue.segmentData![segmentHeader],
+      additionalHeaders: {
+        [NEXT_PRERENDER_HEADER]: "1",
+        [NEXT_POSTPONED_HEADER]: "2",
+      },
     };
-  } catch (e) {
-    error("Error while getting body for app router from cache:", e);
-    return { body: cachedValue.rsc, additionalHeaders: {} };
   }
+  // `rsc` is absent when the build collected neither a `.rsc` nor a `.prefetch.rsc` file for
+  // this entry - fallback shells, and postponed PPR routes on Next 16.2+, see `CachedFile`.
+  // There is nothing valid to serve, and falling back to an empty payload would break the
+  // router and let the CDN cache the empty response, so let the server generate it.
+  if (cachedValue.rsc === undefined) {
+    return undefined;
+  }
+  return { body: cachedValue.rsc, additionalHeaders: {} };
 }
 
+/**
+ * Generates the response to serve for a cached `app` or `page` entry.
+ *
+ * @param event The incoming event
+ * @param localizedPath The localized path, used to compute the cache control
+ * @param cachedValue The cache entry, must be of type `app` or `page`
+ * @param lastModified Time of the last update to the cache entry
+ * @param isStaleFromTagCache Whether the tag cache reported the entry as stale
+ * @returns The result to serve, or `undefined` when the entry can not serve the
+ * request - the caller should then fallback to the server.
+ * @throws When `cachedValue` is neither of type `app` nor `page`
+ */
 async function generateResult(
   event: MiddlewareEvent,
   localizedPath: string,
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
   isStaleFromTagCache = false,
-): Promise<InternalResult> {
+): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
-  let body = "";
+  let body: string | undefined;
   let type = "application/octet-stream";
   let isDataRequest = false;
-  let additionalHeaders = {};
+  let additionalHeaders: Record<string, string> = {};
   if (cachedValue.type === "app") {
     isDataRequest = event.headers.rsc === "1";
     if (isDataRequest) {
-      const { body: appRouterBody, additionalHeaders: appHeaders } =
-        getBodyForAppRouter(event, cachedValue);
-      body = appRouterBody;
-      additionalHeaders = appHeaders;
+      const appRouterResult = getBodyForAppRouter(event, cachedValue);
+      body = appRouterResult?.body;
+      additionalHeaders = appRouterResult?.additionalHeaders ?? {};
     } else {
       body = cachedValue.html;
     }
@@ -175,6 +204,12 @@ async function generateResult(
       "generateResult called with unsupported cache value type, only 'app' and 'page' are supported",
     );
   }
+  // Next.js does not write every file for every route at build time, so the entry might
+  // not hold the data needed to serve this particular request.
+  if (body === undefined) {
+    debug("Missing body in the cache entry, falling back to the server");
+    return undefined;
+  }
   const cacheControl = await computeCacheControl(
     localizedPath,
     body,
@@ -183,24 +218,53 @@ async function generateResult(
     lastModified,
     isStaleFromTagCache,
   );
+  const statusCode = computeStatusCode(
+    event.rewriteStatusCode,
+    cachedValue.meta?.status,
+  );
+  const headers: Record<string, string | string[]> = {
+    ...cacheControl,
+    "content-type": type,
+    ...cachedValue.meta?.headers,
+    vary: VARY_HEADER,
+    ...additionalHeaders,
+  };
+  // Applied last so that it wins over both the computed cache control and the one
+  // that could be stored in the entry's own headers. This is the same override the
+  // server path applies in `OpenNextNodeResponse.fixHeadersForError`, which the
+  // interceptor bypasses by returning a result directly.
+  fixCacheControlForError(headers, statusCode);
   return {
     type: "core",
-    // Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code
-    // Also set the status code to the rewriteStatusCode if defined
-    // This can happen in handleMiddleware in routingHandler.
-    // `NextResponse.rewrite(url, { status: xxx})
-    // The rewrite status code should take precedence over the cached one
-    statusCode: event.rewriteStatusCode ?? cachedValue.meta?.status ?? 200,
+    statusCode,
     body: toReadableStream(body, false),
     isBase64Encoded: false,
-    headers: {
-      ...cacheControl,
-      "content-type": type,
-      ...cachedValue.meta?.headers,
-      vary: VARY_HEADER,
-      ...additionalHeaders,
-    },
+    headers,
   };
+}
+
+/**
+ * Computes the status code to return for a cache hit.
+ *
+ * Sometimes other status codes can be cached, like 404. For these cases, we should return the correct status code.
+ * The rewrite status code can be set in handleMiddleware in routingHandler with
+ * `NextResponse.rewrite(url, { status: xxx })`.
+ *
+ * A meaningful cached status code (i.e. anything but the implicit 200) wins over the rewrite
+ * status code, otherwise a rewrite would turn a cached error page into a successful response.
+ *
+ * @param rewriteStatusCode The status code from the middleware rewrite, if any.
+ * @param cachedStatusCode The status code stored in the cache entry meta, if any.
+ * @returns The status code to return.
+ */
+function computeStatusCode(
+  rewriteStatusCode: number | undefined,
+  cachedStatusCode: number | undefined,
+): number {
+  if (cachedStatusCode !== undefined && cachedStatusCode !== 200) {
+    return cachedStatusCode;
+  }
+  return rewriteStatusCode ?? cachedStatusCode ?? 200;
 }
 
 /**
@@ -236,7 +300,7 @@ export async function cacheInterceptor(
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
-    Boolean(event.headers["x-prerender-revalidate"])
+    Boolean(event.headers[PRERENDER_REVALIDATE_HEADER])
   )
     return event;
 
@@ -311,14 +375,17 @@ export async function cacheInterceptor(
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
         case "app":
-        case "page":
-          return generateResult(
+        case "page": {
+          const result = await generateResult(
             event,
             localizedPath,
             cachedData.value,
             cachedData.lastModified,
             _isStale,
           );
+          // The cache entry can not serve this request, fallback to the server.
+          return result ?? event;
+        }
         case "redirect": {
           const cacheControl = await computeCacheControl(
             localizedPath,
@@ -354,16 +421,22 @@ export async function cacheInterceptor(
             String(cachedData.value.meta?.headers?.["content-type"]),
           );
 
+          const statusCode = computeStatusCode(
+            event.rewriteStatusCode,
+            cachedData.value.meta?.status,
+          );
+          const headers: Record<string, string | string[]> = {
+            ...cacheControl,
+            ...cachedData.value.meta?.headers,
+            vary: VARY_HEADER,
+          };
+          // See the note in `generateResult`.
+          fixCacheControlForError(headers, statusCode);
           return {
             type: "core",
-            statusCode:
-              event.rewriteStatusCode ?? cachedData.value.meta?.status ?? 200,
+            statusCode,
             body: toReadableStream(cachedData.value.body, isBinary),
-            headers: {
-              ...cacheControl,
-              ...cachedData.value.meta?.headers,
-              vary: VARY_HEADER,
-            },
+            headers,
             isBase64Encoded: isBinary,
           };
         }
