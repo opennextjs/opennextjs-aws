@@ -65,7 +65,9 @@ async function computeCacheControl(
   // calculate age
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
   const hash = (str: string) => createHash("md5").update(str).digest("hex");
-  const etag = hash(body);
+  // RFC 9110 entity-tag is a quoted opaque-tag. CloudFront drops unquoted ETags
+  // when serving compressed objects.
+  const etag = `"${hash(body)}"`;
   if (revalidate === 0) {
     // This one should never happen
     return {
