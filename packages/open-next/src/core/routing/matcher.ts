@@ -462,7 +462,21 @@ export function handleFallbackFalse(
     ({ route }) => !prerenderedFallbackRoutesName.includes(route),
   );
 
-  const isPregenerated = Object.keys(routes).includes(localizedPath);
+  let decodedLocalizedPath: string | undefined;
+  try {
+    // The prerender manifest keys routes by their decoded path, while rawPath
+    // arrives percent-encoded. Decode the complete path atomically so a
+    // malformed escape cannot be partially decoded.
+    decodedLocalizedPath = decodeURIComponent(localizedPath);
+  } catch {
+    // A malformed escape sequence cannot name a prerendered route.
+  }
+  // Also match against the decoded path, so a prerendered page whose slug
+  // contains a space or a non-ASCII character is not treated as missing.
+  const isPregenerated =
+    Object.keys(routes).includes(localizedPath) ||
+    (decodedLocalizedPath !== undefined &&
+      Object.keys(routes).includes(decodedLocalizedPath));
   if (
     routeFallback &&
     !isPregenerated &&
