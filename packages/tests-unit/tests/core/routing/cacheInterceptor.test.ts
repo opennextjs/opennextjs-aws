@@ -1,4 +1,6 @@
 /* eslint-disable sonarjs/no-duplicate-string */
+import { createHash } from "node:crypto";
+
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
@@ -196,6 +198,23 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should quote the etag as an HTTP entity-tag", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const expectedEtag = `"${createHash("md5").update("Hello, world!").digest("hex")}"`;
+    expect(result.headers.etag).toBe(expectedEtag);
   });
 
   it("should retrieve index app router content from the index cache key", async () => {
