@@ -1,5 +1,29 @@
 # open-next
 
+## 4.1.5
+
+### Patch Changes
+
+- [#1245](https://github.com/opennextjs/opennextjs-aws/pull/1245) [`f18de4d5a3f7b7b9317a65d512c65004e471a505`](https://github.com/opennextjs/opennextjs-aws/commit/f18de4d5a3f7b7b9317a65d512c65004e471a505) Thanks [@isaacrowntree](https://github.com/isaacrowntree)! - fix: scope the composable cache's pending writes to the request, not the isolate
+
+  The map of in-flight `'use cache'` writes was module-scoped. On a runtime that serves many concurrent requests from one isolate (e.g. Cloudflare Workers) a pending write promise from one request could be handed to another; if the first request's context was torn down before the write settled, the second hung and the key stayed poisoned for the life of the isolate. The map now lives in the per-request `RequestCache`.
+
+- [#1219](https://github.com/opennextjs/opennextjs-aws/pull/1219) [`4246f9ed94e3f5c7d154115d812a196aa970fa8e`](https://github.com/opennextjs/opennextjs-aws/commit/4246f9ed94e3f5c7d154115d812a196aa970fa8e) Thanks [@wxxw1xwwx-beep](https://github.com/wxxw1xwwx-beep)! - Pass `process.env` explicitly when spawning the Next.js build
+
+  `setStandaloneBuildMode` communicates with the Next.js build by mutating
+  `process.env` (`NEXT_PRIVATE_STANDALONE`, `NEXT_PRIVATE_OUTPUT_TRACE_ROOT`)
+  immediately before `buildNextjsApp` spawns it. Node forwards those mutations to
+  the child process by default, but Bun builds the child environment from a
+  snapshot taken at startup unless `env` is passed explicitly, so the build never
+  enters standalone mode. The failure surfaces much later in `createCacheAssets`
+  as `ENOENT ... .next/standalone/.next/server/pages-manifest.json`, which gives
+  no hint of the real cause. Passing `env: process.env` makes both runtimes
+  behave the same.
+
+- [#1244](https://github.com/opennextjs/opennextjs-aws/pull/1244) [`b9aabb903281eab8363ddf6c3e505caef1bb16b7`](https://github.com/opennextjs/opennextjs-aws/commit/b9aabb903281eab8363ddf6c3e505caef1bb16b7) Thanks [@cpruijsen](https://github.com/cpruijsen)! - fix: quote cache interceptor ETag values so they are valid HTTP entity-tags
+
+- [#1240](https://github.com/opennextjs/opennextjs-aws/pull/1240) [`66111316c08d81ff390d67a307bde9ca40d04ae7`](https://github.com/opennextjs/opennextjs-aws/commit/66111316c08d81ff390d67a307bde9ca40d04ae7) Thanks [@conico974](https://github.com/conico974)! - fix: split the compound `set-cookie` header set by `cookies()` in the middleware
+
 ## 4.1.4
 
 ### Patch Changes
