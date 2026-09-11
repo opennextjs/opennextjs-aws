@@ -1,6 +1,8 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
+import { IncrementalCache as NextIncrementalCache } from "next/dist/server/lib/incremental-cache/index.js";
+import type { GetIncrementalResponseCacheContext } from "next/dist/server/response-cache/types.js";
 import { type Mock, vi } from "vitest";
 
 declare global {
@@ -8,6 +10,8 @@ declare global {
     dangerous: { disableIncrementalCache?: boolean; disableTagCache?: boolean };
   };
   var nextVersion: string;
+  /** Assigned by Next.js in `base-server`, this is where the cache controls live. */
+  var __incrementalCache: unknown;
 }
 
 describe("CacheHandler", () => {
@@ -706,6 +710,345 @@ describe("CacheHandler", () => {
           await cache.get("key", { kindHint: "app" });
 
           expect(tagCache.isStale).not.toHaveBeenCalled();
+        });
+      });
+
+      describe("cache control seeding", () => {
+        const PRODUCT_KEY = "/product/some-slug";
+
+        const cacheControls = {
+          get: vi.fn(),
+          set: vi.fn(),
+        };
+        const revalidateTimings = {
+          get: vi.fn(),
+          set: vi.fn(),
+        };
+
+        const cachedPage = (revalidate?: number | false) => ({
+          value: {
+            type: "page",
+            html: "<html></html>",
+            json: {},
+            revalidate,
+          },
+          lastModified: Date.now(),
+        });
+
+        beforeEach(() => {
+          globalThis.nextVersion = "16.3.0";
+          // Next has no cache control for an on demand rendered path.
+          cacheControls.get.mockReturnValue(undefined);
+          revalidateTimings.get.mockReturnValue(undefined);
+          globalThis.__incrementalCache = { cacheControls };
+        });
+
+        afterEach(() => {
+          globalThis.__incrementalCache = undefined;
+        });
+
+        it("Should seed the persisted revalidate so Next can resolve the route TTL", async () => {
+          incrementalCache.get.mockResolvedValueOnce(cachedPage(3600));
+
+          await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+          expect(cacheControls.set).toHaveBeenCalledWith(PRODUCT_KEY, {
+            revalidate: 3600,
+            expire: undefined,
+          });
+        });
+
+        // Next looks the cache control up under `toRoute(cacheKey)`.
+        it.each([
+          [`${PRODUCT_KEY}/`, PRODUCT_KEY],
+          [`${PRODUCT_KEY}/index`, PRODUCT_KEY],
+          ["/index", "/"],
+          ["/", "/"],
+        ])(
+          "Should seed the cache key %s under the route %s",
+          async (key, route) => {
+            incrementalCache.get.mockResolvedValueOnce(cachedPage(60));
+
+            await cache.get(key, { kindHint: "pages" });
+
+            expect(cacheControls.set).toHaveBeenCalledWith(route, {
+              revalidate: 60,
+              expire: undefined,
+            });
+          },
+        );
+
+        // `false` would become a year of CDN caching and anything below 1 makes Next's pages
+        // handler throw (`Invalid revalidate configuration provided: x < 1`).
+        it.each([
+          false,
+          undefined,
+          0,
+          0.5,
+          -1,
+          Number.NaN,
+          Number.POSITIVE_INFINITY,
+        ])("Should not seed a revalidate of %s", async (revalidate) => {
+          incrementalCache.get.mockResolvedValueOnce(
+            cachedPage(revalidate as number | false | undefined),
+          );
+
+          await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+          expect(cacheControls.set).not.toHaveBeenCalled();
+        });
+
+        it("Should not overwrite a cache control Next already has for the route", async () => {
+          // The in memory map wins over the prerender manifest, so overwriting would drop the
+          // manifest's `expire` (a year by default) and with it `stale-while-revalidate`.
+          cacheControls.get.mockReturnValue({
+            revalidate: 3600,
+            expire: 31536000,
+          });
+          incrementalCache.get.mockResolvedValueOnce(cachedPage(60));
+
+          await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+          expect(cacheControls.set).not.toHaveBeenCalled();
+        });
+
+        it("Should not seed for fetch cache reads", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { kind: "FETCH", data: {}, revalidate: 3600 },
+            lastModified: Date.now(),
+          });
+
+          await cache.get("fetch-cache-key-hash", { kind: "FETCH" });
+
+          expect(getFetchCacheSpy).toHaveBeenCalled();
+          expect(cacheControls.set).not.toHaveBeenCalled();
+        });
+
+        it("Should seed a bare revalidate on Next versions without cache controls", async () => {
+          globalThis.nextVersion = "15.0.0";
+          globalThis.__incrementalCache = { revalidateTimings };
+          incrementalCache.get.mockResolvedValueOnce(cachedPage(3600));
+
+          await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+          expect(revalidateTimings.set).toHaveBeenCalledWith(PRODUCT_KEY, 3600);
+        });
+
+        it("Should not overwrite an existing bare revalidate, including a falsy one", async () => {
+          globalThis.nextVersion = "15.0.0";
+          globalThis.__incrementalCache = { revalidateTimings };
+          // `false` is what a fully static route stores - it is a value, not a miss.
+          revalidateTimings.get.mockReturnValue(false);
+          incrementalCache.get.mockResolvedValueOnce(cachedPage(3600));
+
+          await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+          expect(revalidateTimings.set).not.toHaveBeenCalled();
+        });
+
+        const unusableIncrementalCaches: [string, unknown][] = [
+          ["missing", undefined],
+          ["an empty object", {}],
+          ["missing a setter", { cacheControls: { get: () => undefined } }],
+          ["missing a getter", { cacheControls: { set: () => undefined } }],
+          ["an unknown shape", { cacheControls: 42, revalidateTimings: "?" }],
+          [
+            "throwing on write",
+            {
+              cacheControls: {
+                get: () => undefined,
+                set: () => {
+                  throw new Error("Not the shape we expected");
+                },
+              },
+            },
+          ],
+        ];
+
+        it.each(unusableIncrementalCaches)(
+          "Should return the entry without throwing when the incremental cache is %s",
+          async (_description, incrementalCacheGlobal) => {
+            globalThis.__incrementalCache = incrementalCacheGlobal;
+            incrementalCache.get.mockResolvedValueOnce(cachedPage(3600));
+
+            const result = await cache.get(PRODUCT_KEY, { kindHint: "pages" });
+
+            expect(result).toEqual({
+              lastModified: Date.now(),
+              value: {
+                kind: "PAGES",
+                html: "<html></html>",
+                pageData: {},
+                status: undefined,
+                headers: undefined,
+              },
+            });
+          },
+        );
+      });
+
+      // These drive the real Next.js `IncrementalCache` from `node_modules`, so that the staleness
+      // verdict and the cache control we depend on are pinned against Next itself rather than
+      // against our reading of it. `globalThis.nextVersion` selects our own code path, the
+      // assertions are on whatever the installed Next answers.
+      describe("cache control seeding through Next's incremental cache", () => {
+        const PRODUCT_KEY = "/product/some-slug";
+        const REVALIDATE = 3600;
+        const TEN_MINUTES = 10 * 60 * 1000;
+
+        // What a Pages Router `getStaticPaths` returning `paths: []` produces: the route pattern is
+        // known, no concrete path is, and there is no fallback revalidate to fall back on.
+        const prerenderManifest = {
+          version: 4,
+          routes: {},
+          dynamicRoutes: {
+            "/product/[...slug]": {
+              fallback: null,
+              fallbackRevalidate: undefined,
+            },
+          },
+          notFoundRoutes: [],
+          preview: { previewModeId: "test" },
+        };
+
+        // Next reads its own clock, which is not necessarily the faked `Date.now()`.
+        const nextNow = () => performance.timeOrigin + performance.now();
+
+        const createNextIncrementalCache = () => {
+          const handler = cache;
+          class CurCacheHandler {
+            get(key: string, ctx: unknown) {
+              return handler.get(key, ctx as never);
+            }
+            async set() {}
+            async revalidateTag() {}
+            resetRequestCache() {}
+          }
+
+          const nextIncrementalCache = new NextIncrementalCache({
+            dev: false,
+            minimalMode: true,
+            requestHeaders: {},
+            getPrerenderManifest: () => prerenderManifest,
+            CurCacheHandler,
+          } as unknown as ConstructorParameters<
+            typeof NextIncrementalCache
+          >[0]);
+          // `SharedCacheControls` keeps its map in a static field, shared by every instance.
+          (
+            nextIncrementalCache as unknown as {
+              cacheControls: { clear: () => void };
+            }
+          ).cacheControls.clear();
+          globalThis.__incrementalCache = nextIncrementalCache;
+          return nextIncrementalCache;
+        };
+
+        const readProduct = (nextIncrementalCache: NextIncrementalCache) =>
+          nextIncrementalCache.get(PRODUCT_KEY, {
+            kind: "PAGES",
+            isFallback: false,
+          } as unknown as GetIncrementalResponseCacheContext);
+
+        beforeEach(() => {
+          globalThis.nextVersion = "16.3.0";
+        });
+
+        afterEach(() => {
+          globalThis.__incrementalCache = undefined;
+        });
+
+        it("Should have Next report a ten minute old entry stale when nothing seeds the route", async () => {
+          const nextIncrementalCache = createNextIncrementalCache();
+          // The read still goes through the real incremental cache, but the seeding has nowhere to
+          // write - this is the behaviour we are fixing.
+          globalThis.__incrementalCache = {};
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              type: "page",
+              html: "<html></html>",
+              json: {},
+              revalidate: REVALIDATE,
+            },
+            lastModified: nextNow() - TEN_MINUTES,
+          });
+
+          const entry = await readProduct(nextIncrementalCache);
+
+          expect(entry?.isStale).toBe(true);
+          expect(entry?.cacheControl).toBeUndefined();
+        });
+
+        it("Should have Next report the same entry fresh once the revalidate is seeded", async () => {
+          const nextIncrementalCache = createNextIncrementalCache();
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              type: "page",
+              html: "<html></html>",
+              json: {},
+              revalidate: REVALIDATE,
+            },
+            lastModified: nextNow() - TEN_MINUTES,
+          });
+
+          const entry = await readProduct(nextIncrementalCache);
+
+          expect(entry?.isStale).toBeUndefined();
+          // This is what makes Next emit `s-maxage=3600` for a cache read.
+          expect(entry?.cacheControl).toEqual({
+            revalidate: REVALIDATE,
+            expire: undefined,
+          });
+        });
+
+        it("Should have Next report an entry past its revalidate window stale", async () => {
+          const nextIncrementalCache = createNextIncrementalCache();
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              type: "page",
+              html: "<html></html>",
+              json: {},
+              revalidate: REVALIDATE,
+            },
+            lastModified: nextNow() - REVALIDATE * 1000 - TEN_MINUTES,
+          });
+
+          const entry = await readProduct(nextIncrementalCache);
+
+          expect(entry?.isStale).toBe(true);
+        });
+
+        it("Should keep a tag stale entry servable rather than forcing a blocking revalidation", async () => {
+          // Pins the interaction with `getStaleLastModified`: from Next 16.3 a numeric `expire`
+          // whose window has passed makes Next answer `-1` (a blocking revalidation, surfacing as
+          // `x-nextjs-cache: REVALIDATED`) instead of `true` (served stale, revalidated in the
+          // background). Seeding `expire: undefined` skips that check entirely.
+          tagCache.isStale.mockResolvedValueOnce(true);
+          (globalThis.__openNextAls.getStore as Mock).mockReturnValue({
+            pendingPromiseRunner: {
+              withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
+            },
+            writtenTags: new Set(),
+            requestCache: new RequestCache(),
+          });
+          const nextIncrementalCache = createNextIncrementalCache();
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              type: "page",
+              html: "<html></html>",
+              json: {},
+              revalidate: REVALIDATE,
+            },
+            lastModified: Date.now(),
+          });
+
+          const entry = await readProduct(nextIncrementalCache);
+
+          expect(entry?.isStale).toBe(true);
+          expect(entry?.cacheControl).toEqual({
+            revalidate: REVALIDATE,
+            expire: undefined,
+          });
         });
       });
     });
