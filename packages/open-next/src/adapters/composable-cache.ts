@@ -4,17 +4,39 @@ import { isStale, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
-const pendingWritePromiseMap = new Map<
-  string,
-  Promise<CacheValue<"composable">>
->();
+/**
+ * In-flight writes are tracked per request, not per module.
+ *
+ * A module-scope map is per isolate. On a runtime that serves one request per
+ * sandbox that is the same as per request, but on a runtime that serves many
+ * concurrent requests from one isolate (e.g. Cloudflare Workers) a pending
+ * write promise created in request A would be handed to request B. If A's
+ * context is torn down before the write settles, B awaits a promise that never
+ * resolves, `.finally()` never runs, and the key stays poisoned for the life of
+ * the isolate.
+ *
+ * `RequestCache` is the per-request store the tag caches already use for this.
+ * Scoping the map to it keeps the read-coherence a `get` needs for a write in
+ * flight from the same render while making a cross-request share impossible.
+ * With no ALS store (e.g. at build time) the dedupe is skipped and `get` falls
+ * through to the incremental cache.
+ */
+const PENDING_WRITES_CACHE_KEY = "composable-cache:pending-writes";
+
+const getPendingWritePromiseMap = () =>
+  globalThis.__openNextAls
+    ?.getStore()
+    ?.requestCache?.getOrCreate<string, Promise<CacheValue<"composable">>>(
+      PENDING_WRITES_CACHE_KEY,
+    );
 
 export default {
   async get(cacheKey: string) {
     try {
       // We first check if we have a pending write for this cache key
       // If we do, we return the pending promise instead of fetching the cache
-      if (pendingWritePromiseMap.has(cacheKey)) {
+      const pendingWritePromiseMap = getPendingWritePromiseMap();
+      if (pendingWritePromiseMap?.has(cacheKey)) {
         const stored = pendingWritePromiseMap.get(cacheKey);
         if (stored) {
           return stored.then((entry) => ({
@@ -91,10 +113,11 @@ export default {
       ...entry,
       value: await fromReadableStream(entry.value),
     }));
-    pendingWritePromiseMap.set(cacheKey, promiseEntry);
+    const pendingWritePromiseMap = getPendingWritePromiseMap();
+    pendingWritePromiseMap?.set(cacheKey, promiseEntry);
 
     const entry = await promiseEntry.finally(() => {
-      pendingWritePromiseMap.delete(cacheKey);
+      pendingWritePromiseMap?.delete(cacheKey);
     });
     await globalThis.incrementalCache.set(
       cacheKey,
