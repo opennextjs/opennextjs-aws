@@ -28,6 +28,7 @@ import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 import type { OpenNextHandlerOptions } from "types/overrides.js";
 import { createGenericHandler } from "../core/createGenericHandler.js";
 import { resolveImageLoader } from "../core/resolve.js";
+import { FatalError, IgnorableError } from "../utils/error.js";
 import { debug, error } from "./logger.js";
 import { optimizeImage } from "./plugins/image-optimization/image-optimization.js";
 import { setNodeEnv } from "./util.js";
@@ -114,10 +115,18 @@ export async function defaultHandler(
     );
     return buildSuccessResponse(result, options?.streamCreator, etag);
   } catch (e: any) {
-    error("Failed to optimize image", e);
+    // Extract status code from error or default to 400 Bad Request
+    const statusCode = e.statusCode || 400;
+    const errorMessage = e.message || "Failed to process image request";
+
+    // Create an IgnorableError for proper monitoring classification
+    const clientError = new IgnorableError(errorMessage, statusCode);
+    error("Failed to optimize image", clientError);
+
     return buildFailureResponse(
-      "Internal server error",
+      errorMessage,
       options?.streamCreator,
+      statusCode, // Use the appropriate status code (preserving original when available)
     );
   }
 }
@@ -238,50 +247,116 @@ async function downloadHandler(
   // directly.
   debug("downloadHandler url", url);
 
-  // Reads the output from the Writable and writes to the response
-  const pipeRes = (w: Writable, res: ServerResponse) => {
-    w.pipe(res)
+  /**
+   * Helper function to handle image errors consistently with appropriate response
+   * @param e The error object
+   * @param res The server response object
+   * @param isInternalImage Whether the error is from an internal image (S3) or external image
+   */
+  function handleImageError(
+    e: any,
+    res: ServerResponse,
+    isInternalImage: boolean,
+  ) {
+    const originalStatus = e.statusCode || e.$metadata?.httpStatusCode || 500;
+    const message = e.message || "Failed to process image request";
+
+    // Log all other errors as client errors
+    const clientError = new IgnorableError(message, originalStatus);
+    error("Failed to process image", clientError);
+
+    // For external images we throw with the status code
+    // Next.js will preserve the status code for external images
+    if (!isInternalImage) {
+      const statusCode = originalStatus >= 500 ? 400 : originalStatus;
+      throw new FatalError(message, statusCode);
+    }
+
+    // Different handling for internal vs external images
+    const finalStatus = originalStatus >= 500 ? 400 : originalStatus;
+    res.statusCode = finalStatus;
+
+    // For internal images, we want to trigger Next.js's "internal response invalid" message
+    if (isInternalImage) {
+      // For internal images, don't set Content-Type to trigger Next.js's default error handling
+      // This should result in "url parameter is valid but internal response is invalid"
+
+      // Still include error details in headers for debugging only
+      res.setHeader("x-nextjs-internal-error", message);
+      res.end();
+    } else {
+      // For external images, maintain existing behavior with text/plain
+      res.setHeader("Content-Type", "text/plain");
+
+      // We should **never** send the error message to the client
+      // This is to prevent leaking sensitive information
+      res.end("Failed to process image request");
+    }
+  }
+
+  // Pipes data from a writable stream to the server response
+  function pipeStream(
+    stream: Writable,
+    res: ServerResponse,
+    isInternalImage: boolean,
+  ) {
+    stream
+      .pipe(res)
       .once("close", () => {
         res.statusCode = 200;
         res.end();
       })
       .once("error", (err) => {
-        error("Failed to get image", err);
-        res.statusCode = 400;
-        res.end();
+        error("Error streaming image data", err);
+        handleImageError(err, res, isInternalImage);
       });
-  };
+  }
 
+  // Main handler logic with clearer error paths
   try {
-    // Case 1: remote image URL => download the image from the URL
+    // remote image URL => download the image from the URL
     if (url.href.toLowerCase().match(/^https?:\/\//)) {
-      pipeRes(https.get(url), res);
+      try {
+        pipeStream(https.get(url), res, false);
+      } catch (e: any) {
+        handleImageError(e, res, false);
+      }
+      return;
     }
-    // Case 2: local image => download the image from S3
-    else {
-      // Download image from S3
-      // note: S3 expects keys without leading `/`
 
+    // local image => download the image from the provided ImageLoader (default is S3)
+    try {
       const response = await loader.load(url.href);
 
+      // Handle empty response body
       if (!response.body) {
-        throw new Error("Empty response body from the S3 request.");
+        const message = "Empty response body from the S3 request.";
+        const clientError = new IgnorableError(message, 400);
+        error("Empty response from ImageLoader", clientError);
+
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "text/plain");
+        res.end(message);
+        return;
       }
 
-      // @ts-ignore
-      pipeRes(response.body, res);
-
-      // Respect the bucket file's content-type and cache-control
-      // imageOptimizer will use this to set the results.maxAge
+      // Set headers from the response
       if (response.contentType) {
         res.setHeader("Content-Type", response.contentType);
       }
       if (response.cacheControl) {
         res.setHeader("Cache-Control", response.cacheControl);
       }
+
+      // Stream the image to the client
+      // @ts-ignore
+      pipeStream(response.body, res, true);
+    } catch (e: any) {
+      // Direct response for all internal image errors
+      handleImageError(e, res, true);
     }
   } catch (e: any) {
-    error("Failed to download image", e);
-    throw e;
+    // Catch-all for any unexpected errors
+    handleImageError(e, res, true);
   }
 }
