@@ -66,6 +66,31 @@ const nextServer = new NextServer.default({
   dir: __dirname,
 });
 
+// WORKAROUND: Register the router server context ourselves.
+// The pages router renders `notFound: true` results through
+// `routerServerContext.render404` and falls back to a bare
+// "This page could not be found" body when the context is missing.
+// `NextNodeServer` does register that context, but it keys it on
+// `path.relative(process.cwd(), server.dir)` while the route modules read it
+// back using the `relativeProjectDir` baked in at build time, which is always
+// an empty string here. Those two only line up when the working directory is
+// the server directory, which not every deployment target can guarantee
+// (`process.chdir` is a no-op on Cloudflare Workers, for example).
+// Registering upfront under the build-time key removes that dependency.
+const RouterServerContextSymbol = Symbol.for("@next/router-server-methods");
+const routerServerGlobal = globalThis as unknown as Record<
+  symbol,
+  Record<string, Record<string, unknown>> | undefined
+>;
+const routerServerContexts = (routerServerGlobal[RouterServerContextSymbol] ??=
+  {});
+// The key the route modules read the context back with.
+const relativeProjectDir = "";
+routerServerContexts[relativeProjectDir] ??= {
+  render404: nextServer.render404.bind(nextServer),
+};
+routerServerContexts[relativeProjectDir].nextConfig = nextServer.nextConfig;
+
 let routesLoaded = false;
 
 globalThis.__next_route_preloader = async (stage) => {
