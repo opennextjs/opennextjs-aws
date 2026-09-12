@@ -411,6 +411,34 @@ describe("convertToQuery", () => {
       another: "value2",
     });
   });
+
+  it("ignores a leading question mark", () => {
+    const querystring = "?key=value";
+    expect(convertToQuery(querystring)).toEqual({ key: "value" });
+  });
+
+  // https://github.com/opennextjs/opennextjs-cloudflare/issues/1134
+  it("keeps reserved characters percent-encoded so the value survives convertToQueryString", () => {
+    const querystring =
+      "returnUrl=https%3A%2F%2Fexample.com%2Fauth%3Fresponse_type%3Dcode%2Bid_token%26state%3Dabc&other=xyz";
+    const query = convertToQuery(querystring);
+
+    // The encoded value must be preserved (not decoded), otherwise the nested
+    // "&"/"="/"+"/space would break the rebuilt query string.
+    expect(query).toEqual({
+      returnUrl:
+        "https%3A%2F%2Fexample.com%2Fauth%3Fresponse_type%3Dcode%2Bid_token%26state%3Dabc",
+      other: "xyz",
+    });
+
+    // The value round-trips through convertToQueryString unchanged.
+    expect(convertToQueryString(query)).toBe(`?${querystring}`);
+
+    // The value decodes back to the original URL.
+    expect(decodeURIComponent(query.returnUrl as string)).toBe(
+      "https://example.com/auth?response_type=code+id_token&state=abc",
+    );
+  });
 });
 
 describe("getMiddlewareMatch", () => {
