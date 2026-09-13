@@ -299,7 +299,12 @@ export interface InstallOptions {
   packages: string[];
   /** @default undefined */
   arch?: "x64" | "arm64";
-  /** @default undefined */
+  /**
+   * @default undefined
+   * @deprecated no longer forwarded to `npm install` — npm dropped the
+   * `--target` flag this relied on, and prebuilt N-API binaries aren't
+   * tied to a specific Node version.
+   */
   nodeVersion?: string;
   /** @default undefined */
   libc?: "glibc" | "musl";
