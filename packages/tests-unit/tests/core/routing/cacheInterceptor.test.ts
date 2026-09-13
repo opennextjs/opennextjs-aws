@@ -747,7 +747,8 @@ describe("cacheInterceptor", () => {
       );
     });
 
-    it("should fall back to RSC when segment key does not exist in segmentData", async () => {
+    // Never the full page: that is the response shape the router cannot accept.
+    it("should fall back to the server when the segment key does not exist in segmentData", async () => {
       const event = createEvent({
         url: "/albums",
         headers: {
@@ -766,13 +767,13 @@ describe("cacheInterceptor", () => {
 
       const result = await cacheInterceptor(event);
 
-      const body = await fromReadableStream(result.body);
-      expect(body).toEqual("RSC content");
-      expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
-      expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+      expect(result).toEqual(event);
     });
 
-    it("should fall back to RSC when prefetchInlining is enabled", async () => {
+    // An entry with no segments at all is not a segment-cache route. Next serves the full
+    // payload and omits `x-nextjs-postponed`, which is how the router tells "no segment
+    // cache here" from "segment cache miss".
+    it("should return RSC content for a segment prefetch of an entry without segmentData", async () => {
       const event = createEvent({
         url: "/albums",
         headers: {
@@ -785,10 +786,8 @@ describe("cacheInterceptor", () => {
           type: "app",
           html: "HTML content",
           rsc: "RSC content",
-          segmentData: { "/layout": "Segment content" },
         },
       });
-      (NextConfig as any).experimental = { prefetchInlining: true };
 
       const result = await cacheInterceptor(event);
 
@@ -796,6 +795,73 @@ describe("cacheInterceptor", () => {
       expect(body).toEqual("RSC content");
       expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+
+    // Inlining only changes which segments the build emits, and `segmentData` holds
+    // exactly those, so a cached segment is served whatever the setting. Next normalizes
+    // every truthy value to `{ maxSize, maxBundleSize }` and enables it by default since
+    // 16.2, which used to make this branch unreachable.
+    // See https://github.com/opennextjs/opennextjs-aws/issues/1212
+    it.each([
+      ["an object", { maxSize: 2048, maxBundleSize: 10240 }],
+      ["a boolean", true],
+      ["disabled", false],
+      ["absent", undefined],
+    ])(
+      "should return segment data when prefetchInlining is %s",
+      async (_, prefetchInlining) => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            rsc: "RSC content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+        (NextConfig as any).experimental = { prefetchInlining };
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+        expect(result).toEqual(
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              "x-nextjs-prerender": "1",
+              "x-nextjs-postponed": "2",
+            }),
+          }),
+        );
+      },
+    );
+
+    it("should fall back to the server for a segment inherited from Object.prototype", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: {
+          rsc: "1",
+          "next-router-segment-prefetch": "constructor",
+        },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
     });
 
     // `rsc` is absent from the cached value when the build collected neither a
@@ -883,7 +949,9 @@ describe("cacheInterceptor", () => {
         expect(result).toEqual(event);
       });
 
-      it("should take no action for an RSC request when rsc is missing and prefetchInlining is enabled", async () => {
+      // A segment prefetch is served from `segmentData` alone, the full page payload is
+      // not needed.
+      it("should serve the segment when rsc is missing and the segment key matches", async () => {
         const event = createEvent({
           url: "/albums",
           headers: {
@@ -898,11 +966,14 @@ describe("cacheInterceptor", () => {
             segmentData: { "/layout": "Segment content" },
           },
         });
-        (NextConfig as any).experimental = { prefetchInlining: true };
+        (NextConfig as any).experimental = {
+          prefetchInlining: { maxSize: 2048, maxBundleSize: 10240 },
+        };
 
         const result = await cacheInterceptor(event);
 
-        expect(result).toEqual(event);
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
       });
 
       it("should not queue a revalidation when falling back to the server", async () => {
