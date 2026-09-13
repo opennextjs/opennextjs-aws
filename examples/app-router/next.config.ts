@@ -5,6 +5,11 @@ const nextConfig: NextConfig = {
   cleanDistDir: true,
   transpilePackages: ["@example/shared"],
   output: "standalone",
+  experimental: {
+    // Exercises the non-inlined segment layout (/_head, /_index, per-layout segments)
+    // against the cache interceptor. app-pages-router covers the inlined default.
+    prefetchInlining: false,
+  },
   // outputFileTracingRoot: "../sst",
   images: {
     remotePatterns: [

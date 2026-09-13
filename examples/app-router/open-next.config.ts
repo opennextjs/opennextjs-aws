@@ -10,6 +10,7 @@ const config = {
   functions: {},
   dangerous: {
     middlewareHeadersOverrideNextConfigHeaders: true,
+    enableCacheInterception: true,
   },
   buildCommand: "npx turbo build",
 };
