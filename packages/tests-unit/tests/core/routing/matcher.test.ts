@@ -2,10 +2,12 @@ import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
   fixDataPage,
   getNextConfigHeaders,
+  handleFallbackFalse,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
+import type { PrerenderManifest } from "@opennextjs/aws/types/next-types.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
@@ -690,5 +692,55 @@ describe("fixDataPage", () => {
     });
 
     NextConfig.basePath = undefined;
+  });
+});
+
+describe("handleFallbackFalse", () => {
+  // Next writes the prerender manifest with decoded keys, while rawPath
+  // arrives percent-encoded, so a slug with a space is keyed "Finance 101"
+  // but requested as "Finance%20101".
+  const prerenderManifest = {
+    routes: {
+      "/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
+      "/learn/Finance/bitcoin": { initialRevalidateSeconds: false },
+    },
+    dynamicRoutes: {
+      "/learn/[...slug]": {
+        routeRegex: "^/learn/(.+?)(?:/)?$",
+        fallback: false,
+        dataRouteRegex: "^/_next/data/BUILD_ID/learn/(.+?)\\.json$",
+      },
+    },
+    preview: { previewModeId: "id" },
+  } satisfies PrerenderManifest;
+
+  it("should serve a prerendered route whose path is percent-encoded", () => {
+    const event = createEvent({
+      url: "https://on/learn/Finance%20101/bitcoin",
+    });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin");
+    expect(response.isISR).toBe(true);
+  });
+
+  it("should serve a prerendered route whose path needs no decoding", () => {
+    const event = createEvent({ url: "https://on/learn/Finance/bitcoin" });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/learn/Finance/bitcoin");
+    expect(response.isISR).toBe(true);
+  });
+
+  it("should 404 a route that is not prerendered", () => {
+    const event = createEvent({ url: "https://on/learn/Missing%20101/page" });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/404");
+    expect(response.event.headers["x-invoke-status"]).toBe("404");
+    expect(response.isISR).toBe(false);
   });
 });
