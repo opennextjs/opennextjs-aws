@@ -7,6 +7,14 @@ import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import { Writable } from "node:stream";
 
+// `IdentityTransformStream` is a Cloudflare Workers specific, C++-backed
+// identity TransformStream optimized for byte streams.
+// https://developers.cloudflare.com/workers/runtime-apis/streams/transformstream/#identitytransformstream
+declare class IdentityTransformStream extends TransformStream<
+  Uint8Array,
+  Uint8Array
+> {}
+
 // Response with null body status (101, 204, 205, or 304) cannot have a body.
 const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
 
@@ -68,12 +76,21 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
           });
         }
 
-        let controller: ReadableStreamDefaultController<Uint8Array>;
-        const readable = new ReadableStream({
-          start(c) {
-            controller = c;
-          },
-        });
+        // Use the native (C++-backed) `IdentityTransformStream` instead of a
+        // JS-backed `ReadableStream` with a manually captured controller.
+        //
+        // With the JS-backed stream, the runtime's pump of the response body
+        // has been observed to intermittently stall mid-stream on deployed
+        // Workers: the last enqueued flush(es) are never delivered and the
+        // terminating chunk is never sent, leaving the client connection open
+        // indefinitely. Because `Writable.write` acknowledged chunks without
+        // waiting for the consumer, nothing in the worker ever noticed the
+        // stall (the invocation simply never completed).
+        //
+        // The native stream is pumped by the runtime itself and
+        // `writer.write()` resolves only once the chunk is accepted, giving
+        // real backpressure end-to-end and avoiding the stall entirely.
+        const { readable, writable } = new IdentityTransformStream();
 
         const response = new Response(readable, {
           status: statusCode,
@@ -81,30 +98,35 @@ const handler: WrapperHandler<InternalEvent, InternalResult> =
         });
         resolveResponse(response);
 
+        const writer = writable.getWriter();
+
         return new Writable({
           write(chunk, encoding, callback) {
-            try {
-              controller.enqueue(chunk);
-            } catch (e: any) {
-              return callback(e);
-            }
-            callback();
+            const bytes =
+              chunk instanceof Uint8Array
+                ? chunk
+                : Buffer.from(chunk, encoding);
+            writer.write(bytes).then(
+              () => callback(),
+              (e) => callback(e),
+            );
           },
           final(callback) {
-            controller.close();
-            callback();
+            writer.close().then(
+              () => callback(),
+              (e) => callback(e),
+            );
           },
           destroy(error, callback) {
-            if (error) {
-              controller.error(error);
-            } else {
-              try {
-                controller.close();
-              } catch {
-                // Ignore "This ReadableStream is closed" error
-              }
-            }
-            callback(error);
+            const done = error
+              ? writer.abort(error)
+              : writer.close().catch(() => {
+                  // Ignore "already closed" errors
+                });
+            done.then(
+              () => callback(error),
+              () => callback(error),
+            );
           },
         });
       },
