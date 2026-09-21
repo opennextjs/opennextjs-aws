@@ -255,8 +255,10 @@ async function processRequest(
   } else if (routingResult.internalEvent.rawPath === "/404") {
     invokeStatus = 404;
   }
+  // `__nextDataReq` is an internal flag, it must not be part of the query of the page
+  const { __nextDataReq, ...query } = routingResult.internalEvent.query;
   const requestMetadata = {
-    isNextDataReq: routingResult.internalEvent.query.__nextDataReq === "1",
+    isNextDataReq: __nextDataReq === "1",
     initURL: routingResult.initialURL,
     initQuery: convertToQuery(initialURL.search),
     initProtocol: initialURL.protocol,
@@ -265,7 +267,7 @@ async function processRequest(
     middlewareInvoke: false,
     // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
     invokePath: routingResult.internalEvent.rawPath,
-    invokeQuery: routingResult.internalEvent.query,
+    invokeQuery: query,
     // invokeStatus is only used for error pages
     invokeStatus,
   };
@@ -279,9 +281,7 @@ async function processRequest(
     // TODO: only enable this on Next 15.4+
     // We need to set the pathname to the data request path
     //#override setInitialURL
-    req.url =
-      initialURL.pathname +
-      convertToQueryString(routingResult.internalEvent.query);
+    req.url = initialURL.pathname + convertToQueryString(query);
     //#endOverride
 
     await requestHandler(requestMetadata)(req, res);
