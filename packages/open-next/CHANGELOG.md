@@ -1,5 +1,11 @@
 # open-next
 
+## 4.1.6
+
+### Patch Changes
+
+- [#1251](https://github.com/opennextjs/opennextjs-aws/pull/1251) [`ef36ff876cbc42aea9955ba36fe91d4a7aac97c6`](https://github.com/opennextjs/opennextjs-aws/commit/ef36ff876cbc42aea9955ba36fe91d4a7aac97c6) Thanks [@vicb](https://github.com/vicb)! - Bump minimum Next.js dependencies to 15.5.26 and 16.3.6
+
 ## 4.1.5
 
 ### Patch Changes
