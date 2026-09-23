@@ -701,7 +701,7 @@ describe("handleRewrites", () => {
       ...event,
       query: { value: "a/b", next: "a/b" },
       rawPath: "/target",
-      url: "https://on/target?value=a/b&next=a/b",
+      url: "https://on/target?value=a%2Fb&next=a%2Fb",
     });
   });
 
@@ -947,7 +947,7 @@ describe("handleRewrites", () => {
       ...event,
       query: { items: ["one", "two"], selected: "one/two" },
       rawPath: "/target",
-      url: "https://on/target?items=one&items=two&selected=one/two",
+      url: "https://on/target?items=one&items=two&selected=one%2Ftwo",
     });
     expect(result.__rewrite).toBe(rewrites[0]);
   });
@@ -1095,6 +1095,24 @@ describe("handleRewrites", () => {
       __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
+  });
+
+  it("should keep encoded characters in query values when rewriting", () => {
+    const event = createEvent({
+      url: "https://on/foo?brand=h%26m",
+    });
+
+    const rewrites = [
+      {
+        source: "/foo",
+        destination: "/bar?q=a%3Db",
+        regex: "^/foo(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.query).toEqual({ brand: "h&m", q: "a=b" });
+    expect(result.internalEvent.url).toBe("https://on/bar?brand=h%26m&q=a%3Db");
   });
 
   it("should rewrite externally", () => {
