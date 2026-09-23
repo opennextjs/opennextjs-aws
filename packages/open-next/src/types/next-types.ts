@@ -84,9 +84,11 @@ export interface NextConfig {
     appDir?: boolean;
     optimizeCss?: boolean;
     // Used by Next to know if we should send a single RSC or split it into multiple ones.
-    // Can be an object but only the boolean is supported for now in OpenNext.
-    // Added in Next 16.2
-    prefetchInlining?: boolean;
+    // Added in Next 16.2.
+    // Next normalizes a truthy value into an object, so this is only ever `false`,
+    // `undefined` or an object - never `true` - in `required-server-files.json`.
+    // Do not test it for truthiness expecting a flag.
+    prefetchInlining?: boolean | { maxSize: number; maxBundleSize: number };
   };
   images: ImageConfig;
   poweredByHeader?: boolean;

@@ -13,6 +13,7 @@ export default {
 
   dangerous: {
     middlewareHeadersOverrideNextConfigHeaders: true,
+    enableCacheInterception: true,
   },
 
   imageOptimization: {

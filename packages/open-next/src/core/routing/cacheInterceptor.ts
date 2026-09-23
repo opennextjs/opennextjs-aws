@@ -138,20 +138,33 @@ function getBodyForAppRouter(
   if (cachedValue.type !== "app") {
     throw new Error("getBodyForAppRouter called with non-app cache value");
   }
-  const segmentHeader = `${event.headers[NEXT_SEGMENT_PREFETCH_HEADER]}`;
-  const isSegmentResponse =
-    Boolean(segmentHeader) &&
-    segmentHeader in (cachedValue.segmentData || {}) &&
-    !NextConfig.experimental?.prefetchInlining;
-
-  if (isSegmentResponse) {
-    return {
-      body: cachedValue.segmentData![segmentHeader],
-      additionalHeaders: {
-        [NEXT_PRERENDER_HEADER]: "1",
-        [NEXT_POSTPONED_HEADER]: "2",
-      },
-    };
+  const segmentHeader = event.headers[NEXT_SEGMENT_PREFETCH_HEADER];
+  // A request from the client Segment Cache has to be answered with the segment it asked
+  // for. The full page payload is not a different-but-valid answer: the router never
+  // records the prefetch as satisfied and re-requests it forever.
+  // This mirrors how Next serves a cached app page - see the `segmentPrefetchHeader`
+  // branch of `packages/next/src/build/templates/app-page.ts`, which responds with the
+  // matching segment or an empty 404, and never with the full page.
+  //
+  // `experimental.prefetchInlining` is deliberately not consulted. Next normalizes every
+  // truthy value - including the 16.2+ default - into `{ maxSize, maxBundleSize }`, so it
+  // must never be read as a flag. More importantly it has no say here: inlining only
+  // changes *which* segments the build emits (an emitted segment then being a bundle that
+  // already holds its inlined ancestors), and `segmentData` holds exactly the segments
+  // that were emitted, which is exactly the set the router asks for.
+  if (typeof segmentHeader === "string" && cachedValue.segmentData) {
+    if (Object.hasOwn(cachedValue.segmentData, segmentHeader)) {
+      return {
+        body: cachedValue.segmentData[segmentHeader],
+        additionalHeaders: {
+          [NEXT_PRERENDER_HEADER]: "1",
+          [NEXT_POSTPONED_HEADER]: "2",
+        },
+      };
+    }
+    // The entry holds segments, but not this one. Next answers with an empty 404 here -
+    // let the server do that rather than serving a payload of a different shape.
+    return undefined;
   }
   // `rsc` is absent when the build collected neither a `.rsc` nor a `.prefetch.rsc` file for
   // this entry - fallback shells, and postponed PPR routes on Next 16.2+, see `CachedFile`.
