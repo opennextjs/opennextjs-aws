@@ -132,6 +132,20 @@ describe("convertFromQueryString", () => {
       search: ["value", "other"],
     });
   });
+
+  it("decodes keys and values", () => {
+    expect(
+      convertFromQueryString("brand=h%26m&q=hello+world&na%20me=a%3Db"),
+    ).toEqual({
+      brand: "h&m",
+      q: "hello world",
+      "na me": "a=b",
+    });
+  });
+
+  it("leaves malformed percent-encoding as-is", () => {
+    expect(convertFromQueryString("q=100%")).toEqual({ q: "100%" });
+  });
 });
 
 describe("getUrlParts", () => {
@@ -367,14 +381,23 @@ describe("convertToQueryString", () => {
     );
   });
 
-  it("should respect existing query encoding", () => {
+  it("encodes decoded values", () => {
     const query = {
-      key: ["value%201", "value2+something+else"],
-      another: "value3",
+      key: ["value 1", "value2+something"],
+      another: "a=b&c",
     };
     expect(convertToQueryString(query)).toBe(
-      "?key=value%201&key=value2+something+else&another=value3",
+      "?key=value+1&key=value2%2Bsomething&another=a%3Db%26c",
     );
+  });
+
+  it("round-trips a query parsed by convertToQuery", () => {
+    const querystring = "brand=h%26m&name=by%252Eclara&q=a+b%3Dc&tag=x&tag=y";
+    const roundTripped = convertToQueryString(convertToQuery(querystring));
+    expect(convertToQuery(roundTripped.slice(1))).toEqual(
+      convertToQuery(querystring),
+    );
+    expect(new URLSearchParams(roundTripped).get("brand")).toBe("h&m");
   });
 });
 
