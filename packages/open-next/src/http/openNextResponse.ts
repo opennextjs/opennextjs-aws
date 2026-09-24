@@ -18,7 +18,19 @@ const CANNOT_BE_USED = "This cannot be used in OpenNext";
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
-  statusCode!: number;
+  private _statusCode?: number;
+
+  get statusCode(): number {
+    return this._statusCode ?? 200;
+  }
+
+  set statusCode(code: number) {
+    if (this.headersSent) {
+      return;
+    }
+    this._statusCode = code;
+  }
+
   statusMessage = "";
   headers: OutgoingHttpHeaders = {};
   headersSent = false;
@@ -158,6 +170,9 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   // Only used directly in next@14+
   flushHeaders() {
     this.headersSent = true;
+    if (this._statusCode === undefined) {
+      this._statusCode = 200;
+    }
     // Initial headers should be merged with the new headers
     // These initial headers are the one created either in the middleware or in next.config.js
     const mergeHeadersPriority =
@@ -250,19 +265,22 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       if (Array.isArray(_headers)) {
         // headers may be an Array where the keys and values are in the same list. It is not a list of tuples. So, the even-numbered offsets are key values, and the odd-numbered offsets are the associated values.
         for (let i = 0; i < _headers.length; i += 2) {
-          finalHeaders[_headers[i] as string] = _headers[i + 1] as
-            | string
-            | string[];
+          finalHeaders[(_headers[i] as string).toLowerCase()] = _headers[
+            i + 1
+          ] as string | string[];
         }
       } else {
         for (const key of Object.keys(_headers)) {
-          finalHeaders[key] = _headers[key];
+          finalHeaders[key.toLowerCase()] = _headers[key];
         }
       }
     }
 
     this.statusCode = statusCode as number;
-    if (headers) {
+    if (_statusMessage) {
+      this.statusMessage = _statusMessage;
+    }
+    if (_headers) {
       this.headers = finalHeaders;
     }
     this.flushHeaders();
