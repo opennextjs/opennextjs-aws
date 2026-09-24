@@ -173,6 +173,80 @@ describe("convertTo", () => {
       });
     });
   });
+
+  describe("status codes and body handling", () => {
+    it("should omit body and bodyEncoding and set statusDescription to Not Modified for 304", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
+        headers: {
+          etag: '"y1daw8kk9k3ah"',
+        },
+        isBase64Encoded: false,
+        statusCode: 304,
+        type: "cf",
+      })) as CloudFrontRequestResult;
+
+      expect(response).toStrictEqual({
+        status: "304",
+        statusDescription: "Not Modified",
+        headers: {
+          etag: [
+            {
+              key: "etag",
+              value: '"y1daw8kk9k3ah"',
+            },
+          ],
+        },
+      });
+      expect(response.body).toBeUndefined();
+      expect(response.bodyEncoding).toBeUndefined();
+    });
+
+    it("should omit body and bodyEncoding and set statusDescription to No Content for 204", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from(""))),
+        headers: {},
+        isBase64Encoded: false,
+        statusCode: 204,
+        type: "cf",
+      })) as CloudFrontRequestResult;
+
+      expect(response).toStrictEqual({
+        status: "204",
+        statusDescription: "No Content",
+        headers: {},
+      });
+      expect(response.body).toBeUndefined();
+      expect(response.bodyEncoding).toBeUndefined();
+    });
+
+    it("should include body, bodyEncoding, and statusDescription OK for 200", async () => {
+      const response = (await converter.convertTo({
+        body: Readable.toWeb(Readable.from(Buffer.from("<html>Hello</html>"))),
+        headers: {
+          "content-type": "text/html",
+        },
+        isBase64Encoded: false,
+        statusCode: 200,
+        type: "cf",
+      })) as CloudFrontRequestResult;
+
+      expect(response).toStrictEqual({
+        status: "200",
+        statusDescription: "OK",
+        headers: {
+          "content-type": [
+            {
+              key: "content-type",
+              value: "text/html",
+            },
+          ],
+        },
+        bodyEncoding: "text",
+        body: "<html>Hello</html>",
+      });
+    });
+  });
 });
 
 describe("convertFrom", () => {
