@@ -4,7 +4,7 @@ import zlib from "node:zlib";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
-import type { StreamCreator } from "types/open-next";
+import type { StreamCreator, WaitUntil } from "types/open-next";
 import { debug, error } from "../../adapters/logger";
 import type {
   WarmerEvent,
@@ -95,7 +95,28 @@ const handler: WrapperHandler = async (handler, converter) =>
         },
       };
 
-      const response = await handler(internalEvent, { streamCreator });
+      // AWS provides no native `waitUntil`, so back it with a set of pending
+      // promises that we await before the stream closes. This keeps the Lambda
+      // alive for deferred work (background revalidation, cache write-through)
+      // that starts after the response body is sent, matching the `waitUntil`
+      // the Cloudflare wrappers pass through — and enables the `withWaitUntil`
+      // route preloading behaviour, which otherwise falls back to `none` here.
+      const pending = new Set<Promise<void>>();
+      const waitUntil: WaitUntil = (promise) => {
+        const tracked = promise
+          .catch((err: unknown) => {
+            error("waitUntil promise rejected", err);
+          })
+          .finally(() => {
+            pending.delete(tracked);
+          });
+        pending.add(tracked);
+      };
+
+      const response = await handler(internalEvent, {
+        streamCreator,
+        waitUntil,
+      });
 
       const isUsingEdge = globalThis.isEdgeRuntime ?? false;
       if (isUsingEdge) {
@@ -107,6 +128,9 @@ const handler: WrapperHandler = async (handler, converter) =>
         });
         Readable.fromWeb(response.body).pipe(stream);
       }
+
+      // Keep the invocation alive until deferred `waitUntil` work settles.
+      await Promise.all(pending);
 
       // return converter.convertTo(response);
     },
