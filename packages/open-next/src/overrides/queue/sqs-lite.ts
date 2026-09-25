@@ -37,22 +37,38 @@ const awsFetch = (body: RequestInit["body"]) => {
 };
 const queue: Queue = {
   send: async ({ MessageBody, MessageDeduplicationId, MessageGroupId }) => {
-    try {
-      const { REVALIDATION_QUEUE_URL } = process.env;
-      const result = await awsFetch(
-        JSON.stringify({
-          QueueUrl: REVALIDATION_QUEUE_URL,
-          MessageBody: JSON.stringify(MessageBody),
-          MessageDeduplicationId,
-          MessageGroupId,
-        }),
-      );
-      if (result.status !== 200) {
-        throw new RecoverableError(`Failed to send message: ${result.status}`);
+    const send = (async () => {
+      try {
+        const { REVALIDATION_QUEUE_URL } = process.env;
+        const result = await awsFetch(
+          JSON.stringify({
+            QueueUrl: REVALIDATION_QUEUE_URL,
+            MessageBody: JSON.stringify(MessageBody),
+            MessageDeduplicationId,
+            MessageGroupId,
+          }),
+        );
+        if (result.status !== 200) {
+          throw new RecoverableError(
+            `Failed to send message: ${result.status}`,
+          );
+        }
+      } catch (e) {
+        error(e);
       }
-    } catch (e) {
-      error(e);
+    })();
+
+    // Enqueuing revalidation should not block the response. When the wrapper
+    // provides a `waitUntil`, hand the send to it and return immediately so the
+    // SQS round trip runs after the body is flushed; otherwise (edge, or a
+    // wrapper without `waitUntil`) fall back to awaiting it inline.
+    const waitUntil = globalThis.__openNextAls.getStore()?.waitUntil;
+    if (waitUntil) {
+      waitUntil(send);
+      return;
     }
+
+    await send;
   },
   name: "sqs",
 };
