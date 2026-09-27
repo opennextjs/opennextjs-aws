@@ -259,11 +259,24 @@ export default class Cache {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
-    // This one might not even be necessary anymore
-    // Better be safe than sorry
-    const detachedPromise = globalThis.__openNextAls
-      .getStore()
-      ?.pendingPromiseRunner.withResolvers<void>();
+    const store = globalThis.__openNextAls.getStore();
+    const writePromise = this.writeCache(key, data, ctx);
+
+    // Next.js ignores the value returned by `set`, so the write is registered on the request's
+    // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
+    // them in a detached chain of its own that only covers the write while `set` waits for it.
+    if (data?.kind === "FETCH" || store === undefined) {
+      await writePromise;
+      return;
+    }
+    store.pendingPromiseRunner.add(writePromise);
+  }
+
+  private async writeCache(
+    key: string,
+    data?: IncrementalCacheValue,
+    ctx?: IncrementalCacheContext,
+  ): Promise<void> {
     try {
       if (data === null || data === undefined) {
         await globalThis.incrementalCache.delete(key);
@@ -379,9 +392,6 @@ export default class Cache {
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
-    } finally {
-      // We need to resolve the promise even if there was an error
-      detachedPromise?.resolve();
     }
   }
 
