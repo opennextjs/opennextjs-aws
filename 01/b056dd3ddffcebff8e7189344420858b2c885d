@@ -1,0 +1,23 @@
+packages/tests-e2e/tests/appPagesRouter/segmentPrefetch.test.ts
+  s_8ef66b54393ba5::t_8504505d400483 2,43-44,49,90,94-99
+packages/tests-e2e/tests/appRouter/segmentPrefetch.test.ts
+  s_8ef66b54393ba5::t_585369e2ee1ba8 1-2,25-33,35-38,44-45,55-58,63,77-78,91,94-99
+packages/tests-unit/tests/core/routing/cacheInterceptor.test.ts
+  s_8ef66b54393ba5::t_1460afe8ad57b3 719-736,739,751-753,755,758-775,780,794-803,806-837,1019
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "01b056dd3ddffcebff8e7189344420858b2c885d",
+  "prompts": {},
+  "sessions": {
+    "s_8ef66b54393ba5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f18c79b4dffegieptgVAJzpkBA",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
