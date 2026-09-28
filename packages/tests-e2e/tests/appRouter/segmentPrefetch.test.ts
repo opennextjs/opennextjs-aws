@@ -44,6 +44,9 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
     expect(full.headers()["x-opennext-cache"]).toEqual("HIT");
     expect(full.headers()["content-type"]).toContain("text/x-component");
     expect(full.headers()["x-nextjs-postponed"]).toBeUndefined();
+    // The proxy opts /albums out of CDN caching: the segment header is not part of the
+    // cache key there, so a cached full payload would be served for every segment.
+    expect(full.headers()["cache-control"]).toContain("no-store");
     const fullBody = await full.body();
 
     const payloads = new Set<string>();
@@ -57,6 +60,7 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
       );
       expect(res.headers()["x-nextjs-prerender"], segment).toEqual("1");
       expect(res.headers()["x-nextjs-postponed"], segment).toEqual("2");
+      expect(res.headers()["cache-control"], segment).toContain("no-store");
 
       // The regression served the full page payload for every one of these.
       const body = await res.body();
