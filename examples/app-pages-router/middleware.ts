@@ -65,7 +65,18 @@ export function middleware(request: NextRequest) {
     return fetch(new URL("/api/hello", request.url));
   }
   const rHeaders = new Headers(request.headers);
+  const responseHeaders = new Headers();
+  // It is so that cloudfront doesn't cache the response
+  // For: segmentPrefetch.test.ts - it sends the same URL with different
+  // `next-router-segment-prefetch` headers and no `_rsc` cache buster.
+  if (path === "/albums") {
+    responseHeaders.set(
+      "cache-control",
+      "private, no-cache, no-store, max-age=0, must-revalidate",
+    );
+  }
   const r = NextResponse.next({
+    headers: responseHeaders,
     request: {
       headers: rHeaders,
     },

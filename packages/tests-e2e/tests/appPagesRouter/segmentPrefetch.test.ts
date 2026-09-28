@@ -22,6 +22,9 @@ test.describe("Segment prefetch", () => {
     // Absent marker is how the router tells "this route has no segment cache" from
     // "segment cache miss", so it must not be set on a full page response.
     expect(res.headers()["x-nextjs-postponed"]).toBeUndefined();
+    // The middleware opts /albums out of CDN caching: the segment header is not part of
+    // the cache key there, so a cached full payload would be served for every segment.
+    expect(res.headers()["cache-control"]).toContain("no-store");
   });
 
   test("segment prefetch returns that segment, not the full page", async ({
@@ -43,6 +46,7 @@ test.describe("Segment prefetch", () => {
       expect(res.headers()["content-type"]).toContain("text/x-component");
       expect(res.headers()["x-nextjs-prerender"]).toEqual("1");
       expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
+      expect(res.headers()["cache-control"]).toContain("no-store");
 
       // The regression served the full page payload here, byte for byte.
       const body = await res.body();
