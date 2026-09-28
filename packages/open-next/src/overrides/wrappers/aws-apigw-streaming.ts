@@ -4,11 +4,12 @@ import type { APIGatewayProxyEvent, APIGatewayProxyEventV2 } from "aws-lambda";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import type { StreamCreator, WaitUntil } from "types/open-next";
-import { debug, error } from "../../adapters/logger";
+import { debug } from "../../adapters/logger";
 import type {
   WarmerEvent,
   WarmerResponse,
 } from "../../adapters/warmer-function";
+import { DetachedPromiseRunner } from "../../utils/promise";
 
 // Accepts either API Gateway payload format (v1/REST or v2/HTTP). The paired
 // converter (`aws-apigw-v1` or `aws-apigw-v2`) is responsible for parsing the
@@ -72,23 +73,15 @@ const handler: WrapperHandler = async (handler, converter) =>
         responseStream.end();
       });
 
-      // AWS provides no native `waitUntil`, so back it with a set of pending
-      // promises that we await before the stream closes. This keeps the Lambda
-      // alive for deferred work (background revalidation, cache write-through)
-      // that starts after the response body is sent, matching the `waitUntil`
-      // the Cloudflare wrappers pass through — and enables the `withWaitUntil`
-      // route preloading behaviour, which otherwise falls back to `none` here.
-      const pending = new Set<Promise<void>>();
-      const waitUntil: WaitUntil = (promise) => {
-        const tracked = promise
-          .catch((err: unknown) => {
-            error("waitUntil promise rejected", err);
-          })
-          .finally(() => {
-            pending.delete(tracked);
-          });
-        pending.add(tracked);
-      };
+      // AWS provides no native `waitUntil`, so back it with the shared
+      // `DetachedPromiseRunner`, which tracks the deferred promises and awaits
+      // (and logs the failures of) them before the stream closes. This keeps
+      // the Lambda alive for deferred work (background revalidation, cache
+      // write-through) that starts after the response body is sent — matching
+      // the `waitUntil` the Cloudflare wrappers pass through, and enabling the
+      // `withWaitUntil` route preloading that otherwise falls back to `none`.
+      const promiseRunner = new DetachedPromiseRunner();
+      const waitUntil: WaitUntil = (promise) => promiseRunner.add(promise);
 
       const streamCreator: StreamCreator = {
         writeHeaders: (_prelude) => {
@@ -125,7 +118,7 @@ const handler: WrapperHandler = async (handler, converter) =>
       }
 
       // Keep the invocation alive until deferred `waitUntil` work settles.
-      await Promise.all(pending);
+      await promiseRunner.await();
     },
   );
 
