@@ -93,7 +93,9 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
     // to the server, which answers the way Next does: an empty 404.
     expect(res.status()).toEqual(404);
     expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
-    expect((await res.body()).length).toEqual(0);
+    // The deployed stack sets `OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE`, which replaces an
+    // empty streamed body with "SOMETHING" to work around Lambda streaming hanging.
+    expect(["", "SOMETHING"]).toContain((await res.body()).toString());
   });
 
   test("browser prefetching settles and navigation succeeds", async ({
