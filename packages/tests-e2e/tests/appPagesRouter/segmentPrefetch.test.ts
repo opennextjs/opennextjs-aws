@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectSegmentPrefetchSettles } from "../utils";
 
 // This app runs with `dangerous.enableCacheInterception`, so these requests are answered
 // by the cache interceptor rather than by NextServer - `x-opennext-cache` asserts that.
@@ -39,10 +40,13 @@ test.describe("Segment prefetch", () => {
 
       expect(res.status()).toEqual(200);
       expect(res.headers()["x-opennext-cache"]).toEqual("HIT");
+      expect(res.headers()["content-type"]).toContain("text/x-component");
+      expect(res.headers()["x-nextjs-prerender"]).toEqual("1");
       expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
 
       // The regression served the full page payload here, byte for byte.
       const body = await res.body();
+      expect(body.length).toBeGreaterThan(0);
       expect(body.equals(fullBody)).toBe(false);
       expect(body.length).toBeLessThan(fullBody.length);
     }
@@ -83,7 +87,14 @@ test.describe("Segment prefetch", () => {
     // The interceptor holds segments for this route but not this one, so it falls back
     // to the server, which answers the way Next does: an empty 404.
     expect(res.status()).toEqual(404);
+    expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
     expect((await res.body()).length).toEqual(0);
     expect((await full.body()).length).toBeGreaterThan(0);
+  });
+
+  test("browser prefetching settles and navigation succeeds", async ({
+    page,
+  }) => {
+    await expectSegmentPrefetchSettles(page);
   });
 });

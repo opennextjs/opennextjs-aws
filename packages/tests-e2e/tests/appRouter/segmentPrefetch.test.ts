@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { type APIRequestContext, expect, test } from "@playwright/test";
+import { expectSegmentPrefetchSettles } from "../utils";
 
 // This app runs with `dangerous.enableCacheInterception` and
 // `experimental.prefetchInlining: false`, so Next outlines every segment instead of
@@ -21,16 +22,27 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
     "/albums/@modal/__DEFAULT__",
   ];
 
-  const prefetch = (request: any, segment?: string) =>
+  /**
+   * Requests the full prefetch payload or a named segment for Albums.
+   *
+   * @param request The Playwright request context
+   * @param segment The segment header, omitted for a full prefetch
+   * @returns The HTTP response
+   * @throws When the request fails
+   */
+  const prefetch = (request: APIRequestContext, segment?: string) =>
     request.get("/albums", {
-      headers: segment
-        ? { ...prefetchHeaders, "next-router-segment-prefetch": segment }
-        : prefetchHeaders,
+      headers:
+        segment !== undefined
+          ? { ...prefetchHeaders, "next-router-segment-prefetch": segment }
+          : prefetchHeaders,
     });
 
   test("every outlined segment is served as itself", async ({ request }) => {
     const full = await prefetch(request);
     expect(full.status()).toEqual(200);
+    expect(full.headers()["x-opennext-cache"]).toEqual("HIT");
+    expect(full.headers()["content-type"]).toContain("text/x-component");
     expect(full.headers()["x-nextjs-postponed"]).toBeUndefined();
     const fullBody = await full.body();
 
@@ -40,10 +52,15 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
 
       expect(res.status(), segment).toEqual(200);
       expect(res.headers()["x-opennext-cache"], segment).toEqual("HIT");
+      expect(res.headers()["content-type"], segment).toContain(
+        "text/x-component",
+      );
+      expect(res.headers()["x-nextjs-prerender"], segment).toEqual("1");
       expect(res.headers()["x-nextjs-postponed"], segment).toEqual("2");
 
       // The regression served the full page payload for every one of these.
       const body = await res.body();
+      expect(body.length, segment).toBeGreaterThan(0);
       expect(body.equals(fullBody), segment).toBe(false);
       payloads.add(body.toString("base64"));
     }
@@ -57,6 +74,8 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
     const res = await prefetch(request, "/_full");
 
     expect(res.status()).toEqual(200);
+    expect(res.headers()["x-opennext-cache"]).toEqual("HIT");
+    expect(res.headers()["x-nextjs-prerender"]).toEqual("1");
     expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
     expect((await res.body()).equals(await full.body())).toBe(true);
   });
@@ -69,6 +88,13 @@ test.describe("Segment prefetch with prefetchInlining disabled", () => {
     // The interceptor holds segments for this route but not this one, so it falls back
     // to the server, which answers the way Next does: an empty 404.
     expect(res.status()).toEqual(404);
+    expect(res.headers()["x-nextjs-postponed"]).toEqual("2");
     expect((await res.body()).length).toEqual(0);
+  });
+
+  test("browser prefetching settles and navigation succeeds", async ({
+    page,
+  }) => {
+    await expectSegmentPrefetchSettles(page);
   });
 });
