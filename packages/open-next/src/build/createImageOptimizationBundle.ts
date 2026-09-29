@@ -124,7 +124,6 @@ export async function createImageOptimizationBundle(
       arch: isDev ? undefined : "arm64",
       // Use the local platform in dev
       os: isDev ? os.platform() : "linux",
-      nodeVersion: "18",
       libc: "glibc",
     },
   );
