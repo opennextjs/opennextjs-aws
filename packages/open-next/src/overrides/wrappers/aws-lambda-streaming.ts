@@ -4,12 +4,13 @@ import zlib from "node:zlib";
 import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
-import type { StreamCreator } from "types/open-next";
+import type { StreamCreator, WaitUntil } from "types/open-next";
 import { debug, error } from "../../adapters/logger";
 import type {
   WarmerEvent,
   WarmerResponse,
 } from "../../adapters/warmer-function";
+import { DetachedPromiseRunner } from "../../utils/promise";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
 
@@ -95,7 +96,20 @@ const handler: WrapperHandler = async (handler, converter) =>
         },
       };
 
-      const response = await handler(internalEvent, { streamCreator });
+      // AWS provides no native `waitUntil`, so back it with the shared
+      // `DetachedPromiseRunner`, which tracks the deferred promises and awaits
+      // (and logs the failures of) them before the stream closes. This keeps
+      // the Lambda alive for deferred work (background revalidation, cache
+      // write-through) that starts after the response body is sent — matching
+      // the `waitUntil` the Cloudflare wrappers pass through, and enabling the
+      // `withWaitUntil` route preloading that otherwise falls back to `none`.
+      const promiseRunner = new DetachedPromiseRunner();
+      const waitUntil: WaitUntil = (promise) => promiseRunner.add(promise);
+
+      const response = await handler(internalEvent, {
+        streamCreator,
+        waitUntil,
+      });
 
       const isUsingEdge = globalThis.isEdgeRuntime ?? false;
       if (isUsingEdge) {
@@ -107,6 +121,9 @@ const handler: WrapperHandler = async (handler, converter) =>
         });
         Readable.fromWeb(response.body).pipe(stream);
       }
+
+      // Keep the invocation alive until deferred `waitUntil` work settles.
+      await promiseRunner.await();
 
       // return converter.convertTo(response);
     },

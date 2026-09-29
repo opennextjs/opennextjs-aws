@@ -13,14 +13,28 @@ const sqsClient = new SQSClient({
 
 const queue: Queue = {
   send: async ({ MessageBody, MessageDeduplicationId, MessageGroupId }) => {
-    await sqsClient.send(
-      new SendMessageCommand({
-        QueueUrl: REVALIDATION_QUEUE_URL,
-        MessageBody: JSON.stringify(MessageBody),
-        MessageDeduplicationId,
-        MessageGroupId,
-      }),
-    );
+    const send = sqsClient
+      .send(
+        new SendMessageCommand({
+          QueueUrl: REVALIDATION_QUEUE_URL,
+          MessageBody: JSON.stringify(MessageBody),
+          MessageDeduplicationId,
+          MessageGroupId,
+        }),
+      )
+      .then(() => undefined);
+
+    // Enqueuing revalidation should not block the response. When the wrapper
+    // provides a `waitUntil`, hand the send to it and return immediately so the
+    // SQS round trip runs after the body is flushed; otherwise (edge, or a
+    // wrapper without `waitUntil`) fall back to awaiting it inline.
+    const waitUntil = globalThis.__openNextAls.getStore()?.waitUntil;
+    if (waitUntil) {
+      waitUntil(send);
+      return;
+    }
+
+    await send;
   },
   name: "sqs",
 };

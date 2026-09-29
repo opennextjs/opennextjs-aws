@@ -43,6 +43,19 @@ const nextServer = new NextServer.default({
     cacheHandler: cacheHandlerPath,
     cacheMaxMemorySize: 0, // We need to disable memory cache
     //#endOverride
+    // Next.js 16 promoted `cacheHandlers` out of `experimental` to a top-level
+    // config key. At runtime `route-module.js#loadCustomCacheHandlers` reads
+    // `nextConfig.cacheHandlers` (top-level) — the nested `experimental` copy
+    // below is ignored on Next >= 16, so the composable ("use cache") handler
+    // must also be registered here or Next falls back to its in-memory default
+    // and composable entries never reach the incremental cache override.
+    // Older Next versions ignore this unknown top-level key and read the
+    // `experimental` copy instead; setting both is safe across versions.
+    //#override topLevelComposableCache
+    cacheHandlers: {
+      default: composableCacheHandlerPath,
+    },
+    //#endOverride
     experimental: {
       ...NextConfig.experimental,
       // This uses the request.headers.host as the URL

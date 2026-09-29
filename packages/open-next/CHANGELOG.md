@@ -1,5 +1,79 @@
 # open-next
 
+## 4.1.6
+
+### Patch Changes
+
+- [#1259](https://github.com/opennextjs/opennextjs-aws/pull/1259) [`7168bfc1d3852d0884ec1ba7aa73d8d2f96b76a8`](https://github.com/opennextjs/opennextjs-aws/commit/7168bfc1d3852d0884ec1ba7aa73d8d2f96b76a8) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Make the SQS revalidation queue non-blocking via `waitUntil`
+
+  The `sqs` and `sqs-lite` queue overrides awaited the SQS `SendMessage` on the request path, so enqueuing a stale-page revalidation held up the response until SQS acknowledged. When a `waitUntil` is available on the request store, the send is now handed to it and `send` returns immediately, so the SQS round trip runs after the body is flushed. Without a `waitUntil` (edge, or a wrapper that does not provide one) it still awaits inline, so behaviour is unchanged there.
+
+- [#1258](https://github.com/opennextjs/opennextjs-aws/pull/1258) [`8faf3cee26a14435486c2bc828f2d7c7371fe1dd`](https://github.com/opennextjs/opennextjs-aws/commit/8faf3cee26a14435486c2bc828f2d7c7371fe1dd) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Provide `waitUntil` from the AWS streaming wrappers
+
+  The `aws-apigw-streaming` and `aws-lambda-streaming` wrappers now pass a `waitUntil` to the request handler, backed by a set of pending promises awaited before the response stream closes. Previously only the Cloudflare wrappers provided `waitUntil`, so on AWS deferred work scheduled after the response body was sent (background revalidation, cache write-through) was not guaranteed to complete, and the `withWaitUntil` route preloading behaviour silently fell back to `none`. Both are now supported on AWS.
+
+- [#1257](https://github.com/opennextjs/opennextjs-aws/pull/1257) [`37abe01ce4d176c71483694a5989cf9b07baae7f`](https://github.com/opennextjs/opennextjs-aws/commit/37abe01ce4d176c71483694a5989cf9b07baae7f) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Register the composable cache handler at the top-level `cacheHandlers` config key for Next.js 16
+
+  Next.js 16 promoted `cacheHandlers` out of `experimental` to a top-level config key. At runtime `loadCustomCacheHandlers` reads `nextConfig.cacheHandlers`, so the handler OpenNext injected only under `experimental.cacheHandlers` was ignored on Next >= 16 — the composable (`use cache`) path fell back to Next's in-memory default handler and never reached the configured incremental cache override, so composable entries were never persisted. The handler is now registered at the top level as well (the `experimental` copy is kept for older Next versions).
+
+- [#1249](https://github.com/opennextjs/opennextjs-aws/pull/1249) [`36175702119d1786f2763e6d6cb347788da34c02`](https://github.com/opennextjs/opennextjs-aws/commit/36175702119d1786f2763e6d6cb347788da34c02) Thanks [@km-tr](https://github.com/km-tr)! - fix: defer incremental cache writes so they do not block the response
+
+  `Cache.set` awaited the store write and the tag update, so both landed in the TTFB. Next.js
+  awaits `incrementalCache.set` in `response-cache/index.js` while it produces the response and
+  does not use the returned value.
+
+  The write is now registered on the request's pending promise runner, which hands it to
+  `waitUntil` when the wrapper provides one and awaits it before the handler returns otherwise.
+  `FETCH` entries keep being awaited: Next.js writes them from a detached chain of its own, and
+  that chain keeps the entry alive only while `set` does not return before it is stored.
+
+  Errors are still caught and logged, and the tag update still runs after the entry is written.
+
+- [#1211](https://github.com/opennextjs/opennextjs-aws/pull/1211) [`3ddc7014e89b8674135c1cc1ae30c828869cfdac`](https://github.com/opennextjs/opennextjs-aws/commit/3ddc7014e89b8674135c1cc1ae30c828869cfdac) Thanks [@ntltd](https://github.com/ntltd)! - Fix `patchBackgroundRevalidation` silently no-opping on Next.js 16
+
+  The patch's ast-grep rule matched the unary expression `!cachedResponse.isStale`,
+  but Next.js 16.0.0 renamed that local to `previousIncrementalCacheEntry`. The rule
+  matched nothing, so `commitEdits([])` returned the source unchanged and the patch
+  was skipped on every Next.js 16 build — while still being reported as applied in
+  the `OPEN_NEXT_DEBUG` output, since the log line is emitted before the edit is
+  attempted.
+
+  The rule now matches `!$ENTRY.isStale` instead of hardcoding the identifier, which
+  keeps working on Next.js 14 and 15 and fixes 16. The existing unit test used a
+  frozen pre-16 snippet as its fixture, so it kept passing throughout; a Next 16
+  fixture has been added alongside it, plus an assertion that the outer
+  `isStale !== -1` guard introduced in 16 is not matched by mistake.
+
+- [#1248](https://github.com/opennextjs/opennextjs-aws/pull/1248) [`cdad3e6c9dd98813136793429bd0acea3a444595`](https://github.com/opennextjs/opennextjs-aws/commit/cdad3e6c9dd98813136793429bd0acea3a444595) Thanks [@conico974](https://github.com/conico974)! - fix: serve segment prefetches from the cache interceptor on Next 16
+
+  The segment response branch was gated on `!NextConfig.experimental.prefetchInlining`.
+  Next normalizes every truthy `prefetchInlining` into `{ maxSize, maxBundleSize }` and
+  enables it by default since 16.2, so the negation was always `false` and the branch was
+  unreachable: every `Next-Router-Segment-Prefetch` request was answered with the full page
+  payload. The router never recorded the prefetch as satisfied and re-requested it
+  indefinitely.
+
+  The gate is gone. Inlining only changes _which_ segments the build emits - an emitted
+  segment then being a bundle that already holds its inlined ancestors - and `segmentData`
+  holds exactly those, which is exactly the set the router asks for. When the entry holds
+  segments but not the requested one, the interceptor now falls back to the server, which
+  answers with the empty 404 Next would, instead of a payload of a different shape.
+
+  Also fixed in the same expression: the header was template stringified, so a missing one
+  became the literal `"undefined"` and the `Boolean()` guard was always true; and membership
+  was tested with `in`, which matches inherited keys, so a
+  `next-router-segment-prefetch: constructor` request resolved to a function off
+  `Object.prototype`. `prefetchInlining` is now typed as
+  `boolean | { maxSize: number; maxBundleSize: number }` to match what Next emits.
+
+- [#1248](https://github.com/opennextjs/opennextjs-aws/pull/1248) [`cdad3e6c9dd98813136793429bd0acea3a444595`](https://github.com/opennextjs/opennextjs-aws/commit/cdad3e6c9dd98813136793429bd0acea3a444595) Thanks [@conico974](https://github.com/conico974)! - fix: read and write local fetch cache entries in the build's `__fetch` namespace
+
+  The `fs-dev` incremental cache now honors the cache type, so local ISR reuses
+  build-time fetch and `unstable_cache` data instead of treating those entries as
+  misses. Fetch entries no longer share file paths with page and route entries.
+
+- [#1251](https://github.com/opennextjs/opennextjs-aws/pull/1251) [`ef36ff876cbc42aea9955ba36fe91d4a7aac97c6`](https://github.com/opennextjs/opennextjs-aws/commit/ef36ff876cbc42aea9955ba36fe91d4a7aac97c6) Thanks [@vicb](https://github.com/vicb)! - Bump minimum Next.js dependencies to 15.5.26 and 16.3.6
+
 ## 4.1.5
 
 ### Patch Changes

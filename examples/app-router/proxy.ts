@@ -74,10 +74,13 @@ export default async function proxy(request: NextRequest) {
   }
 
   // It is so that cloudfront doesn't cache the response
+  // For /albums: segmentPrefetch.test.ts sends the same URL with different
+  // `next-router-segment-prefetch` headers and no `_rsc` cache buster.
   if (
     path.startsWith("/revalidate-tag") ||
     path.startsWith("/revalidate-path") ||
-    path.startsWith("/api/after/ssg")
+    path.startsWith("/api/after/ssg") ||
+    path === "/albums"
   ) {
     responseHeaders.set(
       "cache-control",

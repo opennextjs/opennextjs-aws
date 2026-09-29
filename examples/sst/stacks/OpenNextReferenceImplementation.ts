@@ -454,6 +454,7 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         "rsc",
         "next-router-prefetch",
         "next-router-state-tree",
+        "next-router-segment-prefetch",
         "next-url",
         "x-prerender-revalidate",
       ),
