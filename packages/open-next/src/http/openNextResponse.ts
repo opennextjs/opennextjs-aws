@@ -28,7 +28,14 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     if (this.headersSent) {
       return;
     }
-    this._statusCode = code;
+    // Only allow status codes between 100 and 599 https://httpwg.org/specs/rfc9110.html#status.codes
+    if (
+      Number.isInteger(code) &&
+      code >= 100 &&
+      code <= 599
+    ) {
+      this._statusCode = code;
+    }
   }
 
   statusMessage = "";
@@ -90,14 +97,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     statusCode?: number,
   ) {
     super();
-    // We only set the status code if it is not a NaN and it is a number
-    // Only allow status codes between 100 and 599 https://httpwg.org/specs/rfc9110.html#status.codes
-    if (
-      statusCode &&
-      Number.isInteger(statusCode) &&
-      statusCode >= 100 &&
-      statusCode <= 599
-    ) {
+    if (statusCode !== undefined) {
       this.statusCode = statusCode;
     }
 
