@@ -177,7 +177,7 @@ describe("convertTo", () => {
   describe("status codes and body handling", () => {
     it("should omit body and bodyEncoding and set statusDescription to Not Modified for 304", async () => {
       const response = (await converter.convertTo({
-        body: Readable.toWeb(Readable.from(Buffer.from(""))),
+        body: Readable.toWeb(Readable.from(Buffer.from("SOMETHING"))),
         headers: {
           etag: '"y1daw8kk9k3ah"',
         },

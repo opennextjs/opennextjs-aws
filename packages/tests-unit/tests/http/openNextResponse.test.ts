@@ -1,5 +1,7 @@
+import { once } from "node:events";
+import { Writable } from "node:stream";
 import { OpenNextNodeResponse } from "@opennextjs/aws/http/openNextResponse.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("OpenNextNodeResponse statusCode preservation", () => {
   it("defaults statusCode to 200 when not set", () => {
@@ -37,6 +39,40 @@ describe("OpenNextNodeResponse statusCode preservation", () => {
 
     // Must remain 304 because headers were already sent
     expect(res.statusCode).toBe(304);
+  });
+
+  it("emits the forced non-empty payload in a streamed 304 response", async () => {
+    vi.stubEnv("OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE", "true");
+    try {
+      const chunks: Buffer[] = [];
+      let statusCode: number | undefined;
+      const output = new Writable({
+        write(chunk, _encoding, callback) {
+          chunks.push(Buffer.from(chunk));
+          callback();
+        },
+      });
+      const res = new OpenNextNodeResponse(
+        () => {},
+        async () => {},
+        {
+          writeHeaders(prelude) {
+            statusCode = prelude.statusCode;
+            return output;
+          },
+        },
+      );
+
+      const finished = once(output, "finish");
+      res.statusCode = 304;
+      res.end();
+      await finished;
+
+      expect(statusCode).toBe(304);
+      expect(Buffer.concat(chunks).toString()).toBe("SOMETHING");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("prevents statusCode from being overwritten after flushHeaders()", () => {
