@@ -132,6 +132,10 @@ jobs:
       - name: Build
         run: pnpm --filter @opennextjs/aws... run build
 
+      # Ensure the code patches still match the code of the Next version installed above
+      - name: Check code patches against the installed Nextjs
+        run: pnpm --filter tests-unit exec vitest run patchBackgroundRevalidation.next
+
       # Deploy e2e stage
       - name: Deploy NextjsSite
         working-directory: examples/sst
