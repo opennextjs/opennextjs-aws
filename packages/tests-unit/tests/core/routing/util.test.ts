@@ -25,6 +25,7 @@ import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
+  BuildId: "build-id",
   NextConfig: {
     basePath: "",
   },
@@ -789,6 +790,160 @@ describe("revalidateIfRequired", () => {
       MessageGroupId: expect.any(String),
     });
   });
+
+  describe("trailing slash", () => {
+    const staleHeaders = () => ({ "x-nextjs-cache": "STALE" });
+
+    // The rewritten url is read from the internal request meta Next.js attaches to the request
+    const rewrittenRequest = (rewroteUrl: string) =>
+      ({
+        [Symbol.for("NextInternalRequestMeta")]: {
+          _nextDidRewrite: true,
+          _nextRewroteUrl: rewroteUrl,
+        },
+      }) as any;
+
+    const expectQueuedUrl = (url: string | undefined) =>
+      expect(sendMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({ url }),
+        }),
+      );
+
+    afterEach(() => {
+      config.NextConfig.trailingSlash = undefined;
+      config.NextConfig.skipTrailingSlashRedirect = undefined;
+    });
+
+    it("should not add the trailing slash when skipTrailingSlashRedirect is enabled", async () => {
+      // Without the redirect there is nothing to work around: the unslashed url is served as is,
+      // and those deployments may canonicalize the other way around themselves.
+      config.NextConfig.trailingSlash = true;
+      config.NextConfig.skipTrailingSlashRedirect = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest("/rewritten"),
+      );
+
+      expectQueuedUrl("/rewritten");
+    });
+
+    it("should add the trailing slash to a rewritten url when trailingSlash is enabled", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest("/rewritten"),
+      );
+
+      expectQueuedUrl("/rewritten/");
+    });
+
+    it("should preserve the query string when adding the trailing slash", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest("/rewritten?key=value&other=1"),
+      );
+
+      expectQueuedUrl("/rewritten/?key=value&other=1");
+    });
+
+    it("should not add the trailing slash to a data route", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/_next/data/build-id/path.json",
+        staleHeaders(),
+        rewrittenRequest("/rewritten"),
+      );
+
+      expectQueuedUrl("/_next/data/build-id/rewritten.json");
+    });
+
+    it("should not add the trailing slash to a path that looks like a file", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/sitemap.xml",
+        staleHeaders(),
+        rewrittenRequest("/sitemap.xml"),
+      );
+
+      expectQueuedUrl("/sitemap.xml");
+    });
+
+    it("should add the trailing slash to a path that was not rewritten", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired("localhost", "/path", staleHeaders());
+
+      expectQueuedUrl("/path/");
+    });
+
+    it("should not add a second trailing slash to a path that already has one", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired("localhost", "/path/", staleHeaders());
+
+      expectQueuedUrl("/path/");
+    });
+
+    it("should not change the root path", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired("localhost", "/", staleHeaders());
+
+      expectQueuedUrl("/");
+    });
+
+    it("should not throw when the rewritten url is missing", async () => {
+      config.NextConfig.trailingSlash = true;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest(undefined as any),
+      );
+
+      expectQueuedUrl(undefined);
+    });
+
+    it("should not add the trailing slash when trailingSlash is disabled", async () => {
+      config.NextConfig.trailingSlash = false;
+
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest("/rewritten"),
+      );
+
+      expectQueuedUrl("/rewritten");
+    });
+
+    it("should not add the trailing slash when trailingSlash is not set", async () => {
+      await revalidateIfRequired(
+        "localhost",
+        "/path",
+        staleHeaders(),
+        rewrittenRequest("/rewritten"),
+      );
+
+      expectQueuedUrl("/rewritten");
+    });
+  });
 });
 
 describe("fixISRHeaders", () => {
@@ -854,6 +1009,36 @@ describe("fixISRHeaders", () => {
     fixISRHeaders(headers);
 
     expect(headers["cache-control"]).toBe("private, max-age=0");
+  });
+
+  it("should set cache-control when x-nextjs-cache is STALE and cache-control is missing", () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "STALE",
+    };
+    fixISRHeaders(headers);
+
+    expect(headers["cache-control"]).toBe(
+      "s-maxage=2, stale-while-revalidate=2592000",
+    );
+  });
+
+  it("should not modify cache-control when x-nextjs-cache is STALE and cache-control has no s-maxage", () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "STALE",
+      "cache-control": "private, no-store",
+    };
+    fixISRHeaders(headers);
+
+    expect(headers["cache-control"]).toBe("private, no-store");
+  });
+
+  it("should not modify cache-control when x-nextjs-cache is REVALIDATED and cache-control is missing", () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "REVALIDATED",
+    };
+    fixISRHeaders(headers);
+
+    expect(headers["cache-control"]).toBeUndefined();
   });
 });
 
