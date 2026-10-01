@@ -1165,6 +1165,82 @@ describe("CacheHandler", () => {
     });
   });
 
+  describe("route-scoped response cache keys", () => {
+    const firstHash = "a".repeat(64);
+    const secondHash = "b".repeat(64);
+    const firstKey = `/route-cache/PAGES/${firstHash}/$/index`;
+    const secondKey = `/route-cache/PAGES/${secondHash}/$/index`;
+
+    it("Should preserve the complete opaque key on get", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(firstKey, { kindHint: "pages" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(firstKey, "cache");
+    });
+
+    it("Should preserve the complete opaque key on set and tag writes", async () => {
+      globalThis.nextVersion = "16.3.8";
+      tagCache.getByPath.mockResolvedValueOnce([]);
+
+      await cache.set(firstKey, {
+        kind: "APP_PAGE",
+        html: "first owner",
+        rscData: Buffer.from("rsc"),
+        status: 200,
+        headers: { "x-next-cache-tags": "owner-tag" },
+      });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        firstKey,
+        expect.objectContaining({ type: "app", html: "first owner" }),
+        "cache",
+      );
+      expect(tagCache.getByPath).toHaveBeenCalledWith(firstKey);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { path: firstKey, tag: "owner-tag", revalidatedAt: 1 },
+      ]);
+    });
+
+    it("Should preserve the complete opaque key on delete", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(firstKey, undefined);
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.delete).toHaveBeenCalledWith(firstKey);
+    });
+
+    it("Should keep source owners with the same pathname isolated", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(firstKey, { kind: "REDIRECT", props: { owner: 1 } });
+      await cache.set(secondKey, { kind: "REDIRECT", props: { owner: 2 } });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        firstKey,
+        expect.objectContaining({ props: { owner: 1 } }),
+        "cache",
+      );
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        secondKey,
+        expect.objectContaining({ props: { owner: 2 } }),
+        "cache",
+      );
+      expect(firstKey).not.toBe(secondKey);
+    });
+
+    it("Should not interpret a fetch key as a response pathname", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(firstKey, { kind: "FETCH" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(firstKey, "fetch");
+    });
+  });
+
   describe("revalidateTag", () => {
     beforeEach(() => {
       globalThis.openNextConfig.dangerous.disableTagCache = false;

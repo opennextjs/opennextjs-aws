@@ -9,6 +9,48 @@ import { isBinaryContentType } from "../utils/binary.js";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders.js";
 import * as buildHelper from "./helper.js";
 
+type CacheArtifactFiles = {
+  meta?: string;
+  html?: string;
+  json?: string;
+  rsc?: string;
+  body?: string;
+};
+
+type CacheArtifact = {
+  /** Path-based key used by Next.js versions without route-scoped metadata. */
+  legacyKey: string;
+  files: CacheArtifactFiles;
+};
+
+/**
+ * Resolves an opaque response cache key inside the build cache output.
+ *
+ * Next.js owns the format of scoped keys. OpenNext only removes the leading
+ * separator needed by cache APIs and verifies that the resulting filesystem
+ * path cannot escape the cache output directory.
+ *
+ * @param outputCachePath Absolute cache output directory.
+ * @param cacheKey Opaque key supplied by Next.js, or a legacy relative key.
+ * @returns Absolute path of the serialized OpenNext cache entry.
+ * @throws When the cache key resolves outside the cache output directory.
+ */
+export function resolveCacheFilePath(
+  outputCachePath: string,
+  cacheKey: string,
+): string {
+  const outputRoot = path.resolve(outputCachePath);
+  const relativeKey = cacheKey.replace(/^[/\\]+/, "");
+  const cacheFilePath = path.resolve(outputRoot, `${relativeKey}.cache`);
+  if (
+    cacheFilePath !== outputRoot &&
+    !cacheFilePath.startsWith(`${outputRoot}${path.sep}`)
+  ) {
+    throw new Error(`Cache key resolves outside the cache output: ${cacheKey}`);
+  }
+  return cacheFilePath;
+}
+
 /**
  * Copy the static assets to the output folder
  *
@@ -103,9 +145,19 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const outputCachePath = path.join(outputDir, "cache", openNextBuildId);
   fs.mkdirSync(outputCachePath, { recursive: true });
 
-  const sourceDirs = [".next/server/pages", ".next/server/app"]
-    .map((dir) => path.join(dotNextPath, dir))
-    .filter(fs.existsSync);
+  const sourceDirs = [
+    { directory: ".next/server/pages", cachePrefix: "" },
+    { directory: ".next/server/app", cachePrefix: "" },
+    // Adapter builds on fixed Next.js releases can emit prerenders directly
+    // under their opaque response-cache key. Keep the route-cache directory
+    // in the OpenNext key instead of treating it as a traversal root.
+    { directory: ".next/server/route-cache", cachePrefix: "route-cache" },
+  ]
+    .map(({ directory, cachePrefix }) => ({
+      directory: path.join(dotNextPath, directory),
+      cachePrefix,
+    }))
+    .filter(({ directory }) => fs.existsSync(directory));
 
   const htmlPages = buildHelper.getHtmlPages(dotNextPath);
 
@@ -119,22 +171,19 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     (relativePath.endsWith(".html") && htmlPages.has(relativePath));
 
   // Merge cache files into a single file
-  const cacheFilesPath: Record<
-    string,
-    {
-      meta?: string;
-      html?: string;
-      json?: string;
-      rsc?: string;
-      body?: string;
-    }
-  > = {};
+  const cacheArtifacts: Record<string, CacheArtifact> = {};
+
+  // Build-time tags must point at the same opaque key used by runtime reads
+  // and writes. Populating them while serializing each artifact avoids a
+  // second pathname-based traversal that would discard route ownership.
+  const metaFiles: TagCacheMetaFile[] = [];
 
   // Process each source directory
-  sourceDirs.forEach((sourceDir) => {
+  sourceDirs.forEach(({ directory: sourceDir, cachePrefix }) => {
     buildHelper.traverseFiles(
       sourceDir,
-      ({ relativePath }) => !isFileSkipped(relativePath),
+      ({ relativePath }) =>
+        !isFileSkipped(path.join(cachePrefix, relativePath)),
       ({ absolutePath, relativePath }) => {
         const ext = path.extname(absolutePath);
         switch (ext) {
@@ -150,18 +199,22 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             //
             // Next 16.1 removed `.prefetch.rsc`, so the strip is a no-op on Next 16 where
             // the `rsc` field always holds a full payload.
-            const newFilePath = path
-              .join(outputCachePath, relativePath)
-              .substring(
-                0,
-                path.join(outputCachePath, relativePath).length - ext.length,
-              )
+            const relativeCachePath = path
+              .join(cachePrefix, relativePath)
+              .slice(0, -ext.length)
               .replace(/\.prefetch$/, "")
-              .concat(".cache");
+              .split(path.sep)
+              .join(path.posix.sep);
+            // Keep source trees separate until metadata has supplied the final
+            // key. Two source routes may intentionally have the same pathname.
+            const artifactId = `${sourceDir}:${relativeCachePath}`;
 
-            cacheFilesPath[newFilePath] = {
-              [ext.slice(1)]: absolutePath,
-              ...cacheFilesPath[newFilePath],
+            cacheArtifacts[artifactId] = {
+              legacyKey: relativeCachePath,
+              files: {
+                [ext.slice(1)]: absolutePath,
+                ...cacheArtifacts[artifactId]?.files,
+              },
             };
             break;
           }
@@ -176,10 +229,22 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   });
 
   // Generate cache file
-  Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+  Object.values(cacheArtifacts).forEach(({ legacyKey, files }) => {
     const cacheFileMeta = files.meta
-      ? safeParseJsonFile(fs.readFileSync(files.meta, "utf8"), cacheFilePath)
+      ? safeParseJsonFile(fs.readFileSync(files.meta, "utf8"), files.meta)
       : undefined;
+    // Next.js 16.3.8+ records the exact opaque key and source owner in every
+    // historical prerender seed. Runtime cache handlers are only queried with
+    // this scoped key, so publishing the seed under its old pathname would
+    // either make it unreachable or reintroduce cross-route cache collisions.
+    const cacheKey = cacheFileMeta?.routeCache?.key ?? legacyKey;
+    let cacheFilePath: string;
+    try {
+      cacheFilePath = resolveCacheFilePath(outputCachePath, cacheKey);
+    } catch (error) {
+      logger.warn(String(error));
+      return;
+    }
     const cacheJson = files.json
       ? safeParseJsonFile(fs.readFileSync(files.json, "utf8"), cacheFilePath)
       : undefined;
@@ -225,10 +290,22 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     // Ensure directory exists before writing
     fs.mkdirSync(path.dirname(cacheFilePath), { recursive: true });
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
-  });
 
-  // We need to traverse the cache to find every .meta file
-  const metaFiles: TagCacheMetaFile[] = [];
+    if (
+      !options.config.dangerous?.disableTagCache &&
+      cacheFileMeta?.headers?.[CACHE_TAGS_HEADER]
+    ) {
+      cacheFileMeta.headers[CACHE_TAGS_HEADER]
+        .split(",")
+        .forEach((tag: string) => {
+          metaFiles.push({
+            tag: { S: path.posix.join(buildId, tag.trim()) },
+            path: { S: path.posix.join(buildId, cacheKey) },
+            revalidatedAt: { N: "1" },
+          });
+        });
+    }
+  });
 
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
@@ -260,38 +337,6 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   }
 
   if (!options.config.dangerous?.disableTagCache) {
-    // Compute dynamodb cache data
-    // Traverse files inside cache to find all meta files and cache tags associated with them
-    sourceDirs.forEach((sourceDir) => {
-      buildHelper.traverseFiles(
-        sourceDir,
-        ({ absolutePath, relativePath }) =>
-          absolutePath.endsWith(".meta") && !isFileSkipped(relativePath),
-        ({ absolutePath, relativePath }) => {
-          const fileContent = fs.readFileSync(absolutePath, "utf8");
-          const fileData = safeParseJsonFile(fileContent, absolutePath);
-          if (fileData?.headers?.[CACHE_TAGS_HEADER]) {
-            fileData.headers[CACHE_TAGS_HEADER]
-              .split(",")
-              .forEach((tag: string) => {
-                // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
-                metaFiles.push({
-                  tag: { S: path.posix.join(buildId, tag.trim()) },
-                  path: {
-                    S: path.posix.join(
-                      buildId,
-                      relativePath.replace(".meta", ""),
-                    ),
-                  },
-                  // We don't care about the revalidation time here, we just need to make sure it's there
-                  revalidatedAt: { N: "1" },
-                });
-              });
-          }
-        },
-      );
-    });
-
     if (metaFiles.length > 0) {
       useTagCache = true;
       const providerPath = path.join(outputDir, "dynamodb-provider");

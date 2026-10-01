@@ -19,6 +19,7 @@ import {
   fixCacheControlForError,
 } from "utils/cacheHeaders";
 import { debug } from "../../adapters/logger";
+import { compareSemver } from "../../utils/semver";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
 
@@ -39,6 +40,24 @@ const VARY_HEADER =
 const NEXT_SEGMENT_PREFETCH_HEADER = "next-router-segment-prefetch";
 const NEXT_PRERENDER_HEADER = "x-nextjs-prerender";
 const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
+
+/**
+ * Checks whether Next.js scopes response cache keys to their source route.
+ *
+ * The security fix was backported to the maintained 15.x line and released
+ * independently from the 16.x line, so a single minimum-version comparison
+ * would either miss 15.5.27 or incorrectly include vulnerable 16.0-16.3.7.
+ *
+ * @param version Installed Next.js version.
+ * @returns Whether response cache ownership is encoded in opaque cache keys.
+ */
+function hasRouteScopedResponseCache(version: string): boolean {
+  return (
+    (compareSemver(version, ">=", "15.5.27") &&
+      compareSemver(version, "<", "16.0.0")) ||
+    compareSemver(version, ">=", "16.3.8")
+  );
+}
 
 async function computeCacheControl(
   path: string,
@@ -313,6 +332,17 @@ function decodePathParams(pathname: string): string {
 export async function cacheInterceptor(
   event: MiddlewareEvent,
 ): Promise<InternalEvent | InternalResult> {
+  // Next.js 16.3.8 scopes every response-cache key to the selected source
+  // route. This interceptor runs before Next.js performs that selection and
+  // cannot safely distinguish encoded aliases, route groups, parallel slots,
+  // or overlapping catch-all routes. A pathname-only lookup here would bypass
+  // the upstream isolation and recreate the cache-poisoning vulnerability.
+  // Fall through so Next.js can select the owner and query the custom cache
+  // handler with the complete opaque key. Older releases retain their legacy
+  // pathname keys and can continue using interception.
+  if (hasRouteScopedResponseCache(globalThis.nextVersion)) {
+    return event;
+  }
   if (
     Boolean(event.headers["next-action"]) ||
     Boolean(event.headers[PRERENDER_REVALIDATE_HEADER])

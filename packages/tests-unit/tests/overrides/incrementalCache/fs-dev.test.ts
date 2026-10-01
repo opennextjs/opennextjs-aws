@@ -79,4 +79,33 @@ describe("fs-dev incremental cache", () => {
     });
     expect((await cache.get("nested/key", "fetch"))?.value).toEqual(fetch);
   });
+
+  it("round-trips a route-scoped key without discarding its owner", async () => {
+    const firstKey = `/route-cache/PAGES/${"a".repeat(64)}/$/index`;
+    const secondKey = `/route-cache/PAGES/${"b".repeat(64)}/$/index`;
+    const first = { type: "page" as const, html: "home", json: {} };
+    const second = { type: "page" as const, html: "catch-all", json: {} };
+
+    await cache.set(firstKey, first);
+    await cache.set(secondKey, second);
+
+    expect((await cache.get(firstKey))?.value).toEqual(first);
+    expect((await cache.get(secondKey))?.value).toEqual(second);
+    expect(
+      JSON.parse(
+        await fs.readFile(
+          path.join(directory, `cache/test-build${firstKey}.cache`),
+          "utf8",
+        ),
+      ),
+    ).toEqual(first);
+    expect(
+      JSON.parse(
+        await fs.readFile(
+          path.join(directory, `cache/test-build${secondKey}.cache`),
+          "utf8",
+        ),
+      ),
+    ).toEqual(second);
+  });
 });

@@ -93,6 +93,22 @@ export interface Meta {
   status?: number;
   headers?: MetaHeaders;
   postponed?: string;
+  /**
+   * Next.js 16.3.8+ ownership metadata for a prerendered response seed.
+   *
+   * The key is opaque to OpenNext and must be preserved unchanged. The owner
+   * fields are retained in the serialized cache value for diagnostics and for
+   * compatibility with Next.js build artifacts.
+   */
+  routeCache?: {
+    key: string;
+    owner: {
+      kind: "PAGES" | "APP_PAGE" | "APP_ROUTE";
+      sourceRoute: string;
+    };
+    isFallback: boolean;
+  };
+  routeCacheLastModified?: number;
 }
 
 export type TagCacheMetaFile = {

@@ -117,6 +117,47 @@ beforeEach(() => {
 });
 
 describe("cacheInterceptor", () => {
+  it.each(["15.5.27", "15.6.0", "16.3.8", "16.4.0"])(
+    "should defer route-scoped cache selection to fixed Next.js %s",
+    async (version) => {
+      globalThis.nextVersion = version;
+      const event = createEvent({ url: "/albums" });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+      expect(tagCache.getLastModified).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["15.5.26", "16.0.0", "16.3.7"])(
+    "should retain pathname interception on legacy Next.js %s",
+    async (version) => {
+      globalThis.nextVersion = version;
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "app", html: "legacy entry" },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).not.toBe(event);
+      expect(incrementalCache.get).toHaveBeenCalledWith("/albums");
+    },
+  );
+
+  it.each(["/index", "/%69ndex", "/isr/a%2Fb"])(
+    "should not perform a pathname-only lookup for %s on fixed versions",
+    async (url) => {
+      globalThis.nextVersion = "16.3.8";
+      const event = createEvent({ url });
+
+      expect(await cacheInterceptor(event)).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    },
+  );
+
   it("should take no action when next-action header is present", async () => {
     const event = createEvent({
       headers: {

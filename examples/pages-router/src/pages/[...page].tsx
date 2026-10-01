@@ -1,4 +1,3 @@
-import Home from "@/components/home";
 import type {
   GetStaticPathsResult,
   GetStaticPropsContext,
@@ -17,26 +16,24 @@ export async function getStaticPaths(): Promise<GetStaticPathsResult> {
     params: { page: path.split("/") },
   }));
 
-  const paths = [{ params: { page: [] } }, ...rootPaths, ...longPaths];
+  const paths = [...rootPaths, ...longPaths];
 
   return {
     paths,
-    fallback: false,
+    // Blocking fallback is intentional: this fixture reproduces the route
+    // shape from GHSA-mcj8-r9mp-w47p, where encoded aliases and `/index` are
+    // rendered by a root catch-all and persisted in the response cache.
+    fallback: "blocking",
   };
 }
 
 export async function getStaticProps(context: GetStaticPropsContext) {
   const page = (context.params?.page as string[]) || [];
 
-  if (page.length === 0) {
-    return {
-      props: {
-        subpage: [],
-        pageType: "home",
-      },
-    };
-  }
-  if (page.length === 1 && validRootPages.includes(page[0])) {
+  if (
+    page.length === 1 &&
+    (validRootPages.includes(page[0]) || page[0] === "index")
+  ) {
     return {
       props: {
         subpage: page,
@@ -46,6 +43,15 @@ export async function getStaticProps(context: GetStaticPropsContext) {
   }
 
   const pagePath = page.join("/");
+  if (page[0] === "victim") {
+    return {
+      props: {
+        subpage: page,
+        pageType: "encoded-catch-all",
+      },
+      revalidate: 60,
+    };
+  }
   if (validLongPaths.includes(pagePath)) {
     return { props: { subpage: page, pageType: "long-path" } };
   }
@@ -56,11 +62,9 @@ export default function Page({
   subpage,
   pageType,
 }: InferGetStaticPropsType<typeof getStaticProps>) {
-  if (subpage.length === 0 && pageType === "home") {
-    return <Home />;
-  }
   return (
     <div>
+      <p data-testid="cache-owner">root-catch-all</p>
       <h1 data-testid="page">{`Page: ${subpage}`}</h1>
       <p>Page type: {pageType}</p>
       <p>Path: {subpage.join("/")}</p>
