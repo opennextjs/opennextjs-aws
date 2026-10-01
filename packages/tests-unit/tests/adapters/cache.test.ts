@@ -1165,6 +1165,60 @@ describe("CacheHandler", () => {
     });
   });
 
+  describe("route cache keys", () => {
+    const hash = "a".repeat(64);
+    const scopedKey = `/route-cache/APP_PAGE/${hash}/$/isr`;
+
+    it("Should strip the route cache prefix on get for next >= 16.3.8", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(scopedKey, { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith("/isr", "cache");
+    });
+
+    it("Should strip the route cache prefix on set for next >= 16.3.8", async () => {
+      globalThis.nextVersion = "16.4.0";
+
+      await cache.set(`/route-cache/PAGES/${hash}/$/index`, {
+        kind: "REDIRECT",
+        props: {},
+      });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "/index",
+        { type: "redirect", props: {} },
+        "cache",
+      );
+    });
+
+    it("Should strip the route cache prefix on delete for next >= 16.3.8", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(`/route-cache/APP_ROUTE/${hash}/$/api/data`, undefined);
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.delete).toHaveBeenCalledWith("/api/data");
+    });
+
+    it("Should keep the key unchanged for next < 16.3.8", async () => {
+      globalThis.nextVersion = "16.3.7";
+
+      await cache.get(scopedKey, { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
+    });
+
+    it("Should not alter fetch cache keys", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(hash, { kind: "FETCH" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(hash, "fetch");
+    });
+  });
+
   describe("revalidateTag", () => {
     beforeEach(() => {
       globalThis.openNextConfig.dangerous.disableTagCache = false;

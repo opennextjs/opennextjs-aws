@@ -38,6 +38,24 @@ function isFetchCache(
   }
   return false;
 }
+
+const ROUTE_CACHE_KEY_PREFIX =
+  /^\/route-cache\/(?:PAGES|APP_PAGE|APP_ROUTE)\/[0-9a-f]{64}\/\$(?=\/)/;
+
+/**
+ * Since Next.js 16.3.8, response cache keys are scoped by their source route:
+ * `/route-cache/<kind>/<sha256(sourceRoute)>/$<normalizedPathname>`.
+ * The cache interceptor, the build time cache population and the tag cache all use
+ * the normalized pathname, so we strip the prefix to keep a single key per entry.
+ * Fetch cache keys are not scoped and never match the prefix.
+ */
+export function normalizeCacheKey(key: string): string {
+  if (!compareSemver(globalThis.nextVersion, ">=", "16.3.8")) {
+    return key;
+  }
+  return key.replace(ROUTE_CACHE_KEY_PREFIX, "");
+}
+
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
@@ -61,7 +79,7 @@ export default class Cache {
     const tags = typeof options === "object" ? options.tags : [];
     return isFetchCache(options)
       ? this.getFetchCache(key, softTags, tags)
-      : this.getIncrementalCache(key);
+      : this.getIncrementalCache(normalizeCacheKey(key));
   }
 
   async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
@@ -260,7 +278,7 @@ export default class Cache {
       return;
     }
     const store = globalThis.__openNextAls.getStore();
-    const writePromise = this.writeCache(key, data, ctx);
+    const writePromise = this.writeCache(normalizeCacheKey(key), data, ctx);
 
     // Next.js ignores the value returned by `set`, so the write is registered on the request's
     // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
