@@ -11,6 +11,29 @@ import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
+  RoutesManifest: {
+    basePath: "",
+    locales: [],
+    routes: {
+      static: [],
+      dynamic: [
+        { page: "/admin/[slug]", regex: "^/admin/([^/]+?)(?:/)?$" },
+        { page: "/isr/[id]", regex: "^/isr/([^/]+?)(?:/)?$" },
+        { page: "/dynamic/[id]", regex: "^/dynamic/([^/]+?)(?:/)?$" },
+      ],
+    },
+  },
+  AppPathRoutesManifest: {},
+  AppPathsManifest: {
+    "/page": "app/page.js",
+    "/(group)/albums/page": "app/(group)/albums/page.js",
+    "/admin/[slug]/page": "app/admin/[slug]/page.js",
+    "/isr/[id]/page": "app/isr/[id]/page.js",
+    "/dynamic/[id]/page": "app/dynamic/[id]/page.js",
+  },
+  PagesManifest: {
+    "/revalidate": "pages/revalidate.js",
+  },
   PrerenderManifest: {
     routes: {
       "/": {
@@ -1124,6 +1147,70 @@ describe("cacheInterceptor", () => {
         const body = await fromReadableStream(result.body);
         expect(body).toEqual('{"hello":"world"}');
       });
+    });
+  });
+
+  describe("route cache keys (next >= 16.3.8)", () => {
+    const sha256 = (value: string) =>
+      createHash("sha256").update(value).digest("hex");
+
+    beforeEach(() => {
+      globalThis.nextVersion = "16.3.8";
+      incrementalCache.get.mockResolvedValueOnce({});
+    });
+
+    it("should use the scoped key of a prerendered app page", async () => {
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/(group)/albums/page")}/$/albums`,
+      );
+    });
+
+    it("should use the scoped key of the index route", async () => {
+      await cacheInterceptor(createEvent({ url: "/" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/page")}/$/index`,
+      );
+    });
+
+    it("should use the scoped key of a prerendered pages route", async () => {
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use the scoped key of an entry cached at runtime", async () => {
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+      );
+    });
+
+    it("should not check the cache for a dynamic route that is not ISR", async () => {
+      const event = createEvent({ url: "/dynamic/7" });
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should use the tag cache with the scoped key", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "app", html: "<html></html>", rsc: "rsc" },
+        lastModified: Date.now(),
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(tagCache.getLastModified).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+        expect.any(Number),
+      );
     });
   });
 

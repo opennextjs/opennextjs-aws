@@ -1169,16 +1169,16 @@ describe("CacheHandler", () => {
     const hash = "a".repeat(64);
     const scopedKey = `/route-cache/APP_PAGE/${hash}/$/isr`;
 
-    it("Should strip the route cache prefix on get for next >= 16.3.8", async () => {
+    it("Should use the scoped key on get", async () => {
       globalThis.nextVersion = "16.3.8";
 
       await cache.get(scopedKey, { kindHint: "app" });
 
-      expect(incrementalCache.get).toHaveBeenCalledWith("/isr", "cache");
+      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
     });
 
-    it("Should strip the route cache prefix on set for next >= 16.3.8", async () => {
-      globalThis.nextVersion = "16.4.0";
+    it("Should use the scoped key on set", async () => {
+      globalThis.nextVersion = "16.3.8";
 
       await cache.set(`/route-cache/PAGES/${hash}/$/index`, {
         kind: "REDIRECT",
@@ -1187,35 +1187,21 @@ describe("CacheHandler", () => {
       await awaitDetachedWrites();
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "/index",
+        `/route-cache/PAGES/${hash}/$/index`,
         { type: "redirect", props: {} },
         "cache",
       );
     });
 
-    it("Should strip the route cache prefix on delete for next >= 16.3.8", async () => {
+    it("Should use the scoped key on delete", async () => {
       globalThis.nextVersion = "16.3.8";
 
       await cache.set(`/route-cache/APP_ROUTE/${hash}/$/api/data`, undefined);
       await awaitDetachedWrites();
 
-      expect(incrementalCache.delete).toHaveBeenCalledWith("/api/data");
-    });
-
-    it("Should keep the key unchanged for next < 16.3.8", async () => {
-      globalThis.nextVersion = "16.3.7";
-
-      await cache.get(scopedKey, { kindHint: "app" });
-
-      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
-    });
-
-    it("Should not alter fetch cache keys", async () => {
-      globalThis.nextVersion = "16.3.8";
-
-      await cache.get(hash, { kind: "FETCH" });
-
-      expect(incrementalCache.get).toHaveBeenCalledWith(hash, "fetch");
+      expect(incrementalCache.delete).toHaveBeenCalledWith(
+        `/route-cache/APP_ROUTE/${hash}/$/api/data`,
+      );
     });
   });
 
@@ -1275,6 +1261,23 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
     });
 
+    it("Should invalidate the pathname of scoped cache keys", async () => {
+      const hash = "a".repeat(64);
+      tagCache.getByTag.mockResolvedValueOnce([
+        `route-cache/APP_PAGE/${hash}/$/isr`,
+      ]);
+      tagCache.getByPath.mockResolvedValueOnce([]);
+      await cache.revalidateTag(`${SOFT_TAG_PREFIX}/isr`);
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/isr",
+          rawPath: "/isr",
+          resolvedRoutes: [{ type: "app", route: "/isr" }],
+        },
+      ]);
+    });
+
     it("Should not call invalidateCdnHandler.invalidatePaths for fetch cache key ", async () => {
       tagCache.getByTag.mockResolvedValueOnce(["123456"]);
       await cache.revalidateTag("tag");
@@ -1315,6 +1318,23 @@ describe("CacheHandler", () => {
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
+    it("Should invalidate the pathname of scoped cache keys for nextMode", async () => {
+      const hash = "a".repeat(64);
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi
+        .fn()
+        .mockResolvedValueOnce([`/route-cache/PAGES/${hash}/$/en/isr`]);
+      await cache.revalidateTag("tag");
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/en/isr",
+          rawPath: "/en/isr",
+          resolvedRoutes: [{ type: "app", route: "/en/isr" }],
+        },
+      ]);
     });
 
     it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {

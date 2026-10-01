@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 
-import { NextConfig, PrerenderManifest } from "config/index";
+import {
+  AppPathsManifest,
+  NextConfig,
+  PagesManifest,
+  PrerenderManifest,
+} from "config/index";
 import type {
   InternalEvent,
   InternalResult,
@@ -18,9 +23,17 @@ import {
   PRERENDER_REVALIDATE_HEADER,
   fixCacheControlForError,
 } from "utils/cacheHeaders";
+import {
+  type RouteCacheManifests,
+  getPrerenderRouteCacheKey,
+  getRouteCacheKey,
+  getRouteCacheOwner,
+  useRouteCacheKeys,
+} from "utils/routeCacheKey";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
+import { dynamicRouteMatcher } from "./routeMatcher";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
@@ -310,6 +323,69 @@ function decodePathParams(pathname: string): string {
     .join("/");
 }
 
+let routeCacheManifests: RouteCacheManifests | undefined;
+
+function getRouteCacheManifests(): RouteCacheManifests {
+  routeCacheManifests ??= {
+    prerenderManifest: {
+      routes: PrerenderManifest?.routes ?? {},
+      dynamicRoutes: PrerenderManifest?.dynamicRoutes ?? {},
+    },
+    appPaths: Object.keys(AppPathsManifest ?? {}),
+    pagesManifest: PagesManifest ?? {},
+    locales: NextConfig.i18n?.locales,
+  };
+  return routeCacheManifests;
+}
+
+/**
+ * Computes the key of the cache entry serving the request.
+ *
+ * Since Next 16.3.8 the key is scoped by the route owning the entry. It is computed from:
+ * - the prerender manifest for prerendered routes,
+ * - the dynamic route Next.js would render for entries cached at runtime.
+ *
+ * @param event The incoming event
+ * @param localizedPath The localized and decoded path, without basePath nor trailing slash
+ * @returns The cache key, or `undefined` when the path is not served by an ISR route
+ */
+function getCacheKey(
+  event: MiddlewareEvent,
+  localizedPath: string,
+): string | undefined {
+  if (!useRouteCacheKeys(globalThis.nextVersion)) {
+    const isISR =
+      Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
+      Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
+        new RegExp(dr.routeRegex).test(localizedPath),
+      );
+    // The route is keyed as `/` in the prerender manifest, but the generated
+    // cache asset for the index route is uploaded as `/index`.
+    if (!isISR) return undefined;
+    return localizedPath === "/" ? "/index" : localizedPath;
+  }
+
+  const manifests = getRouteCacheManifests();
+  if (Object.hasOwn(manifests.prerenderManifest.routes, localizedPath)) {
+    return getPrerenderRouteCacheKey(localizedPath, manifests);
+  }
+
+  // Not prerendered, the entry might have been cached at runtime by a dynamic route.
+  // Dynamic routes are sorted by specificity, the first match is the one Next.js renders.
+  const [dynamicRoute] = dynamicRouteMatcher(event.rawPath);
+  if (
+    !dynamicRoute ||
+    !Object.hasOwn(
+      manifests.prerenderManifest.dynamicRoutes,
+      dynamicRoute.route,
+    )
+  ) {
+    return undefined;
+  }
+  const owner = getRouteCacheOwner(dynamicRoute.route, manifests);
+  return owner ? getRouteCacheKey(localizedPath, owner) : undefined;
+}
+
 export async function cacheInterceptor(
   event: MiddlewareEvent,
 ): Promise<InternalEvent | InternalResult> {
@@ -347,19 +423,11 @@ export async function cacheInterceptor(
     return event;
   }
 
-  // The route is keyed as `/` in the prerender manifest, but the generated
-  // cache asset for the app index route is uploaded as `/index`.
-  const cacheKey = localizedPath === "/" ? "/index" : localizedPath;
-
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const isISR =
-    Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
-    Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
-      new RegExp(dr.routeRegex).test(localizedPath),
-    );
-  debug("isISR", isISR);
-  if (isISR) {
+  const cacheKey = getCacheKey(event, localizedPath);
+  debug("cacheKey", cacheKey);
+  if (cacheKey) {
     try {
       const cachedData = await globalThis.incrementalCache.get(cacheKey);
       debug("cached data in interceptor", cachedData);

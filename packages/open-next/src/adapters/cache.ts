@@ -12,6 +12,7 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
+import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -38,24 +39,6 @@ function isFetchCache(
   }
   return false;
 }
-
-const ROUTE_CACHE_KEY_PREFIX =
-  /^\/route-cache\/(?:PAGES|APP_PAGE|APP_ROUTE)\/[0-9a-f]{64}\/\$(?=\/)/;
-
-/**
- * Since Next.js 16.3.8, response cache keys are scoped by their source route:
- * `/route-cache/<kind>/<sha256(sourceRoute)>/$<normalizedPathname>`.
- * The cache interceptor, the build time cache population and the tag cache all use
- * the normalized pathname, so we strip the prefix to keep a single key per entry.
- * Fetch cache keys are not scoped and never match the prefix.
- */
-export function normalizeCacheKey(key: string): string {
-  if (!compareSemver(globalThis.nextVersion, ">=", "16.3.8")) {
-    return key;
-  }
-  return key.replace(ROUTE_CACHE_KEY_PREFIX, "");
-}
-
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
@@ -79,7 +62,7 @@ export default class Cache {
     const tags = typeof options === "object" ? options.tags : [];
     return isFetchCache(options)
       ? this.getFetchCache(key, softTags, tags)
-      : this.getIncrementalCache(normalizeCacheKey(key));
+      : this.getIncrementalCache(key);
   }
 
   async getFetchCache(key: string, softTags?: string[], tags?: string[]) {
@@ -278,7 +261,7 @@ export default class Cache {
       return;
     }
     const store = globalThis.__openNextAls.getStore();
-    const writePromise = this.writeCache(normalizeCacheKey(key), data, ctx);
+    const writePromise = this.writeCache(key, data, ctx);
 
     // Next.js ignores the value returned by `set`, so the write is registered on the request's
     // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
@@ -454,8 +437,9 @@ export default class Cache {
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
+          // Paths in the tag cache are cache keys, scoped by route since Next 16.3.8
           await globalThis.cdnInvalidationHandler.invalidatePaths(
-            paths.map((path) => ({
+            paths.map(getPathFromRouteCacheKey).map((path) => ({
               initialPath: path,
               rawPath: path,
               resolvedRoutes: [
@@ -542,7 +526,8 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
-              .map((t) => `/${t.path}`),
+              // Paths in the tag cache are cache keys, scoped by route since Next 16.3.8
+              .map((t) => getPathFromRouteCacheKey(`/${t.path}`)),
           ),
         );
         if (uniquePaths.length > 0) {

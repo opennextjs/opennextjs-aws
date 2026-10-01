@@ -1,12 +1,23 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadConfig } from "config/util.js";
+import {
+  loadAppPathsManifest,
+  loadConfig,
+  loadPagesManifest,
+  loadPrerenderManifest,
+} from "config/util.js";
 import { safeParseJsonFile } from "utils/safe-json-parse.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders.js";
+import {
+  type RouteCacheManifests,
+  denormalizePagePath,
+  getPrerenderRouteCacheKey,
+  useRouteCacheKeys,
+} from "../utils/routeCacheKey.js";
 import * as buildHelper from "./helper.js";
 
 /**
@@ -118,6 +129,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     relativePath.endsWith(".segment.rsc") ||
     (relativePath.endsWith(".html") && htmlPages.has(relativePath));
 
+  const getCacheKeyPath = createCacheKeyPathResolver(options);
+
   // Merge cache files into a single file
   const cacheFilesPath: Record<
     string,
@@ -150,14 +163,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             //
             // Next 16.1 removed `.prefetch.rsc`, so the strip is a no-op on Next 16 where
             // the `rsc` field always holds a full payload.
-            const newFilePath = path
-              .join(outputCachePath, relativePath)
-              .substring(
-                0,
-                path.join(outputCachePath, relativePath).length - ext.length,
-              )
-              .replace(/\.prefetch$/, "")
-              .concat(".cache");
+            const newFilePath = path.join(
+              outputCachePath,
+              `${getCacheKeyPath(
+                relativePath.slice(0, -ext.length).replace(/\.prefetch$/, ""),
+              )}.cache`,
+            );
 
             cacheFilesPath[newFilePath] = {
               [ext.slice(1)]: absolutePath,
@@ -280,7 +291,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
                   path: {
                     S: path.posix.join(
                       buildId,
-                      relativePath.replace(".meta", ""),
+                      getCacheKeyPath(relativePath.replace(/\.meta$/, "")),
                     ),
                   },
                   // We don't care about the revalidation time here, we just need to make sure it's there
@@ -309,4 +320,45 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   }
 
   return { useTagCache, metaFiles };
+}
+
+/**
+ * Creates a function computing the path of the cache entry of a build output file.
+ *
+ * Since Next 16.3.8 the cache keys are scoped by the route owning the entry, see `getRouteCacheKey`.
+ * The build output files still use the plain route, i.e. `.next/server/app/isr.html`.
+ *
+ * @param options Build options.
+ * @returns A function taking the path of a build output file - relative to `.next/server/{app,pages}`
+ * and without extension - and returning the path of the cache entry, relative to the cache folder.
+ */
+function createCacheKeyPathResolver(
+  options: buildHelper.BuildOptions,
+): (relativePath: string) => string {
+  if (!useRouteCacheKeys(options.nextVersion)) {
+    return (relativePath) => relativePath;
+  }
+  const nextDir = path.join(options.appBuildOutputPath, ".next");
+  const prerenderManifest = loadPrerenderManifest(nextDir);
+  const manifests: RouteCacheManifests = {
+    prerenderManifest: {
+      routes: prerenderManifest?.routes ?? {},
+      dynamicRoutes: prerenderManifest?.dynamicRoutes ?? {},
+    },
+    appPaths: Object.keys(loadAppPathsManifest(nextDir)),
+    pagesManifest: loadPagesManifest(nextDir),
+    locales: loadConfig(nextDir).i18n?.locales,
+  };
+  return (relativePath) => {
+    const route = denormalizePagePath(
+      `/${relativePath.split(path.sep).join("/")}`,
+    );
+    const key = getPrerenderRouteCacheKey(route, manifests);
+    if (!key) {
+      // Not a response cache entry, i.e. a static error page.
+      return relativePath;
+    }
+    // Strip the leading `/`
+    return key.slice(1);
+  };
 }
