@@ -1,0 +1,19 @@
+packages/tests-e2e/tests/appPagesRouter/routeScopedCache.test.ts
+  s_a45ca4c3dd8daf::t_8d0df3710975e1 15-21,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ffb20b060e387a57aaa6a9e24950447d4eb02546",
+  "prompts": {},
+  "sessions": {
+    "s_a45ca4c3dd8daf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09355786ffeq4Y2FmsfwYqXio",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
