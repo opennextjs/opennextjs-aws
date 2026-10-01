@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
 
 import { NextConfig, PrerenderManifest } from "config/index";
+import type { RouteCacheOwner } from "types/cache";
 import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
+  ResolvedRoute,
 } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
@@ -59,6 +62,168 @@ function hasRouteScopedResponseCache(version: string): boolean {
   );
 }
 
+/**
+ * Normalizes a concrete response pathname exactly as Next.js does for storage.
+ *
+ * Root and literal `/index` must not share an entry: root becomes `/index`,
+ * while an actual `/index` request becomes `/index/index`. Dynamic-looking
+ * literal paths are not prefixed, matching Next.js's `normalizePagePath`.
+ *
+ * @param pathname Decoded concrete response pathname.
+ * @returns The pathname suffix used in a route-scoped cache key.
+ * @throws When POSIX normalization would alter the pathname.
+ */
+function normalizeRouteCachePath(pathname: string): string {
+  const isDynamicPath = /\/\[[^/]+\](?=\/|$)/.test(pathname);
+  const normalized =
+    /^\/index(\/|$)/.test(pathname) && !isDynamicPath
+      ? `/index${pathname}`
+      : pathname === "/"
+        ? "/index"
+        : pathname.startsWith("/")
+          ? pathname
+          : `/${pathname}`;
+
+  if (path.posix.normalize(normalized) !== normalized) {
+    throw new Error(`Route cache pathname is not normalized: ${pathname}`);
+  }
+  return normalized;
+}
+
+/**
+ * Computes Next.js's opaque response-cache key for a selected route owner.
+ *
+ * The owner must be selected before decoding request parameters. Two routes can
+ * legitimately produce the same decoded pathname suffix; the source hash is
+ * what keeps those entries isolated.
+ *
+ * @param pathname Decoded concrete response pathname.
+ * @param owner Exact route-module identity selected from Next.js manifests.
+ * @returns The opaque key supplied to OpenNext's incremental cache.
+ */
+function getRouteScopedCacheKey(
+  pathname: string,
+  owner: RouteCacheOwner,
+): string {
+  const sourceHash = createHash("sha256")
+    .update(owner.sourceRoute)
+    .digest("hex");
+  return `/route-cache/${owner.kind}/${sourceHash}/$${normalizeRouteCachePath(pathname)}`;
+}
+
+/**
+ * Removes a locale prefix when validating a Pages Router prerender owner.
+ *
+ * @param pathname Localized concrete pathname from the prerender manifest.
+ * @returns The pathname without a configured locale prefix.
+ */
+function removeLocalePrefix(pathname: string): string {
+  const locales = NextConfig.i18n?.locales ?? [];
+  const [firstSegment, ...remainingSegments] = pathname.slice(1).split("/");
+  if (!locales.includes(firstSegment)) return pathname;
+  return `/${remainingSegments.join("/")}` || "/";
+}
+
+/**
+ * Checks whether a concrete prerender record belongs to the selected route.
+ *
+ * This prevents an encoded catch-all request from borrowing the canonical
+ * route's prerender record after both spellings decode to the same pathname.
+ *
+ * @param pathname Decoded concrete pathname used to find the prerender record.
+ * @param route Ordered route selected from the still-encoded request pathname.
+ * @returns Whether the record is complete, incomplete, or belongs elsewhere.
+ */
+function getConcretePrerenderStatus(
+  pathname: string,
+  route: ResolvedRoute,
+): "complete" | "incomplete" | "other" {
+  const prerender = PrerenderManifest?.routes?.[pathname];
+  const owner = route.cacheOwner;
+  if (!prerender || !owner) return "other";
+
+  const kind =
+    prerender.dataRoute === null
+      ? "APP_ROUTE"
+      : prerender.dataRoute?.endsWith(".json")
+        ? "PAGES"
+        : prerender.dataRoute?.endsWith(".rsc")
+          ? "APP_PAGE"
+          : undefined;
+  if (kind !== owner.kind) return "other";
+
+  const sourceRoute =
+    prerender.srcRoute ??
+    (kind === "PAGES" ? removeLocalePrefix(pathname) : pathname);
+  if (sourceRoute !== route.route) return "other";
+
+  // An `initial` response is a resumable PPR shell, not a complete response.
+  // Returning it directly would close the stream before Next can append the
+  // dynamic content. Older manifests omit this field and remain supported.
+  return prerender.experimentalPPR === true ||
+    prerender.renderingMode === "PARTIALLY_STATIC" ||
+    (prerender.response && prerender.response !== "complete")
+    ? "incomplete"
+    : "complete";
+}
+
+/**
+ * Checks whether owner-aware interception can safely serve this ISR request.
+ *
+ * Exact prerenders are safe after validating their kind and source route.
+ * Runtime-generated entries are intercepted only for blocking fallback routes,
+ * whose cache pathname is the concrete request path. Static fallbacks and PPR
+ * shells can use a different cache pathname and therefore remain pass-through.
+ *
+ * @param pathname Decoded concrete response pathname.
+ * @param route First route selected from the encoded post-rewrite pathname.
+ * @returns Whether the interceptor can perform an authoritative scoped lookup.
+ */
+function isRouteScopedISR(
+  pathname: string,
+  route: ResolvedRoute | undefined,
+): boolean {
+  if (!route?.cacheOwner) return false;
+  const concreteStatus = getConcretePrerenderStatus(pathname, route);
+  if (concreteStatus === "complete") return true;
+  if (concreteStatus === "incomplete") return false;
+
+  const dynamicRoute = PrerenderManifest?.dynamicRoutes?.[route.route];
+  const routePathname =
+    route.cacheOwner.kind === "PAGES" ? removeLocalePrefix(pathname) : pathname;
+  if (
+    !dynamicRoute ||
+    !new RegExp(dynamicRoute.routeRegex).test(routePathname)
+  ) {
+    return false;
+  }
+  return (
+    dynamicRoute.experimentalPPR !== true &&
+    dynamicRoute.renderingMode !== "PARTIALLY_STATIC" &&
+    dynamicRoute.fallback === null &&
+    dynamicRoute.response !== "initial"
+  );
+}
+
+/**
+ * Removes the configured base path before locale detection.
+ *
+ * `localizePath` examines the first pathname segment. Passing `/base/fr/page`
+ * to it directly would inspect `base`, potentially prepend a second locale,
+ * and produce a cache key that Next.js never uses.
+ *
+ * @param event Incoming request after middleware and rewrites.
+ * @returns The event pathname with an anchored base path removed.
+ */
+function getPathWithoutBasePath(event: MiddlewareEvent): string {
+  const basePath = NextConfig.basePath;
+  if (!basePath) return event.rawPath;
+  if (event.rawPath === basePath) return "/";
+  return event.rawPath.startsWith(`${basePath}/`)
+    ? event.rawPath.slice(basePath.length)
+    : event.rawPath;
+}
+
 async function computeCacheControl(
   path: string,
   body: string,
@@ -66,6 +231,8 @@ async function computeCacheControl(
   revalidate?: number | false,
   lastModified?: number,
   isStaleFromTagCache = false,
+  revalidationPath = path,
+  revalidationKey = path,
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
@@ -113,7 +280,10 @@ async function computeCacheControl(
       isStaleFromTagCache,
     });
     if (isStale) {
-      let url = NextConfig.trailingSlash ? `${path}/` : path;
+      let url =
+        NextConfig.trailingSlash && revalidationPath !== "/"
+          ? `${revalidationPath}/`
+          : revalidationPath;
       if (NextConfig.basePath) {
         url = `${NextConfig.basePath}${url}`;
       }
@@ -124,8 +294,12 @@ async function computeCacheControl(
           eTag: etag,
           lastModified: lastModified ?? Date.now(),
         },
-        MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
-        MessageGroupId: generateMessageGroupId(path),
+        // Scoped owners can share a decoded pathname. Include the opaque key
+        // so their background refreshes cannot deduplicate each other.
+        MessageDeduplicationId: hash(
+          `${revalidationKey}-${lastModified}-${etag}`,
+        ),
+        MessageGroupId: generateMessageGroupId(revalidationKey),
       });
     }
     return {
@@ -213,6 +387,8 @@ async function generateResult(
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
   isStaleFromTagCache = false,
+  cacheKey = localizedPath,
+  revalidationPath = localizedPath,
 ): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
   let body: string | undefined;
@@ -251,6 +427,8 @@ async function generateResult(
     cachedValue.revalidate,
     lastModified,
     isStaleFromTagCache,
+    revalidationPath,
+    cacheKey,
   );
   const statusCode = computeStatusCode(
     event.rewriteStatusCode,
@@ -331,18 +509,12 @@ function decodePathParams(pathname: string): string {
 
 export async function cacheInterceptor(
   event: MiddlewareEvent,
+  resolvedRoutes: ResolvedRoute[] = [],
 ): Promise<InternalEvent | InternalResult> {
-  // Next.js 16.3.8 scopes every response-cache key to the selected source
-  // route. This interceptor runs before Next.js performs that selection and
-  // cannot safely distinguish encoded aliases, route groups, parallel slots,
-  // or overlapping catch-all routes. A pathname-only lookup here would bypass
-  // the upstream isolation and recreate the cache-poisoning vulnerability.
-  // Fall through so Next.js can select the owner and query the custom cache
-  // handler with the complete opaque key. Older releases retain their legacy
-  // pathname keys and can continue using interception.
-  if (hasRouteScopedResponseCache(globalThis.nextVersion)) {
-    return event;
-  }
+  // Response-cache entries represent GET output. Intercepting another method
+  // could skip an App Route handler and its side effects. HEAD remains a
+  // pass-through until the interceptor can guarantee a bodyless response.
+  if (event.method.toUpperCase() !== "GET") return event;
   if (
     Boolean(event.headers["next-action"]) ||
     Boolean(event.headers[PRERENDER_REVALIDATE_HEADER])
@@ -360,13 +532,18 @@ export async function cacheInterceptor(
     return event;
   }
   // We localize the path in case i18n is enabled
-  let localizedPath = localizePath(event);
-  // If using basePath we need to remove it from the path
-  if (NextConfig.basePath) {
-    localizedPath = localizedPath.replace(NextConfig.basePath, "");
-  }
+  const pathWithoutBasePath = getPathWithoutBasePath(event);
+  let localizedPath = localizePath({
+    ...event,
+    rawPath: pathWithoutBasePath,
+  });
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
+
+  // Preserve the encoded spelling for background revalidation. The decoded
+  // path is the response-cache suffix, but requesting it could select a
+  // different owner than the original encoded catch-all request.
+  const revalidationPath = localizedPath || "/";
 
   // Then we decode the path params
   try {
@@ -377,17 +554,32 @@ export async function cacheInterceptor(
     return event;
   }
 
-  // The route is keyed as `/` in the prerender manifest, but the generated
-  // cache asset for the app index route is uploaded as `/index`.
-  const cacheKey = localizedPath === "/" ? "/index" : localizedPath;
+  const routeScoped = hasRouteScopedResponseCache(globalThis.nextVersion);
+  const selectedRoute = resolvedRoutes[0];
+  let cacheKey: string;
+  if (routeScoped) {
+    if (!isRouteScopedISR(localizedPath, selectedRoute)) return event;
+    try {
+      cacheKey = getRouteScopedCacheKey(
+        localizedPath,
+        selectedRoute!.cacheOwner!,
+      );
+    } catch {
+      return event;
+    }
+  } else {
+    // Legacy Next.js uses pathname-only keys and stores root under `/index`.
+    cacheKey = localizedPath === "/" ? "/index" : localizedPath;
+  }
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const isISR =
-    Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
-    Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
-      new RegExp(dr.routeRegex).test(localizedPath),
-    );
+  const isISR = routeScoped
+    ? true
+    : Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
+      Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
+        new RegExp(dr.routeRegex).test(localizedPath),
+      );
   debug("isISR", isISR);
   if (isISR) {
     try {
@@ -427,6 +619,8 @@ export async function cacheInterceptor(
             cachedData.value,
             cachedData.lastModified,
             _isStale,
+            cacheKey,
+            revalidationPath,
           );
           // The cache entry can not serve this request, fallback to the server.
           return result ?? event;
@@ -439,6 +633,8 @@ export async function cacheInterceptor(
             cachedData.value.revalidate,
             cachedData.lastModified,
             _isStale,
+            revalidationPath,
+            cacheKey,
           );
           return {
             type: "core",
@@ -460,6 +656,8 @@ export async function cacheInterceptor(
             cachedData.value.revalidate,
             cachedData.lastModified,
             _isStale,
+            revalidationPath,
+            cacheKey,
           );
 
           const isBinary = isBinaryContentType(

@@ -4,10 +4,17 @@ import { createHash } from "node:crypto";
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
-import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
+import type {
+  MiddlewareEvent,
+  ResolvedRoute,
+} from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
+
+const localizePathMock = vi.hoisted(() =>
+  vi.fn((event: { rawPath: string }) => event.rawPath),
+);
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
@@ -22,6 +29,34 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         initialRevalidateSeconds: false,
         srcRoute: "/albums",
         dataRoute: "/albums.rsc",
+      },
+      "/grouped": {
+        initialRevalidateSeconds: false,
+        srcRoute: "/grouped",
+        dataRoute: "/grouped.rsc",
+      },
+      "/index": {
+        initialRevalidateSeconds: false,
+        srcRoute: null,
+        dataRoute: "/_next/data/abc/index.json",
+      },
+      "/ppr": {
+        initialRevalidateSeconds: false,
+        srcRoute: "/ppr",
+        dataRoute: "/ppr.rsc",
+        response: "initial",
+      },
+      "/ppr/known": {
+        initialRevalidateSeconds: false,
+        srcRoute: "/ppr/[id]",
+        dataRoute: "/ppr/known.rsc",
+        response: "initial",
+      },
+      "/api/cached": {
+        initialRevalidateSeconds: false,
+        srcRoute: "/api/cached",
+        dataRoute: null,
+        response: "complete",
       },
       "/revalidate": {
         initialRevalidateSeconds: 60,
@@ -43,12 +78,35 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         fallback: null,
         dataRouteRegex: null,
       },
+      "/cache-victim/[id]": {
+        routeRegex: "^/cache-victim/([^/]+?)(?:/)?$",
+        dataRoute: "/_next/data/abc/cache-victim/[id].json",
+        fallback: null,
+        dataRouteRegex: "^/_next/data/abc/cache-victim/([^/]+?)\\.json$",
+        response: "empty",
+      },
+      "/[...slug]": {
+        routeRegex: "^/(.+?)(?:/)?$",
+        dataRoute: "/_next/data/abc/[...slug].json",
+        fallback: null,
+        dataRouteRegex: "^/_next/data/abc/(.+?)\\.json$",
+        response: "empty",
+      },
+      "/ppr/[id]": {
+        routeRegex: "^/ppr/([^/]+?)(?:/)?$",
+        dataRoute: "/ppr/[id].rsc",
+        fallback: null,
+        dataRouteRegex: "^/ppr/([^/]+?)\\.rsc$",
+        response: "empty",
+        experimentalPPR: true,
+        renderingMode: "PARTIALLY_STATIC",
+      },
     },
   },
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: MiddlewareEvent) => event.rawPath,
+  localizePath: localizePathMock,
 }));
 
 type PartialEvent = Partial<
@@ -69,6 +127,24 @@ function createEvent(event: PartialEvent): MiddlewareEvent {
     remoteAddress: event.remoteAddress ?? "::1",
     rewriteStatusCode: event.rewriteStatusCode,
   };
+}
+
+function createResolvedRoute(
+  route: string,
+  type: ResolvedRoute["type"],
+  kind: NonNullable<ResolvedRoute["cacheOwner"]>["kind"],
+  sourceRoute: string,
+): ResolvedRoute {
+  return { route, type, cacheOwner: { kind, sourceRoute } };
+}
+
+function createScopedKey(
+  kind: NonNullable<ResolvedRoute["cacheOwner"]>["kind"],
+  sourceRoute: string,
+  normalizedPath: string,
+): string {
+  const sourceHash = createHash("sha256").update(sourceRoute).digest("hex");
+  return `/route-cache/${kind}/${sourceHash}/$${normalizedPath}`;
 }
 
 const incrementalCache = {
@@ -107,6 +183,7 @@ globalThis.queue = queue;
 beforeEach(() => {
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
   vi.clearAllMocks();
+  localizePathMock.mockImplementation((event) => event.rawPath);
   globalThis.nextVersion = "16.0.0";
   globalThis.openNextConfig = {
     dangerous: {
@@ -118,7 +195,7 @@ beforeEach(() => {
 
 describe("cacheInterceptor", () => {
   it.each(["15.5.27", "15.6.0", "16.3.8", "16.4.0"])(
-    "should defer route-scoped cache selection to fixed Next.js %s",
+    "should defer route-scoped cache selection without an owner on Next.js %s",
     async (version) => {
       globalThis.nextVersion = version;
       const event = createEvent({ url: "/albums" });
@@ -128,6 +205,31 @@ describe("cacheInterceptor", () => {
       expect(result).toBe(event);
       expect(incrementalCache.get).not.toHaveBeenCalled();
       expect(tagCache.getLastModified).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["15.5.27", "15.6.0", "16.3.8", "16.4.0"])(
+    "should intercept an owner-scoped cache entry on fixed Next.js %s",
+    async (version) => {
+      globalThis.nextVersion = version;
+      const event = createEvent({ url: "/albums" });
+      const route = createResolvedRoute(
+        "/albums",
+        "app",
+        "APP_PAGE",
+        "/albums/page",
+      );
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "app", html: "scoped entry" },
+      });
+
+      const result = await cacheInterceptor(event, [route]);
+
+      expect(await fromReadableStream(result.body)).toBe("scoped entry");
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        createScopedKey("APP_PAGE", "/albums/page", "/albums"),
+      );
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
     },
   );
 
@@ -157,6 +259,243 @@ describe("cacheInterceptor", () => {
       expect(incrementalCache.get).not.toHaveBeenCalled();
     },
   );
+
+  it("should scope an encoded alias to the catch-all owner before decoding", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/%63ache-victim/alias-first" });
+    const catchAll = createResolvedRoute(
+      "/[...slug]",
+      "page",
+      "PAGES",
+      "/[...slug]",
+    );
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "page", html: "catch-all", revalidate: 60 },
+    });
+
+    const result = await cacheInterceptor(event, [catchAll]);
+
+    expect(await fromReadableStream(result.body)).toBe("catch-all");
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      createScopedKey("PAGES", "/[...slug]", "/cache-victim/alias-first"),
+    );
+  });
+
+  it("should scope a canonical path to its specific owner", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/cache-victim/canonical-first" });
+    const specific = createResolvedRoute(
+      "/cache-victim/[id]",
+      "page",
+      "PAGES",
+      "/cache-victim/[id]",
+    );
+    const catchAll = createResolvedRoute(
+      "/[...slug]",
+      "page",
+      "PAGES",
+      "/[...slug]",
+    );
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "page", html: "specific", revalidate: 60 },
+    });
+
+    const result = await cacheInterceptor(event, [specific, catchAll]);
+
+    expect(await fromReadableStream(result.body)).toBe("specific");
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      createScopedKey(
+        "PAGES",
+        "/cache-victim/[id]",
+        "/cache-victim/canonical-first",
+      ),
+    );
+  });
+
+  it("should fall through after a scoped miss without probing a catch-all", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/cache-victim/miss" });
+    const specific = createResolvedRoute(
+      "/cache-victim/[id]",
+      "page",
+      "PAGES",
+      "/cache-victim/[id]",
+    );
+    const catchAll = createResolvedRoute(
+      "/[...slug]",
+      "page",
+      "PAGES",
+      "/[...slug]",
+    );
+    incrementalCache.get.mockResolvedValueOnce(null);
+
+    expect(await cacheInterceptor(event, [specific, catchAll])).toBe(event);
+    expect(incrementalCache.get).toHaveBeenCalledTimes(1);
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      createScopedKey("PAGES", "/cache-victim/[id]", "/cache-victim/miss"),
+    );
+  });
+
+  it("should keep root and literal index scoped keys distinct", async () => {
+    globalThis.nextVersion = "16.3.8";
+    incrementalCache.get.mockResolvedValue({
+      value: { type: "page", html: "entry", revalidate: false },
+    });
+
+    await cacheInterceptor(createEvent({ url: "/" }), [
+      createResolvedRoute("/", "app", "APP_PAGE", "/page"),
+    ]);
+    await cacheInterceptor(createEvent({ url: "/index" }), [
+      createResolvedRoute("/index", "page", "PAGES", "/index"),
+    ]);
+
+    expect(incrementalCache.get).toHaveBeenNthCalledWith(
+      1,
+      createScopedKey("APP_PAGE", "/page", "/index"),
+    );
+    expect(incrementalCache.get).toHaveBeenNthCalledWith(
+      2,
+      createScopedKey("PAGES", "/index", "/index/index"),
+    );
+  });
+
+  it("should retain the full grouped App source in the owner hash", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/grouped" });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "app", html: "grouped" },
+    });
+
+    await cacheInterceptor(event, [
+      createResolvedRoute(
+        "/grouped",
+        "app",
+        "APP_PAGE",
+        "/(marketing)/grouped/page",
+      ),
+    ]);
+
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      createScopedKey("APP_PAGE", "/(marketing)/grouped/page", "/grouped"),
+    );
+  });
+
+  it.each(["POST", "PUT", "DELETE", "HEAD"])(
+    "should not serve a cached GET response to a %s request",
+    async (method) => {
+      globalThis.nextVersion = "16.3.8";
+      const event = createEvent({ url: "/api/cached", method });
+
+      expect(
+        await cacheInterceptor(event, [
+          createResolvedRoute(
+            "/api/cached",
+            "route",
+            "APP_ROUTE",
+            "/api/cached/route",
+          ),
+        ]),
+      ).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    },
+  );
+
+  it("should pass a concrete PPR shell to Next.js for resumption", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/ppr" });
+
+    expect(
+      await cacheInterceptor(event, [
+        createResolvedRoute("/ppr", "app", "APP_PAGE", "/ppr/page"),
+      ]),
+    ).toBe(event);
+    expect(incrementalCache.get).not.toHaveBeenCalled();
+  });
+
+  it("should pass a dynamic PPR shell to Next.js for resumption", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/ppr/new" });
+
+    expect(
+      await cacheInterceptor(event, [
+        createResolvedRoute("/ppr/[id]", "app", "APP_PAGE", "/ppr/[id]/page"),
+      ]),
+    ).toBe(event);
+    expect(incrementalCache.get).not.toHaveBeenCalled();
+  });
+
+  it("should not reinterpret a concrete PPR shell as blocking fallback", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({ url: "/ppr/known" });
+
+    expect(
+      await cacheInterceptor(event, [
+        createResolvedRoute("/ppr/[id]", "app", "APP_PAGE", "/ppr/[id]/page"),
+      ]),
+    ).toBe(event);
+    expect(incrementalCache.get).not.toHaveBeenCalled();
+  });
+
+  it("should remove basePath before detecting an explicit locale", async () => {
+    globalThis.nextVersion = "16.3.8";
+    NextConfig.basePath = "/base";
+    NextConfig.i18n = {
+      defaultLocale: "en",
+      locales: ["en", "fr"],
+    } as any;
+    localizePathMock.mockImplementation((event) =>
+      event.rawPath.startsWith("/fr/") ? event.rawPath : `/en${event.rawPath}`,
+    );
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "page", html: "localized", revalidate: 60 },
+    });
+    const event = createEvent({ url: "/base/fr/cache-victim/one" });
+
+    try {
+      await cacheInterceptor(event, [
+        createResolvedRoute(
+          "/cache-victim/[id]",
+          "page",
+          "PAGES",
+          "/cache-victim/[id]",
+        ),
+      ]);
+
+      expect(localizePathMock).toHaveBeenCalledWith(
+        expect.objectContaining({ rawPath: "/fr/cache-victim/one" }),
+      );
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        createScopedKey("PAGES", "/cache-victim/[id]", "/fr/cache-victim/one"),
+      );
+    } finally {
+      NextConfig.basePath = undefined;
+      NextConfig.i18n = undefined;
+    }
+  });
+
+  it("should revalidate an encoded owner through its original spelling", async () => {
+    globalThis.nextVersion = "16.3.8";
+    const event = createEvent({
+      url: "/%63ache-victim/stale",
+      headers: { host: "example.com" },
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "page", html: "stale", revalidate: 60 },
+      lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+    });
+
+    await cacheInterceptor(event, [
+      createResolvedRoute("/[...slug]", "page", "PAGES", "/[...slug]"),
+    ]);
+
+    expect(queue.send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        MessageBody: expect.objectContaining({
+          url: "/%63ache-victim/stale",
+        }),
+      }),
+    );
+  });
 
   it("should take no action when next-action header is present", async () => {
     const event = createEvent({
@@ -320,6 +659,36 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should not duplicate the root slash when queuing revalidation", async () => {
+    NextConfig.trailingSlash = true;
+    NextConfig.basePath = "/base";
+    const event = createEvent({
+      url: "/base/",
+      headers: { host: "example.com" },
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Index page",
+        revalidate: 120,
+      },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    });
+
+    try {
+      await cacheInterceptor(event);
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({ url: "/base/" }),
+        }),
+      );
+    } finally {
+      NextConfig.trailingSlash = undefined;
+      NextConfig.basePath = undefined;
+    }
   });
 
   it("should take no action when tagCache lasModified is -1 for app type", async () => {

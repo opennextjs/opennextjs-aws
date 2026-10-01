@@ -1,5 +1,7 @@
 import type { ReadableStream } from "node:stream/web";
 
+import type { RouteCacheOwner } from "./cache";
+
 import type { Writable } from "node:stream";
 import type { WarmerEvent, WarmerResponse } from "../adapters/warmer-function";
 import type {
@@ -150,6 +152,8 @@ export type RouteType = "route" | "page" | "app";
 export interface ResolvedRoute {
   route: string;
   type: RouteType;
+  /** Exact Next.js route-module identity used to scope response cache keys. */
+  cacheOwner?: RouteCacheOwner;
 }
 
 /**

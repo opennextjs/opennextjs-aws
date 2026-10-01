@@ -12,6 +12,13 @@ test.describe("route-scoped cache with interception configured", () => {
 
     const repeated = await request.get("/cache-victim/alias-first");
     expect(await repeated.text()).toContain("mixed-specific-victim");
+    // `x-opennext-cache` is emitted only by the pre-Next interceptor. This
+    // proves owner isolation is preserved without giving up the fast path.
+    expect(repeated.headers()["x-opennext-cache"]).toBe("HIT");
+
+    const repeatedAlias = await request.get("/%63ache-victim/alias-first");
+    expect(await repeatedAlias.text()).toContain("mixed-root-catch-all");
+    expect(repeatedAlias.headers()["x-opennext-cache"]).toBe("HIT");
   });
 
   test("keeps a warm canonical entry isolated from an encoded catch-all", async ({
@@ -26,5 +33,6 @@ test.describe("route-scoped cache with interception configured", () => {
     const canonicalAfter = await request.get("/cache-victim/canonical-first");
     expect(await canonicalAfter.text()).toContain("mixed-specific-victim");
     expect(await canonicalAfter.text()).not.toContain("mixed-root-catch-all");
+    expect(canonicalAfter.headers()["x-opennext-cache"]).toBe("HIT");
   });
 });

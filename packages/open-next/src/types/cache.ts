@@ -84,6 +84,11 @@ export interface CacheHandlerValue {
 
 export type Extension = "cache" | "fetch" | "composable";
 
+export type RouteCacheOwner = {
+  kind: "PAGES" | "APP_PAGE" | "APP_ROUTE";
+  sourceRoute: string;
+};
+
 type MetaHeaders = {
   "x-next-cache-tags"?: string;
   [k: string]: string | string[] | undefined;
@@ -102,10 +107,7 @@ export interface Meta {
    */
   routeCache?: {
     key: string;
-    owner: {
-      kind: "PAGES" | "APP_PAGE" | "APP_ROUTE";
-      sourceRoute: string;
-    };
+    owner: RouteCacheOwner;
     isFallback: boolean;
   };
   routeCacheLastModified?: number;

@@ -3,6 +3,7 @@ import {
   PagesManifest,
   RoutesManifest,
 } from "config/index";
+import type { RouteCacheOwner } from "types/cache";
 import type { RouteDefinition } from "types/next-types";
 import type { ResolvedRoute, RouteType } from "types/open-next";
 
@@ -18,6 +19,117 @@ const optionalPrefix = optionalLocalePrefixRegex.replace(
   "^/",
   optionalBasepathPrefixRegex,
 );
+
+type AppRouteSources = {
+  pages: Map<string, string[]>;
+  routes: Map<string, string[]>;
+};
+
+/**
+ * Compares App Router source entries using Next.js's primary-entry ordering.
+ *
+ * Parallel slots sort before ordinary entries, then source entries use lexical
+ * order. `selectAppPageEntry` keeps the greatest entry, which means an ordinary
+ * `/page` wins over its parallel slots while route groups remain part of the
+ * selected cache identity.
+ *
+ * @param a First App Router source entry.
+ * @param b Second App Router source entry.
+ * @returns A negative, zero, or positive ordering value.
+ */
+function compareAppPaths(a: string, b: string): number {
+  const aHasSlot = a.includes("/@");
+  const bHasSlot = b.includes("/@");
+  if (aHasSlot && !bHasSlot) return -1;
+  if (!aHasSlot && bHasSlot) return 1;
+  return a.localeCompare(b);
+}
+
+/**
+ * Selects the App Page source entry whose identity Next.js hashes.
+ *
+ * @param appPaths Full source entries mapped to one public pathname.
+ * @returns The source entry selected by Next.js.
+ * @throws When no source entry is available.
+ */
+function selectAppPageEntry(appPaths: string[]): string {
+  const [first, ...rest] = appPaths;
+  if (!first) {
+    throw new Error("Cannot select an App Page cache owner without an entry");
+  }
+  return rest.reduce(
+    (selected, candidate) =>
+      compareAppPaths(selected, candidate) < 0 ? candidate : selected,
+    first,
+  );
+}
+
+/**
+ * Groups full App Router source entries by their public route pathname.
+ *
+ * @returns App Page and App Route source entries keyed by public pathname.
+ */
+function collectAppRouteSources(): AppRouteSources {
+  const sources: AppRouteSources = {
+    pages: new Map(),
+    routes: new Map(),
+  };
+  for (const [sourceRoute, publicRoute] of Object.entries(
+    AppPathRoutesManifest,
+  )) {
+    const target = sourceRoute.endsWith("/page")
+      ? sources.pages
+      : sourceRoute.endsWith("/route")
+        ? sources.routes
+        : undefined;
+    if (!target) continue;
+    target.set(publicRoute, [...(target.get(publicRoute) ?? []), sourceRoute]);
+  }
+  return sources;
+}
+
+const appRouteSources = collectAppRouteSources();
+
+/**
+ * Determines the owner Next.js uses for a matched response-cache route.
+ *
+ * Interception routes are deliberately excluded. Their selected module can
+ * depend on router state headers that the pathname matcher does not model, so
+ * treating their pathname match as authoritative would not be conservative.
+ *
+ * @param route Public route pathname from the routes manifest.
+ * @param routeType OpenNext route type.
+ * @returns The exact response-cache owner, or undefined when it is ambiguous.
+ */
+function getRouteCacheOwner(
+  route: string,
+  routeType: RouteType,
+): RouteCacheOwner | undefined {
+  if (routeType === "app") {
+    const entries = appRouteSources.pages.get(route);
+    if (!entries?.length) return undefined;
+    const sourceRoute = selectAppPageEntry(entries);
+    if (
+      sourceRoute.includes("/(.)") ||
+      sourceRoute.includes("/(..)") ||
+      sourceRoute.includes("/(...)")
+    ) {
+      return undefined;
+    }
+    return { kind: "APP_PAGE", sourceRoute };
+  }
+  if (routeType === "route") {
+    const entries = appRouteSources.routes.get(route);
+    // Multiple route handlers for one public pathname should be rejected by
+    // Next's build, but falling through is safer than choosing one if present.
+    if (entries?.length !== 1) return undefined;
+    return { kind: "APP_ROUTE", sourceRoute: entries[0] };
+  }
+
+  const filename = PagesManifest[route];
+  if (!filename || filename.startsWith("pages/api/")) return undefined;
+  return { kind: "PAGES", sourceRoute: route };
+}
 
 function routeMatcher(routeDefinitions: RouteDefinition[]) {
   const regexp = routeDefinitions.map((route) => ({
@@ -46,9 +158,11 @@ function routeMatcher(routeDefinitions: RouteDefinition[]) {
       } else if (routePathsSet.has(foundRoute.page)) {
         routeType = "route";
       }
+      const cacheOwner = getRouteCacheOwner(foundRoute.page, routeType);
       return {
         route: foundRoute.page,
         type: routeType,
+        ...(cacheOwner ? { cacheOwner } : {}),
       };
     });
   };

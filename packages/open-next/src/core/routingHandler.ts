@@ -229,6 +229,15 @@ export default async function routingHandler(
 
     const isNextImageRoute = eventOrResult.rawPath.startsWith("/_next/image");
 
+    // Route matches are ordered with static routes first and dynamic routes in
+    // Next's manifest order. The cache interceptor must use the same first
+    // candidate that Next will attempt; a miss must never fall through to a
+    // broader catch-all cache entry.
+    const resolvedRoutes: ResolvedRoute[] = [
+      ...foundStaticRoute,
+      ...foundDynamicRoute,
+    ];
+
     const isRouteFoundBeforeAllRewrites =
       isStaticRoute || isDynamicRoute || isExternalRewrite;
 
@@ -256,10 +265,13 @@ export default async function routingHandler(
 
     if (
       globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+      // External rewrites must be proxied even if their destination pathname
+      // happens to overlap a local prerendered route.
+      !isExternalRewrite &&
       !isInternalResult(eventOrResult)
     ) {
       debug("Cache interception enabled");
-      eventOrResult = await cacheInterceptor(eventOrResult);
+      eventOrResult = await cacheInterceptor(eventOrResult, resolvedRoutes);
       if (isInternalResult(eventOrResult)) {
         applyMiddlewareHeaders(eventOrResult, headers);
         return eventOrResult;
@@ -268,11 +280,6 @@ export default async function routingHandler(
 
     // We apply the headers from the middleware response last
     applyMiddlewareHeaders(eventOrResult, headers);
-
-    const resolvedRoutes: ResolvedRoute[] = [
-      ...foundStaticRoute,
-      ...foundDynamicRoute,
-    ];
 
     debug("resolvedRoutes", resolvedRoutes);
 

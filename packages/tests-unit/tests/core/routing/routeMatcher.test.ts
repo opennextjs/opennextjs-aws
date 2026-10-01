@@ -10,6 +10,10 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
     "/api/app/route": "/api/app",
     "/app/page": "/app",
     "/catchAll/[...slug]/page": "/catchAll/[...slug]",
+    "/(marketing)/grouped/page": "/grouped",
+    "/parallel/@a/page": "/parallel",
+    "/parallel/@b/page": "/parallel",
+    "/parallel/page": "/parallel",
   },
   RoutesManifest: {
     version: 3,
@@ -57,6 +61,18 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
           routeKeys: {},
           namedRegex: "^/page/catchAll/static(?:/)?$",
         },
+        {
+          page: "/grouped",
+          regex: "^/grouped(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/grouped(?:/)?$",
+        },
+        {
+          page: "/parallel",
+          regex: "^/parallel(?:/)?$",
+          routeKeys: {},
+          namedRegex: "^/parallel(?:/)?$",
+        },
       ],
     },
   },
@@ -64,6 +80,9 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
     "/_app": "pages/_app.js",
     "/_document": "pages/_document.js",
     "/api/hello": "pages/api/hello.js",
+    "/page": "pages/page.js",
+    "/page/catchAll/[...slug]": "pages/page/catchAll/[...slug].js",
+    "/page/catchAll/static": "pages/page/catchAll/static.js",
     "/_error": "pages/_error.js",
     "/404": "pages/404.html",
   },
@@ -81,6 +100,10 @@ describe("routeMatcher", () => {
         {
           route: "/app",
           type: "app",
+          cacheOwner: {
+            kind: "APP_PAGE",
+            sourceRoute: "/app/page",
+          },
         },
       ]);
     });
@@ -91,6 +114,10 @@ describe("routeMatcher", () => {
         {
           route: "/api/app",
           type: "route",
+          cacheOwner: {
+            kind: "APP_ROUTE",
+            sourceRoute: "/api/app/route",
+          },
         },
       ]);
 
@@ -106,6 +133,32 @@ describe("routeMatcher", () => {
     it("should not match app dynamic route", () => {
       const routes = staticRouteMatcher("/catchAll/slug");
       expect(routes).toEqual([]);
+    });
+
+    it("should retain route groups in the app cache owner", () => {
+      expect(staticRouteMatcher("/grouped")).toEqual([
+        {
+          route: "/grouped",
+          type: "app",
+          cacheOwner: {
+            kind: "APP_PAGE",
+            sourceRoute: "/(marketing)/grouped/page",
+          },
+        },
+      ]);
+    });
+
+    it("should select the primary app entry instead of a parallel slot", () => {
+      expect(staticRouteMatcher("/parallel")).toEqual([
+        {
+          route: "/parallel",
+          type: "app",
+          cacheOwner: {
+            kind: "APP_PAGE",
+            sourceRoute: "/parallel/page",
+          },
+        },
+      ]);
     });
 
     it("should not match page dynamic route", () => {
@@ -126,6 +179,10 @@ describe("routeMatcher", () => {
         {
           route: "/catchAll/[...slug]",
           type: "app",
+          cacheOwner: {
+            kind: "APP_PAGE",
+            sourceRoute: "/catchAll/[...slug]/page",
+          },
         },
       ]);
     });
@@ -136,6 +193,10 @@ describe("routeMatcher", () => {
         {
           route: "/page/catchAll/[...slug]",
           type: "page",
+          cacheOwner: {
+            kind: "PAGES",
+            sourceRoute: "/page/catchAll/[...slug]",
+          },
         },
       ]);
     });
@@ -147,6 +208,10 @@ describe("routeMatcher", () => {
         {
           route: "/page/catchAll/[...slug]",
           type: "page",
+          cacheOwner: {
+            kind: "PAGES",
+            sourceRoute: "/page/catchAll/[...slug]",
+          },
         },
       ]);
 
@@ -155,6 +220,10 @@ describe("routeMatcher", () => {
         {
           route: "/page/catchAll/static",
           type: "page",
+          cacheOwner: {
+            kind: "PAGES",
+            sourceRoute: "/page/catchAll/static",
+          },
         },
       ]);
     });

@@ -174,6 +174,11 @@ export interface PrerenderManifest {
     {
       // TODO: add the rest when needed for PPR
       initialRevalidateSeconds: number | false;
+      srcRoute?: string | null;
+      dataRoute?: string | null;
+      response?: "empty" | "initial" | "complete";
+      experimentalPPR?: boolean;
+      renderingMode?: "STATIC" | "PARTIALLY_STATIC";
     }
   >;
   dynamicRoutes: {
@@ -181,6 +186,9 @@ export interface PrerenderManifest {
       routeRegex: string;
       fallback: string | false | null;
       dataRouteRegex: string;
+      response?: "empty" | "initial" | "complete";
+      experimentalPPR?: boolean;
+      renderingMode?: "STATIC" | "PARTIALLY_STATIC";
     };
   };
   preview: {
