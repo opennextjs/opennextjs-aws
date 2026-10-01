@@ -181,6 +181,27 @@ export function normalizeLocalePath(pathname: string, locales?: string[]) {
 }
 
 /**
+ * Mirrors how Next.js resolves the cache pathname of a dynamic route: a route resolving to
+ * `/index` (i.e. a root catch-all rendering `/index`) is cached as `/`, or as `/<locale>` with i18n.
+ *
+ * @example
+ *     getDynamicRouteCachePathname("/index") === "/"
+ *     getDynamicRouteCachePathname("/en/index", ["en", "fr"]) === "/en"
+ *
+ * @param pathname The localized pathname, i.e. `/en/blog/hello` with i18n
+ * @param locales The i18n locales
+ */
+export function getDynamicRouteCachePathname(
+  pathname: string,
+  locales?: string[],
+): string {
+  if (normalizeLocalePath(pathname, locales) !== "/index") {
+    return pathname;
+  }
+  return pathname.slice(0, -"/index".length) || "/";
+}
+
+/**
  * Computes the cache key of an entry from the prerender manifest, i.e. a prerendered
  * route (`routes`) or a fallback shell (`dynamicRoutes`).
  *

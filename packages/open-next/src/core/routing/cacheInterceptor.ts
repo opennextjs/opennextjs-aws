@@ -25,6 +25,7 @@ import {
 } from "utils/cacheHeaders";
 import {
   type RouteCacheManifests,
+  getDynamicRouteCachePathname,
   getPrerenderRouteCacheKey,
   getRouteCacheKey,
   getRouteCacheOwner,
@@ -383,7 +384,12 @@ function getCacheKey(
     return undefined;
   }
   const owner = getRouteCacheOwner(dynamicRoute.route, manifests);
-  return owner ? getRouteCacheKey(localizedPath, owner) : undefined;
+  return owner
+    ? getRouteCacheKey(
+        getDynamicRouteCachePathname(localizedPath, manifests.locales),
+        owner,
+      )
+    : undefined;
 }
 
 export async function cacheInterceptor(

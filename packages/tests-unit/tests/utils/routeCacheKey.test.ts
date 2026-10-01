@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   type RouteCacheManifests,
   denormalizePagePath,
+  getDynamicRouteCachePathname,
   getPathFromRouteCacheKey,
   getPrerenderRouteCacheKey,
   getRouteCacheKey,
@@ -129,6 +130,24 @@ describe("normalizeLocalePath", () => {
     ["/isr", "/isr"],
   ])("%s => %s", (pathname, expected) => {
     expect(normalizeLocalePath(pathname, ["en", "fr"])).toBe(expected);
+  });
+});
+
+describe("getDynamicRouteCachePathname", () => {
+  it.each([
+    ["/index", "/"],
+    ["/en/index", "/en"],
+    ["/EN/index", "/EN"],
+    ["/foo/index", "/foo/index"],
+    ["/index/foo", "/index/foo"],
+    ["/en/foo", "/en/foo"],
+    ["/", "/"],
+  ])("%s => %s", (pathname, expected) => {
+    expect(getDynamicRouteCachePathname(pathname, ["en", "fr"])).toBe(expected);
+  });
+
+  it("should not strip a locale-like segment without i18n", () => {
+    expect(getDynamicRouteCachePathname("/en/index")).toBe("/en/index");
   });
 });
 
