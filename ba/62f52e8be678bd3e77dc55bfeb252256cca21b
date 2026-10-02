@@ -1,0 +1,19 @@
+packages/open-next/src/build/createAssets.ts
+  s_a45ca4c3dd8daf::t_7325194545a2a8 148-150,172,175,191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ba62f52e8be678bd3e77dc55bfeb252256cca21b",
+  "prompts": {},
+  "sessions": {
+    "s_a45ca4c3dd8daf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09355786ffeq4Y2FmsfwYqXio",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
