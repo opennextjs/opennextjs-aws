@@ -162,6 +162,24 @@ describe("cacheInterceptor", () => {
     expect(result).toEqual(event);
   });
 
+  it.each(["POST", "PUT", "PATCH", "DELETE"])(
+    "should take no action for a %s request",
+    async (method) => {
+      const event = createEvent({
+        url: "/albums",
+        method,
+        headers: {
+          "content-type": "multipart/form-data; boundary=x",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    },
+  );
+
   it("should not intercept a path containing a malformed escape", async () => {
     const event = createEvent({
       url: "/%61dmin/%ZZ",

@@ -401,6 +401,10 @@ export async function cacheInterceptor(
   )
     return event;
 
+  // Only GET and HEAD can be answered from the cache. A form posted without
+  // JavaScript carries its server action id in the body, not in the next-action header.
+  if (event.method !== "GET" && event.method !== "HEAD") return event;
+
   // Check for Next.js preview mode cookies
   const cookies = event.headers.cookie || "";
   const hasPreviewData =
