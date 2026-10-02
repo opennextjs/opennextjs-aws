@@ -499,6 +499,34 @@ describe("handleRewrites", () => {
     });
   });
 
+  it("should rewrite externally with a literal port", () => {
+    const event = createEvent({
+      url: "https://on/api/applications",
+      method: "POST",
+      headers: { authorization: "Bearer token" },
+      body: '{"name":"OpenNext"}',
+    });
+
+    const rewrites = [
+      {
+        source: "/api/:path*",
+        destination: "http://127.0.0.1:48952/api/:path*",
+        regex: "^/api(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/api/applications",
+        url: "http://127.0.0.1:48952/api/applications",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: true,
+    });
+  });
+
   // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
   it("should rewrite to the root with a query string", () => {
     const event = createEvent({
