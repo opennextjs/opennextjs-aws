@@ -11,6 +11,12 @@ const topLevelAwait = await new Promise<string>((resolve) => {
   }, 10);
 });
 
+/**
+ * Applies middleware behavior used by the mixed-router test application.
+ *
+ * @param request Incoming Next.js request.
+ * @return A middleware response, rewrite, redirect, or proxied response.
+ */
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
@@ -66,10 +72,13 @@ export function middleware(request: NextRequest) {
   }
   const rHeaders = new Headers(request.headers);
   const responseHeaders = new Headers();
-  // It is so that cloudfront doesn't cache the response
-  // For: segmentPrefetch.test.ts - it sends the same URL with different
-  // `next-router-segment-prefetch` headers and no `_rsc` cache buster.
-  if (path === "/albums") {
+  // Keep origin-cache tests out of CloudFront so repeated requests exercise
+  // cacheInterceptor. The encoded spelling selects the catch-all route.
+  if (
+    path === "/albums" ||
+    path.startsWith("/cache-victim/") ||
+    path.startsWith("/%63ache-victim/")
+  ) {
     responseHeaders.set(
       "cache-control",
       "private, no-cache, no-store, max-age=0, must-revalidate",
