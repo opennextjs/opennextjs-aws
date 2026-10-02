@@ -1,0 +1,37 @@
+.changeset/route-cache-keys.md
+  s_a45ca4c3dd8daf::t_c52f9eeacb545b 5,7
+examples/app-pages-router/pages/[...slug].tsx
+  s_a45ca4c3dd8daf::t_65e41a3b22edbd 1-44
+examples/app-pages-router/pages/cache-victim/[id].tsx
+  s_a45ca4c3dd8daf::t_7c32d429d13849 1-44
+packages/open-next/src/adapters/cache.ts
+  s_a45ca4c3dd8daf::t_c00eafc0a665a6 440,529
+packages/open-next/src/build/createAssets.ts
+  s_a45ca4c3dd8daf::t_f25d55e5f40090 4,10,123,126,155-171,185-186,188,190,192-201,248-262
+packages/open-next/src/core/routingHandler.ts
+  s_a45ca4c3dd8daf::t_b4f6513d0b9d13 235-241,266,270
+packages/open-next/src/utils/routeCacheKey.ts
+  s_a45ca4c3dd8daf::t_902bb8c036cc20 7-8,49-53
+packages/tests-e2e/tests/appPagesRouter/routeScopedCache.test.ts
+  s_a45ca4c3dd8daf::t_6bebddbdb5fac6 1-36
+packages/tests-unit/tests/build/createAssets.test.ts
+  s_a45ca4c3dd8daf::t_76170aacd1cf3c 29-33,59,62-69,100-123,128-130,135,140-150,152-154,157,161-178
+packages/tests-unit/tests/utils/routeCacheKey.test.ts
+  s_a45ca4c3dd8daf::t_4630d8a40bfbeb 22-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "104f8a37e03141dbd565c5764ae7c9c2cb546c1d",
+  "prompts": {},
+  "sessions": {
+    "s_a45ca4c3dd8daf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09355786ffeq4Y2FmsfwYqXio",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
