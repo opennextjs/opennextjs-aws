@@ -145,19 +145,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const outputCachePath = path.join(outputDir, "cache", openNextBuildId);
   fs.mkdirSync(outputCachePath, { recursive: true });
 
-  const sourceDirs = [
-    { directory: ".next/server/pages", cachePrefix: "" },
-    { directory: ".next/server/app", cachePrefix: "" },
-    // Adapter builds on fixed Next.js releases can emit prerenders directly
-    // under their opaque response-cache key. Keep the route-cache directory
-    // in the OpenNext key instead of treating it as a traversal root.
-    { directory: ".next/server/route-cache", cachePrefix: "route-cache" },
-  ]
-    .map(({ directory, cachePrefix }) => ({
-      directory: path.join(dotNextPath, directory),
-      cachePrefix,
-    }))
-    .filter(({ directory }) => fs.existsSync(directory));
+  const sourceDirs = [".next/server/pages", ".next/server/app"]
+    .map((directory) => path.join(dotNextPath, directory))
+    .filter((directory) => fs.existsSync(directory));
 
   const htmlPages = buildHelper.getHtmlPages(dotNextPath);
 
@@ -179,11 +169,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   const metaFiles: TagCacheMetaFile[] = [];
 
   // Process each source directory
-  sourceDirs.forEach(({ directory: sourceDir, cachePrefix }) => {
+  sourceDirs.forEach((sourceDir) => {
     buildHelper.traverseFiles(
       sourceDir,
-      ({ relativePath }) =>
-        !isFileSkipped(path.join(cachePrefix, relativePath)),
+      ({ relativePath }) => !isFileSkipped(relativePath),
       ({ absolutePath, relativePath }) => {
         const ext = path.extname(absolutePath);
         switch (ext) {
@@ -199,8 +188,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             //
             // Next 16.1 removed `.prefetch.rsc`, so the strip is a no-op on Next 16 where
             // the `rsc` field always holds a full payload.
-            const relativeCachePath = path
-              .join(cachePrefix, relativePath)
+            const relativeCachePath = relativePath
               .slice(0, -ext.length)
               .replace(/\.prefetch$/, "")
               .split(path.sep)

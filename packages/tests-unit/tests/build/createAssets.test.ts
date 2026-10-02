@@ -164,37 +164,11 @@ describe("createCacheAssets", () => {
     );
   });
 
-  it("collects direct route-cache output without dropping its namespace", async () => {
-    const options = await createBuild();
-    const hash = "c".repeat(64);
-    const key = `/route-cache/APP_ROUTE/${hash}/$/api/data`;
-    await writeArtifact(key.slice(1), {
-      body: JSON.stringify({ source: "route" }),
-      meta: {
-        status: 200,
-        headers: { "content-type": "application/json" },
-        routeCache: {
-          key,
-          owner: { kind: "APP_ROUTE", sourceRoute: "/api/data/route" },
-          isFallback: false,
-        },
-      },
-    });
-
-    createCacheAssets(options);
-
-    expect(await readCache(key.slice(1))).toMatchObject({
-      type: "route",
-      body: JSON.stringify({ source: "route" }),
-      meta: { routeCache: { key } },
-    });
-  });
-
   it("preserves encoded pathname suffixes and PPR segment payloads", async () => {
     const options = await createBuild();
     const hash = "e".repeat(64);
     const key = `/route-cache/APP_PAGE/${hash}/$/article/a%2Fb`;
-    const relativeBase = key.slice(1);
+    const relativeBase = "app/article/a%2Fb";
     await writeArtifact(relativeBase, {
       html: "",
       meta: {
@@ -223,7 +197,7 @@ describe("createCacheAssets", () => {
 
     createCacheAssets(options);
 
-    expect(await readCache(relativeBase)).toMatchObject({
+    expect(await readCache(key.slice(1))).toMatchObject({
       type: "app",
       html: "",
       segmentData: { "/children": "segment payload" },
