@@ -40,6 +40,10 @@ const externals = [
   // We need to remove this since this is what webpack is building
   // Adding it cause to add a lot of unnecessary deps
   "next/dist/compiled/next-server",
+
+  // Next's image-optimizer does `require("sharp")`. When sharp is installed,
+  // esbuild tries to bundle its native `.node` binaries and the build fails.
+  "sharp",
 ];
 
 export async function bundleNextServer(
