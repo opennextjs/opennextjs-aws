@@ -1,0 +1,21 @@
+packages/open-next/src/core/routing/matcher.ts
+  s_a45ca4c3dd8daf::t_8e194b838b44d6 209-212
+packages/tests-unit/tests/core/routing/matcher.test.ts
+  s_a45ca4c3dd8daf::t_043bc9984ad19e 498-525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5ba9354a36d92270c734390950e2ad39dc2ac4e4",
+  "prompts": {},
+  "sessions": {
+    "s_a45ca4c3dd8daf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09355786ffeq4Y2FmsfwYqXio",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
