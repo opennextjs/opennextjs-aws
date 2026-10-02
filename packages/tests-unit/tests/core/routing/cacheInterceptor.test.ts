@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
+import { localizePath } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
@@ -11,6 +12,31 @@ import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
+  RoutesManifest: {
+    basePath: "",
+    locales: [],
+    routes: {
+      static: [],
+      dynamic: [
+        { page: "/admin/[slug]", regex: "^/admin/([^/]+?)(?:/)?$" },
+        { page: "/isr/[id]", regex: "^/isr/([^/]+?)(?:/)?$" },
+        { page: "/dynamic/[id]", regex: "^/dynamic/([^/]+?)(?:/)?$" },
+        { page: "/[...slug]", regex: "^/(.+?)(?:/)?$" },
+      ],
+    },
+  },
+  AppPathRoutesManifest: {},
+  AppPathsManifest: {
+    "/page": "app/page.js",
+    "/(group)/albums/page": "app/(group)/albums/page.js",
+    "/admin/[slug]/page": "app/admin/[slug]/page.js",
+    "/isr/[id]/page": "app/isr/[id]/page.js",
+    "/dynamic/[id]/page": "app/dynamic/[id]/page.js",
+  },
+  PagesManifest: {
+    "/revalidate": "pages/revalidate.js",
+    "/[...slug]": "pages/[...slug].js",
+  },
   PrerenderManifest: {
     routes: {
       "/": {
@@ -33,6 +59,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         srcRoute: "/admin/[slug]",
         dataRoute: "/admin/%ZZ.rsc",
       },
+      "/admin/safe": {
+        initialRevalidateSeconds: 60,
+        srcRoute: "/admin/[slug]",
+        dataRoute: "/admin/safe.rsc",
+      },
     },
     dynamicRoutes: {
       // A `dynamicParams: true` route. Entries for ids that `generateStaticParams` did
@@ -43,13 +74,21 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         fallback: null,
         dataRouteRegex: null,
       },
+      "/[...slug]": {
+        routeRegex: "^/(.+?)(?:/)?$",
+        dataRoute: null,
+        fallback: null,
+        dataRouteRegex: null,
+      },
     },
   },
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: MiddlewareEvent) => event.rawPath,
+  localizePath: vi.fn((event: MiddlewareEvent) => event.rawPath),
 }));
+
+const localizePathMock = vi.mocked(localizePath);
 
 type PartialEvent = Partial<
   Omit<MiddlewareEvent, "body" | "rawPath" | "query">
@@ -297,6 +336,30 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should not duplicate the root slash during revalidation", async () => {
+    NextConfig.trailingSlash = true;
+    NextConfig.basePath = "/base";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "app", html: "Index page", revalidate: 60 },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    });
+
+    try {
+      await cacheInterceptor(
+        createEvent({ url: "/base/", headers: { host: "example.com" } }),
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({ url: "/base/" }),
+        }),
+      );
+    } finally {
+      NextConfig.trailingSlash = undefined;
+      NextConfig.basePath = undefined;
+    }
   });
 
   it("should take no action when tagCache lasModified is -1 for app type", async () => {
@@ -1142,6 +1205,148 @@ describe("cacheInterceptor", () => {
         const body = await fromReadableStream(result.body);
         expect(body).toEqual('{"hello":"world"}');
       });
+    });
+  });
+
+  describe("route cache keys (next >= 16.3.8)", () => {
+    const sha256 = (value: string) =>
+      createHash("sha256").update(value).digest("hex");
+
+    beforeEach(() => {
+      globalThis.nextVersion = "16.3.8";
+      incrementalCache.get.mockReset().mockResolvedValueOnce({});
+    });
+
+    it("should use the scoped key of a prerendered app page", async () => {
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/(group)/albums/page")}/$/albums`,
+      );
+    });
+
+    it("should use the scoped key of the index route", async () => {
+      await cacheInterceptor(createEvent({ url: "/" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/page")}/$/index`,
+      );
+    });
+
+    it("should use the scoped key of a prerendered pages route", async () => {
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use scoped keys for the Next.js 15.5.27 backport", async () => {
+      globalThis.nextVersion = "15.5.27";
+
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use the scoped key of an entry cached at runtime", async () => {
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+      );
+    });
+
+    it("should not check the cache for a dynamic route that is not ISR", async () => {
+      const event = createEvent({ url: "/dynamic/7" });
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should use the tag cache with the scoped key", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "app", html: "<html></html>", rsc: "rsc" },
+        lastModified: Date.now(),
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(tagCache.getLastModified).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+        expect.any(Number),
+      );
+    });
+
+    it("should reject a concrete prerender owned by another route", async () => {
+      const event = createEvent({ url: "/%61dmin/safe" });
+
+      expect(
+        await cacheInterceptor(event, [{ route: "/[...slug]", type: "page" }]),
+      ).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should fail closed when routing cannot prove an owner", async () => {
+      const event = createEvent({ url: "/albums" });
+
+      expect(await cacheInterceptor(event, [])).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should remove basePath before locale detection", async () => {
+      NextConfig.basePath = "/base";
+      NextConfig.i18n = {
+        defaultLocale: "en",
+        locales: ["en", "fr"],
+      } as any;
+      localizePathMock.mockImplementationOnce((event) =>
+        event.rawPath.startsWith("/fr/")
+          ? event.rawPath
+          : `/en${event.rawPath}`,
+      );
+
+      try {
+        await cacheInterceptor(createEvent({ url: "/base/fr/entry" }), [
+          { route: "/[...slug]", type: "page" },
+        ]);
+
+        expect(localizePathMock).toHaveBeenCalledWith(
+          expect.objectContaining({ rawPath: "/fr/entry" }),
+        );
+        expect(incrementalCache.get).toHaveBeenCalledWith(
+          `/route-cache/PAGES/${sha256("/[...slug]")}/$/fr/entry`,
+        );
+      } finally {
+        NextConfig.basePath = undefined;
+        NextConfig.i18n = undefined;
+      }
+    });
+
+    it("should revalidate encoded aliases through their original spelling", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "page", html: "stale", revalidate: 60 },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(
+        createEvent({
+          url: "/%63ache-victim/stale",
+          headers: { host: "example.com" },
+        }),
+        [{ route: "/[...slug]", type: "page" }],
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({
+            url: "/%63ache-victim/stale",
+          }),
+        }),
+      );
     });
   });
 
