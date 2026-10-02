@@ -8,6 +8,7 @@ import type {
   ResolvedRoute,
   RoutingResult,
 } from "types/open-next";
+import { seedIncrementalCacheMissFromHeaders } from "utils/cache";
 import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
@@ -58,6 +59,8 @@ export async function openNextHandler(
       requestId,
     },
     async () => {
+      // An external middleware already read the incremental cache for this request
+      seedIncrementalCacheMissFromHeaders(initialHeaders);
       await globalThis.__next_route_preloader("waitUntil");
       if (initialHeaders["x-forwarded-host"]) {
         initialHeaders.host = initialHeaders["x-forwarded-host"];

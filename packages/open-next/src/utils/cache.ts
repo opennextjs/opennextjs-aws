@@ -162,3 +162,110 @@ export async function writeTags(
   // Here we know that we have the correct type
   await globalThis.tagCache.writeTags(tagsToWrite as any);
 }
+
+const INCREMENTAL_CACHE_MEMO = "incremental-cache:get";
+const INCREMENTAL_CACHE_GENERATION = "incremental-cache:gen";
+type MemoEntry = WithLastModified<CacheValue<"cache">> | null;
+
+/**
+ * The raw incremental cache reads of the current request, shared by the cache interceptor and the
+ * cache handler so that a request reads the same key from the store only once.
+ */
+function incrementalCacheMemo() {
+  return globalThis.__openNextAls
+    .getStore()
+    ?.requestCache.getOrCreate<string, MemoEntry>(INCREMENTAL_CACHE_MEMO);
+}
+
+/**
+ * Per key generation, bumped by every write and delete. A read that spans an invalidation must not
+ * memoize what it read before that invalidation.
+ */
+function incrementalCacheGenerations() {
+  return globalThis.__openNextAls
+    .getStore()
+    ?.requestCache.getOrCreate<string, number>(INCREMENTAL_CACHE_GENERATION);
+}
+
+/**
+ * Readers get their own shallow copy: `getTagsFromValue` strips the cache tags header from the entry
+ * in place, and one reader must not strip it for the other reader of the same request.
+ */
+function copyMemoEntry(entry: MemoEntry): MemoEntry {
+  if (!entry?.value) {
+    return entry;
+  }
+  const { value, ...rest } = entry;
+  const headers = value.meta?.headers;
+  return {
+    ...rest,
+    value: {
+      ...value,
+      ...(headers
+        ? { meta: { ...value.meta, headers: { ...headers } } }
+        : { meta: value.meta }),
+    },
+  } as MemoEntry;
+}
+
+/** Reads the incremental cache, reusing the value another reader already fetched in this request. */
+export async function getIncrementalCacheEntry(
+  key: string,
+): Promise<MemoEntry> {
+  const memo = incrementalCacheMemo();
+  if (memo?.has(key)) {
+    return copyMemoEntry(memo.get(key) ?? null);
+  }
+  const generations = incrementalCacheGenerations();
+  const generation = generations?.get(key) ?? 0;
+  const entry = (await globalThis.incrementalCache.get(key, "cache")) ?? null;
+  // The key may have been written or deleted while the read was in flight
+  if ((generations?.get(key) ?? 0) === generation) {
+    memo?.set(key, entry);
+  }
+  return copyMemoEntry(entry);
+}
+
+/** Marks a key as resolved to a miss, used to carry the interceptor's decision over to the handler. */
+export function markIncrementalCacheMiss(key: string): void {
+  incrementalCacheMemo()?.set(key, null);
+}
+
+/** Drops the memoized read of a key that was just written or deleted. */
+export function clearIncrementalCacheEntry(key: string): void {
+  incrementalCacheMemo()?.delete(key);
+  const generations = incrementalCacheGenerations();
+  generations?.set(key, (generations.get(key) ?? 0) + 1);
+}
+
+/**
+ * Internal header used to carry a cache interceptor miss from an external middleware to the handler.
+ * It is declared here rather than next to the other internal headers because `routingHandler` imports
+ * the interceptor, and the prefix still makes the routing layer strip it from incoming requests.
+ */
+export const INTERNAL_HEADER_CACHE_MISS = "x-opennext-cache-miss";
+
+/**
+ * Consumes the interceptor handoff: only the external middleware is trusted to send it, the same way
+ * the request id is. In internal middleware mode the memo already lives in this request context.
+ */
+export function seedIncrementalCacheMissFromHeaders(
+  headers: Record<string, string | string[] | undefined>,
+): void {
+  if (!globalThis.openNextConfig.middleware?.external) {
+    return;
+  }
+  const value = headers[INTERNAL_HEADER_CACHE_MISS];
+  if (typeof value !== "string") {
+    return;
+  }
+  delete headers[INTERNAL_HEADER_CACHE_MISS];
+  let key: string;
+  try {
+    key = decodeURIComponent(value);
+  } catch {
+    // A caller that bypasses the middleware can send a malformed value; ignore it and read normally
+    return;
+  }
+  markIncrementalCacheMiss(key);
+}

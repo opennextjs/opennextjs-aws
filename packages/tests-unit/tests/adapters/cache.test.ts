@@ -1,5 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
+import {
+  getIncrementalCacheEntry,
+  markIncrementalCacheMiss,
+} from "@opennextjs/aws/utils/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { type Mock, vi } from "vitest";
 
@@ -74,6 +78,7 @@ describe("CacheHandler", () => {
           detachedWrites.push(promise);
         }),
       },
+      requestCache: new RequestCache(),
       writtenTags: new Set(),
     });
 
@@ -691,6 +696,7 @@ describe("CacheHandler", () => {
             pendingPromiseRunner: {
               withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
             },
+            requestCache: new RequestCache(),
             writtenTags: new Set(),
           };
           (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
@@ -716,6 +722,47 @@ describe("CacheHandler", () => {
           expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
+    });
+  });
+
+  describe("request scoped read memo", () => {
+    it("Should reuse an entry another reader already fetched", async () => {
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "route", body: "{}" },
+        lastModified: Date.now(),
+      });
+      // the interceptor's read, which seeds the memo for the rest of the request
+      await getIncrementalCacheEntry("key");
+
+      const result = await cache.get("key", { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledTimes(1);
+      expect((result as any)?.value.kind).toEqual("ROUTE");
+    });
+
+    it("Should reuse a memoized miss", async () => {
+      markIncrementalCacheMiss("key");
+
+      const result = await cache.get("key", { kindHint: "app" });
+
+      expect(result).toBeNull();
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("Should read the store again after a write in the same request", async () => {
+      markIncrementalCacheMiss("key");
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "route", body: "{}" },
+        lastModified: Date.now(),
+      });
+
+      await cache.set("key", { kind: "REDIRECT", props: {} });
+      await awaitDetachedWrites();
+
+      const result = await cache.get("key", { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledTimes(1);
+      expect(result).not.toBeNull();
     });
   });
 

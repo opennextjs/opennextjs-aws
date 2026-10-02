@@ -4,6 +4,8 @@ import type {
   IncrementalCacheValue,
 } from "types/cache";
 import {
+  clearIncrementalCacheEntry,
+  getIncrementalCacheEntry,
   getStaleLastModified,
   getTagsFromValue,
   hasBeenRevalidated,
@@ -121,7 +123,7 @@ export default class Cache {
 
   async getIncrementalCache(key: string): Promise<CacheHandlerValue | null> {
     try {
-      const cachedEntry = await globalThis.incrementalCache.get(key, "cache");
+      const cachedEntry = await getIncrementalCacheEntry(key);
 
       if (!cachedEntry?.value) {
         return null;
@@ -387,6 +389,9 @@ export default class Cache {
             break;
         }
       }
+
+      // The store changed, so a reader in this request must not reuse the value it read before.
+      clearIncrementalCacheEntry(key);
 
       await this.updateTagsOnSet(key, data, ctx);
       debug("Finished setting cache");
