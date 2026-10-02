@@ -1,0 +1,21 @@
+examples/app-pages-router/middleware.ts
+  s_1c20fcedf0565e::t_df1852e582d6ba 14-19,75-81
+packages/tests-e2e/tests/appPagesRouter/routeScopedCache.test.ts
+  s_1c20fcedf0565e::t_9a6eed3f5bccc6 9,13,15,19,29,33,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "3095cb31285872690276ecfa5c557a3a094fa342",
+  "prompts": {},
+  "sessions": {
+    "s_1c20fcedf0565e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0355d21bffehJ8q8yyKPWBmDg",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
