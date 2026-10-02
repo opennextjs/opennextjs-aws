@@ -1,7 +1,41 @@
 import {
   isExcluded,
   isNonLinuxPlatformPackage,
+  logCopyError,
 } from "@opennextjs/aws/build/copyTracedFiles.js";
+import logger from "@opennextjs/aws/logger.js";
+import { vi } from "vitest";
+
+describe("logCopyError", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("logs a missing source file at debug level only", () => {
+    const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const error = Object.assign(new Error("no such file"), { code: "ENOENT" });
+
+    logCopyError("/standalone/node_modules/pkg/index.js", error);
+
+    expect(debug).toHaveBeenCalledWith("Error copying file:", error);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test("warns on any other copy failure", () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const error = Object.assign(new Error("permission denied"), {
+      code: "EACCES",
+    });
+
+    logCopyError("/standalone/node_modules/pkg/index.js", error);
+
+    expect(warn).toHaveBeenCalledWith(
+      "Failed to copy traced file /standalone/node_modules/pkg/index.js:",
+      error,
+    );
+  });
+});
 
 describe("isExcluded", () => {
   test("should exclude sharp", () => {
