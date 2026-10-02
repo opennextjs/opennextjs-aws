@@ -51,13 +51,31 @@ export function isExternal(url?: string, host?: string) {
   return true;
 }
 
+function decodeQueryComponent(component: string) {
+  try {
+    return decodeURIComponent(component.replace(/\+/g, " "));
+  } catch {
+    // Malformed percent-encoding: keep it as-is, like URLSearchParams does.
+    return component;
+  }
+}
+
+/**
+ * Parses a raw query string into a query record with decoded keys and values,
+ * the same shape the converters produce from `URLSearchParams`.
+ * @__PURE__
+ */
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
   const queryParts = query.split("&");
   return getQueryFromIterator(
     queryParts.map((p) => {
       const [key, value] = p.split("=");
-      return [key, value] as const;
+      return [
+        decodeQueryComponent(key),
+        // `value` is undefined at runtime for a key without "="
+        value === undefined ? value : decodeQueryComponent(value),
+      ] as const;
     }),
   );
 }
@@ -153,20 +171,22 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * Make sure that multi-value query parameters are transformed to
  * ?key=value1&key=value2&... so that Next converts those parameters
  * to an array when reading the query parameters
- * query should be properly encoded before using this function
+ * Keys and values are expected decoded (as produced by the converters) and are
+ * percent-encoded here, so a value such as "h&m" survives as "h%26m"
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
-  const queryStrings: string[] = [];
+  const searchParams = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((entry) => queryStrings.push(`${key}=${entry}`));
+      value.forEach((entry) => searchParams.append(key, entry));
     } else {
-      queryStrings.push(`${key}=${value}`);
+      searchParams.append(key, value);
     }
   });
 
-  return queryStrings.length > 0 ? `?${queryStrings.join("&")}` : "";
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
 /**
