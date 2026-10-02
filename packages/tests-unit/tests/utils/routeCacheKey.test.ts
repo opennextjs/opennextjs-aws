@@ -19,7 +19,9 @@ const sha256 = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 
 describe("useRouteCacheKeys", () => {
-  it("should only be enabled for next >= 16.3.8", () => {
+  it("should support both security release lines", () => {
+    expect(useRouteCacheKeys("15.5.26")).toBe(false);
+    expect(useRouteCacheKeys("15.5.27")).toBe(true);
     expect(useRouteCacheKeys("16.3.7")).toBe(false);
     expect(useRouteCacheKeys("16.3.8")).toBe(true);
     expect(useRouteCacheKeys("17.0.0")).toBe(true);

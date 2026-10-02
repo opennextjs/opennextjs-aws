@@ -2,6 +2,6 @@
 "@opennextjs/aws": patch
 ---
 
-fix(cache): use the scoped response cache keys introduced in Next.js 16.3.8
+fix(cache): support scoped response cache keys in fixed Next.js releases
 
-Next.js 16.3.8 scopes response cache keys by their source route: `/route-cache/<kind>/<sha256(sourceRoute)>/$<pathname>`. The cache assets created at build time and the cache interceptor now compute the same keys as Next.js, both for prerendered routes and for entries cached at runtime. CDN invalidation on `revalidateTag` maps those keys back to their pathname.
+Next.js 15.5.27 and 16.3.8 scope response cache keys by their source route: `/route-cache/<kind>/<sha256(sourceRoute)>/$<pathname>`. OpenNext preserves emitted build keys, selects the matching owner before cache interception, and maps scoped keys back to the correct public route during CDN invalidation.

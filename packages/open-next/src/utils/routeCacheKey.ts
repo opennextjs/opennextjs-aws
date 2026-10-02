@@ -4,8 +4,8 @@ import type { PrerenderManifest } from "../types/next-types.js";
 import { compareSemver } from "./semver.js";
 
 /**
- * Since Next.js 16.3.8, response cache keys (pages, app pages and app routes) are scoped
- * by the route owning the entry:
+ * Next.js 15.5.27 and 16.3.8 introduced response cache keys scoped by the route
+ * owning each pages, app page, or app route entry:
  * `/route-cache/<kind>/<sha256(sourceRoute)>/$<normalizedPathname>`.
  *
  * The helpers below mirror Next.js so that the build time cache population and the cache
@@ -46,7 +46,11 @@ const DYNAMIC_ROUTE_REGEX = /\/\[[^/]+?\](?=\/|$)/;
  * @param nextVersion The Next.js version
  */
 export function useRouteCacheKeys(nextVersion: string): boolean {
-  return compareSemver(nextVersion, ">=", "16.3.8");
+  return (
+    (compareSemver(nextVersion, ">=", "15.5.27") &&
+      compareSemver(nextVersion, "<", "16.0.0")) ||
+    compareSemver(nextVersion, ">=", "16.3.8")
+  );
 }
 
 /**

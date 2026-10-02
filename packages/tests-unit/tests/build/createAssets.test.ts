@@ -26,7 +26,11 @@ describe("createCacheAssets", () => {
     root = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-cache-assets-"));
     const nextDir = path.join(root, ".next");
     const serverDir = path.join(nextDir, "standalone/.next/server");
-    const meta = { headers: { "x-next-cache-tags": "_N_T_/isr" } };
+    const sources = {
+      index: "/page",
+      isr: "/(group)/isr/page",
+      "blog/hello": "/blog/[slug]/page",
+    };
 
     writeFile(path.join(nextDir, "BUILD_ID"), BUILD_ID);
     writeFile(path.join(nextDir, "required-server-files.json"), {
@@ -52,9 +56,17 @@ describe("createCacheAssets", () => {
     writeFile(path.join(serverDir, "pages-manifest.json"), {});
 
     for (const route of ["index", "isr", "blog/hello"]) {
+      const sourceRoute = sources[route as keyof typeof sources];
       writeFile(path.join(serverDir, `app/${route}.html`), "<html></html>");
       writeFile(path.join(serverDir, `app/${route}.rsc`), "rsc");
-      writeFile(path.join(serverDir, `app/${route}.meta`), meta);
+      writeFile(path.join(serverDir, `app/${route}.meta`), {
+        headers: { "x-next-cache-tags": "_N_T_/isr" },
+        routeCache: {
+          key: `/route-cache/APP_PAGE/${sha256(sourceRoute)}/$/${route}`,
+          owner: { kind: "APP_PAGE", sourceRoute },
+          isFallback: false,
+        },
+      });
     }
     // Not a response cache entry
     writeFile(path.join(serverDir, "app/_global-error.html"), "<html></html>");
@@ -85,26 +97,29 @@ describe("createCacheAssets", () => {
       .sort();
   }
 
-  it("should use the scoped route cache keys for next >= 16.3.8", () => {
-    const { metaFiles } = createCacheAssets(getOptions("16.3.8"));
+  it.each(["15.5.27", "16.3.8"])(
+    "should use emitted scoped route cache keys for Next.js %s",
+    (nextVersion) => {
+      const { metaFiles } = createCacheAssets(getOptions(nextVersion));
 
-    const isrKey = `route-cache/APP_PAGE/${sha256("/(group)/isr/page")}/$/isr`;
-    expect(listCacheFiles()).toEqual(
-      [
-        `route-cache/APP_PAGE/${sha256("/page")}/$/index.cache`,
-        `${isrKey}.cache`,
-        `route-cache/APP_PAGE/${sha256("/blog/[slug]/page")}/$/blog/hello.cache`,
-        "_global-error.cache",
-      ].sort(),
-    );
-    expect(metaFiles).toContainEqual({
-      tag: { S: `${BUILD_ID}/_N_T_/isr` },
-      path: { S: `${BUILD_ID}/${isrKey}` },
-      revalidatedAt: { N: "1" },
-    });
-  });
+      const isrKey = `route-cache/APP_PAGE/${sha256("/(group)/isr/page")}/$/isr`;
+      expect(listCacheFiles()).toEqual(
+        [
+          `route-cache/APP_PAGE/${sha256("/page")}/$/index.cache`,
+          `${isrKey}.cache`,
+          `route-cache/APP_PAGE/${sha256("/blog/[slug]/page")}/$/blog/hello.cache`,
+          "_global-error.cache",
+        ].sort(),
+      );
+      expect(metaFiles).toContainEqual({
+        tag: { S: `${BUILD_ID}/_N_T_/isr` },
+        path: { S: `${BUILD_ID}/${isrKey}` },
+        revalidatedAt: { N: "1" },
+      });
+    },
+  );
 
-  it("should use the plain paths for next < 16.3.8", () => {
+  it("should use plain paths for versions without scoped keys", () => {
     const { metaFiles } = createCacheAssets(getOptions("16.3.7"));
 
     expect(listCacheFiles()).toEqual(
@@ -120,5 +135,45 @@ describe("createCacheAssets", () => {
       path: { S: `${BUILD_ID}/isr` },
       revalidatedAt: { N: "1" },
     });
+  });
+
+  it("should prefer the opaque key emitted in route cache metadata", () => {
+    const serverDir = path.join(root, ".next/standalone/.next/server");
+    const emittedKey = `/route-cache/PAGES/${"a".repeat(64)}/$/authoritative`;
+    writeFile(path.join(serverDir, "app/isr.meta"), {
+      headers: { "x-next-cache-tags": "_N_T_/isr" },
+      routeCache: {
+        key: emittedKey,
+        owner: { kind: "PAGES", sourceRoute: "/authoritative" },
+        isFallback: false,
+      },
+    });
+
+    const { metaFiles } = createCacheAssets(getOptions("16.3.8"));
+
+    expect(listCacheFiles()).toContain(`${emittedKey.slice(1)}.cache`);
+    expect(metaFiles).toContainEqual({
+      tag: { S: `${BUILD_ID}/_N_T_/isr` },
+      path: { S: `${BUILD_ID}/${emittedKey.slice(1)}` },
+      revalidatedAt: { N: "1" },
+    });
+  });
+
+  it("should reject metadata keys that escape the cache output", () => {
+    const serverDir = path.join(root, ".next/standalone/.next/server");
+    writeFile(path.join(serverDir, "app/isr.meta"), {
+      routeCache: {
+        key: "../../outside",
+        owner: { kind: "APP_PAGE", sourceRoute: "/isr/page" },
+        isFallback: false,
+      },
+    });
+
+    createCacheAssets(getOptions("16.3.8"));
+
+    expect(fs.existsSync(path.join(root, ".open-next/outside.cache"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(root, "outside.cache"))).toBe(false);
   });
 });

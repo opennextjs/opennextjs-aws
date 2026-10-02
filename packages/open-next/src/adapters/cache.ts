@@ -437,7 +437,7 @@ export default class Cache {
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
-          // Paths in the tag cache are cache keys, scoped by route since Next 16.3.8
+          // Fixed Next.js releases store route-scoped cache keys in the tag cache.
           await globalThis.cdnInvalidationHandler.invalidatePaths(
             paths.map(getPathFromRouteCacheKey).map((path) => ({
               initialPath: path,
@@ -526,7 +526,7 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
-              // Paths in the tag cache are cache keys, scoped by route since Next 16.3.8
+              // Fixed Next.js releases store route-scoped cache keys in the tag cache.
               .map((t) => getPathFromRouteCacheKey(`/${t.path}`)),
           ),
         );

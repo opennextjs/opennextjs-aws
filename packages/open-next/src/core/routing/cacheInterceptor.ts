@@ -10,6 +10,7 @@ import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
+  ResolvedRoute,
 } from "types/open-next";
 import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
@@ -61,6 +62,8 @@ async function computeCacheControl(
   revalidate?: number | false,
   lastModified?: number,
   isStaleFromTagCache = false,
+  revalidationPath = path,
+  revalidationKey = path,
 ) {
   let finalRevalidate = CACHE_ONE_YEAR;
 
@@ -108,7 +111,10 @@ async function computeCacheControl(
       isStaleFromTagCache,
     });
     if (isStale) {
-      let url = NextConfig.trailingSlash ? `${path}/` : path;
+      let url =
+        NextConfig.trailingSlash && revalidationPath !== "/"
+          ? `${revalidationPath}/`
+          : revalidationPath;
       if (NextConfig.basePath) {
         url = `${NextConfig.basePath}${url}`;
       }
@@ -119,8 +125,10 @@ async function computeCacheControl(
           eTag: etag,
           lastModified: lastModified ?? Date.now(),
         },
-        MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
-        MessageGroupId: generateMessageGroupId(path),
+        MessageDeduplicationId: hash(
+          `${revalidationKey}-${lastModified}-${etag}`,
+        ),
+        MessageGroupId: generateMessageGroupId(revalidationKey),
       });
     }
     return {
@@ -208,6 +216,8 @@ async function generateResult(
   cachedValue: CacheValue<"cache">,
   lastModified?: number,
   isStaleFromTagCache = false,
+  cacheKey = localizedPath,
+  revalidationPath = localizedPath,
 ): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
   let body: string | undefined;
@@ -246,6 +256,8 @@ async function generateResult(
     cachedValue.revalidate,
     lastModified,
     isStaleFromTagCache,
+    revalidationPath,
+    cacheKey,
   );
   const statusCode = computeStatusCode(
     event.rewriteStatusCode,
@@ -342,17 +354,19 @@ function getRouteCacheManifests(): RouteCacheManifests {
 /**
  * Computes the key of the cache entry serving the request.
  *
- * Since Next 16.3.8 the key is scoped by the route owning the entry. It is computed from:
+ * Next.js 15.5.27 and 16.3.8 scope the key by the route owning the entry. It is computed from:
  * - the prerender manifest for prerendered routes,
  * - the dynamic route Next.js would render for entries cached at runtime.
  *
  * @param event The incoming event
  * @param localizedPath The localized and decoded path, without basePath nor trailing slash
+ * @param resolvedRoutes Ordered route matches for the final internal pathname
  * @returns The cache key, or `undefined` when the path is not served by an ISR route
  */
 function getCacheKey(
   event: MiddlewareEvent,
   localizedPath: string,
+  resolvedRoutes: ResolvedRoute[] | undefined,
 ): string | undefined {
   if (!useRouteCacheKeys(globalThis.nextVersion)) {
     const isISR =
@@ -368,18 +382,30 @@ function getCacheKey(
 
   const manifests = getRouteCacheManifests();
   if (Object.hasOwn(manifests.prerenderManifest.routes, localizedPath)) {
-    return getPrerenderRouteCacheKey(localizedPath, manifests);
+    const manifestKey = getPrerenderRouteCacheKey(localizedPath, manifests);
+    const selectedRoute = resolvedRoutes?.[0];
+    // The routing handler always supplies matches. An empty list there means
+    // ownership could not be proven and scoped interception must fail closed.
+    if (resolvedRoutes && !selectedRoute) return undefined;
+    if (!selectedRoute) return manifestKey;
+    const selectedOwner = getRouteCacheOwner(selectedRoute.route, manifests);
+    if (!selectedOwner) return undefined;
+    const selectedKey = getRouteCacheKey(localizedPath, selectedOwner);
+    return selectedKey === manifestKey ? manifestKey : undefined;
   }
 
   // Not prerendered, the entry might have been cached at runtime by a dynamic route.
   // Dynamic routes are sorted by specificity, the first match is the one Next.js renders.
-  const [dynamicRoute] = dynamicRouteMatcher(event.rawPath);
+  const dynamicRoute = resolvedRoutes
+    ? resolvedRoutes[0]
+    : dynamicRouteMatcher(event.rawPath)[0];
+  const dynamicPrerender = dynamicRoute
+    ? manifests.prerenderManifest.dynamicRoutes[dynamicRoute.route]
+    : undefined;
   if (
     !dynamicRoute ||
-    !Object.hasOwn(
-      manifests.prerenderManifest.dynamicRoutes,
-      dynamicRoute.route,
-    )
+    !dynamicPrerender ||
+    dynamicPrerender.fallback !== null
   ) {
     return undefined;
   }
@@ -394,6 +420,7 @@ function getCacheKey(
 
 export async function cacheInterceptor(
   event: MiddlewareEvent,
+  resolvedRoutes?: ResolvedRoute[],
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
@@ -415,14 +442,22 @@ export async function cacheInterceptor(
     debug("Preview mode detected, passing through to handler");
     return event;
   }
-  // We localize the path in case i18n is enabled
-  let localizedPath = localizePath(event);
-  // If using basePath we need to remove it from the path
-  if (NextConfig.basePath) {
-    localizedPath = localizedPath.replace(NextConfig.basePath, "");
-  }
+  const basePath = NextConfig.basePath;
+  const pathWithoutBasePath = !basePath
+    ? event.rawPath
+    : event.rawPath === basePath
+      ? "/"
+      : event.rawPath.startsWith(`${basePath}/`)
+        ? event.rawPath.slice(basePath.length)
+        : event.rawPath;
+  // Locale detection must inspect the first segment after basePath.
+  let localizedPath = localizePath({ ...event, rawPath: pathWithoutBasePath });
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
+
+  // Revalidation must request the original encoded spelling so route selection
+  // cannot switch from an encoded catch-all to a more specific canonical route.
+  const revalidationPath = localizedPath || "/";
 
   // Then we decode the path params
   try {
@@ -435,7 +470,7 @@ export async function cacheInterceptor(
 
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const cacheKey = getCacheKey(event, localizedPath);
+  const cacheKey = getCacheKey(event, localizedPath, resolvedRoutes);
   debug("cacheKey", cacheKey);
   if (cacheKey) {
     try {
@@ -475,6 +510,8 @@ export async function cacheInterceptor(
             cachedData.value,
             cachedData.lastModified,
             _isStale,
+            cacheKey,
+            revalidationPath,
           );
           // The cache entry can not serve this request, fallback to the server.
           return result ?? event;
@@ -487,6 +524,8 @@ export async function cacheInterceptor(
             cachedData.value.revalidate,
             cachedData.lastModified,
             _isStale,
+            revalidationPath,
+            cacheKey,
           );
           return {
             type: "core",
@@ -508,6 +547,8 @@ export async function cacheInterceptor(
             cachedData.value.revalidate,
             cachedData.lastModified,
             _isStale,
+            revalidationPath,
+            cacheKey,
           );
 
           const isBinary = isBinaryContentType(
