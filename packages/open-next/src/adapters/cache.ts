@@ -12,6 +12,7 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
+import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -436,8 +437,9 @@ export default class Cache {
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
+          // Fixed Next.js releases store route-scoped cache keys in the tag cache.
           await globalThis.cdnInvalidationHandler.invalidatePaths(
-            paths.map((path) => ({
+            paths.map(getPathFromRouteCacheKey).map((path) => ({
               initialPath: path,
               rawPath: path,
               resolvedRoutes: [
@@ -524,7 +526,8 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
-              .map((t) => `/${t.path}`),
+              // Fixed Next.js releases store route-scoped cache keys in the tag cache.
+              .map((t) => getPathFromRouteCacheKey(`/${t.path}`)),
           ),
         );
         if (uniquePaths.length > 0) {

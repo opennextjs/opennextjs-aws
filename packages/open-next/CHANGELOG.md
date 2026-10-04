@@ -1,5 +1,21 @@
 # open-next
 
+## 4.1.7
+
+### Patch Changes
+
+- [#1268](https://github.com/opennextjs/opennextjs-aws/pull/1268) [`dd902fda0324ccf0bc4dd58e96fd0728501b86e2`](https://github.com/opennextjs/opennextjs-aws/commit/dd902fda0324ccf0bc4dd58e96fd0728501b86e2) Thanks [@rishabhvenu](https://github.com/rishabhvenu)! - Resolve the request store each time the `@next/request-context` getter is called, instead of capturing the store of the request that last published it
+
+- [#1270](https://github.com/opennextjs/opennextjs-aws/pull/1270) [`ebfd9b9d1f8d34412b236daa4a6e39caa56653ee`](https://github.com/opennextjs/opennextjs-aws/commit/ebfd9b9d1f8d34412b236daa4a6e39caa56653ee) Thanks [@conico974](https://github.com/conico974)! - fix(cache): support scoped response cache keys in fixed Next.js releases
+
+  Next.js 15.5.27 and 16.3.8 scope response cache keys by their source route: `/route-cache/<kind>/<sha256(sourceRoute)>/$<pathname>`. OpenNext preserves emitted build keys, selects the matching owner before cache interception, and maps scoped keys back to the correct public route during CDN invalidation.
+
+- [#1265](https://github.com/opennextjs/opennextjs-aws/pull/1265) [`49401b402bbbe41aa7f74e80b452f47fa7c88ce0`](https://github.com/opennextjs/opennextjs-aws/commit/49401b402bbbe41aa7f74e80b452f47fa7c88ce0) Thanks [@Anurag-Bharati](https://github.com/Anurag-Bharati)! - Only serve cached responses for GET and HEAD requests in the cache interceptor
+
+  A progressively enhanced form (`<form action={serverAction}>`, or one wired through `useActionState`) submitted before hydration or with JavaScript disabled is a plain `multipart/form-data` POST whose action id travels in the body, not in the `next-action` header. With `enableCacheInterception` on, the interceptor answered it with the cached page, so the server action never ran and the submission was lost. Requests other than GET and HEAD now reach `NextServer`, matching Next.js, which never serves a possible server action from the cache.
+
+- [`5ba9354a36d92270c734390950e2ad39dc2ac4e4`](https://github.com/opennextjs/opennextjs-aws/commit/5ba9354a36d92270c734390950e2ad39dc2ac4e4) Thanks [@vicb](https://github.com/vicb)! - Fix external rewrites to destinations with a literal numeric port
+
 ## 4.1.6
 
 ### Patch Changes

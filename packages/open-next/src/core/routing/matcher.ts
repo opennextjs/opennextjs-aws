@@ -206,7 +206,10 @@ export function handleRewrites<T extends RewriteDefinition>(
 
     debug("urlParts", { pathname, protocol, hostname, queryString });
     const toDestinationPath = compile(escapeRegex(pathname, { isPath: true }));
-    const toDestinationHost = compile(escapeRegex(hostname));
+    // A literal numeric port is URL syntax, not a path-to-regexp parameter.
+    const toDestinationHost = compile(
+      escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"),
+    );
     const toDestinationQuery = compile(escapeRegex(queryString));
     const params = {
       // params for the source
