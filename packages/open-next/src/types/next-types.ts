@@ -174,12 +174,15 @@ export interface PrerenderManifest {
     {
       // TODO: add the rest when needed for PPR
       initialRevalidateSeconds: number | false;
+      srcRoute?: string | null;
+      dataRoute?: string | null;
     }
   >;
   dynamicRoutes: {
     [route: string]: {
       routeRegex: string;
       fallback: string | false | null;
+      fallbackSourceRoute?: string;
       dataRouteRegex: string;
     };
   };

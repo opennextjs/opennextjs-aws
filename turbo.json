@@ -23,7 +23,7 @@
       "cache": false
     },
     "openbuild:local": {
-      "dependsOn": ["^openbuild:local"],
+      "dependsOn": ["@opennextjs/aws#build", "^openbuild:local"],
       "outputs": [".open-next/**"]
     },
     "openbuild:local:start": {

@@ -80,16 +80,19 @@ function provideNextAfterProvider() {
   // Remove this when vercel builder is updated to provide '@next/request-context'.
   const VERCEL_REQUEST_CONTEXT_SYMBOL = Symbol.for("@vercel/request-context");
 
-  const store = globalThis.__openNextAls.getStore();
-
-  const waitUntil =
-    store?.waitUntil ??
-    ((promise: Promise<unknown>) => store?.pendingPromiseRunner.add(promise));
-
+  // `get` resolves the store on every call rather than capturing it here: the
+  // object is published on `globalThis`, which every request in the isolate
+  // shares, so a captured store could belong to a different request.
   const nextAfterContext = {
-    get: () => ({
-      waitUntil,
-    }),
+    get: () => {
+      const store = globalThis.__openNextAls.getStore();
+      return {
+        waitUntil:
+          store?.waitUntil ??
+          ((promise: Promise<unknown>) =>
+            store?.pendingPromiseRunner.add(promise)),
+      };
+    },
   };
 
   //@ts-expect-error
