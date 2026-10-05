@@ -6,6 +6,20 @@ on:
             - main
 
 jobs:
+    patch-output:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                bundler: [webpack, turbopack]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: ./.github/actions/setup
+            - uses: ./.github/actions/local/build
+            - name: Check patches in generated server output
+              run: pnpm --filter isr-patching test:patches
+              env:
+                  NEXT_BUNDLER: ${{ matrix.bundler }}
+
     validate:
         runs-on: ubuntu-latest
         permissions:
