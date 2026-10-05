@@ -252,14 +252,6 @@ export default class Cache {
     }
   }
 
-  /**
-   * Persist a cache entry and its tags without blocking page responses.
-   *
-   * @param key The incremental cache key.
-   * @param data The entry to write, or undefined/null to delete it.
-   * @param ctx Next.js cache metadata.
-   * @returns Resolves after registering background work, or after the write for FETCH/no context.
-   */
   async set(
     key: string,
     data?: IncrementalCacheValue,
@@ -271,19 +263,14 @@ export default class Cache {
     const store = globalThis.__openNextAls.getStore();
     const writePromise = this.writeCache(key, data, ctx);
 
-    // FETCH writes are awaited: Next.js runs them in a detached chain of its
-    // own that only covers the write while `set` waits for it.
+    // Next.js ignores the value returned by `set`, so the write is registered on the request's
+    // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
+    // them in a detached chain of its own that only covers the write while `set` waits for it.
     if (data?.kind === "FETCH" || store === undefined) {
       await writePromise;
       return;
     }
-    // Regeneration can call set after the request's runner has already drained.
-    // Register the entire write (including tags) with the runtime in that case too.
-    if (store.waitUntil) {
-      store.waitUntil(writePromise);
-    } else {
-      store.pendingPromiseRunner.add(writePromise);
-    }
+    store.pendingPromiseRunner.add(writePromise);
   }
 
   private async writeCache(
