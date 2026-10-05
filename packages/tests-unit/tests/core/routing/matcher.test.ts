@@ -294,6 +294,30 @@ describe("handleRedirects", () => {
     expect(result.headers.Location).toEqual("https://on/api-route");
   });
 
+  it("should redirect trailing slash for API routes", () => {
+    const event = createEvent({
+      url: "https://on/api/item/x/?foo=bar",
+    });
+
+    const result = handleRedirects(event, []);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual("https://on/api/item/x?foo=bar");
+  });
+
+  it("should redirect API routes to a trailing slash when trailingSlash is true", () => {
+    const event = createEvent({
+      url: "https://on/api/item/x?foo=bar",
+    });
+
+    NextConfig.trailingSlash = true;
+    const result = handleRedirects(event, []);
+    NextConfig.trailingSlash = false;
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual("https://on/api/item/x/?foo=bar");
+  });
+
   it("should not redirect trailing slash when skipTrailingSlashRedirect is true", () => {
     const event = createEvent({
       url: "https://on/api-route/",
