@@ -87,6 +87,24 @@ describe("patchBackgroundRevalidation", () => {
     );
   });
 
+  it("Should accept dollar signs in minified context identifiers", () => {
+    const code = codeToPatchMinified.replaceAll("r.", "$.");
+    const patch = patchBackgroundRevalidation.patches[0];
+    expect(code).toMatch(patch.contentFilter!);
+    expect(patchCode(code, rule)).not.toContain("!a.isStale||$.isPrefetch");
+  });
+
+  it.each([
+    ".next/server/chunks/ssr/[root-of-the-server]__hash._.js",
+    ".next/server/chunks/123.js",
+    ".next/server/app/isr/page.js",
+    ".next/server/pages/isr.js",
+  ])("Should target generated server code at %s on both platforms", (file) => {
+    const { pathFilter } = patchBackgroundRevalidation.patches[0];
+    expect(file).toMatch(pathFilter);
+    expect(file.replaceAll("/", "\\")).toMatch(pathFilter);
+  });
+
   it.each([
     // Not the stale check
     "if(a&&!r.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale&&r.isPrefetch))return a;",
@@ -99,7 +117,7 @@ describe("patchBackgroundRevalidation", () => {
     expect(patchCode(code, rule)).toBe(code);
   });
 
-  it("Should only apply to the response cache and the compiled runtimes", () => {
+  it("Should target Next runtimes but not unrelated source/client files", () => {
     const { pathFilter } = patchBackgroundRevalidation.patches[0];
     expect(
       "next/dist/server/response-cache/index.js".match(pathFilter),
@@ -115,5 +133,7 @@ describe("patchBackgroundRevalidation", () => {
       ),
     ).toBeTruthy();
     expect("next/dist/server/next-server.js".match(pathFilter)).toBeFalsy();
+    expect("src/app/page.js".match(pathFilter)).toBeFalsy();
+    expect(".next/static/chunks/123.js".match(pathFilter)).toBeFalsy();
   });
 });
