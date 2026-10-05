@@ -304,9 +304,7 @@ function handleTrailingSlashRedirect(
   if (
     // Someone is trying to redirect to a different origin, let's not do that
     url.host !== "localhost" ||
-    NextConfig.skipTrailingSlashRedirect ||
-    // We should not apply trailing slash redirect to API routes
-    event.rawPath.startsWith("/api/")
+    NextConfig.skipTrailingSlashRedirect
   ) {
     return false;
   }
