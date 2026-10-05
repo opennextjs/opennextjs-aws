@@ -23,19 +23,21 @@ export function installDependencies(
     logger.info(`Installing dependencies for ${name}...`);
     // We then need to run install in the tempDir
     // We don't install in the output dir directly because it could contain a package.json, and npm would then try to reinstall not complete deps from tracing the files
-    const archOption = installOptions.arch
-      ? `--arch=${installOptions.arch}`
-      : "";
-    const targetOption = installOptions.nodeVersion
-      ? `--target=${installOptions.nodeVersion}`
-      : "";
+    //
+    // npm 11 removed the legacy `--arch`/`--target` flags (they now throw
+    // EUNKNOWNCONFIG) in favor of `--cpu`/`--os`/`--libc`, which is also the
+    // set of config keys that package.json `cpu`/`os`/`libc` fields (used by
+    // sharp's optional dependencies) match against. `nodeVersion` has no
+    // equivalent in the new mechanism, since prebuilt N-API binaries aren't
+    // tied to a specific Node version, so it's no longer forwarded.
+    const cpuOption = installOptions.arch ? `--cpu=${installOptions.arch}` : "";
     const libcOption = installOptions.libc
       ? `--libc=${installOptions.libc}`
       : "";
     const osOption = `--os=${installOptions.os ?? "linux"}`;
 
     const additionalArgs = installOptions.additionalArgs ?? "";
-    const installCommand = `npm install ${osOption} ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
+    const installCommand = `npm install ${osOption} ${cpuOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
     execSync(installCommand, {
       stdio: "pipe",
       cwd: tempInstallDir,
