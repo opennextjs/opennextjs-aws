@@ -112,6 +112,8 @@ describe("patchBackgroundRevalidation", () => {
     "if(a&&!r.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale||r.isPrefetch||r.isFallback))return a;",
     // Not guarded by the on-demand revalidation check
     "if(a&&(n(a),i=!0,!a.isStale||r.isPrefetch))return a;",
+    // Guarded by an unrelated context object
+    "if(a&&!other.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale||r.isPrefetch))return a;",
     "let t=!a.isStale||r.isPrefetch;if(!r.isOnDemandRevalidate)return t;",
   ])("Should not patch unrelated code: %s", (code) => {
     expect(patchCode(code, rule)).toBe(code);

@@ -22,7 +22,12 @@ rule:
         stopBy: end
         has:
           field: condition
-          regex: '!\\s*([\\w$]+\\.)?isOnDemandRevalidate'
+          stopBy: end
+          any:
+            # Next 15.5+ and its minified runtime copies use the same context object
+            - pattern: "!$CONTEXT.isOnDemandRevalidate"
+            # Earlier unminified versions keep this flag in a local
+            - pattern: "!isOnDemandRevalidate"
 fix:
   'true'`;
 

@@ -28,12 +28,23 @@ execFileSync(
 // Deliberately independent of the production filename/content filters and guard
 // matcher: a broken filter must not hide a shipped ResponseCache copy.
 const staleCheck = {
-  rule: { pattern: "!$ENTRY.isStale || $CONTEXT.isPrefetch" },
+  rule: {
+    pattern: "!$ENTRY.isStale || $CONTEXT.isPrefetch",
+    inside: {
+      kind: "if_statement",
+      stopBy: "end",
+      has: {
+        field: "condition",
+        stopBy: "end",
+        pattern: "!$CONTEXT.isOnDemandRevalidate",
+      },
+    },
+  },
 };
 const output = ".open-next/server-functions/default";
 const patched = [];
 for (const name of readdirSync(output, { recursive: true })) {
-  if (!name.endsWith(".js")) continue;
+  if (!/\.m?js$/.test(name)) continue;
   const original = path.join(".next/standalone", name);
   if (!existsSync(original) || !statSync(original).isFile()) continue;
   const before = readFileSync(original, "utf8");
@@ -54,6 +65,20 @@ assert(
   "The fixture must exercise real ResponseCache copies",
 );
 assert(patched.some((name) => name.endsWith(".runtime.prod.js")));
+const builtCode = readdirSync(".next", { recursive: true })
+  .filter((name) => /\.m?js$/.test(name))
+  .map((name) => path.join(".next", name))
+  .filter((name) => statSync(name).isFile())
+  .map((name) => readFileSync(name, "utf8"));
+assert(
+  builtCode.some(
+    (code) =>
+      code.includes("LOOKALIKE_CONTEXT") &&
+      code.includes("isOnDemandRevalidate") &&
+      code.includes("isPrefetch"),
+  ),
+  "The patch must not rewrite lookalike application expressions",
+);
 if ((process.env.NEXT_BUNDLER ?? "turbopack") === "turbopack") {
   assert(
     patched.some((name) => name.split(path.sep).includes("chunks")),
