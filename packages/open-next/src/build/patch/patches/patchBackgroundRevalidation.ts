@@ -39,9 +39,8 @@ export const patchBackgroundRevalidation = {
       versions: ">=14.1.0",
       // Since Next 15.5 route modules use their own `ResponseCache`, which is inlined (and minified)
       // in `next/dist/compiled/next-server/*.runtime.prod.js`
-      // Turbopack also embeds copies in the generated server chunks/route entries.
       pathFilter: getCrossPlatformPathRegex(
-        String.raw`(server/response-cache/index\.js|\.runtime\.prod\.js|\.next/server/(chunks|app|pages)/.*\.js)$`,
+        String.raw`(server/response-cache/index\.js|\.runtime\.prod\.js)$`,
         { escape: false },
       ),
       contentFilter: /\.isStale\s*\|\|\s*[\w$]+\.isPrefetch/,
