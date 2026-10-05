@@ -1,5 +1,17 @@
 # open-next
 
+## 4.1.8
+
+### Patch Changes
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Await background work registered while a detached promise runner is draining.
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Apply `patchBackgroundRevalidation` to the compiled Next.js runtimes
+
+  Since Next 15.5 the route modules use their own `ResponseCache`, inlined and minified in `next/dist/compiled/next-server/*.runtime.prod.js`. The patch only targeted `server/response-cache/index.js` and matched the unminified `context.isPrefetch`, so these copies were left untouched and stale requests still triggered an in-process regeneration instead of only going through the revalidation queue.
+
+  Minified identifiers containing `$` are also supported.
+
 ## 4.1.7
 
 ### Patch Changes
