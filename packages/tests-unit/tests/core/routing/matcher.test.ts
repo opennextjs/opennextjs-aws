@@ -470,6 +470,24 @@ describe("handleRewrites", () => {
     });
   });
 
+  it("should keep encoded characters in query values when rewriting", () => {
+    const event = createEvent({
+      url: "https://on/foo?brand=h%26m",
+    });
+
+    const rewrites = [
+      {
+        source: "/foo",
+        destination: "/bar?q=a%3Db",
+        regex: "^/foo(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.query).toEqual({ brand: "h&m", q: "a=b" });
+    expect(result.internalEvent.url).toBe("https://on/bar?brand=h%26m&q=a%3Db");
+  });
+
   it("should rewrite externally", () => {
     const event = createEvent({
       url: "https://on/albums/foo/bar",
