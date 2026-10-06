@@ -1,7 +1,13 @@
+import fs from "node:fs";
+
 import {
+  getTracedSourceMap,
   isExcluded,
   isNonLinuxPlatformPackage,
 } from "@opennextjs/aws/build/copyTracedFiles.js";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+vi.mock("node:fs");
 
 describe("isExcluded", () => {
   test("should exclude sharp", () => {
@@ -127,5 +133,94 @@ describe("isNonLinuxPlatformPackage", () => {
         "/project/node_modules/turbo-linux-x64/bin/turbo",
       ),
     ).toBe(false);
+  });
+});
+
+describe("getTracedSourceMap", () => {
+  const dotNextDir = "/project/apps/web/.next";
+
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReset();
+  });
+
+  test("returns the sibling .map of a traced .js file inside .next", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (p) => p === "/project/apps/web/.next/server/chunks/123.js.map",
+    );
+
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/apps/web/.next/server/chunks/123.js",
+      ),
+    ).toBe("/project/apps/web/.next/server/chunks/123.js.map");
+  });
+
+  test("supports .mjs and .cjs files", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    expect(
+      getTracedSourceMap(dotNextDir, "/project/apps/web/.next/server/a.mjs"),
+    ).toBe("/project/apps/web/.next/server/a.mjs.map");
+    expect(
+      getTracedSourceMap(dotNextDir, "/project/apps/web/.next/server/b.cjs"),
+    ).toBe("/project/apps/web/.next/server/b.cjs.map");
+  });
+
+  test("returns undefined when no .map exists", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/apps/web/.next/server/chunks/123.js",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("ignores files that are not JavaScript", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    expect(
+      getTracedSourceMap(dotNextDir, "/project/apps/web/.next/server/x.json"),
+    ).toBeUndefined();
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/apps/web/.next/server/chunks/123.js.map",
+      ),
+    ).toBeUndefined();
+    expect(fs.existsSync).not.toHaveBeenCalled();
+  });
+
+  test("ignores traced files outside of .next, such as node_modules", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/node_modules/some-lib/dist/index.js",
+      ),
+    ).toBeUndefined();
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/apps/web/node_modules/other-lib/index.js",
+      ),
+    ).toBeUndefined();
+    expect(fs.existsSync).not.toHaveBeenCalled();
+  });
+
+  test("handles traced paths that climb out of and back into .next", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+
+    // .nft.json entries are relative, e.g. "../../chunks/1.js", and get joined
+    // onto the nft file's directory; the resolved path is what matters.
+    expect(
+      getTracedSourceMap(
+        dotNextDir,
+        "/project/apps/web/.next/server/app/../../server/chunks/1.js",
+      ),
+    ).toBe("/project/apps/web/.next/server/app/../../server/chunks/1.js.map");
   });
 });
