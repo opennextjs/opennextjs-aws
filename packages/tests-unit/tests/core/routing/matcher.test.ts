@@ -587,6 +587,36 @@ describe("handleRedirects", () => {
     );
   });
 
+  it.each([
+    {
+      destination: "/search?q=a%3Db#section",
+      location: "https://on/search?q=a%3Db#section",
+    },
+    {
+      destination: "https://external.com/search?q=a%3Db#section",
+      location: "https://external.com/search?q=a%3Db#section",
+    },
+  ])(
+    "should preserve the fragment when redirecting to $destination",
+    ({ destination, location }) => {
+      const event = createEvent({
+        url: "https://on/foo",
+      });
+
+      const result = handleRedirects(event, [
+        {
+          source: "/foo",
+          destination,
+          locale: false,
+          statusCode: 308,
+          regex: "^(?!/_next)/foo(?:/)?$",
+        },
+      ]);
+
+      expect(result.headers.Location).toBe(location);
+    },
+  );
+
   // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
   it("should redirect to the root with a query string", () => {
     const event = createEvent({
@@ -1099,20 +1129,22 @@ describe("handleRewrites", () => {
 
   it("should keep encoded characters in query values when rewriting", () => {
     const event = createEvent({
-      url: "https://on/foo?brand=h%26m",
+      url: "https://on/foo/details?brand=h%26m",
     });
 
     const rewrites = [
       {
-        source: "/foo",
-        destination: "/bar?q=a%3Db",
-        regex: "^/foo(?:/)?$",
+        source: "/foo/:section",
+        destination: "/bar?q=a%3Db#:section",
+        regex: "^/foo(?:/([^/]+?))(?:/)?$",
       },
     ];
     const result = handleRewrites(event, rewrites);
 
     expect(result.internalEvent.query).toEqual({ brand: "h&m", q: "a=b" });
-    expect(result.internalEvent.url).toBe("https://on/bar?brand=h%26m&q=a%3Db");
+    expect(result.internalEvent.url).toBe(
+      "https://on/bar?brand=h%26m&q=a%3Db#details",
+    );
   });
 
   it("should rewrite externally", () => {

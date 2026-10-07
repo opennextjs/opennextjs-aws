@@ -177,6 +177,7 @@ describe("getUrlParts", () => {
   describe("relative", () => {
     it("returns url parts for empty string", () => {
       expect(getUrlParts("", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "",
         protocol: "",
@@ -186,6 +187,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for /", () => {
       expect(getUrlParts("/", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/",
         protocol: "",
@@ -195,6 +197,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts", () => {
       expect(getUrlParts("/relative", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative",
         protocol: "",
@@ -204,6 +207,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts with query string", () => {
       expect(getUrlParts("/relative/path?query=1", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative/path",
         protocol: "",
@@ -214,6 +218,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
     it("returns url parts for / with a query string", () => {
       expect(getUrlParts("/?ref=promo", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/",
         protocol: "",
@@ -223,6 +228,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for an empty query string", () => {
       expect(getUrlParts("/relative?", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative",
         protocol: "",
@@ -242,6 +248,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for /", () => {
       expect(getUrlParts("http://localhost/", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/",
         protocol: "http:",
@@ -252,6 +259,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/591
     it("returns url parts for / without trailing slash", () => {
       expect(getUrlParts("http://localhost", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "",
         protocol: "http:",
@@ -261,6 +269,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts", () => {
       expect(getUrlParts("https://localhost/relative", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/relative",
         protocol: "https:",
@@ -272,6 +281,7 @@ describe("getUrlParts", () => {
       expect(
         getUrlParts("http://localhost:3000/relative/path?query=1", true),
       ).toEqual({
+        hash: "",
         hostname: "localhost:3000",
         pathname: "/relative/path",
         protocol: "http:",
@@ -282,6 +292,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
     it("returns url parts with a query string but no path", () => {
       expect(getUrlParts("https://localhost?query=1", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "",
         protocol: "https:",
@@ -291,6 +302,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for / with a query string", () => {
       expect(getUrlParts("https://localhost/?query=1", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/",
         protocol: "https:",

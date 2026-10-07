@@ -362,14 +362,14 @@ export function handleRewrites<T extends RewriteDefinition>(
   const isExternalRewrite = isExternal(rewrite?.destination);
   debug("isExternalRewrite", isExternalRewrite);
   if (rewrite) {
-    const { pathname, protocol, hostname, queryString } = getUrlParts(
+    const { pathname, protocol, hostname, queryString, hash } = getUrlParts(
       rewrite.destination,
       isExternalRewrite,
     );
     // We need to use a localized path if the rewrite is not locale specific
     const pathToUse = rewrite.locale === false ? rawPath : localizedRawPath;
 
-    debug("urlParts", { pathname, protocol, hostname, queryString });
+    debug("urlParts", { pathname, protocol, hostname, queryString, hash });
     // Values were validated while matching; Next.js does not revalidate them
     // as single path segments. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L268
     const compileOptions = { validate: false };
@@ -395,7 +395,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     const isUsingParams = Object.keys(params).length > 0;
     let rewrittenQuery = queryString;
     let rewrittenHost = hostname;
-
+    let rewrittenHash = hash;
     let rewrittenPath = unescapeRegex(toDestinationPath(params));
     if (pathname.startsWith("/") && !rewrittenPath.startsWith("/")) {
       rewrittenPath = `/${rewrittenPath}`;
@@ -403,6 +403,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     if (isUsingParams) {
       rewrittenHost = unescapeRegex(toDestinationHost(params));
       rewrittenQuery = compileQueryString(queryString, params);
+      rewrittenHash = compileNonPath(hash, params);
     }
 
     // We need to strip the locale from the path if it's a local api route
@@ -426,6 +427,7 @@ export function handleRewrites<T extends RewriteDefinition>(
       ...convertFromQueryString(rewrittenQuery),
     };
     rewrittenUrl += convertToQueryString(finalQuery);
+    rewrittenUrl += rewrittenHash;
     debug("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
   }
 

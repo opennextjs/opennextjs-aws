@@ -73,29 +73,36 @@ export function convertFromQueryString(query: string) {
  *
  * The URL is a route destination, i.e. a `path-to-regexp` pattern rather than a
  * well formed URL, so it can not be parsed with `new URL()` which would percent
- * encode some of the pattern characters.
+ * encode some of the pattern characters. Like Next.js, the fragment is kept
+ * separate from the query while destination parameters are interpolated.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L221-L299
  *
  * @param url The URL to split
  * @param isExternal Whether the URL points to an external host
- * @returns The protocol, hostname, pathname and query string of the URL
+ * @returns The protocol, hostname, pathname, query string and fragment
  * @throws When `isExternal` is true and the URL is not an absolute HTTP(S) URL
  *
  * @__PURE__
  */
 export function getUrlParts(url: string, isExternal: boolean) {
+  const hashIndex = url.indexOf("#");
+  const hash = hashIndex === -1 ? "" : url.slice(hashIndex);
+  const urlWithoutHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
+
   if (!isExternal) {
     const regex = /\/([^?]*)\??(.*)/;
-    const match = url.match(regex);
+    const match = urlWithoutHash.match(regex);
     return {
       hostname: "",
-      pathname: url.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
+      pathname: urlWithoutHash.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
       protocol: "",
       queryString: match?.[2] ?? "",
+      hash,
     };
   }
 
   const regex = /^(https?:)\/\/?([^\/\s?]+)(\/[^?]*)?(\?.*)?/;
-  const match = url.match(regex);
+  const match = urlWithoutHash.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
   }
@@ -104,6 +111,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
     hostname: match[2],
     pathname: match[3] ?? "",
     queryString: match[4]?.slice(1) ?? "",
+    hash,
   };
 }
 
