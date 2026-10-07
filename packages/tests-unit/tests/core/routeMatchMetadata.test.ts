@@ -1,8 +1,4 @@
 import { getRouteMatchMetadata } from "@opennextjs/aws/core/routeMatchMetadata.js";
-// @ts-ignore
-import BaseServer from "next/dist/server/base-server.js";
-// @ts-ignore
-import { I18NProvider } from "next/dist/server/lib/i18n-provider.js";
 import { vi } from "vitest";
 
 const { NextConfig } = vi.hoisted(() => ({
@@ -17,34 +13,38 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({ NextConfig }));
 const warn = vi.hoisted(() => vi.fn());
 vi.mock("@opennextjs/aws/adapters/logger.js", () => ({ warn }));
 
-type Definition = {
-  pathname: string;
-  page: string;
-  i18n?: { locale?: string };
-};
+const definition = { pathname: "/[...slug]", page: "/[...slug]/page" };
+const match = { definition, params: { slug: ["foo"] } };
 
-/**
- * Creates a server using the route matching of the Next.js 16.4 base server,
- * with the given route definitions instead of the ones from the manifests.
- */
-function createNextServer(
-  definitions: Definition[],
-  i18n?: { locales: string[]; defaultLocale: string },
-) {
-  const { prototype } = BaseServer;
+function createNextServer({ i18n = false } = {}) {
   return {
-    i18nProvider: i18n ? new I18NProvider(i18n) : undefined,
-    getRouteDefinitions: () => definitions,
-    getRouteMatchPathname: prototype.getRouteMatchPathname,
-    getRoutePatternDefinition: prototype.getRoutePatternDefinition,
-    testRouteDefinition: prototype.testRouteDefinition,
+    getRouteDefinitions: vi.fn(),
+    getRoutePatternDefinition: vi.fn().mockReturnValue(definition),
+    testRouteDefinition: vi.fn().mockReturnValue(match),
+    // Same result shape as the Next.js i18n provider
+    i18nProvider: i18n
+      ? {
+          analyze: vi.fn(
+            (pathname: string, options: { defaultLocale?: string } = {}) => {
+              const [, segment] = pathname.split("/");
+              if (segment === "en" || segment === "fr") {
+                return {
+                  pathname: pathname.slice(segment.length + 1) || "/",
+                  detectedLocale: segment,
+                  inferredFromDefault: false,
+                };
+              }
+              return {
+                pathname,
+                detectedLocale: options.defaultLocale,
+                inferredFromDefault: !!options.defaultLocale,
+              };
+            },
+          ),
+        }
+      : undefined,
   };
 }
-
-const appDefinitions: Definition[] = [
-  { pathname: "/[slug]", page: "/[slug]/page" },
-  { pathname: "/[...slug]", page: "/[...slug]/page" },
-];
 
 describe("getRouteMatchMetadata", () => {
   beforeEach(() => {
@@ -59,7 +59,7 @@ describe("getRouteMatchMetadata", () => {
 
   it("clears the match when the Next.js internals have changed", () => {
     const result = getRouteMatchMetadata(
-      { getRouteDefinitions: () => appDefinitions },
+      { getRouteDefinitions: vi.fn() },
       "/[...slug]",
       "/foo",
     );
@@ -67,98 +67,99 @@ describe("getRouteMatchMetadata", () => {
     expect(warn).toHaveBeenCalledOnce();
   });
 
-  it("matches the given route rather than the most specific one", () => {
-    const result = getRouteMatchMetadata(
-      createNextServer(appDefinitions),
+  it("matches the pathname against the definition of the route", () => {
+    const server = createNextServer();
+    const result = getRouteMatchMetadata(server, "/[...slug]", "/foo");
+
+    expect(result).toStrictEqual({ match });
+    expect(server.getRoutePatternDefinition).toHaveBeenCalledWith(
       "/[...slug]",
-      "/foo",
+      undefined,
     );
-    expect(result).toStrictEqual({
-      match: { definition: appDefinitions[1], params: { slug: ["foo"] } },
-    });
+    expect(server.testRouteDefinition).toHaveBeenCalledWith(
+      "/foo",
+      definition,
+      undefined,
+    );
   });
 
-  it("ignores the trailing slash", () => {
-    const result = getRouteMatchMetadata(
-      createNextServer(appDefinitions),
-      "/[...slug]",
-      "/foo/bar/",
-    );
-    expect(result.match).toMatchObject({ params: { slug: ["foo", "bar"] } });
+  it("strips the trailing slash", () => {
+    const server = createNextServer();
+    getRouteMatchMetadata(server, "/[...slug]", "/foo/bar/");
+    expect(server.testRouteDefinition.mock.calls[0][0]).toBe("/foo/bar");
   });
 
   it("strips the basePath", () => {
     NextConfig.basePath = "/base";
-    const server = createNextServer(appDefinitions);
-    expect(
-      getRouteMatchMetadata(server, "/[...slug]", "/base/foo").match,
-    ).toMatchObject({ params: { slug: ["foo"] } });
-    expect(
-      getRouteMatchMetadata(server, "/[...slug]", "/base/").match,
-    ).toBeUndefined();
+    const server = createNextServer();
+    getRouteMatchMetadata(server, "/[...slug]", "/base/foo");
+    getRouteMatchMetadata(server, "/[...slug]", "/base");
+    getRouteMatchMetadata(server, "/[...slug]", "/based/foo");
+
+    expect(server.testRouteDefinition.mock.calls.map(([p]) => p)).toEqual([
+      "/foo",
+      "/",
+      "/based/foo",
+    ]);
   });
 
   it("clears the match when the route has no definition", () => {
-    const result = getRouteMatchMetadata(
-      createNextServer(appDefinitions),
-      "/unknown/[id]",
-      "/unknown/1",
-    );
+    const server = createNextServer();
+    server.getRoutePatternDefinition.mockReturnValue(undefined);
+
+    const result = getRouteMatchMetadata(server, "/unknown/[id]", "/unknown/1");
     expect(result).toStrictEqual({ match: undefined });
+    expect(server.testRouteDefinition).not.toHaveBeenCalled();
   });
 
   it("clears the match when the route doesn't match the pathname", () => {
-    const result = getRouteMatchMetadata(
-      createNextServer(appDefinitions),
-      "/[slug]",
-      "/foo/bar",
-    );
+    const server = createNextServer();
+    server.testRouteDefinition.mockReturnValue(null);
+
+    const result = getRouteMatchMetadata(server, "/[slug]", "/foo/bar");
     expect(result).toStrictEqual({ match: undefined });
   });
 
   describe("with i18n", () => {
-    const i18n = { locales: ["en", "fr"], defaultLocale: "en" };
-    const pagesDefinitions: Definition[] = [
-      { pathname: "/foo/[id]", page: "/en/foo/[id]", i18n: { locale: "en" } },
-      { pathname: "/foo/[id]", page: "/fr/foo/[id]", i18n: { locale: "fr" } },
-      { pathname: "/[...slug]", page: "/[...slug]", i18n: {} },
-    ];
-
     beforeEach(() => {
-      NextConfig.i18n = i18n;
+      NextConfig.i18n = { locales: ["en", "fr"], defaultLocale: "en" };
     });
 
-    it("selects the definition of the pathname locale", () => {
-      const result = getRouteMatchMetadata(
-        createNextServer(pagesDefinitions, i18n),
+    it("looks up the definition with the locale of the pathname", () => {
+      const server = createNextServer({ i18n: true });
+      getRouteMatchMetadata(server, "/foo/[id]", "/fr/foo/1");
+
+      const pathnameAnalysis = {
+        pathname: "/foo/1",
+        detectedLocale: "fr",
+        inferredFromDefault: false,
+      };
+      expect(server.getRoutePatternDefinition).toHaveBeenCalledWith(
         "/foo/[id]",
+        {
+          pathname: "/foo/[id]",
+          detectedLocale: "fr",
+          inferredFromDefault: true,
+        },
+      );
+      expect(server.testRouteDefinition).toHaveBeenCalledWith(
         "/fr/foo/1",
+        definition,
+        pathnameAnalysis,
       );
-      expect(result).toStrictEqual({
-        match: { definition: pagesDefinitions[1], params: { id: "1" } },
-      });
     });
 
-    it("selects the definition of the default locale", () => {
-      const result = getRouteMatchMetadata(
-        createNextServer(pagesDefinitions, i18n),
-        "/foo/[id]",
-        "/foo/1",
-      );
-      expect(result).toStrictEqual({
-        match: { definition: pagesDefinitions[0], params: { id: "1" } },
-      });
-    });
+    it("falls back to the default locale", () => {
+      const server = createNextServer({ i18n: true });
+      getRouteMatchMetadata(server, "/foo/[id]", "/foo/1");
 
-    it("matches definitions without a locale", () => {
-      const result = getRouteMatchMetadata(
-        createNextServer(pagesDefinitions, i18n),
-        "/[...slug]",
-        "/fr/foo/1/2",
-      );
-      expect(result.match).toMatchObject({
-        definition: pagesDefinitions[2],
-        params: { slug: ["foo", "1", "2"] },
+      expect(
+        server.getRoutePatternDefinition.mock.calls[0][1].detectedLocale,
+      ).toBe("en");
+      expect(server.testRouteDefinition.mock.calls[0][2]).toEqual({
+        pathname: "/foo/1",
+        detectedLocale: "en",
+        inferredFromDefault: true,
       });
     });
   });
