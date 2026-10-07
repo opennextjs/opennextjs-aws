@@ -6,7 +6,7 @@ import {
 // @ts-ignore
 import NextServer from "next/dist/server/next-server.js";
 
-import { debug, error } from "../adapters/logger.js";
+import { debug, error, warn } from "../adapters/logger.js";
 import {
   applyOverride as applyNextjsRequireHooksOverride,
   overrideHooks as overrideNextjsRequireHooks,
@@ -154,6 +154,16 @@ export function getRouteMatchMetadata(
 ): { match?: unknown } {
   if (!("getRouteDefinitions" in nextServer)) {
     return {};
+  }
+  // These are private Next.js internals, they might change in any release.
+  if (
+    typeof nextServer.getRoutePatternDefinition !== "function" ||
+    typeof nextServer.testRouteDefinition !== "function"
+  ) {
+    warn(
+      "Unable to match the route to retry after a NoFallbackError, the Next.js internals have changed.",
+    );
+    return { match: undefined };
   }
   const i18nProvider = nextServer.i18nProvider;
   // Route definitions don't include the basePath, the locale is handled by the i18n analysis.
