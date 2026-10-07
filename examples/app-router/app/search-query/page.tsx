@@ -1,5 +1,12 @@
 import { headers } from "next/headers";
+import { ClientSearchParams } from "./client-search-params";
 
+/**
+ * Renders query values exposed through server and client APIs.
+ *
+ * @param props The App Router page properties
+ * @return The search query test page
+ */
 export default async function SearchQuery(props: {
   searchParams: Promise<Record<string, string | string[]>>;
 }) {
@@ -14,6 +21,7 @@ export default async function SearchQuery(props: {
       <h1>Search Query</h1>
       <div>Search Params via Props: {propsSearchParams.searchParams}</div>
       <div>Search Params via Middleware: {mwSearchParams}</div>
+      <ClientSearchParams />
       {multiValueParams && (
         <>
           <div>Multi-value Params (key: multi): {multiValueArray.length}</div>
