@@ -124,8 +124,28 @@ test("decodes destination query values once", async ({ page, request }) => {
   expect(serverHtml).toContain("hello%2Fworld");
   expect(serverHtml).toContain("a=b");
 
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      /hydration|Minified React error #418/i.test(message.text())
+    ) {
+      hydrationErrors.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => {
+    if (/hydration|Minified React error #418/i.test(error.message)) {
+      hydrationErrors.push(error.message);
+    }
+  });
+
   await page.goto(path);
   await expect(page.getByTestId("server-search-params")).toHaveText(
     JSON.stringify(expected),
   );
+  const clientSearchParams = page.getByTestId("client-search-params");
+  await expect(clientSearchParams).toHaveText("{}");
+  await clientSearchParams.click();
+  await expect(clientSearchParams).toHaveAttribute("data-hydrated", "true");
+  expect(hydrationErrors).toEqual([]);
 });

@@ -10,6 +10,8 @@ const queryKeys = [
   "equals",
   "redirect",
   "path",
+  "destination",
+  "bare",
 ] as const;
 
 /**
