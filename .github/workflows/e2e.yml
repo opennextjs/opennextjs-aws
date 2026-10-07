@@ -89,8 +89,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Set up NodeJS
         uses: actions/setup-node@v4
