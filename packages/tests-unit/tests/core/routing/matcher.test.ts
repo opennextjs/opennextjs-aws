@@ -418,6 +418,38 @@ describe("handleRedirects", () => {
     expect(result.headers.Location).toBe("https://on/new/api-route/secret");
   });
 
+  // Next.js compiles an empty optional catch-all instead of leaving the token
+  // in the destination. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
+  it.each([
+    {
+      destination: "https://example.com/:path*",
+      location: "https://example.com/",
+    },
+    {
+      destination: "https://example.com/:path*#section",
+      location: "https://example.com/#section",
+    },
+  ])(
+    "should redirect an empty optional catch-all to $location",
+    ({ destination, location }) => {
+      const event = createEvent({
+        url: "https://on/",
+      });
+
+      const result = handleRedirects(event, [
+        {
+          source: "/:path*",
+          destination,
+          locale: false,
+          statusCode: 308,
+          regex: "^(?!/_next)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+        },
+      ]);
+
+      expect(result.headers.Location).toBe(location);
+    },
+  );
+
   it("should not redirect unmatched path", () => {
     const event = createEvent({
       url: "https://on/api-route",
@@ -518,6 +550,34 @@ describe("handleRewrites", () => {
         url: "https://on/rewrite/albums/foo/bar",
       },
       __rewrite: rewrites[1],
+      isExternalRewrite: false,
+    });
+  });
+
+  // Related upstream catch-all fixture and tests:
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts
+  it("should rewrite an empty optional catch-all to the internal root", () => {
+    const event = createEvent({
+      url: "https://on/legacy",
+    });
+    const rewrites = [
+      {
+        source: "/legacy/:path*",
+        destination: "/:path*",
+        regex: "^/legacy(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/",
+        url: "https://on/",
+      },
+      __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
   });

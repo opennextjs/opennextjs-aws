@@ -167,9 +167,16 @@ export function getNextConfigHeaders(
 }
 
 /**
- * TODO: This method currently only check for the first match.
- *       It should check for all matches for `beforeFiles` and `afterFiles` rewrite
- *       See https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+ * Applies the first matching rewrite to an internal request.
+ *
+ * TODO: This method currently only checks the first match. It should check all
+ * matches for `beforeFiles` and `afterFiles` rewrites. See
+ * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+ *
+ * @param event The request to rewrite
+ * @param rewrites The configured rewrites to evaluate
+ * @returns The rewritten request and matched rewrite metadata
+ * @throws {TypeError} When a matched destination cannot be compiled
  */
 export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
@@ -224,9 +231,17 @@ export function handleRewrites<T extends RewriteDefinition>(
     const isUsingParams = Object.keys(params).length > 0;
     let rewrittenQuery = queryString;
     let rewrittenHost = hostname;
+
     let rewrittenPath = pathname;
-    if (isUsingParams) {
+    // Next.js compiles optional catch-alls even when the source match has no
+    // parameters. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
+    if (isUsingParams || pathname.includes("*")) {
       rewrittenPath = unescapeRegex(toDestinationPath(params));
+      if (pathname.startsWith("/") && !rewrittenPath.startsWith("/")) {
+        rewrittenPath = `/${rewrittenPath}`;
+      }
+    }
+    if (isUsingParams) {
       rewrittenHost = unescapeRegex(toDestinationHost(params));
       rewrittenQuery = unescapeRegex(toDestinationQuery(params));
     }
