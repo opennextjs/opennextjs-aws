@@ -725,6 +725,65 @@ describe("handleRewrites", () => {
     ).toThrow("Invalid URL");
   });
 
+  // Adapted from Next.js's host capture redirect regression.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1292-L1312
+  it("should capture from a normalized hostname", () => {
+    const event = createEvent({
+      url: "https://on/capture-host",
+      headers: { host: "HELLO-test.EXAMPLE.com:3000" },
+    });
+    const rewrites = [
+      {
+        source: "/capture-host",
+        destination: "https://:subdomain.example.com/target",
+        regex: "^/capture-host(?:/)?$",
+        has: [
+          {
+            type: "host" as const,
+            value: "(?<subdomain>.*)-test\\.example\\.com",
+          },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      rawPath: "/target",
+      url: "https://hello.example.com/target",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+    expect(result.isExternalRewrite).toBe(true);
+  });
+
+  // Next.js exposes the full match as `host` when a host pattern has no named
+  // groups. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L101-L110
+  it("should expose the normalized hostname as an implicit host capture", () => {
+    const event = createEvent({
+      url: "https://on/capture-host",
+      headers: { host: "EXAMPLE.com:3000" },
+    });
+    const rewrites = [
+      {
+        source: "/capture-host",
+        destination: "/target?matched=:host",
+        regex: "^/capture-host(?:/)?$",
+        has: [{ type: "host" as const, value: "example\\.com" }],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { matched: "example.com" },
+      rawPath: "/target",
+      url: "https://on/target?matched=example.com",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
   // Related upstream catch-all fixture and tests:
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts

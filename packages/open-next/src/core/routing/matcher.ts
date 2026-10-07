@@ -48,6 +48,20 @@ function matchHasValue(
   return candidate !== undefined && new RegExp(`^${pattern}$`).test(candidate);
 }
 
+/**
+ * Normalizes the request host for route-condition matching and captures.
+ *
+ * Next.js removes the port and lowercases the hostname before applying host
+ * patterns. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L82-L88
+ *
+ * @param headers The request headers
+ * @returns The normalized hostname, or undefined when no host is present
+ */
+function getHostname(headers: Record<string, string>): string | undefined {
+  return headers.host?.split(":", 1)[0].toLowerCase();
+}
+
 const routeHasMatcher =
   (
     headers: Record<string, string>,
@@ -66,10 +80,7 @@ const routeHasMatcher =
       case "query":
         return matchHasValue(query[redirect.key], redirect.value);
       case "host":
-        return matchHasValue(
-          headers.host?.split(":", 1)[0].toLowerCase(),
-          redirect.value,
-        );
+        return matchHasValue(getHostname(headers), redirect.value);
       default:
         return false;
     }
@@ -96,7 +107,7 @@ const getParamsFromSource =
   };
 
 /**
- * Creates an extractor for named route-condition captures.
+ * Creates an extractor for route-condition captures.
  *
  * Patterned repeated query parameters capture their final value, matching the
  * value used to decide the condition. See
@@ -117,9 +128,10 @@ const computeParamHas =
   (has: RouteHas): object => {
     if (!has.value) return {};
     const matcher = new RegExp(`^${has.value}$`);
-    const fromSource = (value: string) => {
+    const fromSource = (value: string, implicitKey?: string) => {
       const matches = value.match(matcher);
-      return matches?.groups ?? {};
+      if (matches?.groups) return matches.groups;
+      return implicitKey && matches?.[0] ? { [implicitKey]: matches[0] } : {};
     };
     switch (has.type) {
       case "header":
@@ -133,7 +145,7 @@ const computeParamHas =
             : ((query[has.key] as string) ?? ""),
         );
       case "host":
-        return fromSource(headers.host ?? "");
+        return fromSource(getHostname(headers) ?? "", "host");
     }
   };
 
