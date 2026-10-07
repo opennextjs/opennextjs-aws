@@ -1,0 +1,21 @@
+packages/tests-e2e/tests/pagesRouter/header.test.ts
+  s_3fddce1d5aa4fe::t_7b562142de4b0f 18-44
+packages/tests-e2e/tests/pagesRouter/redirect.test.ts
+  s_3fddce1d5aa4fe::t_4541bada0fdc87 26-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "db07a8ae4527b35136f7ab9983b43bd24b59c147",
+  "prompts": {},
+  "sessions": {
+    "s_3fddce1d5aa4fe": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_eeabb8cb4ffeNChTbkqf8SnMP6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
