@@ -300,7 +300,7 @@ async function processRequest(
   }
 }
 
-async function handleNoFallbackError(
+export async function handleNoFallbackError(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
   routingResult: RoutingResult,
