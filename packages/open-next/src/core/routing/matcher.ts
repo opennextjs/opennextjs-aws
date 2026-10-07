@@ -233,6 +233,30 @@ function compileNonPath(value: string, params: object): string {
 }
 
 /**
+ * Compiles each destination query value independently.
+ *
+ * Independent compilation gives repeat parameters the same slash separator as
+ * Next.js while preserving configured query keys and delimiters.
+ *
+ * @param queryString The destination query string without a leading question mark
+ * @param params The source and route-condition parameters
+ * @returns The interpolated destination query string
+ * @throws {TypeError} When a referenced parameter cannot be compiled
+ */
+function compileQueryString(queryString: string, params: object): string {
+  return queryString
+    .split("&")
+    .map((part) => {
+      const separator = part.indexOf("=");
+      if (separator === -1) return part;
+
+      const key = part.slice(0, separator + 1);
+      return `${key}${compileNonPath(part.slice(separator + 1), params)}`;
+    })
+    .join("&");
+}
+
+/**
  * Resolves configured response headers for a request.
  *
  * Source parameters are merged with successful condition parameters before
@@ -303,6 +327,10 @@ export function getNextConfigHeaders(
  * `missing` predicates must not manufacture captures from absent values. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L113-L125
  *
+ * Destination queries use non-path compilation so repeated parameters retain
+ * their separators. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
+ *
  * TODO: This method currently only checks the first match. It should check all
  * matches for `beforeFiles` and `afterFiles` rewrites. See
  * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
@@ -354,10 +382,6 @@ export function handleRewrites<T extends RewriteDefinition>(
       escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"),
       { ...compileOptions, encode: encodeURIComponent },
     );
-    const toDestinationQuery = compile(
-      escapeRegex(queryString),
-      compileOptions,
-    );
     const params = {
       // params for the source
       ...getParamsFromSource(
@@ -378,7 +402,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     }
     if (isUsingParams) {
       rewrittenHost = unescapeRegex(toDestinationHost(params));
-      rewrittenQuery = unescapeRegex(toDestinationQuery(params));
+      rewrittenQuery = compileQueryString(queryString, params);
     }
 
     // We need to strip the locale from the path if it's a local api route

@@ -925,6 +925,33 @@ describe("handleRewrites", () => {
     },
   );
 
+  // Next.js compiles destination query values as non-path strings while
+  // preserving repeat separators.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
+  it("should separate repeated value-less parameters in a destination query", () => {
+    const event = createEvent({
+      url: "https://on/value-less?items=one&items=two",
+    });
+    const rewrites = [
+      {
+        source: "/value-less",
+        destination: "/target?selected=:items*",
+        regex: "^/value-less(?:/)?$",
+        has: [{ type: "query" as const, key: "items" }],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { items: ["one", "two"], selected: "one/two" },
+      rawPath: "/target",
+      url: "https://on/target?items=one&items=two&selected=one/two",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
   it("should not expose a patterned condition without a capture group", () => {
     const event = createEvent({
       url: "https://on/value-less",
