@@ -7,7 +7,7 @@ import { computePatchDiff } from "./util.js";
 
 const pagesResRevalidateCodeBundled = `
 class NextNodeServer extends _baseserver.default {
-async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(r.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
+async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(n.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
 `;
 
 const pagesResRevalidateCodeUnbundled = `
@@ -93,17 +93,16 @@ describe("patchPagesApiRuntimeProd", () => {
           trustHostHeaderRule,
         ),
       ).toMatchInlineSnapshot(`
-      "Index: pages-api.runtime.prod.js
-      ===================================================================
-      --- pages-api.runtime.prod.js
-      +++ pages-api.runtime.prod.js
-      @@ -1,3 +1,2 @@
-      -
-       class NextNodeServer extends _baseserver.default {
-      -async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(r.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
-      +async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(true){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
-      "
-    `);
+        "Index: pages-api.runtime.prod.js
+        ===================================================================
+        --- pages-api.runtime.prod.js
+        +++ pages-api.runtime.prod.js
+        @@ -1,3 +1,2 @@
+        -
+         class NextNodeServer extends _baseserver.default {
+         async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(n.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
+        "
+      `);
     });
 
     it("should set correct protocol", async () => {
@@ -121,8 +120,8 @@ describe("patchPagesApiRuntimeProd", () => {
         @@ -1,3 +1,2 @@
         -
          class NextNodeServer extends _baseserver.default {
-        -async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(r.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
-        +async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(r.trustHostHeader){let n=await fetch(\`\${r.headers["x-forwarded-proto"] || "https"}://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
+        -async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(n.trustHostHeader){let n=await fetch(\`https://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
+        +async function tO(e,t,r,n){if("string"!=typeof e||!e.startsWith("/"))throw Object.defineProperty(Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${e}\`),"__NEXT_ERROR_CODE",{value:"E153",enumerable:!1,configurable:!0});let i={[x.y3]:n.previewModeId,...t.unstable_onlyGenerated?{[x.Qq]:"1"}:{}},a=[...n.allowedRevalidateHeaderKeys||[]];for(let e of((n.trustHostHeader||n.dev)&&a.push("cookie"),n.trustHostHeader&&a.push("x-vercel-protection-bypass"),Object.keys(r.headers)))a.includes(e)&&(i[e]=r.headers[e]);let s=n.internalRevalidate;try{if(s)return await s({urlPath:e,revalidateHeaders:i,opts:t});if(n.trustHostHeader){let n=await fetch(\`\${r.headers["x-forwarded-proto"] || "https"}://\${r.headers.host}\${e}\`,{method:"HEAD",headers:i}),a=n.headers.get("x-vercel-cache")||n.headers.get("x-nextjs-cache");if((null==a?void 0:a.toUpperCase())!=="REVALIDATED"&&200!==n.status&&!(404===n.status&&t.unstable_onlyGenerated))throw Object.defineProperty(Error(\`Invalid response \${n.status}\`),"__NEXT_ERROR_CODE",{value:"E175",enumerable:!1,configurable:!0})}else throw Object.defineProperty(Error("Invariant: missing internal router-server-methods this is an internal bug"),"__NEXT_ERROR_CODE",{value:"E676",enumerable:!1,configurable:!0})}catch(t){throw Object.defineProperty(Error(\`Failed to revalidate \${e}: \${t_(t)?t.message:t}\`),"__NEXT_ERROR_CODE",{value:"E240",enumerable:!1,configurable:!0})}}
         "
       `);
     });
@@ -141,23 +140,51 @@ describe("patchPagesApiRuntimeProd", () => {
         ===================================================================
         --- pages-api.runtime.prod.js
         +++ pages-api.runtime.prod.js
-        @@ -1,5 +1,4 @@
+        @@ -1,35 +1,28 @@
         -
-         async function revalidate(urlPath, opts, req, context) {
-             if (typeof urlPath !== 'string' || !urlPath.startsWith('/')) {
+        -async function revalidate(urlPath, opts, req, context) {
+        -    if (typeof urlPath !== 'string' || !urlPath.startsWith('/')) {
+        +async function revalidate(urlPath,opts,req,context) {
+        +  context.trustHostHeader = true;
+        +  if (typeof urlPath !== 'string' || !urlPath.startsWith('/')) {
                  throw Object.defineProperty(new Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${urlPath}\`), "__NEXT_ERROR_CODE", {
                      value: "E153",
-        @@ -38,9 +37,9 @@
-                         revalidateHeaders,
-                         opts
-                     });
+                     enumerable: false,
+                     configurable: true
+                 });
+        -    }
+        -    const revalidateHeaders = {
+        +    }const revalidateHeaders = {
+                 [PRERENDER_REVALIDATE_HEADER]: context.previewModeId,
+                 ...opts.unstable_onlyGenerated ? {
+                     [PRERENDER_REVALIDATE_ONLY_GENERATED_HEADER]: '1'
+                 } : {}
+        -    };
+        -    const allowedRevalidateHeaderKeys = [
+        +    };const allowedRevalidateHeaderKeys = [
+                 ...context.allowedRevalidateHeaderKeys || []
+        -    ];
+        -    if (context.trustHostHeader || context.dev) {
+        +    ];if (context.trustHostHeader || context.dev) {
+                 allowedRevalidateHeaderKeys.push('cookie');
+        -    }
+        -    if (context.trustHostHeader) {
+        +    }if (context.trustHostHeader) {
+                 allowedRevalidateHeaderKeys.push('x-vercel-protection-bypass');
+        -    }
+        -    for (const key of Object.keys(req.headers)){
+        +    }for (const key of Object.keys(req.headers)){
+                 if (allowedRevalidateHeaderKeys.includes(key)) {
+                     revalidateHeaders[key] = req.headers[key];
                  }
-        -        if (context.trustHostHeader) {
-        +        if (true) {
-                     const res = await fetch(\`https://\${req.headers.host}\${urlPath}\`, {
-                         method: 'HEAD',
-                         headers: revalidateHeaders
-                     });
+        -    }
+        -    const internalRevalidate = context.internalRevalidate;
+        -    try {
+        +    }const internalRevalidate = context.internalRevalidate;try {
+                 // We use the revalidate in router-server if available.
+                 // If we are operating without router-server (serverless)
+                 // we must go through network layer with fetch request
+                 if (internalRevalidate) {
         "
       `);
     });

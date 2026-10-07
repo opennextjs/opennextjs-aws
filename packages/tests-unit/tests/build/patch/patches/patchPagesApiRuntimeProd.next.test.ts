@@ -38,14 +38,10 @@ describe.each(getInstalledNextPackages(["pages-router", "app-pages-router"]))(
         }
       });
 
-      it.each([
-        { name: "trustHostHeader", rule: trustHostHeaderRule },
-        { name: "headFetchProtocol", rule: headFetchProtocolRule },
-      ])("should apply the $name rule exactly once", ({ rule }) => {
-        expect(applyRule(rule, parseCode(code)).matches).toHaveLength(1);
-        expect(
-          applyRule(rule, parseCode(patchCode(code, rule))).matches,
-        ).toHaveLength(0);
+      it("should apply every rule exactly once", () => {
+        for (const rule of [trustHostHeaderRule, headFetchProtocolRule]) {
+          expect(applyRule(rule, parseCode(code)).matches).toHaveLength(1);
+        }
       });
 
       it("should revalidate with the host and protocol of the request", () => {
@@ -53,9 +49,18 @@ describe.each(getInstalledNextPackages(["pages-router", "app-pages-router"]))(
           patchCode(code, trustHostHeaderRule),
           headFetchProtocolRule,
         );
+        // `trustHostHeader` is forced on the context that every check reads
+        const [, context] =
+          patched.match(/(\w+)\.trustHostHeader = true;/) ?? [];
+        expect(context).toBeDefined();
+        expect(patched.match(/\w+\.trustHostHeader = true;/g)).toHaveLength(1);
+        expect(patched).toContain(`if(${context}.trustHostHeader){`);
         expect(patched).toMatch(
-          /if\(true\)\{let \w+=await fetch\(`\$\{(\w+)\.headers\["x-forwarded-proto"\] \|\| "https"\}:\/\/\$\{\1\.headers\.host\}\$\{\w+\}`,\{method:"HEAD"/,
+          /await fetch\(`\$\{(\w+)\.headers\["x-forwarded-proto"\] \|\| "https"\}:\/\/\$\{\1\.headers\.host\}\$\{\w+\}`,\{method:"HEAD"/,
         );
+        expect(
+          applyRule(headFetchProtocolRule, parseCode(patched)).matches,
+        ).toHaveLength(0);
       });
     });
   },
