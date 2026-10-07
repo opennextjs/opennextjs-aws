@@ -179,9 +179,16 @@ export function getRouteMatchMetadata(
     pathWithoutBasePath !== "/" && pathWithoutBasePath.endsWith("/")
       ? pathWithoutBasePath.slice(0, -1)
       : pathWithoutBasePath;
+  const pathnameLocaleAnalysis = i18nProvider?.analyze(normalizedPathname, {
+    defaultLocale: NextConfig.i18n?.defaultLocale,
+  });
+  // Pages route definitions are per locale, the definition must be looked up with the locale of
+  // the pathname or `testRouteDefinition` rejects it.
   const definition = nextServer.getRoutePatternDefinition(
     route,
-    i18nProvider?.analyze(route),
+    i18nProvider?.analyze(route, {
+      defaultLocale: pathnameLocaleAnalysis?.detectedLocale,
+    }),
   );
   if (!definition) {
     return { match: undefined };
@@ -191,9 +198,7 @@ export function getRouteMatchMetadata(
       nextServer.testRouteDefinition(
         normalizedPathname,
         definition,
-        i18nProvider?.analyze(normalizedPathname, {
-          defaultLocale: NextConfig.i18n?.defaultLocale,
-        }),
+        pathnameLocaleAnalysis,
       ) ?? undefined,
   };
 }
