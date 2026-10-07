@@ -76,6 +76,11 @@ const nextConfig: NextConfig = {
         source: "/search-query-rewrite",
         destination: "/search-query",
       },
+      {
+        source: "/search-query-destination-rewrite",
+        destination:
+          "/search-query?destination=hello%252Fworld&destination=a%3Db&plus=%2B&bare",
+      },
     ];
   },
   async headers() {

@@ -21,6 +21,9 @@ export default async function SearchQuery(props: {
       <h1>Search Query</h1>
       <div>Search Params via Props: {propsSearchParams.searchParams}</div>
       <div>Search Params via Middleware: {mwSearchParams}</div>
+      <div data-testid="server-search-params">
+        {JSON.stringify(propsSearchParams)}
+      </div>
       <ClientSearchParams />
       {multiValueParams && (
         <>

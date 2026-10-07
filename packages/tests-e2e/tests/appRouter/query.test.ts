@@ -9,8 +9,8 @@ test("SearchQuery", async ({ page }) => {
   const propsEl = page.getByText("Search Params via Props: e2etest");
   const mwEl = page.getByText("Search Params via Middleware: mw/e2etest");
   const multiEl = page.getByText("Multi-value Params (key: multi): 2");
-  const multiOne = page.getByText("one");
-  const multiTwo = page.getByText("two");
+  const multiOne = page.getByText("one", { exact: true });
+  const multiTwo = page.getByText("two", { exact: true });
   await expect(propsEl).toBeVisible();
   await expect(mwEl).toBeVisible();
   await expect(multiEl).toBeVisible();
@@ -106,4 +106,26 @@ test("preserves encoded query values through rewrites", async ({
   await clientSearchParams.click();
   await expect(clientSearchParams).toHaveAttribute("data-hydrated", "true");
   expect(hydrationErrors).toEqual([]);
+});
+
+// Next.js parses destination queries into decoded server search parameters.
+// https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L221-L299
+test("decodes destination query values once", async ({ page, request }) => {
+  const path = "/search-query-destination-rewrite";
+  const expected = {
+    destination: ["hello%2Fworld", "a=b"],
+    plus: "+",
+    bare: "",
+  };
+
+  const serverResponse = await request.get(path);
+  expect(serverResponse.ok()).toBe(true);
+  const serverHtml = await serverResponse.text();
+  expect(serverHtml).toContain("hello%2Fworld");
+  expect(serverHtml).toContain("a=b");
+
+  await page.goto(path);
+  await expect(page.getByTestId("server-search-params")).toHaveText(
+    JSON.stringify(expected),
+  );
 });
