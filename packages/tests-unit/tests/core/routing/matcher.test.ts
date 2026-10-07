@@ -871,6 +871,80 @@ describe("handleRewrites", () => {
     ).toThrow('Expected "xtenantid" to be a string');
   });
 
+  // Next.js uses successful `has` predicates to build parameters, while
+  // nonmatching `missing` predicates contribute nothing.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L125
+  it.each([
+    { type: "header", key: "x-blocked", value: "(?<value>.*)" },
+    { type: "cookie", key: "blocked", value: "(?<value>.*)" },
+    { type: "query", key: "blocked", value: "(?<value>.*)" },
+    { type: "host", value: "(?<value>.*)" },
+  ] satisfies RouteHas[])(
+    "should not let an absent $type condition overwrite a source parameter",
+    (missing) => {
+      const event = createEvent({ url: "https://on/source/from-source" });
+      const rewrites = [
+        {
+          source: "/source/:value",
+          destination: "/target/:value",
+          regex: "^/source(?:/([^/]+?))(?:/)?$",
+          missing: [missing],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        rawPath: "/target/from-source",
+        url: "https://on/target/from-source",
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
+
+  it("should not let a missing condition overwrite a has parameter", () => {
+    const event = createEvent({
+      url: "https://on/combined?tenant=alpha",
+    });
+    const rewrites = [
+      {
+        source: "/combined",
+        destination: "/target/:value",
+        regex: "^/combined(?:/)?$",
+        has: [{ type: "query" as const, key: "tenant", value: "(?<value>.*)" }],
+        missing: [
+          { type: "query" as const, key: "blocked", value: "(?<value>.*)" },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      rawPath: "/target/alpha",
+      url: "https://on/target/alpha?tenant=alpha",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
+  it("should reject a rewrite when a missing condition matches", () => {
+    const event = createEvent({ url: "https://on/blocked?blocked=true" });
+
+    const result = handleRewrites(event, [
+      {
+        source: "/blocked",
+        destination: "/unexpected",
+        regex: "^/blocked(?:/)?$",
+        missing: [{ type: "query", key: "blocked", value: "true" }],
+      },
+    ]);
+
+    expect(result.internalEvent).toEqual(event);
+    expect(result.__rewrite).toBeUndefined();
+  });
+
   // Related upstream catch-all fixture and tests:
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts

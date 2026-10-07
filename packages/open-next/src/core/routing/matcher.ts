@@ -245,6 +245,10 @@ export function getNextConfigHeaders(
 /**
  * Applies the first matching rewrite to an internal request.
  *
+ * Only successful `has` predicates supply destination parameters. Nonmatching
+ * `missing` predicates must not manufacture captures from absent values. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L113-L125
+ *
  * TODO: This method currently only checks the first match. It should check all
  * matches for `beforeFiles` and `afterFiles` rewrites. See
  * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
@@ -307,10 +311,6 @@ export function handleRewrites<T extends RewriteDefinition>(
       )(pathToUse),
       // params for the has
       ...rewrite.has?.reduce((acc, cur) => {
-        return Object.assign(acc, computeHas(cur));
-      }, {}),
-      // params for the missing
-      ...rewrite.missing?.reduce((acc, cur) => {
         return Object.assign(acc, computeHas(cur));
       }, {}),
     };
