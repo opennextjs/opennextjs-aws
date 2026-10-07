@@ -1,6 +1,28 @@
-import { NextConfig } from "config/index.js";
+import path from "node:path";
 
-import { warn } from "../adapters/logger.js";
+import {
+  AppPathRoutesManifest,
+  AppPathsManifest,
+  NEXT_DIR,
+  NextConfig,
+  PagesManifest,
+  RoutesManifest,
+} from "config/index.js";
+
+// Only the fields of the Next.js route definition read when rendering a `match`
+interface RouteMatch {
+  definition: {
+    kind: "PAGES" | "PAGES_API" | "APP_PAGE" | "APP_ROUTE";
+    pathname: string;
+    page: string;
+    filename: string;
+    appPaths?: string[];
+  };
+  params?: Record<string, string | string[]>;
+}
+
+// `[slug]`, `[...slug]` or `[[...slug]]`, possibly after an interception marker like `(.)`
+const DYNAMIC_SEGMENT_REGEX = /\[{1,2}(\.\.\.)?([^\]]+)\]{1,2}$/;
 
 /**
  * Returns the request metadata selecting `route` for `pathname`.
@@ -15,60 +37,118 @@ import { warn } from "../adapters/logger.js";
  * route which threw the `NoFallbackError`. `match` is always returned (possibly `undefined`) so
  * that it overrides this stale match even when the route can't be matched.
  *
- * Returns no metadata on older versions of Next.js, which still match routes from `invokeOutput`.
+ * Older versions of Next.js ignore the `match` metadata and match routes from `invokeOutput`.
  */
 export function getRouteMatchMetadata(
-  nextServer: any,
   route: string,
   pathname: string,
-): { match?: unknown } {
-  if (!("getRouteDefinitions" in nextServer)) {
-    return {};
-  }
-  // These are private Next.js internals, they might change in any release.
-  if (
-    typeof nextServer.getRoutePatternDefinition !== "function" ||
-    typeof nextServer.testRouteDefinition !== "function"
-  ) {
-    warn(
-      "Unable to match the route to retry after a NoFallbackError, the Next.js internals have changed.",
-    );
-    return { match: undefined };
-  }
-  const i18nProvider = nextServer.i18nProvider;
-  // Route definitions don't include the basePath, the locale is handled by the i18n analysis.
-  const basePath = NextConfig.basePath;
-  const pathWithoutBasePath = !basePath
-    ? pathname
-    : pathname === basePath
-      ? "/"
-      : pathname.startsWith(`${basePath}/`)
-        ? pathname.slice(basePath.length)
-        : pathname;
-  const normalizedPathname =
-    pathWithoutBasePath !== "/" && pathWithoutBasePath.endsWith("/")
-      ? pathWithoutBasePath.slice(0, -1)
-      : pathWithoutBasePath;
-  const pathnameLocaleAnalysis = i18nProvider?.analyze(normalizedPathname, {
-    defaultLocale: NextConfig.i18n?.defaultLocale,
-  });
-  // Pages route definitions are per locale, the definition must be looked up with the locale of
-  // the pathname or `testRouteDefinition` rejects it.
-  const definition = nextServer.getRoutePatternDefinition(
-    route,
-    i18nProvider?.analyze(route, {
-      defaultLocale: pathnameLocaleAnalysis?.detectedLocale,
-    }),
-  );
-  if (!definition) {
-    return { match: undefined };
-  }
+): { match: RouteMatch | undefined } {
+  const definition = getRouteDefinition(route);
+  const params = definition
+    ? getRouteParams(route, normalizePathname(pathname))
+    : null;
   return {
-    match:
-      nextServer.testRouteDefinition(
-        normalizedPathname,
-        definition,
-        pathnameLocaleAnalysis,
-      ) ?? undefined,
+    match: definition && params !== null ? { definition, params } : undefined,
   };
+}
+
+function getRouteDefinition(
+  route: string,
+): RouteMatch["definition"] | undefined {
+  const appPaths = Object.keys(AppPathRoutesManifest).filter(
+    (appPath) => AppPathRoutesManifest[appPath] === route,
+  );
+  const appPages = appPaths.filter((appPath) => appPath.endsWith("/page"));
+  if (appPages.length > 0) {
+    return {
+      kind: "APP_PAGE",
+      pathname: route,
+      page: appPages[0],
+      filename: getFilename(AppPathsManifest[appPages[0]]),
+      appPaths: appPages,
+    };
+  }
+  const appRoute = appPaths.find((appPath) => appPath.endsWith("/route"));
+  if (appRoute) {
+    return {
+      kind: "APP_ROUTE",
+      pathname: route,
+      page: appRoute,
+      filename: getFilename(AppPathsManifest[appRoute]),
+    };
+  }
+  if (PagesManifest[route]) {
+    return {
+      kind:
+        route === "/api" || route.startsWith("/api/") ? "PAGES_API" : "PAGES",
+      pathname: route,
+      page: route,
+      filename: getFilename(PagesManifest[route]),
+    };
+  }
+  return undefined;
+}
+
+function getFilename(manifestPath: string | undefined) {
+  return manifestPath ? path.join(NEXT_DIR, "server", manifestPath) : "";
+}
+
+/**
+ * Strips the basePath, the locale and the trailing slash, which are not part of route patterns.
+ */
+function normalizePathname(pathname: string) {
+  const basePath = NextConfig.basePath;
+  let normalized = pathname;
+  if (
+    basePath &&
+    (normalized === basePath || normalized.startsWith(`${basePath}/`))
+  ) {
+    normalized = normalized.slice(basePath.length) || "/";
+  }
+  const [, firstSegment] = normalized.split("/");
+  const isLocale = NextConfig.i18n?.locales.some(
+    (locale) => locale.toLowerCase() === firstSegment?.toLowerCase(),
+  );
+  if (isLocale) {
+    normalized = normalized.slice(firstSegment.length + 1) || "/";
+  }
+  return normalized !== "/" && normalized.endsWith("/")
+    ? normalized.slice(0, -1)
+    : normalized;
+}
+
+/**
+ * Returns the params of `route` for `pathname`, or `null` if it doesn't match.
+ * Static routes have `undefined` params.
+ *
+ * Throws on malformed percent-encoded params, like Next.js.
+ */
+function getRouteParams(route: string, pathname: string) {
+  const dynamicRoute = RoutesManifest.routes.dynamic.find(
+    ({ page }) => page === route,
+  );
+  if (!dynamicRoute) {
+    return pathname === route ? undefined : null;
+  }
+  const result = new RegExp(dynamicRoute.regex).exec(pathname);
+  if (!result) {
+    return null;
+  }
+  // The regex has one capture group per dynamic segment, in order
+  const params: Record<string, string | string[]> = {};
+  let group = 1;
+  for (const segment of route.split("/")) {
+    const dynamicSegment = DYNAMIC_SEGMENT_REGEX.exec(segment);
+    if (!dynamicSegment) {
+      continue;
+    }
+    const [, isCatchAll, name] = dynamicSegment;
+    const value = result[group++];
+    if (value !== undefined) {
+      params[name] = isCatchAll
+        ? value.split("/").map(decodeURIComponent)
+        : decodeURIComponent(value);
+    }
+  }
+  return params;
 }

@@ -15,8 +15,11 @@ const { requestHandler, nextHandler, getRouteMatchMetadata } = vi.hoisted(
 
 vi.mock("@opennextjs/aws/core/util.js", () => ({
   requestHandler,
-  getRouteMatchMetadata,
   setNextjsPrebundledReact: vi.fn(),
+}));
+
+vi.mock("@opennextjs/aws/core/routeMatchMetadata.js", () => ({
+  getRouteMatchMetadata,
 }));
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({

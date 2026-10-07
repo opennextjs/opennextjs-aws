@@ -15,6 +15,7 @@ import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
+import { getRouteMatchMetadata } from "./routeMatchMetadata";
 import {
   constructNextUrl,
   convertRes,
@@ -30,11 +31,7 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
-import {
-  getRouteMatchMetadata,
-  requestHandler,
-  setNextjsPrebundledReact,
-} from "./util";
+import { requestHandler, setNextjsPrebundledReact } from "./util";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();

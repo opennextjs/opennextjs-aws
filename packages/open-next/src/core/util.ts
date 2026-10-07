@@ -11,7 +11,6 @@ import {
   applyOverride as applyNextjsRequireHooksOverride,
   overrideHooks as overrideNextjsRequireHooks,
 } from "./require-hooks.js";
-import { getRouteMatchMetadata as getNextRouteMatchMetadata } from "./routeMatchMetadata.js";
 
 // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled Reac
 // See https://opennext.js.org/aws/v2/advanced/workaround#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
@@ -133,9 +132,6 @@ export const requestHandler = (metadata: Record<string, any>) =>
   "getRequestHandlerWithMetadata" in nextServer
     ? nextServer.getRequestHandlerWithMetadata(metadata)
     : nextServer.getRequestHandler();
-
-export const getRouteMatchMetadata = (route: string, pathname: string) =>
-  getNextRouteMatchMetadata(nextServer, route, pathname);
 
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {
