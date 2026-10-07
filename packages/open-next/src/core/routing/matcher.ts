@@ -1,5 +1,5 @@
 import { NextConfig } from "config/index";
-import type { Match, MatchFunction, PathFunction } from "path-to-regexp";
+import type { MatchFunction } from "path-to-regexp";
 import { compile, match } from "path-to-regexp";
 import type {
   Header,
@@ -184,20 +184,66 @@ const computeParamHas =
     }
   };
 
-function convertMatch(
-  match: Match,
-  toDestination: PathFunction,
-  destination: string,
-) {
-  if (!match) {
-    return destination;
-  }
+/**
+ * Compiles parameters in a non-path value while preserving literal syntax.
+ *
+ * Header keys and values can contain URL schemes and characters that
+ * path-to-regexp otherwise treats as patterns. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L127-L160
+ *
+ * @param value The configured header key or value
+ * @param params The source and route-condition parameters
+ * @returns The interpolated value
+ * @throws {TypeError} When a referenced parameter cannot be compiled
+ */
+function compileNonPath(value: string, params: object): string {
+  if (!value.includes(":")) return value;
 
-  const { params } = match;
-  const isUsingParams = Object.keys(params).length > 0;
-  return isUsingParams ? toDestination(params) : destination;
+  let compiledValue = value;
+  for (const key of Object.keys(params)) {
+    if (!compiledValue.includes(`:${key}`)) continue;
+
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    compiledValue = compiledValue
+      .replace(
+        new RegExp(`:${escapedKey}\\*`, "g"),
+        `:${key}--ESCAPED_PARAM_ASTERISKS`,
+      )
+      .replace(
+        new RegExp(`:${escapedKey}\\?`, "g"),
+        `:${key}--ESCAPED_PARAM_QUESTION`,
+      )
+      .replace(
+        new RegExp(`:${escapedKey}\\+`, "g"),
+        `:${key}--ESCAPED_PARAM_PLUS`,
+      )
+      .replace(
+        new RegExp(`:${escapedKey}(?!\\w)`, "g"),
+        `--ESCAPED_PARAM_COLON${key}`,
+      );
+  }
+  compiledValue = compiledValue
+    .replace(/(:|\*|\?|\+|\(|\)|\{|\})/g, "\\$1")
+    .replaceAll("--ESCAPED_PARAM_PLUS", "+")
+    .replaceAll("--ESCAPED_PARAM_COLON", ":")
+    .replaceAll("--ESCAPED_PARAM_QUESTION", "?")
+    .replaceAll("--ESCAPED_PARAM_ASTERISKS", "*");
+
+  return compile(`/${compiledValue}`, { validate: false })(params).slice(1);
 }
 
+/**
+ * Resolves configured response headers for a request.
+ *
+ * Source parameters are merged with successful condition parameters before
+ * interpolation, with condition parameters taking precedence. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
+ *
+ * @param event The request used to match configured headers
+ * @param configHeaders The configured header routes
+ * @returns The response headers produced by every matching route
+ * @throws {SyntaxError} When a configured route pattern is invalid
+ */
 export function getNextConfigHeaders(
   event: InternalEvent,
   configHeaders?: Header[] | undefined,
@@ -207,6 +253,7 @@ export function getNextConfigHeaders(
   }
 
   const matcher = routeHasMatcher(event.headers, event.cookies, event.query);
+  const computeHas = computeParamHas(event.headers, event.cookies, event.query);
 
   const requestHeaders: Record<string, string> = {};
   const localizedRawPath = localizePath(event);
@@ -227,10 +274,17 @@ export function getNextConfigHeaders(
     ) {
       const fromSource = match(source);
       const _match = fromSource(path);
+      const params = {
+        ...(_match ? _match.params : {}),
+        ...has?.reduce((acc, cur) => {
+          return Object.assign(acc, computeHas(cur));
+        }, {}),
+      };
+      const hasParams = Object.keys(params).length > 0;
       headers.forEach((h) => {
         try {
-          const key = convertMatch(_match, compile(h.key), h.key);
-          const value = convertMatch(_match, compile(h.value), h.value);
+          const key = hasParams ? compileNonPath(h.key, params) : h.key;
+          const value = hasParams ? compileNonPath(h.value, params) : h.value;
           requestHeaders[key] = value;
         } catch {
           debug(`Error matching header ${h.key} with value ${h.value}`);

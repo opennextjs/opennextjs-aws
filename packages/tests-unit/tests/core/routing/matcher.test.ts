@@ -369,6 +369,78 @@ describe("getNextConfigHeaders", () => {
     });
   });
 
+  // Next.js merges successful condition parameters into source parameters
+  // before compiling configured header keys and values.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L841-L860
+  it("should interpolate named and value-less conditions in header keys and values", () => {
+    const event = createEvent({
+      url: "https://on/headers?tenant=alpha&my-query=beta&items=one&items=two",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/headers",
+        regex: "^/headers(?:/)?$",
+        has: [
+          {
+            type: "query",
+            key: "tenant",
+            value: "(?<tenant>.*)",
+          },
+          { type: "query", key: "my-query" },
+          { type: "query", key: "items" },
+        ],
+        headers: [
+          { key: "x-:tenant", value: ":myquery" },
+          { key: "x-items", value: ":items*" },
+          {
+            key: "x-url",
+            value: "https://example.com/path?tenant=:tenant&next=(literal)+*",
+          },
+          { key: "x-literal", value: "urn:test:(literal)+*" },
+        ],
+      },
+    ]);
+
+    expect(result).toEqual({
+      "x-alpha": "beta",
+      "x-items": "one/two",
+      "x-url": "https://example.com/path?tenant=alpha&next=(literal)+*",
+      "x-literal": "urn:test:(literal)+*",
+    });
+  });
+
+  it("should let a condition parameter override a source parameter in headers", () => {
+    const event = createEvent({
+      url: "https://on/headers/from-source?tenant=condition",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/headers/:value",
+        regex: "^/headers(?:/([^/]+?))(?:/)?$",
+        has: [
+          {
+            type: "query",
+            key: "tenant",
+            value: "(?<value>.*)",
+          },
+        ],
+        missing: [
+          {
+            type: "query",
+            key: "blocked",
+            value: "(?<value>.*)",
+          },
+        ],
+        headers: [{ key: "x-value", value: ":value" }],
+      },
+    ]);
+
+    expect(result).toEqual({ "x-value": "condition" });
+  });
+
   it.todo(
     "should exercise the error scenario: 'Error matching header <key> with value <value>'",
   );
