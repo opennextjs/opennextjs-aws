@@ -51,12 +51,21 @@ export function isExternal(url?: string, host?: string) {
   return true;
 }
 
+/**
+ * Converts a query string into scalar or repeated request values.
+ *
+ * Bare parameters are normalized to empty strings, matching URL query parsing
+ * and the values consumed by Next.js route conditions.
+ *
+ * @param query The query string without a leading question mark
+ * @returns The parsed query values
+ */
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
   const queryParts = query.split("&");
   return getQueryFromIterator(
     queryParts.map((p) => {
-      const [key, value] = p.split("=");
+      const [key, value = ""] = p.split("=");
       return [key, value] as const;
     }),
   );

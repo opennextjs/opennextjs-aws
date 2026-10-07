@@ -25,13 +25,27 @@ import {
   unescapeRegex,
 } from "./util";
 
+/**
+ * Tests a request value against a route condition.
+ *
+ * Repeated query parameters are present when their array exists, but configured
+ * patterns match only the final entry, including an empty final entry. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L115
+ *
+ * @param value The scalar or repeated request value
+ * @param pattern The optional configured condition pattern
+ * @returns Whether the request value satisfies the condition
+ * @throws {SyntaxError} When the configured pattern is invalid
+ */
 function matchHasValue(
   value: string | string[] | undefined,
   pattern?: string,
 ): boolean {
+  if (!value) return false;
+  if (!pattern) return true;
+
   const candidate = Array.isArray(value) ? value.at(-1) : value;
-  if (!candidate) return false;
-  return pattern ? new RegExp(`^${pattern}$`).test(candidate) : true;
+  return candidate !== undefined && new RegExp(`^${pattern}$`).test(candidate);
 }
 
 const routeHasMatcher =
@@ -81,6 +95,19 @@ const getParamsFromSource =
     return _match ? _match.params : {};
   };
 
+/**
+ * Creates an extractor for named route-condition captures.
+ *
+ * Patterned repeated query parameters capture their final value, matching the
+ * value used to decide the condition. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L95-L107
+ *
+ * @param headers The request headers
+ * @param cookies The parsed request cookies
+ * @param query The request query parameters
+ * @returns A function that extracts named captures for one condition
+ * @throws {SyntaxError} When the configured pattern is invalid
+ */
 const computeParamHas =
   (
     headers: Record<string, string>,
@@ -100,9 +127,11 @@ const computeParamHas =
       case "cookie":
         return fromSource(cookies[has.key] ?? "");
       case "query":
-        return Array.isArray(query[has.key])
-          ? fromSource((query[has.key] as string[]).join(","))
-          : fromSource((query[has.key] as string) ?? "");
+        return fromSource(
+          Array.isArray(query[has.key])
+            ? ((query[has.key] as string[]).at(-1) ?? "")
+            : ((query[has.key] as string) ?? ""),
+        );
       case "host":
         return fromSource(headers.host ?? "");
     }

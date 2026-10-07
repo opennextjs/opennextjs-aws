@@ -113,7 +113,7 @@ describe("convertFromQueryString", () => {
   });
 
   it("converts query string with no value", () => {
-    expect(convertFromQueryString("search")).toEqual({ search: undefined });
+    expect(convertFromQueryString("search")).toEqual({ search: "" });
   });
 
   it("converts query string with a value", () => {
@@ -130,6 +130,14 @@ describe("convertFromQueryString", () => {
   it("converts query string with multiple keys", () => {
     expect(convertFromQueryString("search=value&search=other")).toEqual({
       search: ["value", "other"],
+    });
+  });
+
+  // Route matching receives the final repeated value, including bare values.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L95-L100
+  it("normalizes a bare repeated value to an empty string", () => {
+    expect(convertFromQueryString("search=value&search")).toEqual({
+      search: ["value", ""],
     });
   });
 });

@@ -288,6 +288,32 @@ describe("getNextConfigHeaders", () => {
     expect(result).toEqual({ "x-robots-tag": "noindex" });
   });
 
+  // Next.js checks whether the repeated query parameter is present before
+  // matching its final value. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L115
+  it.each([
+    { value: undefined, matches: true },
+    { value: ".*", matches: true },
+    { value: ".+", matches: false },
+  ])(
+    "should match a repeated query ending empty against $value",
+    ({ value, matches }) => {
+      const event = createEvent({
+        url: "https://on/hello-world?preview=1&preview=",
+      });
+
+      const result = getNextConfigHeaders(event, [
+        {
+          source: "/(.*)",
+          regex: "^(?:/(.*))(?:/)?$",
+          headers: [{ key: "x-robots-tag", value: "noindex" }],
+          has: [{ type: "query", key: "preview", value }],
+        },
+      ]);
+
+      expect(result).toEqual(matches ? { "x-robots-tag": "noindex" } : {});
+    },
+  );
+
   it("should return request headers for matching /* route with missing condition", () => {
     const event = createEvent({
       url: "https://on/hello-world",
@@ -606,6 +632,57 @@ describe("handleRewrites", () => {
       url: "https://on/target?value=a/b&next=a/b",
     });
   });
+
+  // Adapted from Next.js's duplicate-query redirect regression.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1314-L1331
+  it.each([
+    {
+      search: "value=first&value=last",
+      rewrittenSearch: "value=first&value=last",
+      selected: "last",
+    },
+    {
+      search: "value=first&value=",
+      rewrittenSearch: "value=first&value=",
+      selected: "",
+    },
+    {
+      search: "value=first&value",
+      rewrittenSearch: "value=first&value=",
+      selected: "",
+    },
+  ])(
+    "should capture the final repeated query value from $search",
+    ({ search, rewrittenSearch, selected }) => {
+      const event = createEvent({
+        url: `https://on/repeated-query?${search}`,
+      });
+      const rewrites = [
+        {
+          source: "/repeated-query",
+          destination: "/target?selected=:selected",
+          regex: "^/repeated-query(?:/)?$",
+          has: [
+            {
+              type: "query" as const,
+              key: "value",
+              value: "(?<selected>.*)",
+            },
+          ],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        query: { value: ["first", selected], selected },
+        rawPath: "/target",
+        url: `https://on/target?${rewrittenSearch}&selected=${selected}`,
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
 
   it("should still reject a missing required destination parameter", () => {
     const event = createEvent({
