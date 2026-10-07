@@ -134,7 +134,7 @@ export const requestHandler = (metadata: Record<string, any>) =>
     : nextServer.getRequestHandler();
 
 /**
- * Returns the `match` request metadata selecting `route` for `pathname`.
+ * Returns the request metadata selecting `route` for `pathname`.
  *
  * Next.js 16.4 removed the route matcher manager from the base server: it now only renders the
  * most specific route matching the pathname, and `invokeOutput` can skip that route but no
@@ -142,11 +142,18 @@ export const requestHandler = (metadata: Record<string, any>) =>
  * `match` request metadata instead, which is required to retry the next route after a
  * `NoFallbackError` (i.e. a `fallback: false` page which was not prerendered).
  *
- * Returns `undefined` on older versions of Next.js, which still match routes from `invokeOutput`.
+ * Next.js mutates the metadata of the previous attempt, which then contains the `match` of the
+ * route which threw the `NoFallbackError`. `match` is always returned (possibly `undefined`) so
+ * that it overrides this stale match even when the route can't be matched.
+ *
+ * Returns no metadata on older versions of Next.js, which still match routes from `invokeOutput`.
  */
-export function getRouteMatch(route: string, pathname: string) {
+export function getRouteMatchMetadata(
+  route: string,
+  pathname: string,
+): { match?: unknown } {
   if (!("getRouteDefinitions" in nextServer)) {
-    return undefined;
+    return {};
   }
   const i18nProvider = nextServer.i18nProvider;
   // Route definitions don't include the basePath, the locale is handled by the i18n analysis.
@@ -167,17 +174,18 @@ export function getRouteMatch(route: string, pathname: string) {
     i18nProvider?.analyze(route),
   );
   if (!definition) {
-    return undefined;
+    return { match: undefined };
   }
-  return (
-    nextServer.testRouteDefinition(
-      normalizedPathname,
-      definition,
-      i18nProvider?.analyze(normalizedPathname, {
-        defaultLocale: NextConfig.i18n?.defaultLocale,
-      }),
-    ) ?? undefined
-  );
+  return {
+    match:
+      nextServer.testRouteDefinition(
+        normalizedPathname,
+        definition,
+        i18nProvider?.analyze(normalizedPathname, {
+          defaultLocale: NextConfig.i18n?.defaultLocale,
+        }),
+      ) ?? undefined,
+  };
 }
 
 //#override setNextjsPrebundledReact

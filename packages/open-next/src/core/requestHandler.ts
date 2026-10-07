@@ -31,7 +31,7 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import {
-  getRouteMatch,
+  getRouteMatchMetadata,
   requestHandler,
   setNextjsPrebundledReact,
 } from "./util";
@@ -317,16 +317,18 @@ async function handleNoFallbackError(
   }
   const route = routingResult.resolvedRoutes[index].route;
   try {
-    // `getRouteMatch` can throw (e.g. `DecodeError` on a malformed percent-encoded param),
-    // it must be inside the `try` so that we still render an error page.
-    const match = getRouteMatch(route, routingResult.internalEvent.rawPath);
+    // `getRouteMatchMetadata` can throw (e.g. `DecodeError` on a malformed percent-encoded
+    // param), it must be inside the `try` so that we still render an error page.
+    const routeMatchMetadata = getRouteMatchMetadata(
+      route,
+      routingResult.internalEvent.rawPath,
+    );
     await requestHandler({
       ...routingResult,
       invokeOutput: route,
       ...metadata,
-      // Next.js mutates the metadata of the previous attempt, it contains the `match` of the
-      // route which threw the `NoFallbackError` and must be overridden.
-      ...(match ? { match } : {}),
+      // Must come after `metadata` to override the stale `match` of the previous attempt.
+      ...routeMatchMetadata,
     })(req, res);
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {
