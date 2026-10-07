@@ -554,6 +554,100 @@ describe("handleRewrites", () => {
     });
   });
 
+  // Next.js disables path-to-regexp value validation when compiling a matched
+  // destination. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
+  it.each([
+    { path: "/capture/", destination: "https://on/target/" },
+    { path: "/capture/a/b", destination: "https://on/target/a/b" },
+  ])("should compile the captured path in $path", ({ path, destination }) => {
+    const event = createEvent({
+      url: `https://on${path}`,
+    });
+    const rewrites = [
+      {
+        source: "/capture/:value(.*)",
+        destination: "/target/:value",
+        regex: "^/capture(?:/(.*))(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.url).toBe(destination);
+  });
+
+  // Next.js compiles non-path values without validating them against a path
+  // segment pattern. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L127-L160
+  it("should compile a slash-containing condition capture in the query", () => {
+    const event = createEvent({
+      url: "https://on/capture-query?value=a/b",
+    });
+    const rewrites = [
+      {
+        source: "/capture-query",
+        destination: "/target?next=:value",
+        regex: "^/capture-query(?:/)?$",
+        has: [
+          {
+            type: "query" as const,
+            key: "value",
+            value: "(?<value>.*)",
+          },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { value: "a/b", next: "a/b" },
+      rawPath: "/target",
+      url: "https://on/target?value=a/b&next=a/b",
+    });
+  });
+
+  it("should still reject a missing required destination parameter", () => {
+    const event = createEvent({
+      url: "https://on/capture",
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/capture",
+          destination: "/target/:missing",
+          regex: "^/capture(?:/)?$",
+        },
+      ]),
+    ).toThrow('Expected "missing" to be a string');
+  });
+
+  // Next.js encodes hostname parameters when compiling external destinations.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L265-L270
+  it("should not let a captured slash reshape the destination authority", () => {
+    const event = createEvent({
+      url: "https://on/capture-host?tenant=evil.com/",
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/capture-host",
+          destination: "https://:tenant.internal/target",
+          regex: "^/capture-host(?:/)?$",
+          has: [
+            {
+              type: "query",
+              key: "tenant",
+              value: "(?<tenant>.*)",
+            },
+          ],
+        },
+      ]),
+    ).toThrow("Invalid URL");
+  });
+
   // Related upstream catch-all fixture and tests:
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts

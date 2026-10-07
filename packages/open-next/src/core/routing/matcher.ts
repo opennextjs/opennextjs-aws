@@ -208,12 +208,22 @@ export function handleRewrites<T extends RewriteDefinition>(
     const pathToUse = rewrite.locale === false ? rawPath : localizedRawPath;
 
     debug("urlParts", { pathname, protocol, hostname, queryString });
-    const toDestinationPath = compile(escapeRegex(pathname, { isPath: true }));
+    // Values were validated while matching; Next.js does not revalidate them
+    // as single path segments. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L268
+    const compileOptions = { validate: false };
+    const toDestinationPath = compile(
+      escapeRegex(pathname, { isPath: true }),
+      compileOptions,
+    );
     // A literal numeric port is URL syntax, not a path-to-regexp parameter.
     const toDestinationHost = compile(
       escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"),
+      { ...compileOptions, encode: encodeURIComponent },
     );
-    const toDestinationQuery = compile(escapeRegex(queryString));
+    const toDestinationQuery = compile(
+      escapeRegex(queryString),
+      compileOptions,
+    );
     const params = {
       // params for the source
       ...getParamsFromSource(
@@ -232,14 +242,9 @@ export function handleRewrites<T extends RewriteDefinition>(
     let rewrittenQuery = queryString;
     let rewrittenHost = hostname;
 
-    let rewrittenPath = pathname;
-    // Next.js compiles optional catch-alls even when the source match has no
-    // parameters. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
-    if (isUsingParams || pathname.includes("*")) {
-      rewrittenPath = unescapeRegex(toDestinationPath(params));
-      if (pathname.startsWith("/") && !rewrittenPath.startsWith("/")) {
-        rewrittenPath = `/${rewrittenPath}`;
-      }
+    let rewrittenPath = unescapeRegex(toDestinationPath(params));
+    if (pathname.startsWith("/") && !rewrittenPath.startsWith("/")) {
+      rewrittenPath = `/${rewrittenPath}`;
     }
     if (isUsingParams) {
       rewrittenHost = unescapeRegex(toDestinationHost(params));
