@@ -30,7 +30,11 @@ import routingHandler, {
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
 } from "./routingHandler";
-import { requestHandler, setNextjsPrebundledReact } from "./util";
+import {
+  getRouteMatch,
+  requestHandler,
+  setNextjsPrebundledReact,
+} from "./util";
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -311,11 +315,16 @@ async function handleNoFallbackError(
     await tryRenderError("404", res, routingResult.internalEvent);
     return;
   }
+  const route = routingResult.resolvedRoutes[index].route;
+  const match = getRouteMatch(route, routingResult.internalEvent.rawPath);
   try {
     await requestHandler({
       ...routingResult,
-      invokeOutput: routingResult.resolvedRoutes[index].route,
+      invokeOutput: route,
       ...metadata,
+      // Next.js mutates the metadata of the previous attempt, it contains the `match` of the
+      // route which threw the `NoFallbackError` and must be overridden.
+      ...(match ? { match } : {}),
     })(req, res);
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {

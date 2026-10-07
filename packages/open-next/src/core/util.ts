@@ -133,6 +133,44 @@ export const requestHandler = (metadata: Record<string, any>) =>
     ? nextServer.getRequestHandlerWithMetadata(metadata)
     : nextServer.getRequestHandler();
 
+/**
+ * Returns the `match` request metadata selecting `route` for `pathname`.
+ *
+ * Next.js 16.4 removed the route matcher manager from the base server: it now only renders the
+ * most specific route matching the pathname, and `invokeOutput` can skip that route but no
+ * longer selects another one. The Next.js router server forwards the route to render as a
+ * `match` request metadata instead, which is required to retry the next route after a
+ * `NoFallbackError` (i.e. a `fallback: false` page which was not prerendered).
+ *
+ * Returns `undefined` on older versions of Next.js, which still match routes from `invokeOutput`.
+ */
+export function getRouteMatch(route: string, pathname: string) {
+  if (!("getRouteDefinitions" in nextServer)) {
+    return undefined;
+  }
+  const i18nProvider = nextServer.i18nProvider;
+  const normalizedPathname =
+    pathname !== "/" && pathname.endsWith("/")
+      ? pathname.slice(0, -1)
+      : pathname;
+  const definition = nextServer.getRoutePatternDefinition(
+    route,
+    i18nProvider?.analyze(route),
+  );
+  if (!definition) {
+    return undefined;
+  }
+  return (
+    nextServer.testRouteDefinition(
+      normalizedPathname,
+      definition,
+      i18nProvider?.analyze(normalizedPathname, {
+        defaultLocale: NextConfig.i18n?.defaultLocale,
+      }),
+    ) ?? undefined
+  );
+}
+
 //#override setNextjsPrebundledReact
 export function setNextjsPrebundledReact(rawPath: string) {
   // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled React
