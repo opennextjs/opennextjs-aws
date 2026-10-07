@@ -132,7 +132,7 @@ jobs:
 
       # Ensure the code patches still match the code of the Next version installed above
       - name: Check code patches against the installed Nextjs
-        run: pnpm --filter tests-unit exec vitest run patchBackgroundRevalidation.next
+        run: pnpm --filter tests-unit exec vitest run .next.test
 
       # Deploy e2e stage
       - name: Deploy NextjsSite

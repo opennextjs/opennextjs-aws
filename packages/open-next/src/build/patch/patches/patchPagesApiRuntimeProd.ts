@@ -34,33 +34,23 @@ fix:
 `;
 
 // Use correct protocol when doing HEAD fetch for revalidation
+// The request identifier is captured as it is minified in the runtime
 export const headFetchProtocolRule = `
 rule:
-  kind: string_fragment
-  regex: ^https://
+  kind: template_string
+  pattern: "\`https://\${$REQ.headers.host}\${$PATH}\`"
   inside:
-    kind: template_string
+    kind: arguments
+    has:
+      kind: object
+      regex: HEAD
     inside:
-      kind: arguments
+      kind: call_expression
       has:
-        kind: object
-        regex: HEAD
-      inside:
-        kind: call_expression
-        inside:
-          kind: await_expression
-          regex: fetch
-          inside: 
-            kind: variable_declarator
-            inside:
-              kind: lexical_declaration
-              regex: x-vercel-cache
-              inside:
-                kind: statement_block
-                inside: 
-                  kind: if_statement
+        kind: identifier
+        regex: ^fetch$
 fix:
-  '\${r.headers["x-forwarded-proto"] || "https"}://'
+  '\`\${$REQ.headers["x-forwarded-proto"] || "https"}://\${$REQ.headers.host}\${$PATH}\`'
 `;
 
 const pathFilter = getCrossPlatformPathRegex(

@@ -180,6 +180,17 @@ describe("patchPagesApiRuntimeProd", () => {
              if (typeof urlPath !== 'string' || !urlPath.startsWith('/')) {
                  throw Object.defineProperty(new Error(\`Invalid urlPath provided to revalidate(), must be a path e.g. /blog/post-1, received \${urlPath}\`), "__NEXT_ERROR_CODE", {
                      value: "E153",
+        @@ -39,9 +38,9 @@
+                         opts
+                     });
+                 }
+                 if (context.trustHostHeader) {
+        -            const res = await fetch(\`https://\${req.headers.host}\${urlPath}\`, {
+        +            const res = await fetch(\`\${req.headers["x-forwarded-proto"] || "https"}://\${req.headers.host}\${urlPath}\`, {
+                         method: 'HEAD',
+                         headers: revalidateHeaders
+                     });
+                     // we use the cache header to determine successful revalidate as
         "
       `);
     });
