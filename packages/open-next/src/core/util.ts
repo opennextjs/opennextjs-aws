@@ -149,10 +149,19 @@ export function getRouteMatch(route: string, pathname: string) {
     return undefined;
   }
   const i18nProvider = nextServer.i18nProvider;
+  // Route definitions don't include the basePath, the locale is handled by the i18n analysis.
+  const basePath = NextConfig.basePath;
+  const pathWithoutBasePath = !basePath
+    ? pathname
+    : pathname === basePath
+      ? "/"
+      : pathname.startsWith(`${basePath}/`)
+        ? pathname.slice(basePath.length)
+        : pathname;
   const normalizedPathname =
-    pathname !== "/" && pathname.endsWith("/")
-      ? pathname.slice(0, -1)
-      : pathname;
+    pathWithoutBasePath !== "/" && pathWithoutBasePath.endsWith("/")
+      ? pathWithoutBasePath.slice(0, -1)
+      : pathWithoutBasePath;
   const definition = nextServer.getRoutePatternDefinition(
     route,
     i18nProvider?.analyze(route),
