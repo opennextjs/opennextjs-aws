@@ -316,8 +316,10 @@ async function handleNoFallbackError(
     return;
   }
   const route = routingResult.resolvedRoutes[index].route;
-  const match = getRouteMatch(route, routingResult.internalEvent.rawPath);
   try {
+    // `getRouteMatch` can throw (e.g. `DecodeError` on a malformed percent-encoded param),
+    // it must be inside the `try` so that we still render an error page.
+    const match = getRouteMatch(route, routingResult.internalEvent.rawPath);
     await requestHandler({
       ...routingResult,
       invokeOutput: route,
