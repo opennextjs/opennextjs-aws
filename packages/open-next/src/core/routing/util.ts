@@ -51,36 +51,21 @@ export function isExternal(url?: string, host?: string) {
   return true;
 }
 
-function decodeQueryComponent(component: string) {
-  try {
-    return decodeURIComponent(component.replace(/\+/g, " "));
-  } catch {
-    // Malformed percent-encoding: keep it as-is, like URLSearchParams does.
-    return component;
-  }
-}
-
 /**
- * Parses a raw query string into a query record with decoded keys and values,
- * the same shape the converters produce from `URLSearchParams`.
+ * Parses a raw query string into decoded scalar or repeated values.
  *
- * Bare parameters are normalized to empty strings, matching URL query parsing
- * and the values consumed by Next.js route conditions.
+ * The result has the same shape the converters produce from `URLSearchParams`
+ * and follows Next.js's decoded query representation.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/querystring.ts#L34-L48
  *
  * @param query The query string without a leading question mark
- * @returns The parsed query values
+ * @returns The decoded scalar and repeated query values
  *
  * @__PURE__
  */
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
-  const queryParts = query.split("&");
-  return getQueryFromIterator(
-    queryParts.map((p) => {
-      const [key, value = ""] = p.split("=");
-      return [decodeQueryComponent(key), decodeQueryComponent(value)] as const;
-    }),
-  );
+  return getQueryFromIterator(new URLSearchParams(query).entries());
 }
 
 /**

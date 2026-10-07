@@ -143,16 +143,33 @@ describe("convertFromQueryString", () => {
 
   it("decodes keys and values", () => {
     expect(
-      convertFromQueryString("brand=h%26m&q=hello+world&na%20me=a%3Db"),
+      convertFromQueryString(
+        "brand=h%26m&q=hello+world&plus=%2B&na%20me=a%3Db&utf8=caf%C3%A9",
+      ),
     ).toEqual({
       brand: "h&m",
       q: "hello world",
+      plus: "+",
       "na me": "a=b",
+      utf8: "caf\u00e9",
     });
   });
 
-  it("leaves malformed percent-encoding as-is", () => {
-    expect(convertFromQueryString("q=100%")).toEqual({ q: "100%" });
+  it("preserves equals signs in values", () => {
+    expect(convertFromQueryString("search=a=b=c")).toEqual({
+      search: "a=b=c",
+    });
+  });
+
+  // Match Next.js's URLSearchParams-based query conversion for malformed input.
+  // https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/querystring.ts#L34-L48
+  it("decodes valid escapes alongside malformed percent-encoding", () => {
+    expect(convertFromQueryString("q=hello%20world%&invalid=%E0%A4%A")).toEqual(
+      {
+        q: "hello world%",
+        invalid: "\uFFFD%A",
+      },
+    );
   });
 });
 
