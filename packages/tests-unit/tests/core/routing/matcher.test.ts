@@ -784,6 +784,93 @@ describe("handleRewrites", () => {
     expect(result.__rewrite).toBe(rewrites[0]);
   });
 
+  // Adapted from Next.js's value-less condition parameter regressions.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1083-L1151
+  it.each([
+    {
+      name: "header",
+      event: { headers: { "x-tenant-123-id": "alpha" } },
+      has: { type: "header", key: "X-Tenant-123-ID" },
+      destination: "/target/:xtenantid",
+      path: "/target/alpha",
+      url: "https://on/target/alpha",
+    },
+    {
+      name: "cookie",
+      event: { cookies: { "session-id": "beta" } },
+      has: { type: "cookie", key: "session-id" },
+      destination: "/target/:sessionid",
+      path: "/target/beta",
+      url: "https://on/target/beta",
+    },
+    {
+      name: "query",
+      event: { url: "https://on/value-less?my-query=gamma" },
+      has: { type: "query", key: "my-query" },
+      destination: "/target/:myquery",
+      path: "/target/gamma",
+      url: "https://on/target/gamma?my-query=gamma",
+    },
+    {
+      name: "repeated query",
+      event: { url: "https://on/value-less?items=one&items=two" },
+      has: { type: "query", key: "items" },
+      destination: "/target/:items*",
+      path: "/target/one/two",
+      url: "https://on/target/one/two?items=one&items=two",
+    },
+  ] satisfies {
+    name: string;
+    event: PartialEvent;
+    has: RouteHas;
+    destination: string;
+    path: string;
+    url: string;
+  }[])(
+    "should expose a value-less $name condition",
+    ({ event: partialEvent, has, destination, path, url }) => {
+      const event = createEvent({
+        url: "https://on/value-less",
+        ...partialEvent,
+      });
+      const rewrites = [
+        {
+          source: "/value-less",
+          destination,
+          regex: "^/value-less(?:/)?$",
+          has: [has],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        rawPath: path,
+        url,
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
+
+  it("should not expose a patterned condition without a capture group", () => {
+    const event = createEvent({
+      url: "https://on/value-less",
+      headers: { "x-tenant-id": "alpha" },
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/value-less",
+          destination: "/target/:xtenantid",
+          regex: "^/value-less(?:/)?$",
+          has: [{ type: "header", key: "x-tenant-id", value: "alpha" }],
+        },
+      ]),
+    ).toThrow('Expected "xtenantid" to be a string');
+  });
+
   // Related upstream catch-all fixture and tests:
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
   // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts

@@ -62,6 +62,20 @@ function getHostname(headers: Record<string, string>): string | undefined {
   return headers.host?.split(":", 1)[0].toLowerCase();
 }
 
+/**
+ * Removes characters unsupported by path-to-regexp parameter names.
+ *
+ * Next.js exposes value-less conditions under a name containing only ASCII
+ * letters. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L21-L36
+ *
+ * @param name The route-condition key
+ * @returns The sanitized destination parameter name
+ */
+function getSafeParamName(name: string): string {
+  return name.replaceAll(/[^a-zA-Z]/g, "");
+}
+
 const routeHasMatcher =
   (
     headers: Record<string, string>,
@@ -109,9 +123,10 @@ const getParamsFromSource =
 /**
  * Creates an extractor for route-condition captures.
  *
- * Patterned repeated query parameters capture their final value, matching the
- * value used to decide the condition. See
- * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L95-L107
+ * Value-less conditions expose their present value under a safe parameter
+ * name. Patterned repeated query parameters capture their final value, matching
+ * the value used to decide the condition. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L107
  *
  * @param headers The request headers
  * @param cookies The parsed request cookies
@@ -126,7 +141,27 @@ const computeParamHas =
     query: Record<string, string | string[]>,
   ) =>
   (has: RouteHas): object => {
-    if (!has.value) return {};
+    if (!has.value) {
+      let key: string;
+      let value: string | string[] | undefined;
+      switch (has.type) {
+        case "header":
+          key = has.key.toLowerCase();
+          value = headers[key];
+          break;
+        case "cookie":
+          key = has.key;
+          value = cookies[key];
+          break;
+        case "query":
+          key = has.key;
+          value = query[key];
+          break;
+        case "host":
+          return {};
+      }
+      return value ? { [getSafeParamName(key)]: value } : {};
+    }
     const matcher = new RegExp(`^${has.value}$`);
     const fromSource = (value: string, implicitKey?: string) => {
       const matches = value.match(matcher);
