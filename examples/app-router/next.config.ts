@@ -65,6 +65,19 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  /**
+   * Defines rewrite fixtures exercised by the App Router E2E suite.
+   *
+   * @return The application rewrite definitions
+   */
+  rewrites: async () => {
+    return [
+      {
+        source: "/search-query-rewrite",
+        destination: "/search-query",
+      },
+    ];
+  },
   async headers() {
     return [
       {

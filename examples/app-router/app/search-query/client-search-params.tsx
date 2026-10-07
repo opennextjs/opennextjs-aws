@@ -9,6 +9,7 @@ const queryKeys = [
   "percent",
   "equals",
   "redirect",
+  "path",
 ] as const;
 
 /**
@@ -18,9 +19,11 @@ const queryKeys = [
  */
 export function ClientSearchParams() {
   const searchParams = useSearchParams();
-  const values = Object.fromEntries(
-    queryKeys.map((key) => [key, searchParams.getAll(key)]),
-  );
+  const values: Record<string, string[]> = {};
+  for (const key of queryKeys) {
+    const entries = searchParams.getAll(key);
+    if (entries.length > 0) values[key] = entries;
+  }
 
   return (
     <button

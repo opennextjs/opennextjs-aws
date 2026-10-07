@@ -67,3 +67,43 @@ test("preserves encoded query values during SSR and hydration", async ({
   await expect(clientSearchParams).toHaveAttribute("data-hydrated", "true");
   expect(hydrationErrors).toEqual([]);
 });
+
+// Next.js preserves decoded source query values while applying a rewrite.
+// https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L221-L299
+test("preserves encoded query values through rewrites", async ({
+  page,
+  request,
+}) => {
+  const path = "/search-query-rewrite?path=hello%252Fworld&path=a%252Fb%253Dc";
+  const expected = {
+    path: ["hello%2Fworld", "a%2Fb%3Dc"],
+  };
+
+  const serverResponse = await request.get(path);
+  expect(serverResponse.ok()).toBe(true);
+  const serverHtml = await serverResponse.text();
+  expect(serverHtml).toContain("hello%2Fworld");
+  expect(serverHtml).toContain("a%2Fb%3Dc");
+
+  const hydrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (
+      message.type() === "error" &&
+      /hydration|Minified React error #418/i.test(message.text())
+    ) {
+      hydrationErrors.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => {
+    if (/hydration|Minified React error #418/i.test(error.message)) {
+      hydrationErrors.push(error.message);
+    }
+  });
+
+  await page.goto(path);
+  const clientSearchParams = page.getByTestId("client-search-params");
+  await expect(clientSearchParams).toHaveText(JSON.stringify(expected));
+  await clientSearchParams.click();
+  await expect(clientSearchParams).toHaveAttribute("data-hydrated", "true");
+  expect(hydrationErrors).toEqual([]);
+});
