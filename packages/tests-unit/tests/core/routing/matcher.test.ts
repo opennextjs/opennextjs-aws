@@ -3,6 +3,7 @@ import {
   fixDataPage,
   getCompiledRegExp,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
@@ -935,9 +936,9 @@ describe("handleRewrites", () => {
 
     expect(result.internalEvent).toEqual({
       ...event,
-      query: { matched: "example.com" },
+      query: { host: "example.com", matched: "example.com" },
       rawPath: "/target",
-      url: "https://on/target?matched=example.com",
+      url: "https://on/target?host=example.com&matched=example.com",
     });
     expect(result.__rewrite).toBe(rewrites[0]);
   });
@@ -1278,9 +1279,9 @@ describe("handleRewrites", () => {
     expect(result).toEqual({
       internalEvent: {
         ...event,
-        query: { ref: "promo" },
+        query: { path: ["anything"], ref: "promo" },
         rawPath: "/",
-        url: "https://on/?ref=promo",
+        url: "https://on/?path=anything&ref=promo",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: false,
@@ -1378,6 +1379,113 @@ describe("handleRewrites", () => {
       __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
+  });
+});
+
+describe("handleBeforeFilesRewrites", () => {
+  const userRewrite = {
+    source: "/@:org/:space/:path*",
+    destination: "/orgs/:org/s/:space/:path*",
+    regex: "^/@([^/]+?)/([^/]+?)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+  };
+  const interceptionRewrite = {
+    source: "/orgs/:org/s/:space/delete",
+    destination: "/(...)orgs/:org/s/:space/delete",
+    regex: "^/orgs/([^/]+?)/s/([^/]+?)/delete(?:/)?$",
+    has: [{ type: "header", key: "next-url" } satisfies RouteHas],
+  };
+
+  it("should not rewrite with empty rewrites", () => {
+    const event = createEvent({ url: "https://on/foo?hello=world" });
+
+    const result = handleBeforeFilesRewrites(event, []);
+
+    expect(result).toEqual({
+      internalEvent: event,
+      isExternalRewrite: false,
+    });
+  });
+
+  // See https://github.com/opennextjs/opennextjs-aws/issues/1215
+  it("should apply a later rewrite to the result of an earlier one", () => {
+    const event = createEvent({
+      url: "https://on/@acme/demo/delete",
+      headers: { "next-url": "/orgs/acme" },
+    });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/(...)orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(interceptionRewrite);
+    expect(result.isExternalRewrite).toBe(false);
+  });
+
+  it("should keep the earlier rewrite when a later one does not match", () => {
+    const event = createEvent({ url: "https://on/@acme/demo/delete" });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(userRewrite);
+  });
+
+  // Next.js adds unused parameters to the query and evaluates later rewrites
+  // against that updated query. See:
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L286-L302
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L863-L932
+  it("should expose unused source parameters to later rewrites", () => {
+    const event = createEvent({ url: "https://on/from/42" });
+    const firstRewrite = {
+      source: "/from/:id",
+      destination: "/middle",
+      regex: "^/from/([^/]+?)(?:/)?$",
+    };
+    const secondRewrite = {
+      source: "/middle",
+      destination: "/target/:id",
+      regex: "^/middle(?:/)?$",
+      has: [
+        { type: "query", key: "id", value: "(?<id>\\d+)" } satisfies RouteHas,
+      ],
+    };
+
+    const result = handleBeforeFilesRewrites(event, [
+      firstRewrite,
+      secondRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/target/42");
+    expect(result.internalEvent.query).toEqual({ id: "42" });
+    expect(result.__rewrite).toBe(secondRewrite);
+  });
+
+  it("should stop at an external rewrite", () => {
+    const event = createEvent({ url: "https://on/external/page" });
+    const externalRewrite = {
+      source: "/external/:path*",
+      destination: "https://example.com/proxied/:path*",
+      regex: "^/external(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+    const afterExternalRewrite = {
+      source: "/proxied/:path*",
+      destination: "/internal/:path*",
+      regex: "^/proxied(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+
+    const result = handleBeforeFilesRewrites(event, [
+      externalRewrite,
+      afterExternalRewrite,
+    ]);
+
+    expect(result.internalEvent.url).toBe("https://example.com/proxied/page");
+    expect(result.__rewrite).toBe(externalRewrite);
+    expect(result.isExternalRewrite).toBe(true);
   });
 });
 
