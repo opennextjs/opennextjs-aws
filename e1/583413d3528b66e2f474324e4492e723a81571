@@ -1,0 +1,19 @@
+packages/tests-unit/tests/core/routing/matcher.test.ts
+  s_0c769b53e248b9::t_4c414d8ce8f736 939,941,1282,1284,1438-1463
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e1583413d3528b66e2f474324e4492e723a81571",
+  "prompts": {},
+  "sessions": {
+    "s_0c769b53e248b9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ee4da64deffeDkLo0xUU6cKrwt",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
