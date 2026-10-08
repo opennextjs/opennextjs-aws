@@ -182,6 +182,7 @@ jobs:
           key: ${{ needs.check_next_version.outputs.cacheKey }}
 
   report:
+    name: Report Status on Discord
     needs: [check_next_version, e2e]
     if: always() && github.ref == 'refs/heads/main' && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
     runs-on: ubuntu-latest
