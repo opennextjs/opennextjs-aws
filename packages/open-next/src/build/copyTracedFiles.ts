@@ -112,6 +112,36 @@ export function getManifests(nextDir: string) {
   };
 }
 
+/**
+ * Returns the source map that sits next to a traced JavaScript file in the `.next` build output.
+ *
+ * Next.js only copies the files listed in the `.nft.json` traces into `.next/standalone`, and
+ * those traces never list source maps since nothing `require`s them. So when
+ * `experimental.serverSourceMaps` is enabled, the `.js.map` files only exist in the original
+ * `.next` directory and have to be picked up from there.
+ *
+ * Only files inside `.next` are considered: source maps shipped by third-party packages in
+ * `node_modules` are not copied.
+ *
+ * @param dotNextDir Absolute path to the `.next` directory
+ * @param tracedFile Absolute path of the traced file, resolved against the `.next` directory
+ * @returns The path of the source map, or `undefined` when there is none
+ */
+export function getTracedSourceMap(
+  dotNextDir: string,
+  tracedFile: string,
+): string | undefined {
+  if (!/\.[cm]?js$/.test(tracedFile)) {
+    return undefined;
+  }
+  const relative = path.relative(dotNextDir, tracedFile);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    return undefined;
+  }
+  const sourceMap = `${tracedFile}.map`;
+  return existsSync(sourceMap) ? sourceMap : undefined;
+}
+
 // eslint-disable-next-line sonarjs/cognitive-complexity
 export async function copyTracedFiles({
   buildOutputPath,
@@ -155,6 +185,11 @@ export async function copyTracedFiles({
       const module = path.join(dotNextDir, subDir, tracedPath);
       if (module.endsWith("package.json")) {
         nodePackages.set(path.dirname(module), path.dirname(dst));
+      }
+
+      const sourceMap = getTracedSourceMap(dotNextDir, module);
+      if (sourceMap) {
+        filesToCopy.set(sourceMap, `${dst}.map`);
       }
     });
   };
