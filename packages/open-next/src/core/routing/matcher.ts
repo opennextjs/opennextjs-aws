@@ -1,6 +1,6 @@
 import { NextConfig } from "config/index";
 import type { MatchFunction } from "path-to-regexp";
-import { compile, match } from "path-to-regexp";
+import { compile, match, parse } from "path-to-regexp";
 import type {
   Header,
   PrerenderManifest,
@@ -365,12 +365,14 @@ export function getNextConfigHeaders(
  *
  * @param event The request to rewrite
  * @param rewrites The configured rewrites to evaluate
+ * @param appendParamsToQuery Whether unused match parameters are added to the query
  * @returns The rewritten request and matched rewrite metadata
  * @throws {TypeError} When a matched destination cannot be compiled
  */
 export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
+  appendParamsToQuery = true,
 ) {
   const { rawPath, headers, query, cookies, url } = event;
   const localizedRawPath = localizePath(event);
@@ -421,6 +423,20 @@ export function handleRewrites<T extends RewriteDefinition>(
       }, {}),
     };
     const isUsingParams = Object.keys(params).length > 0;
+    const queryParams = Object.fromEntries(
+      Object.entries(params).filter(([key]) => key !== "nextInternalLocale"),
+    ) as Record<string, string | string[]>;
+    // Next.js appends match parameters only when none are consumed by the
+    // destination path or hostname. See
+    // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L286-L302
+    const destinationParams = [
+      ...parse(escapeRegex(`${pathname}${hash}`, { isPath: true })),
+      ...(hostname
+        ? parse(escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"))
+        : []),
+    ].flatMap((token) =>
+      typeof token === "string" ? [] : [String(token.name)],
+    );
     let rewrittenQuery = queryString;
     let rewrittenHost = hostname;
     let rewrittenHash = hash;
@@ -450,9 +466,14 @@ export function handleRewrites<T extends RewriteDefinition>(
       : new URL(rewrittenPath, event.url).href;
 
     // We merge query params from the source and the destination
+    const destinationQuery = convertFromQueryString(rewrittenQuery);
     finalQuery = {
       ...query,
-      ...convertFromQueryString(rewrittenQuery),
+      ...(!appendParamsToQuery ||
+      Object.keys(queryParams).some((key) => destinationParams.includes(key))
+        ? {}
+        : queryParams),
+      ...destinationQuery,
     };
     rewrittenUrl += convertToQueryString(finalQuery);
     rewrittenUrl += rewrittenHash;
@@ -601,6 +622,7 @@ export function handleRedirects(
   const { internalEvent, __rewrite } = handleRewrites(
     event,
     redirects.filter((r) => !r.internal),
+    false,
   );
   if (__rewrite && !__rewrite.internal) {
     return {
