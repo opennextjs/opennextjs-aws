@@ -1,6 +1,7 @@
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
   fixDataPage,
+  getCompiledRegExp,
   getNextConfigHeaders,
   handleRedirects,
   handleRewrites,
@@ -485,6 +486,20 @@ describe("compiled regular expressions", () => {
       1,
     );
   });
+
+  it.each(["g", "y"])(
+    "should reset lastIndex of a shared expression with the %s flag",
+    (flags) => {
+      const regExp = getCompiledRegExp("a", flags);
+      expect(regExp.test("aa")).toBe(true);
+      expect(regExp.lastIndex).toBe(1);
+
+      const sameRegExp = getCompiledRegExp("a", flags);
+
+      expect(sameRegExp).toBe(regExp);
+      expect(sameRegExp.lastIndex).toBe(0);
+    },
+  );
 });
 
 describe("handleRedirects", () => {

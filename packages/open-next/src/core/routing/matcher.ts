@@ -31,20 +31,23 @@ const compiledRegExps = new Map<string, RegExp>();
  * Returns the compiled regular expression for a configured pattern.
  *
  * Patterns come from the Next.js config and manifests, so each one is compiled
- * on first use and reused by later requests.
+ * on first use and reused by later requests. `lastIndex` is reset on every call
+ * so a shared global or sticky expression always starts from the beginning.
  *
  * @param pattern The regular expression source
  * @param flags The optional regular expression flags
  * @returns The compiled regular expression
  * @throws {SyntaxError} When the pattern is invalid
  */
-function getCompiledRegExp(pattern: string, flags = ""): RegExp {
+export function getCompiledRegExp(pattern: string, flags = ""): RegExp {
   const key = `/${pattern}/${flags}`;
   let regExp = compiledRegExps.get(key);
   if (!regExp) {
     regExp = new RegExp(pattern, flags);
     compiledRegExps.set(key, regExp);
   }
+  regExp.lastIndex = 0;
+
   return regExp;
 }
 
