@@ -3,6 +3,7 @@
   "compilerOptions": {
     "declaration": true,
     "module": "esnext",
+    "moduleResolution": "node",
     "lib": ["DOM", "ESNext"],
     "outDir": "./dist",
     "allowSyntheticDefaultImports": true,
