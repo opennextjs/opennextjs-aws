@@ -1,6 +1,7 @@
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
   fixDataPage,
+  getCompiledRegExp,
   getNextConfigHeaders,
   handleRedirects,
   handleRewrites,
@@ -443,6 +444,61 @@ describe("getNextConfigHeaders", () => {
 
   it.todo(
     "should exercise the error scenario: 'Error matching header <key> with value <value>'",
+  );
+});
+
+describe("compiled regular expressions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should compile a configured pattern only once across requests", () => {
+    const regExpSpy = vi.spyOn(globalThis, "RegExp");
+    const event = createEvent({
+      url: "https://opennext.js.org/compiled-once",
+      headers: { "x-compiled": "yes" },
+    });
+    const headers = [
+      {
+        source: "/compiled-once",
+        regex: "^/compiled-once(?:/)?$",
+        headers: [{ key: "foo", value: ":flag" }],
+        has: [
+          {
+            type: "header",
+            key: "x-compiled",
+            value: "(?<flag>yes)",
+          } satisfies RouteHas,
+        ],
+      },
+    ];
+
+    const first = getNextConfigHeaders(event, headers);
+    const second = getNextConfigHeaders(event, headers);
+
+    const compiledPatterns = regExpSpy.mock.calls.map(([pattern]) => pattern);
+    expect(first).toEqual({ foo: "yes" });
+    expect(second).toEqual({ foo: "yes" });
+    expect(
+      compiledPatterns.filter((p) => p === "^/compiled-once(?:/)?$"),
+    ).toHaveLength(1);
+    expect(compiledPatterns.filter((p) => p === "^(?<flag>yes)$")).toHaveLength(
+      1,
+    );
+  });
+
+  it.each(["g", "y"])(
+    "should reset lastIndex of a shared expression with the %s flag",
+    (flags) => {
+      const regExp = getCompiledRegExp("a", flags);
+      expect(regExp.test("aa")).toBe(true);
+      expect(regExp.lastIndex).toBe(1);
+
+      const sameRegExp = getCompiledRegExp("a", flags);
+
+      expect(sameRegExp).toBe(regExp);
+      expect(sameRegExp.lastIndex).toBe(0);
+    },
   );
 });
 
