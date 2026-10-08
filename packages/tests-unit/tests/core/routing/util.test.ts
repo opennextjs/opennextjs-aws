@@ -140,12 +140,44 @@ describe("convertFromQueryString", () => {
       search: ["value", ""],
     });
   });
+
+  it("decodes keys and values", () => {
+    expect(
+      convertFromQueryString(
+        "brand=h%26m&q=hello+world&plus=%2B&na%20me=a%3Db&utf8=caf%C3%A9",
+      ),
+    ).toEqual({
+      brand: "h&m",
+      q: "hello world",
+      plus: "+",
+      "na me": "a=b",
+      utf8: "caf\u00e9",
+    });
+  });
+
+  it("preserves equals signs in values", () => {
+    expect(convertFromQueryString("search=a=b=c")).toEqual({
+      search: "a=b=c",
+    });
+  });
+
+  // Match Next.js's URLSearchParams-based query conversion for malformed input.
+  // https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/querystring.ts#L34-L48
+  it("decodes valid escapes alongside malformed percent-encoding", () => {
+    expect(convertFromQueryString("q=hello%20world%&invalid=%E0%A4%A")).toEqual(
+      {
+        q: "hello world%",
+        invalid: "\uFFFD%A",
+      },
+    );
+  });
 });
 
 describe("getUrlParts", () => {
   describe("relative", () => {
     it("returns url parts for empty string", () => {
       expect(getUrlParts("", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "",
         protocol: "",
@@ -155,6 +187,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for /", () => {
       expect(getUrlParts("/", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/",
         protocol: "",
@@ -164,6 +197,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts", () => {
       expect(getUrlParts("/relative", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative",
         protocol: "",
@@ -173,6 +207,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts with query string", () => {
       expect(getUrlParts("/relative/path?query=1", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative/path",
         protocol: "",
@@ -183,6 +218,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
     it("returns url parts for / with a query string", () => {
       expect(getUrlParts("/?ref=promo", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/",
         protocol: "",
@@ -192,6 +228,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for an empty query string", () => {
       expect(getUrlParts("/relative?", false)).toEqual({
+        hash: "",
         hostname: "",
         pathname: "/relative",
         protocol: "",
@@ -211,6 +248,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for /", () => {
       expect(getUrlParts("http://localhost/", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/",
         protocol: "http:",
@@ -221,6 +259,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/591
     it("returns url parts for / without trailing slash", () => {
       expect(getUrlParts("http://localhost", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "",
         protocol: "http:",
@@ -230,6 +269,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts", () => {
       expect(getUrlParts("https://localhost/relative", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/relative",
         protocol: "https:",
@@ -241,6 +281,7 @@ describe("getUrlParts", () => {
       expect(
         getUrlParts("http://localhost:3000/relative/path?query=1", true),
       ).toEqual({
+        hash: "",
         hostname: "localhost:3000",
         pathname: "/relative/path",
         protocol: "http:",
@@ -251,6 +292,7 @@ describe("getUrlParts", () => {
     // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
     it("returns url parts with a query string but no path", () => {
       expect(getUrlParts("https://localhost?query=1", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "",
         protocol: "https:",
@@ -260,6 +302,7 @@ describe("getUrlParts", () => {
 
     it("returns url parts for / with a query string", () => {
       expect(getUrlParts("https://localhost/?query=1", true)).toEqual({
+        hash: "",
         hostname: "localhost",
         pathname: "/",
         protocol: "https:",
@@ -375,14 +418,23 @@ describe("convertToQueryString", () => {
     );
   });
 
-  it("should respect existing query encoding", () => {
+  it("encodes decoded values", () => {
     const query = {
-      key: ["value%201", "value2+something+else"],
-      another: "value3",
+      key: ["value 1", "value2+something"],
+      another: "a=b&c",
     };
     expect(convertToQueryString(query)).toBe(
-      "?key=value%201&key=value2+something+else&another=value3",
+      "?key=value+1&key=value2%2Bsomething&another=a%3Db%26c",
     );
+  });
+
+  it("round-trips a query parsed by convertToQuery", () => {
+    const querystring = "brand=h%26m&name=by%252Eclara&q=a+b%3Dc&tag=x&tag=y";
+    const roundTripped = convertToQueryString(convertToQuery(querystring));
+    expect(convertToQuery(roundTripped.slice(1))).toEqual(
+      convertToQuery(querystring),
+    );
+    expect(new URLSearchParams(roundTripped).get("brand")).toBe("h&m");
   });
 });
 
