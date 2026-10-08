@@ -1,6 +1,7 @@
 name: E2E Tests
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
   push:
@@ -74,7 +75,7 @@ jobs:
   # the latest Nextjs version hasn't been tested, run the Playwright tests
   e2e:
     needs: check_next_version
-    if: github.event_name == 'push' || needs.check_next_version.outputs.skip != 'true'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
