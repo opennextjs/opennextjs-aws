@@ -446,6 +446,47 @@ describe("getNextConfigHeaders", () => {
   );
 });
 
+describe("compiled regular expressions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should compile a configured pattern only once across requests", () => {
+    const regExpSpy = vi.spyOn(globalThis, "RegExp");
+    const event = createEvent({
+      url: "https://opennext.js.org/compiled-once",
+      headers: { "x-compiled": "yes" },
+    });
+    const headers = [
+      {
+        source: "/compiled-once",
+        regex: "^/compiled-once(?:/)?$",
+        headers: [{ key: "foo", value: ":flag" }],
+        has: [
+          {
+            type: "header",
+            key: "x-compiled",
+            value: "(?<flag>yes)",
+          } satisfies RouteHas,
+        ],
+      },
+    ];
+
+    const first = getNextConfigHeaders(event, headers);
+    const second = getNextConfigHeaders(event, headers);
+
+    const compiledPatterns = regExpSpy.mock.calls.map(([pattern]) => pattern);
+    expect(first).toEqual({ foo: "yes" });
+    expect(second).toEqual({ foo: "yes" });
+    expect(
+      compiledPatterns.filter((p) => p === "^/compiled-once(?:/)?$"),
+    ).toHaveLength(1);
+    expect(compiledPatterns.filter((p) => p === "^(?<flag>yes)$")).toHaveLength(
+      1,
+    );
+  });
+});
+
 describe("handleRedirects", () => {
   it("should redirect repeated slashes", () => {
     const event = createEvent({

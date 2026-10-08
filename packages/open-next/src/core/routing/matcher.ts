@@ -25,6 +25,29 @@ import {
   unescapeRegex,
 } from "./util";
 
+const compiledRegExps = new Map<string, RegExp>();
+
+/**
+ * Returns the compiled regular expression for a configured pattern.
+ *
+ * Patterns come from the Next.js config and manifests, so each one is compiled
+ * on first use and reused by later requests.
+ *
+ * @param pattern The regular expression source
+ * @param flags The optional regular expression flags
+ * @returns The compiled regular expression
+ * @throws {SyntaxError} When the pattern is invalid
+ */
+function getCompiledRegExp(pattern: string, flags = ""): RegExp {
+  const key = `/${pattern}/${flags}`;
+  let regExp = compiledRegExps.get(key);
+  if (!regExp) {
+    regExp = new RegExp(pattern, flags);
+    compiledRegExps.set(key, regExp);
+  }
+  return regExp;
+}
+
 /**
  * Tests a request value against a route condition.
  *
@@ -45,7 +68,9 @@ function matchHasValue(
   if (!pattern) return true;
 
   const candidate = Array.isArray(value) ? value.at(-1) : value;
-  return candidate !== undefined && new RegExp(`^${pattern}$`).test(candidate);
+  return (
+    candidate !== undefined && getCompiledRegExp(`^${pattern}$`).test(candidate)
+  );
 }
 
 /**
@@ -162,7 +187,7 @@ const computeParamHas =
       }
       return value ? { [getSafeParamName(key)]: value } : {};
     }
-    const matcher = new RegExp(`^${has.value}$`);
+    const matcher = getCompiledRegExp(`^${has.value}$`);
     const fromSource = (value: string, implicitKey?: string) => {
       const matches = value.match(matcher);
       if (matches?.groups) return matches.groups;
@@ -206,19 +231,19 @@ function compileNonPath(value: string, params: object): string {
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     compiledValue = compiledValue
       .replace(
-        new RegExp(`:${escapedKey}\\*`, "g"),
+        getCompiledRegExp(`:${escapedKey}\\*`, "g"),
         `:${key}--ESCAPED_PARAM_ASTERISKS`,
       )
       .replace(
-        new RegExp(`:${escapedKey}\\?`, "g"),
+        getCompiledRegExp(`:${escapedKey}\\?`, "g"),
         `:${key}--ESCAPED_PARAM_QUESTION`,
       )
       .replace(
-        new RegExp(`:${escapedKey}\\+`, "g"),
+        getCompiledRegExp(`:${escapedKey}\\+`, "g"),
         `:${key}--ESCAPED_PARAM_PLUS`,
       )
       .replace(
-        new RegExp(`:${escapedKey}(?!\\w)`, "g"),
+        getCompiledRegExp(`:${escapedKey}(?!\\w)`, "g"),
         `--ESCAPED_PARAM_COLON${key}`,
       );
   }
@@ -292,7 +317,7 @@ export function getNextConfigHeaders(
   } of configHeaders) {
     const path = locale === false ? event.rawPath : localizedRawPath;
     if (
-      new RegExp(regex).test(path) &&
+      getCompiledRegExp(regex).test(path) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
@@ -351,7 +376,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   const rewrite = rewrites.find((route) => {
     const path = route.locale === false ? rawPath : localizedRawPath;
     return (
-      new RegExp(route.regex).test(path) &&
+      getCompiledRegExp(route.regex).test(path) &&
       checkHas(matcher, route.has) &&
       checkHas(matcher, route.missing, true)
     );
@@ -409,7 +434,7 @@ export function handleRewrites<T extends RewriteDefinition>(
     // We need to strip the locale from the path if it's a local api route
     if (NextConfig.i18n && !isExternalRewrite) {
       const strippedPathLocale = rewrittenPath.replace(
-        new RegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
+        getCompiledRegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
         "",
       );
       if (strippedPathLocale.startsWith("/api/")) {
@@ -608,10 +633,9 @@ export function handleFallbackFalse(
   const prerenderedFallbackRoutes = Object.entries(dynamicRoutes).filter(
     ([, { fallback }]) => fallback === false,
   );
-  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) => {
-    const routeRegexExp = new RegExp(routeRegex);
-    return routeRegexExp.test(rawPath);
-  });
+  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) =>
+    getCompiledRegExp(routeRegex).test(rawPath),
+  );
   const locales = NextConfig.i18n?.locales;
   const routesAlreadyHaveLocale =
     locales?.includes(rawPath.split("/")[1]) ||
