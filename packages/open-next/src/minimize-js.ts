@@ -6,8 +6,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import minify from "@node-minify/core";
-import terser from "@node-minify/terser";
+import { minify } from "@node-minify/core";
+import { terser } from "@node-minify/terser";
 
 const failed_files = [];
 let total_files = 0;
@@ -28,6 +28,8 @@ const promiseSeries = async (tasks, initial) => {
 const minifyJS = async (file) => {
   total_files++;
   try {
+    const stat = await fs.stat(file);
+    if (stat.size === 0) return;
     await minify({
       compressor: terser,
       input: file,
