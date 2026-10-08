@@ -20,6 +20,7 @@ import { detectLocale } from "./routing/i18n";
 import {
   fixDataPage,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
@@ -170,7 +171,7 @@ export default async function routingHandler(
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
-      const beforeRewrite = handleRewrites(
+      const beforeRewrite = handleBeforeFilesRewrites(
         eventOrResult,
         RoutesManifest.rewrites.beforeFiles,
       );

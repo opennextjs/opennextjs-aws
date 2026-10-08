@@ -3,6 +3,7 @@ import {
   fixDataPage,
   getCompiledRegExp,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
@@ -1378,6 +1379,83 @@ describe("handleRewrites", () => {
       __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
+  });
+});
+
+describe("handleBeforeFilesRewrites", () => {
+  const userRewrite = {
+    source: "/@:org/:space/:path*",
+    destination: "/orgs/:org/s/:space/:path*",
+    regex: "^/@([^/]+?)/([^/]+?)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+  };
+  const interceptionRewrite = {
+    source: "/orgs/:org/s/:space/delete",
+    destination: "/(...)orgs/:org/s/:space/delete",
+    regex: "^/orgs/([^/]+?)/s/([^/]+?)/delete(?:/)?$",
+    has: [{ type: "header", key: "next-url" } satisfies RouteHas],
+  };
+
+  it("should not rewrite with empty rewrites", () => {
+    const event = createEvent({ url: "https://on/foo?hello=world" });
+
+    const result = handleBeforeFilesRewrites(event, []);
+
+    expect(result).toEqual({
+      internalEvent: event,
+      isExternalRewrite: false,
+    });
+  });
+
+  // See https://github.com/opennextjs/opennextjs-aws/issues/1215
+  it("should apply a later rewrite to the result of an earlier one", () => {
+    const event = createEvent({
+      url: "https://on/@acme/demo/delete",
+      headers: { "next-url": "/orgs/acme" },
+    });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/(...)orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(interceptionRewrite);
+    expect(result.isExternalRewrite).toBe(false);
+  });
+
+  it("should keep the earlier rewrite when a later one does not match", () => {
+    const event = createEvent({ url: "https://on/@acme/demo/delete" });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(userRewrite);
+  });
+
+  it("should stop at an external rewrite", () => {
+    const event = createEvent({ url: "https://on/external/page" });
+    const externalRewrite = {
+      source: "/external/:path*",
+      destination: "https://example.com/proxied/:path*",
+      regex: "^/external(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+    const afterExternalRewrite = {
+      source: "/proxied/:path*",
+      destination: "/internal/:path*",
+      regex: "^/proxied(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+
+    const result = handleBeforeFilesRewrites(event, [
+      externalRewrite,
+      afterExternalRewrite,
+    ]);
+
+    expect(result.internalEvent.url).toBe("https://example.com/proxied/page");
+    expect(result.__rewrite).toBe(externalRewrite);
+    expect(result.isExternalRewrite).toBe(true);
   });
 });
 

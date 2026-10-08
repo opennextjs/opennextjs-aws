@@ -471,6 +471,37 @@ export function handleRewrites<T extends RewriteDefinition>(
   };
 }
 
+/**
+ * Applies every matching `beforeFiles` rewrite, in order.
+ *
+ * Next.js keeps evaluating `beforeFiles` rewrites after a match, each one
+ * against the URL produced by the previous match. An external rewrite ends the
+ * evaluation. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L863-L932
+ *
+ * @param event The request to rewrite
+ * @param rewrites The configured `beforeFiles` rewrites
+ * @returns The rewritten request and the last matched rewrite metadata
+ * @throws {TypeError} When a matched destination cannot be compiled
+ */
+export function handleBeforeFilesRewrites<T extends RewriteDefinition>(
+  event: InternalEvent,
+  rewrites: T[],
+): ReturnType<typeof handleRewrites<T>> {
+  let result: ReturnType<typeof handleRewrites<T>> = {
+    internalEvent: event,
+    __rewrite: undefined,
+    isExternalRewrite: false,
+  };
+  for (const rewrite of rewrites) {
+    const rewriteResult = handleRewrites(result.internalEvent, [rewrite]);
+    if (!rewriteResult.__rewrite) continue;
+    result = rewriteResult;
+    if (result.isExternalRewrite) break;
+  }
+  return result;
+}
+
 // Normalizes repeated slashes in the path e.g. hello//world -> hello/world
 // or backslashes to forward slashes. This prevents requests such as //domain
 // from invoking the middleware with `request.url === "domain"`.
