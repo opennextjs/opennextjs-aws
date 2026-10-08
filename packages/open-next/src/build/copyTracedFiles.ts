@@ -447,12 +447,12 @@ File ${serverPath} does not exist
 
   // Copy .next/static/css from standalone to output dir
   // needed for optimizeCss feature to work
-  if (config.experimental.optimizeCss) {
-    cpSync(
-      path.join(standaloneNextDir, "static", "css"),
-      path.join(outputNextDir, "static", "css"),
-      { recursive: true },
-    );
+  // The directory is not emitted when all the css is inlined
+  const standaloneCssDir = path.join(standaloneNextDir, "static", "css");
+  if (config.experimental.optimizeCss && existsSync(standaloneCssDir)) {
+    cpSync(standaloneCssDir, path.join(outputNextDir, "static", "css"), {
+      recursive: true,
+    });
   }
 
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");
