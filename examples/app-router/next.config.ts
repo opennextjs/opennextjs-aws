@@ -71,17 +71,25 @@ const nextConfig: NextConfig = {
    * @return The application rewrite definitions
    */
   rewrites: async () => {
-    return [
-      {
-        source: "/search-query-rewrite",
-        destination: "/search-query",
-      },
-      {
-        source: "/search-query-destination-rewrite",
-        destination:
-          "/search-query?destination=hello%252Fworld&destination=a%3Db&plus=%2B&bare",
-      },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: "/@:org/:space/:path*",
+          destination: "/orgs/:org/s/:space/:path*",
+        },
+      ],
+      afterFiles: [
+        {
+          source: "/search-query-rewrite",
+          destination: "/search-query",
+        },
+        {
+          source: "/search-query-destination-rewrite",
+          destination:
+            "/search-query?destination=hello%252Fworld&destination=a%3Db&plus=%2B&bare",
+        },
+      ],
+    };
   },
   async headers() {
     return [
