@@ -15,8 +15,6 @@
   "dependencies": {
     "@example/shared": "workspace:*",
     "@opennextjs/aws": "workspace:*",
-    "express": "5.1.0",
-    "express-http-proxy": "2.1.1",
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
@@ -27,9 +25,11 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
+    "express": "catalog:",
+    "express-http-proxy": "2.1.2",
     "postcss": "catalog:",
     "tailwindcss": "catalog:",
-    "tsx": "4.20.5",
+    "tsx": "4.23.15",
     "typescript": "catalog:"
   }
 }

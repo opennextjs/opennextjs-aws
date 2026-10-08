@@ -1,10 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": ["APP_ROUTER_URL", "PAGES_ROUTER_URL", "APP_PAGES_ROUTER_URL"],
-  "pipeline": {
+  "globalEnv": [
+    "APP_ROUTER_URL",
+    "PAGES_ROUTER_URL",
+    "APP_PAGES_ROUTER_URL",
+    "EXPERIMENTAL_APP_URL"
+  ],
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/dev/**"]
     },
     "e2e:test": {
       "cache": false

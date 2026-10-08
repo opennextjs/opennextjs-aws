@@ -17,20 +17,9 @@ catalog:
   "@types/node": 20.17.6
   "@types/react": 19.2.6
   "@types/react-dom": 19.2.3
-  autoprefixer: 10.4.15
+  autoprefixer: 10.6.1
   postcss: 8.4.27
   tailwindcss: 3.3.3
   typescript: 5.9.3
-  esbuild: 0.25.4
-
-minimumReleaseAgeExclude:
-  - '@next/env@16.3.6'
-  - '@next/swc-darwin-arm64@16.3.6'
-  - '@next/swc-darwin-x64@16.3.6'
-  - '@next/swc-linux-arm64-gnu@16.3.6'
-  - '@next/swc-linux-arm64-musl@16.3.6'
-  - '@next/swc-linux-x64-gnu@16.3.6'
-  - '@next/swc-linux-x64-musl@16.3.6'
-  - '@next/swc-win32-arm64-msvc@16.3.6'
-  - '@next/swc-win32-x64-msvc@16.3.6'
-  - next@16.3.6
+  esbuild: 0.28.2
+  express: ^5.2.1
