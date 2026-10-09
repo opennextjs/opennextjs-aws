@@ -68,6 +68,21 @@ const routingResult: RoutingResult = {
   ],
 };
 
+// The first route captures only `x`; the catch-all would also decode `%ZZ`.
+const malformedRoutingResult: RoutingResult = {
+  ...routingResult,
+  initialURL: "https://example.com/decode/%ZZ/x",
+  internalEvent: {
+    ...routingResult.internalEvent,
+    rawPath: "/decode/%ZZ/x",
+    url: "https://example.com/decode/%ZZ/x",
+  },
+  resolvedRoutes: [
+    { route: "/decode/%ZZ/[id]", type: "page" },
+    { route: "/decode/[...rest]", type: "page" },
+  ],
+};
+
 const req = {} as any;
 const res = {} as any;
 
@@ -149,9 +164,34 @@ describe("handleNoFallbackError", () => {
     });
   });
 
-  it("renders the 500 page when match generation throws", async () => {
+  it("renders a 400 with fresh metadata when fallback parameter decoding fails", async () => {
+    const actual = await vi.importActual<
+      typeof import("@opennextjs/aws/core/routeMatchMetadata.js")
+    >("@opennextjs/aws/core/routeMatchMetadata.js");
+    getRouteMatchMetadata.mockImplementation(actual.getRouteMatchMetadata);
+
+    await handleNoFallbackError(req, res, malformedRoutingResult, {
+      invokePath: malformedRoutingResult.internalEvent.rawPath,
+      match: { definition: { pathname: "/decode/%ZZ/[id]" } },
+    });
+
+    expect(getRouteMatchMetadata).toHaveBeenCalledOnce();
+    expect(requestHandler).toHaveBeenCalledOnce();
+    expect(requestHandler).toHaveBeenCalledWith({
+      invokePath: "/400",
+      invokeStatus: 400,
+      middlewareInvoke: false,
+    });
+    expect(nextHandler).toHaveBeenCalledOnce();
+    const [errorReq, errorRes] = nextHandler.mock.calls[0];
+    expect(errorReq).not.toBe(req);
+    expect(errorReq.url).toBe("/400");
+    expect(errorRes).toBe(res);
+  });
+
+  it("renders the 500 page when match generation fails unexpectedly", async () => {
     getRouteMatchMetadata.mockImplementation(() => {
-      throw new URIError("URI malformed");
+      throw new Error("Failed to read route metadata");
     });
     await handleNoFallbackError(req, res, routingResult, {});
 
@@ -159,6 +199,47 @@ describe("handleNoFallbackError", () => {
     expect(requestHandler.mock.calls[0][0]).toMatchObject({
       invokePath: "/500",
       invokeStatus: 500,
+    });
+  });
+
+  it("keeps a URIError from the Next.js handler on the 500 path", async () => {
+    nextHandler.mockRejectedValueOnce(new URIError("Application URI failure"));
+
+    await handleNoFallbackError(req, res, routingResult, {});
+
+    expect(requestHandler).toHaveBeenCalledTimes(2);
+    expect(requestHandler).toHaveBeenNthCalledWith(2, {
+      invokePath: "/500",
+      invokeStatus: 500,
+      middlewareInvoke: false,
+    });
+  });
+
+  it("falls back to a 500 response if the bad request page fails to render", async () => {
+    getRouteMatchMetadata.mockImplementation(() => {
+      throw new URIError("URI malformed");
+    });
+    nextHandler.mockRejectedValueOnce(new Error("Error page failed"));
+    const errorRes = {
+      statusCode: 200,
+      setHeader: vi.fn(),
+      end: vi.fn(),
+    } as any;
+
+    await handleNoFallbackError(req, errorRes, malformedRoutingResult, {});
+
+    expect(requestHandler).toHaveBeenCalledOnce();
+    expect(requestHandler.mock.calls[0][0]).toMatchObject({
+      invokeStatus: 400,
+    });
+    expect(errorRes.statusCode).toBe(500);
+    expect(errorRes.setHeader).toHaveBeenCalledWith(
+      "Content-Type",
+      "application/json",
+    );
+    expect(errorRes.end).toHaveBeenCalledOnce();
+    expect(JSON.parse(errorRes.end.mock.calls[0][0])).toMatchObject({
+      message: "Server failed to respond.",
     });
   });
 
@@ -210,21 +291,7 @@ describe("handleNoFallbackError", () => {
       const actual = await vi.importActual<
         typeof import("@opennextjs/aws/core/routeMatchMetadata.js")
       >("@opennextjs/aws/core/routeMatchMetadata.js");
-      const rawPath = "/decode/%ZZ/x";
-      // The first route captures only `x`; the catch-all would also decode `%ZZ`.
-      const malformedRoutingResult: RoutingResult = {
-        ...routingResult,
-        initialURL: `https://example.com${rawPath}`,
-        internalEvent: {
-          ...routingResult.internalEvent,
-          rawPath,
-          url: `https://example.com${rawPath}`,
-        },
-        resolvedRoutes: [
-          { route: "/decode/%ZZ/[id]", type: "page" },
-          { route: "/decode/[...rest]", type: "page" },
-        ],
-      };
+      const rawPath = malformedRoutingResult.internalEvent.rawPath;
       expect(() =>
         actual.getRouteMatchMetadata("/decode/[...rest]", rawPath),
       ).toThrow(URIError);
