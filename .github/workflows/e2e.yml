@@ -24,6 +24,8 @@ env:
 permissions:
   id-token: write # This is required for requesting the JWT
   contents: read # This is required for actions/checkout
+  pull-requests: read # This is required for finding a pull request for the branch
+  statuses: write # This is required for reporting manual runs on pull requests
 
 jobs:
   # Checks the latest Nextjs Version, if it's not been tested before, it will
@@ -181,47 +183,79 @@ jobs:
           key: ${{ needs.check_next_version.outputs.cacheKey }}
 
   report:
-    name: Report Status on Discord
+    name: Report Status
     needs: [check_next_version, e2e]
-    if: always() && github.ref == 'refs/heads/main' && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
+    if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && (needs.e2e.result == 'success' || needs.e2e.result == 'failure' || needs.e2e.result == 'cancelled')
     runs-on: ubuntu-latest
     steps:
-      - name: Report success
-        if: needs.e2e.result == 'success'
+      - name: Report status on Discord
+        if: github.ref == 'refs/heads/main' && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
+        env:
+          E2E_RESULT: ${{ needs.e2e.result }}
+          NEXT_VERSION: ${{ needs.check_next_version.outputs.previousNextVersion }}
         run: |
-          curl -X POST "$DISCORD_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "username": "OpenNext E2E Test",
-            "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-            "embeds": [
-              {
-                "description": "Test succeeded [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
-                "color": 3061373,
-                "footer": {
-                  "text": "🍌 Ook-ook! Eeek-aak-eek! 🍌",
-                  "icon_url": "https://i.imgur.com/u2ENxCk.png"
-                }
-              }
-            ]
-          }'
+          if [ "$E2E_RESULT" = "success" ]; then
+            result=succeeded
+            color=3061373
+            footer='🍌 Ook-ook! Eeek-aak-eek! 🍌'
+            icon_url='https://i.imgur.com/u2ENxCk.png'
+          else
+            result=failed
+            color=14687834
+            footer='🥓 Oink oink... 🥓'
+            icon_url='https://i.imgur.com/QeXzqIy.png'
+          fi
 
-      - name: Report failure
-        if: needs.e2e.result == 'failure'
-        run: |
           curl -X POST "$DISCORD_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d '{
+            -H "Content-Type: application/json" \
+            --data-binary @- <<EOF
+          {
             "username": "OpenNext E2E Test",
             "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
             "embeds": [
               {
-                "description": "Test failed [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
-                "color": 14687834,
+                "description": "Test $result [$NEXT_VERSION](https://github.com/vercel/next.js/releases/tag/$NEXT_VERSION) — [view results](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)",
+                "color": $color,
                 "footer": {
-                  "text": "🥓 Oink oink... 🥓",
-                  "icon_url": "https://i.imgur.com/QeXzqIy.png"
+                  "text": "$footer",
+                  "icon_url": "$icon_url"
                 }
               }
             ]
-          }'
+          }
+          EOF
+
+      - name: Find pull request for branch
+        id: find-pull-request
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pull_request=$(gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+            -f state=open \
+            -f "head=$GITHUB_REPOSITORY_OWNER:$GITHUB_REF_NAME" \
+            --jq '.[0].number // empty')
+          echo "number=$pull_request" >> "$GITHUB_OUTPUT"
+
+      - name: Report status on Pull Request
+        if: steps.find-pull-request.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          if [ "$E2E_RESULT" = "success" ]; then
+            state=success
+            description='The manually triggered E2E tests passed'
+          elif [ "$E2E_RESULT" = "cancelled" ]; then
+            state=error
+            description='The manually triggered E2E tests were cancelled'
+          else
+            state=failure
+            description='The manually triggered E2E tests failed'
+          fi
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" \
+            -f context='E2E Tests (manual)' \
+            -f description="$description" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
