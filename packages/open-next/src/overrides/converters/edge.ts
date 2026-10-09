@@ -61,7 +61,9 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
         method: result.internalEvent.method,
         headers: {
           ...result.internalEvent.headers,
-          "x-forwarded-host": result.internalEvent.headers.host,
+          "x-forwarded-host":
+            result.internalEvent.headers["x-forwarded-host"] ??
+            result.internalEvent.headers.host,
         },
       });
 
