@@ -24,6 +24,8 @@ env:
 permissions:
   id-token: write # This is required for requesting the JWT
   contents: read # This is required for actions/checkout
+  pull-requests: read # This is required for finding a pull request for the branch
+  statuses: write # This is required for reporting manual runs on pull requests
 
 jobs:
   # Checks the latest Nextjs Version, if it's not been tested before, it will
@@ -81,6 +83,29 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Find pull request for branch
+        id: find-pull-request
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pull_request=$(gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+            -f state=open \
+            -f "head=$GITHUB_REPOSITORY_OWNER:$GITHUB_REF_NAME" \
+            --jq '.[0].number // empty')
+          echo "number=$pull_request" >> "$GITHUB_OUTPUT"
+
+      - name: Report pending status on pull request
+        if: steps.find-pull-request.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state=pending \
+            -f context='E2E Tests (manual)' \
+            -f description='The manually triggered E2E tests are running' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -179,6 +204,28 @@ jobs:
         with:
           path: previous_version.txt
           key: ${{ needs.check_next_version.outputs.cacheKey }}
+
+      - name: Report final status on pull request
+        if: always() && steps.find-pull-request.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            state=success
+            description='The manually triggered E2E tests passed'
+          elif [ "${{ job.status }}" = "cancelled" ]; then
+            state=error
+            description='The manually triggered E2E tests were cancelled'
+          else
+            state=failure
+            description='The manually triggered E2E tests failed'
+          fi
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -f state="$state" \
+            -f context='E2E Tests (manual)' \
+            -f description="$description" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
   report:
     name: Report Status on Discord
