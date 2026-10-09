@@ -83,12 +83,32 @@ const malformedRoutingResult: RoutingResult = {
   ],
 };
 
+const retryLimitRoutingResult: RoutingResult = {
+  ...routingResult,
+  initialURL: "https://example.com/retry/a/b/c/d/e",
+  internalEvent: {
+    ...routingResult.internalEvent,
+    rawPath: "/retry/a/b/c/d/e",
+    url: "https://example.com/retry/a/b/c/d/e",
+  },
+  resolvedRoutes: [
+    { route: "/retry/[a]/b/c/d/e", type: "page" },
+    { route: "/retry/[a]/[b]/c/d/e", type: "page" },
+    { route: "/retry/[a]/[b]/[c]/d/e", type: "page" },
+    { route: "/retry/[a]/[b]/[c]/[d]/e", type: "page" },
+    { route: "/retry/[a]/[b]/[c]/[d]/[e]", type: "page" },
+    { route: "/retry/[a]/[...rest]", type: "page" },
+    { route: "/retry/[...rest]", type: "page" },
+  ],
+};
+
 const req = {} as any;
 const res = {} as any;
 
 describe("handleNoFallbackError", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requestHandler.mockReset().mockReturnValue(nextHandler);
     nextHandler.mockReset();
     getRouteMatchMetadata.mockReset().mockReturnValue({ match: undefined });
     vi.stubGlobal("nextVersion", "16.4.0");
@@ -162,6 +182,76 @@ describe("handleNoFallbackError", () => {
       invokePath: "/404",
       invokeStatus: 404,
     });
+  });
+
+  it("allows the sixth matching route on Next.js 16.4", async () => {
+    // The initial attempt has already failed; reject the next four candidates.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      nextHandler.mockRejectedValueOnce(new NoFallbackError());
+    }
+
+    await handleNoFallbackError(req, res, retryLimitRoutingResult, {});
+
+    expect(requestHandler).toHaveBeenCalledTimes(5);
+    expect(
+      requestHandler.mock.calls.map(([metadata]) => metadata.invokeOutput),
+    ).toEqual(
+      retryLimitRoutingResult.resolvedRoutes
+        .slice(1, 6)
+        .map(({ route }) => route),
+    );
+    expect(getRouteMatchMetadata).toHaveBeenCalledTimes(5);
+    expect(nextHandler).toHaveBeenCalledTimes(5);
+  });
+
+  it("renders 404 when five candidates are exhausted on Next.js 16.4", async () => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      nextHandler.mockRejectedValueOnce(new NoFallbackError());
+    }
+
+    await handleNoFallbackError(
+      req,
+      res,
+      {
+        ...retryLimitRoutingResult,
+        resolvedRoutes: retryLimitRoutingResult.resolvedRoutes.slice(0, 5),
+      },
+      {},
+    );
+
+    expect(requestHandler).toHaveBeenCalledTimes(5);
+    expect(requestHandler).toHaveBeenNthCalledWith(5, {
+      invokePath: "/404",
+      invokeStatus: 404,
+      middlewareInvoke: false,
+    });
+    expect(getRouteMatchMetadata).toHaveBeenCalledTimes(4);
+  });
+
+  it("stops before a seventh candidate on Next.js 16.4", async () => {
+    requestHandler.mockImplementation((metadata) =>
+      metadata.invokeStatus ? vi.fn() : nextHandler,
+    );
+    nextHandler.mockRejectedValue(new NoFallbackError());
+
+    await handleNoFallbackError(req, res, retryLimitRoutingResult, {});
+
+    expect(requestHandler).toHaveBeenCalledTimes(6);
+    expect(
+      requestHandler.mock.calls
+        .slice(0, 5)
+        .map(([metadata]) => metadata.invokeOutput),
+    ).toEqual(
+      retryLimitRoutingResult.resolvedRoutes
+        .slice(1, 6)
+        .map(({ route }) => route),
+    );
+    expect(requestHandler).toHaveBeenNthCalledWith(6, {
+      invokePath: "/500",
+      invokeStatus: 500,
+      middlewareInvoke: false,
+    });
+    expect(getRouteMatchMetadata).toHaveBeenCalledTimes(5);
   });
 
   it("renders a 400 with fresh metadata when fallback parameter decoding fails", async () => {
@@ -247,6 +337,50 @@ describe("handleNoFallbackError", () => {
     beforeEach(() => {
       vi.stubGlobal("nextVersion", version);
     });
+
+    it("still allows the fifth matching route", async () => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        nextHandler.mockRejectedValueOnce(new NoFallbackError());
+      }
+
+      await handleNoFallbackError(req, res, retryLimitRoutingResult, {});
+
+      expect(requestHandler).toHaveBeenCalledTimes(4);
+      expect(requestHandler.mock.calls[3][0]).toMatchObject({
+        invokeOutput: "/retry/[a]/[b]/[c]/[d]/[e]",
+      });
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+    });
+
+    it.each([5, 7])(
+      "keeps the five-attempt cap with %i route candidates",
+      async (routeCount) => {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          nextHandler.mockRejectedValueOnce(new NoFallbackError());
+        }
+
+        await handleNoFallbackError(
+          req,
+          res,
+          {
+            ...retryLimitRoutingResult,
+            resolvedRoutes: retryLimitRoutingResult.resolvedRoutes.slice(
+              0,
+              routeCount,
+            ),
+          },
+          {},
+        );
+
+        expect(requestHandler).toHaveBeenCalledTimes(5);
+        expect(requestHandler).toHaveBeenNthCalledWith(5, {
+          invokePath: "/500",
+          invokeStatus: 500,
+          middlewareInvoke: false,
+        });
+        expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+      },
+    );
 
     it("preserves existing metadata across retries without generating a match", async () => {
       const match = { definition: { pathname: "/[slug]/[id]" } };

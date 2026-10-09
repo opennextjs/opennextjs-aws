@@ -312,11 +312,14 @@ async function processRequest(
  * route matching and parameter-decoding error handling. Malformed parameters
  * encountered while constructing a 16.4+ match produce a bad-request response.
  *
+ * Next.js 16.4+ permits six attempts including the initial render. Older versions
+ * keep the legacy five-attempt cap.
+ *
  * @param req The request reused for each rendering attempt
  * @param res The response populated by Next.js
  * @param routingResult The ordered route candidates and internal request
  * @param metadata The request metadata retained from the previous attempt
- * @param index The next route candidate to try
+ * @param index The next candidate index, counting the initial render as index 0
  * @return A promise that resolves after rendering a route or an error response
  */
 export async function handleNoFallbackError(
@@ -326,7 +329,10 @@ export async function handleNoFallbackError(
   metadata: Record<string, unknown>,
   index = 1,
 ) {
-  if (index >= 5) {
+  const maxAttempts = compareSemver(globalThis.nextVersion, ">=", "16.4.0")
+    ? 6
+    : 5;
+  if (index >= maxAttempts) {
     await tryRenderError("500", res, routingResult.internalEvent);
     return;
   }
