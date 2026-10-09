@@ -12,13 +12,13 @@ allowBuilds:
 
 catalog:
   next: 16.4.0
-  react: 19.2.6
-  react-dom: 19.2.6
+  react: 19.3.0
+  react-dom: 19.3.0
   "@types/node": 20.17.6
-  "@types/react": 19.2.6
-  "@types/react-dom": 19.2.3
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
   autoprefixer: 10.6.1
-  postcss: 8.4.27
+  postcss: 8.5.23
   tailwindcss: 3.3.3
   typescript: 5.9.3
   esbuild: 0.28.2
