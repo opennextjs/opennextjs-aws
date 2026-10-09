@@ -1,0 +1,19 @@
+.github/workflows/e2e.yml
+  s_5fb435b85f9ee8::t_85719b1ace50ec 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6c7403ae866cd708b9db809862248ee93e2e0672",
+  "prompts": {},
+  "sessions": {
+    "s_5fb435b85f9ee8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ee52be062ffesIfNdawiaCYRGq",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
