@@ -1,6 +1,7 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
+import { SharedCacheControls } from "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js";
 import { type Mock, vi } from "vitest";
 
 declare global {
@@ -1191,6 +1192,100 @@ describe("CacheHandler", () => {
         { type: "redirect", props: {} },
         "cache",
       );
+    });
+
+    // See https://github.com/opennextjs/opennextjs-aws/issues/1250
+    describe("cache control seeding", () => {
+      const cacheControls = SharedCacheControls.cacheControls as Map<
+        string,
+        { revalidate: number | false; expire?: number }
+      >;
+      const mockEntry = (value: Record<string, unknown>) =>
+        incrementalCache.get.mockResolvedValueOnce({
+          value: { type: "app", html: "<html></html>", ...value },
+          lastModified: Date.now(),
+        });
+
+      beforeEach(() => {
+        globalThis.nextVersion = "16.3.8";
+        cacheControls.clear();
+      });
+
+      afterAll(() => {
+        cacheControls.clear();
+      });
+
+      it("Should give Next.js the cache control stored with the entry", async () => {
+        mockEntry({ revalidate: 120, expire: 3600 });
+
+        await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(cacheControls.get(scopedKey)).toEqual({
+          revalidate: 120,
+          expire: 3600,
+        });
+      });
+
+      it("Should seed an entry that is never revalidated", async () => {
+        mockEntry({ revalidate: false });
+
+        await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(cacheControls.get(scopedKey)).toEqual({
+          revalidate: false,
+          expire: undefined,
+        });
+      });
+
+      it("Should not overwrite the cache control set by Next.js", async () => {
+        cacheControls.set(scopedKey, { revalidate: 60, expire: 600 });
+        mockEntry({ revalidate: 120, expire: 3600 });
+
+        await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(cacheControls.get(scopedKey)).toEqual({
+          revalidate: 60,
+          expire: 600,
+        });
+      });
+
+      it("Should not seed when the entry has no revalidate", async () => {
+        mockEntry({});
+
+        await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(cacheControls.has(scopedKey)).toBe(false);
+      });
+
+      it("Should not seed before Next.js uses route cache keys", async () => {
+        globalThis.nextVersion = "16.3.7";
+        mockEntry({ revalidate: 120, expire: 3600 });
+
+        await cache.get("/isr", { kindHint: "app" });
+
+        expect(cacheControls.size).toBe(0);
+      });
+
+      it("Should store the expire value on set", async () => {
+        await cache.set(
+          scopedKey,
+          {
+            kind: "APP_PAGE",
+            html: "<html></html>",
+            rscData: Buffer.from("rsc"),
+            status: 200,
+            headers: {},
+          },
+          { cacheControl: { revalidate: 120, expire: 3600 } },
+        );
+        await awaitDetachedWrites();
+
+        expect(incrementalCache.set).toHaveBeenCalledWith(
+          scopedKey,
+          expect.objectContaining({ revalidate: 120, expire: 3600 }),
+          "cache",
+        );
+      });
     });
 
     it("Should use the scoped key on delete", async () => {
