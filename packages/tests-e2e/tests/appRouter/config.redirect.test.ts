@@ -81,7 +81,12 @@ test.describe("Next Config Redirect", () => {
     });
     page.getByTestId("redirect-link").click();
     const res = await responsePromise;
-    await page.waitForURL("/config-redirect/dest?q=äöå€");
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === "/config-redirect/dest" &&
+        url.searchParams.get("q") === "äöå€"
+      );
+    });
 
     const locationHeader = res.headers().location;
     expect(locationHeader).toBe(
@@ -99,7 +104,12 @@ test.describe("Next Config Redirect", () => {
     });
     page.getByTestId("redirect-link-already-encoded").click();
     const res = await responsePromise;
-    await page.waitForURL("/config-redirect/dest?q=äöå€");
+    await page.waitForURL((url) => {
+      return (
+        url.pathname === "/config-redirect/dest" &&
+        url.searchParams.get("q") === "äöå€"
+      );
+    });
 
     const locationHeader = res.headers().location;
     expect(locationHeader).toBe(

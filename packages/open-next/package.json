@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "@opennextjs/aws",
-  "version": "4.1.8",
+  "version": "4.1.9",
   "bin": {
     "open-next": "./dist/index.js"
   },
@@ -37,31 +37,31 @@
     "README.md"
   ],
   "dependencies": {
-    "@ast-grep/napi": "^0.40.5",
+    "@ast-grep/napi": "^0.45.3",
     "@aws-sdk/client-cloudfront": "3.984.0",
     "@aws-sdk/client-dynamodb": "3.984.0",
     "@aws-sdk/client-lambda": "3.984.0",
     "@aws-sdk/client-s3": "3.984.0",
     "@aws-sdk/client-sqs": "3.984.0",
-    "@node-minify/core": "^8.0.6",
-    "@node-minify/terser": "^8.0.6",
-    "@tsconfig/node18": "^1.0.3",
+    "@node-minify/core": "^9.0.2",
+    "@node-minify/terser": "^9.0.1",
+    "@tsconfig/node18": "^18.2.7",
     "aws4fetch": "^1.0.20",
     "chalk": "^5.6.2",
-    "cookie": "^1.0.2",
+    "cookie": "^1.1.1",
     "esbuild": "catalog:",
-    "express": "^5.1.0",
+    "express": "catalog:",
     "path-to-regexp": "^6.3.0",
     "urlpattern-polyfill": "^10.1.0",
-    "yaml": "^2.8.1"
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.158",
-    "@types/express": "5.0.0",
+    "@types/express": "5.0.6",
     "@types/node": "catalog:",
-    "concurrently": "^9.2.1",
+    "concurrently": "^9.2.4",
     "next": "catalog:",
-    "tsc-alias": "^1.8.16",
+    "tsc-alias": "^1.9.7",
     "typescript": "catalog:"
   },
   "peerDependencies": {

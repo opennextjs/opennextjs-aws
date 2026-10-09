@@ -1,6 +1,6 @@
 import { NextConfig } from "config/index";
-import type { Match, MatchFunction, PathFunction } from "path-to-regexp";
-import { compile, match } from "path-to-regexp";
+import type { MatchFunction } from "path-to-regexp";
+import { compile, match, parse } from "path-to-regexp";
 import type {
   Header,
   PrerenderManifest,
@@ -25,6 +25,85 @@ import {
   unescapeRegex,
 } from "./util";
 
+const compiledRegExps = new Map<string, RegExp>();
+
+/**
+ * Returns the compiled regular expression for a configured pattern.
+ *
+ * Patterns come from the Next.js config and manifests, so each one is compiled
+ * on first use and reused by later requests. `lastIndex` is reset on every call
+ * so a shared global or sticky expression always starts from the beginning.
+ *
+ * @param pattern The regular expression source
+ * @param flags The optional regular expression flags
+ * @returns The compiled regular expression
+ * @throws {SyntaxError} When the pattern is invalid
+ */
+export function getCompiledRegExp(pattern: string, flags = ""): RegExp {
+  const key = `/${pattern}/${flags}`;
+  let regExp = compiledRegExps.get(key);
+  if (!regExp) {
+    regExp = new RegExp(pattern, flags);
+    compiledRegExps.set(key, regExp);
+  }
+  regExp.lastIndex = 0;
+
+  return regExp;
+}
+
+/**
+ * Tests a request value against a route condition.
+ *
+ * Repeated query parameters are present when their array exists, but configured
+ * patterns match only the final entry, including an empty final entry. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L115
+ *
+ * @param value The scalar or repeated request value
+ * @param pattern The optional configured condition pattern
+ * @returns Whether the request value satisfies the condition
+ * @throws {SyntaxError} When the configured pattern is invalid
+ */
+function matchHasValue(
+  value: string | string[] | undefined,
+  pattern?: string,
+): boolean {
+  if (!value) return false;
+  if (!pattern) return true;
+
+  const candidate = Array.isArray(value) ? value.at(-1) : value;
+  return (
+    candidate !== undefined && getCompiledRegExp(`^${pattern}$`).test(candidate)
+  );
+}
+
+/**
+ * Normalizes the request host for route-condition matching and captures.
+ *
+ * Next.js removes the port and lowercases the hostname before applying host
+ * patterns. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L82-L88
+ *
+ * @param headers The request headers
+ * @returns The normalized hostname, or undefined when no host is present
+ */
+function getHostname(headers: Record<string, string>): string | undefined {
+  return headers.host?.split(":", 1)[0].toLowerCase();
+}
+
+/**
+ * Removes characters unsupported by path-to-regexp parameter names.
+ *
+ * Next.js exposes value-less conditions under a name containing only ASCII
+ * letters. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L21-L36
+ *
+ * @param name The route-condition key
+ * @returns The sanitized destination parameter name
+ */
+function getSafeParamName(name: string): string {
+  return name.replaceAll(/[^a-zA-Z]/g, "");
+}
+
 const routeHasMatcher =
   (
     headers: Record<string, string>,
@@ -34,32 +113,16 @@ const routeHasMatcher =
   (redirect: RouteHas): boolean => {
     switch (redirect.type) {
       case "header":
-        return (
-          !!headers?.[redirect.key.toLowerCase()] &&
-          new RegExp(redirect.value ?? "").test(
-            headers[redirect.key.toLowerCase()] ?? "",
-          )
+        return matchHasValue(
+          headers[redirect.key.toLowerCase()],
+          redirect.value,
         );
       case "cookie":
-        return (
-          !!cookies?.[redirect.key] &&
-          new RegExp(redirect.value ?? "").test(cookies[redirect.key] ?? "")
-        );
+        return matchHasValue(cookies[redirect.key], redirect.value);
       case "query":
-        return query[redirect.key] && Array.isArray(redirect.value)
-          ? redirect.value.reduce(
-              (prev, current) =>
-                prev || new RegExp(current).test(query[redirect.key] as string),
-              false,
-            )
-          : new RegExp(redirect.value ?? "").test(
-              (query[redirect.key] as string | undefined) ?? "",
-            );
+        return matchHasValue(query[redirect.key], redirect.value);
       case "host":
-        return (
-          headers?.host !== "" &&
-          new RegExp(redirect.value ?? "").test(headers.host)
-        );
+        return matchHasValue(getHostname(headers), redirect.value);
       default:
         return false;
     }
@@ -85,6 +148,20 @@ const getParamsFromSource =
     return _match ? _match.params : {};
   };
 
+/**
+ * Creates an extractor for route-condition captures.
+ *
+ * Value-less conditions expose their present value under a safe parameter
+ * name. Patterned repeated query parameters capture their final value, matching
+ * the value used to decide the condition. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L107
+ *
+ * @param headers The request headers
+ * @param cookies The parsed request cookies
+ * @param query The request query parameters
+ * @returns A function that extracts named captures for one condition
+ * @throws {SyntaxError} When the configured pattern is invalid
+ */
 const computeParamHas =
   (
     headers: Record<string, string>,
@@ -92,11 +169,32 @@ const computeParamHas =
     query: Record<string, string | string[]>,
   ) =>
   (has: RouteHas): object => {
-    if (!has.value) return {};
-    const matcher = new RegExp(`^${has.value}$`);
-    const fromSource = (value: string) => {
+    if (!has.value) {
+      let key: string;
+      let value: string | string[] | undefined;
+      switch (has.type) {
+        case "header":
+          key = has.key.toLowerCase();
+          value = headers[key];
+          break;
+        case "cookie":
+          key = has.key;
+          value = cookies[key];
+          break;
+        case "query":
+          key = has.key;
+          value = query[key];
+          break;
+        case "host":
+          return {};
+      }
+      return value ? { [getSafeParamName(key)]: value } : {};
+    }
+    const matcher = getCompiledRegExp(`^${has.value}$`);
+    const fromSource = (value: string, implicitKey?: string) => {
       const matches = value.match(matcher);
-      return matches?.groups ?? {};
+      if (matches?.groups) return matches.groups;
+      return implicitKey && matches?.[0] ? { [implicitKey]: matches[0] } : {};
     };
     switch (has.type) {
       case "header":
@@ -104,28 +202,100 @@ const computeParamHas =
       case "cookie":
         return fromSource(cookies[has.key] ?? "");
       case "query":
-        return Array.isArray(query[has.key])
-          ? fromSource((query[has.key] as string[]).join(","))
-          : fromSource((query[has.key] as string) ?? "");
+        return fromSource(
+          Array.isArray(query[has.key])
+            ? ((query[has.key] as string[]).at(-1) ?? "")
+            : ((query[has.key] as string) ?? ""),
+        );
       case "host":
-        return fromSource(headers.host ?? "");
+        return fromSource(getHostname(headers) ?? "", "host");
     }
   };
 
-function convertMatch(
-  match: Match,
-  toDestination: PathFunction,
-  destination: string,
-) {
-  if (!match) {
-    return destination;
-  }
+/**
+ * Compiles parameters in a non-path value while preserving literal syntax.
+ *
+ * Header keys and values can contain URL schemes and characters that
+ * path-to-regexp otherwise treats as patterns. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L127-L160
+ *
+ * @param value The configured header key or value
+ * @param params The source and route-condition parameters
+ * @returns The interpolated value
+ * @throws {TypeError} When a referenced parameter cannot be compiled
+ */
+function compileNonPath(value: string, params: object): string {
+  if (!value.includes(":")) return value;
 
-  const { params } = match;
-  const isUsingParams = Object.keys(params).length > 0;
-  return isUsingParams ? toDestination(params) : destination;
+  let compiledValue = value;
+  for (const key of Object.keys(params)) {
+    if (!compiledValue.includes(`:${key}`)) continue;
+
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    compiledValue = compiledValue
+      .replace(
+        getCompiledRegExp(`:${escapedKey}\\*`, "g"),
+        `:${key}--ESCAPED_PARAM_ASTERISKS`,
+      )
+      .replace(
+        getCompiledRegExp(`:${escapedKey}\\?`, "g"),
+        `:${key}--ESCAPED_PARAM_QUESTION`,
+      )
+      .replace(
+        getCompiledRegExp(`:${escapedKey}\\+`, "g"),
+        `:${key}--ESCAPED_PARAM_PLUS`,
+      )
+      .replace(
+        getCompiledRegExp(`:${escapedKey}(?!\\w)`, "g"),
+        `--ESCAPED_PARAM_COLON${key}`,
+      );
+  }
+  compiledValue = compiledValue
+    .replace(/(:|\*|\?|\+|\(|\)|\{|\})/g, "\\$1")
+    .replaceAll("--ESCAPED_PARAM_PLUS", "+")
+    .replaceAll("--ESCAPED_PARAM_COLON", ":")
+    .replaceAll("--ESCAPED_PARAM_QUESTION", "?")
+    .replaceAll("--ESCAPED_PARAM_ASTERISKS", "*");
+
+  return compile(`/${compiledValue}`, { validate: false })(params).slice(1);
 }
 
+/**
+ * Compiles each destination query value independently.
+ *
+ * Independent compilation gives repeat parameters the same slash separator as
+ * Next.js while preserving configured query keys and delimiters.
+ *
+ * @param queryString The destination query string without a leading question mark
+ * @param params The source and route-condition parameters
+ * @returns The interpolated destination query string
+ * @throws {TypeError} When a referenced parameter cannot be compiled
+ */
+function compileQueryString(queryString: string, params: object): string {
+  return queryString
+    .split("&")
+    .map((part) => {
+      const separator = part.indexOf("=");
+      if (separator === -1) return part;
+
+      const key = part.slice(0, separator + 1);
+      return `${key}${compileNonPath(part.slice(separator + 1), params)}`;
+    })
+    .join("&");
+}
+
+/**
+ * Resolves configured response headers for a request.
+ *
+ * Source parameters are merged with successful condition parameters before
+ * interpolation, with condition parameters taking precedence. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
+ *
+ * @param event The request used to match configured headers
+ * @param configHeaders The configured header routes
+ * @returns The response headers produced by every matching route
+ * @throws {SyntaxError} When a configured route pattern is invalid
+ */
 export function getNextConfigHeaders(
   event: InternalEvent,
   configHeaders?: Header[] | undefined,
@@ -135,6 +305,7 @@ export function getNextConfigHeaders(
   }
 
   const matcher = routeHasMatcher(event.headers, event.cookies, event.query);
+  const computeHas = computeParamHas(event.headers, event.cookies, event.query);
 
   const requestHeaders: Record<string, string> = {};
   const localizedRawPath = localizePath(event);
@@ -149,16 +320,23 @@ export function getNextConfigHeaders(
   } of configHeaders) {
     const path = locale === false ? event.rawPath : localizedRawPath;
     if (
-      new RegExp(regex).test(path) &&
+      getCompiledRegExp(regex).test(path) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
       const fromSource = match(source);
       const _match = fromSource(path);
+      const params = {
+        ...(_match ? _match.params : {}),
+        ...has?.reduce((acc, cur) => {
+          return Object.assign(acc, computeHas(cur));
+        }, {}),
+      };
+      const hasParams = Object.keys(params).length > 0;
       headers.forEach((h) => {
         try {
-          const key = convertMatch(_match, compile(h.key), h.key);
-          const value = convertMatch(_match, compile(h.value), h.value);
+          const key = hasParams ? compileNonPath(h.key, params) : h.key;
+          const value = hasParams ? compileNonPath(h.value, params) : h.value;
           requestHeaders[key] = value;
         } catch {
           debug(`Error matching header ${h.key} with value ${h.value}`);
@@ -171,13 +349,30 @@ export function getNextConfigHeaders(
 }
 
 /**
- * TODO: This method currently only check for the first match.
- *       It should check for all matches for `beforeFiles` and `afterFiles` rewrite
- *       See https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+ * Applies the first matching rewrite to an internal request.
+ *
+ * Only successful `has` predicates supply destination parameters. Nonmatching
+ * `missing` predicates must not manufacture captures from absent values. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L113-L125
+ *
+ * Destination queries use non-path compilation so repeated parameters retain
+ * their separators. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
+ *
+ * TODO: This method currently only checks the first match. It should check all
+ * matches for `beforeFiles` and `afterFiles` rewrites. See
+ * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
+ *
+ * @param event The request to rewrite
+ * @param rewrites The configured rewrites to evaluate
+ * @param appendParamsToQuery Whether unused match parameters are added to the query
+ * @returns The rewritten request and matched rewrite metadata
+ * @throws {TypeError} When a matched destination cannot be compiled
  */
 export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
+  appendParamsToQuery = true,
 ) {
   const { rawPath, headers, query, cookies, url } = event;
   const localizedRawPath = localizePath(event);
@@ -186,7 +381,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   const rewrite = rewrites.find((route) => {
     const path = route.locale === false ? rawPath : localizedRawPath;
     return (
-      new RegExp(route.regex).test(path) &&
+      getCompiledRegExp(route.regex).test(path) &&
       checkHas(matcher, route.has) &&
       checkHas(matcher, route.missing, true)
     );
@@ -197,20 +392,26 @@ export function handleRewrites<T extends RewriteDefinition>(
   const isExternalRewrite = isExternal(rewrite?.destination);
   debug("isExternalRewrite", isExternalRewrite);
   if (rewrite) {
-    const { pathname, protocol, hostname, queryString } = getUrlParts(
+    const { pathname, protocol, hostname, queryString, hash } = getUrlParts(
       rewrite.destination,
       isExternalRewrite,
     );
     // We need to use a localized path if the rewrite is not locale specific
     const pathToUse = rewrite.locale === false ? rawPath : localizedRawPath;
 
-    debug("urlParts", { pathname, protocol, hostname, queryString });
-    const toDestinationPath = compile(escapeRegex(pathname, { isPath: true }));
+    debug("urlParts", { pathname, protocol, hostname, queryString, hash });
+    // Values were validated while matching; Next.js does not revalidate them
+    // as single path segments. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L268
+    const compileOptions = { validate: false };
+    const toDestinationPath = compile(
+      escapeRegex(pathname, { isPath: true }),
+      compileOptions,
+    );
     // A literal numeric port is URL syntax, not a path-to-regexp parameter.
     const toDestinationHost = compile(
       escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"),
+      { ...compileOptions, encode: encodeURIComponent },
     );
-    const toDestinationQuery = compile(escapeRegex(queryString));
     const params = {
       // params for the source
       ...getParamsFromSource(
@@ -220,25 +421,39 @@ export function handleRewrites<T extends RewriteDefinition>(
       ...rewrite.has?.reduce((acc, cur) => {
         return Object.assign(acc, computeHas(cur));
       }, {}),
-      // params for the missing
-      ...rewrite.missing?.reduce((acc, cur) => {
-        return Object.assign(acc, computeHas(cur));
-      }, {}),
     };
     const isUsingParams = Object.keys(params).length > 0;
+    const queryParams = Object.fromEntries(
+      Object.entries(params).filter(([key]) => key !== "nextInternalLocale"),
+    ) as Record<string, string | string[]>;
+    // Next.js appends match parameters only when none are consumed by the
+    // destination path or hostname. See
+    // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L286-L302
+    const destinationParams = [
+      ...parse(escapeRegex(`${pathname}${hash}`, { isPath: true })),
+      ...(hostname
+        ? parse(escapeRegex(hostname).replace(/:(\d+)$/, "\\:$1"))
+        : []),
+    ].flatMap((token) =>
+      typeof token === "string" ? [] : [String(token.name)],
+    );
     let rewrittenQuery = queryString;
     let rewrittenHost = hostname;
-    let rewrittenPath = pathname;
+    let rewrittenHash = hash;
+    let rewrittenPath = unescapeRegex(toDestinationPath(params));
+    if (pathname.startsWith("/") && !rewrittenPath.startsWith("/")) {
+      rewrittenPath = `/${rewrittenPath}`;
+    }
     if (isUsingParams) {
-      rewrittenPath = unescapeRegex(toDestinationPath(params));
       rewrittenHost = unescapeRegex(toDestinationHost(params));
-      rewrittenQuery = unescapeRegex(toDestinationQuery(params));
+      rewrittenQuery = compileQueryString(queryString, params);
+      rewrittenHash = compileNonPath(hash, params);
     }
 
     // We need to strip the locale from the path if it's a local api route
     if (NextConfig.i18n && !isExternalRewrite) {
       const strippedPathLocale = rewrittenPath.replace(
-        new RegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
+        getCompiledRegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
         "",
       );
       if (strippedPathLocale.startsWith("/api/")) {
@@ -251,11 +466,17 @@ export function handleRewrites<T extends RewriteDefinition>(
       : new URL(rewrittenPath, event.url).href;
 
     // We merge query params from the source and the destination
+    const destinationQuery = convertFromQueryString(rewrittenQuery);
     finalQuery = {
       ...query,
-      ...convertFromQueryString(rewrittenQuery),
+      ...(!appendParamsToQuery ||
+      Object.keys(queryParams).some((key) => destinationParams.includes(key))
+        ? {}
+        : queryParams),
+      ...destinationQuery,
     };
     rewrittenUrl += convertToQueryString(finalQuery);
+    rewrittenUrl += rewrittenHash;
     debug("rewrittenUrl", { rewrittenUrl, finalQuery, isUsingParams });
   }
 
@@ -269,6 +490,37 @@ export function handleRewrites<T extends RewriteDefinition>(
     __rewrite: rewrite,
     isExternalRewrite,
   };
+}
+
+/**
+ * Applies every matching `beforeFiles` rewrite, in order.
+ *
+ * Next.js keeps evaluating `beforeFiles` rewrites after a match, each one
+ * against the URL produced by the previous match. An external rewrite ends the
+ * evaluation. See
+ * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L863-L932
+ *
+ * @param event The request to rewrite
+ * @param rewrites The configured `beforeFiles` rewrites
+ * @returns The rewritten request and the last matched rewrite metadata
+ * @throws {TypeError} When a matched destination cannot be compiled
+ */
+export function handleBeforeFilesRewrites<T extends RewriteDefinition>(
+  event: InternalEvent,
+  rewrites: T[],
+): ReturnType<typeof handleRewrites<T>> {
+  let result: ReturnType<typeof handleRewrites<T>> = {
+    internalEvent: event,
+    __rewrite: undefined,
+    isExternalRewrite: false,
+  };
+  for (const rewrite of rewrites) {
+    const rewriteResult = handleRewrites(result.internalEvent, [rewrite]);
+    if (!rewriteResult.__rewrite) continue;
+    result = rewriteResult;
+    if (result.isExternalRewrite) break;
+  }
+  return result;
 }
 
 // Normalizes repeated slashes in the path e.g. hello//world -> hello/world
@@ -370,6 +622,7 @@ export function handleRedirects(
   const { internalEvent, __rewrite } = handleRewrites(
     event,
     redirects.filter((r) => !r.internal),
+    false,
   );
   if (__rewrite && !__rewrite.internal) {
     return {
@@ -436,10 +689,9 @@ export function handleFallbackFalse(
   const prerenderedFallbackRoutes = Object.entries(dynamicRoutes).filter(
     ([, { fallback }]) => fallback === false,
   );
-  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) => {
-    const routeRegexExp = new RegExp(routeRegex);
-    return routeRegexExp.test(rawPath);
-  });
+  const routeFallback = prerenderedFallbackRoutes.some(([, { routeRegex }]) =>
+    getCompiledRegExp(routeRegex).test(rawPath),
+  );
   const locales = NextConfig.i18n?.locales;
   const routesAlreadyHaveLocale =
     locales?.includes(rawPath.split("/")[1]) ||

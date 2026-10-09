@@ -1,5 +1,34 @@
 # open-next
 
+## 4.1.9
+
+### Patch Changes
+
+- [#1298](https://github.com/opennextjs/opennextjs-aws/pull/1298) [`0d40bcd`](https://github.com/opennextjs/opennextjs-aws/commit/0d40bcd5a422e1adda689fc44ec884835cd9eae1) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - Apply every matching `beforeFiles` rewrite in order so Next.js-generated
+  interception rewrites can run after user-defined rewrites. Preserve unused
+  source parameters in the rewritten query for subsequent rewrite conditions,
+  while keeping redirect query behavior unchanged.
+
+- [#1290](https://github.com/opennextjs/opennextjs-aws/pull/1290) [`6f6e6db`](https://github.com/opennextjs/opennextjs-aws/commit/6f6e6db5fa21eda13ece3bdfa1da5fed69d75582) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - perf: compile the routing matcher regular expressions only once
+
+- [#1287](https://github.com/opennextjs/opennextjs-aws/pull/1287) [`e18127e`](https://github.com/opennextjs/opennextjs-aws/commit/e18127e366588d8f5c8cdac103b19d6e9a0f3e76) Thanks [@vicb](https://github.com/vicb)! - fix: percent-encode query values when rebuilding the query string, so values containing "&", "=", "+" or "%" reach Next.js intact
+
+- [#1297](https://github.com/opennextjs/opennextjs-aws/pull/1297) [`6fc4919`](https://github.com/opennextjs/opennextjs-aws/commit/6fc4919160fa102472bc6ca54a524eef79a8b5f4) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: do not fail the build when `optimizeCss` is enabled and no CSS file is emitted
+
+- [#1284](https://github.com/opennextjs/opennextjs-aws/pull/1284) [`0152a70`](https://github.com/opennextjs/opennextjs-aws/commit/0152a708eef3dff2966b210fec3ea8bbbae7c7f8) Thanks [@vicb](https://github.com/vicb)! - fix: align route condition handling with Next.js
+
+  - Compile empty optional catch-all parameters in redirect and rewrite destinations.
+  - Interpolate route condition parameters in configured response headers.
+  - Allow matched destination parameters to contain values outside a single path segment.
+  - Fix `has` condition matching to follow Next.js semantics.
+  - Normalize host condition captures and expose implicit host parameters.
+  - Preserve separators for repeated parameters in rewrite destination queries.
+  - Expose value-less route condition values as destination parameters.
+  - Prevent missing route conditions from overwriting destination parameters.
+  - Match and capture repeated query conditions using their final value.
+
+- [#1300](https://github.com/opennextjs/opennextjs-aws/pull/1300) [`f4d8b70`](https://github.com/opennextjs/opennextjs-aws/commit/f4d8b7048633d66ef2078830dcee0d21d6e762db) Thanks [@vicb](https://github.com/vicb)! - fix: retain FETCH cache writes created during Server Action Flight rendering
+
 ## 4.1.8
 
 ### Patch Changes

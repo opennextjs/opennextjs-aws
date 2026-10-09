@@ -20,7 +20,6 @@ import {
   constructNextUrl,
   convertRes,
   convertToQuery,
-  convertToQueryString,
   createServerResponse,
 } from "./routing/util";
 import routingHandler, {
@@ -232,6 +231,14 @@ export async function openNextHandler(
   );
 }
 
+/**
+ * Applies routing metadata and invokes the Next.js request handler.
+ *
+ * @param req The request passed to Next.js
+ * @param res The response populated by Next.js
+ * @param routingResult The resolved OpenNext route and request metadata
+ * @return A promise that resolves after Next.js handles the request
+ */
 async function processRequest(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
@@ -280,9 +287,9 @@ async function processRequest(
     // TODO: only enable this on Next 15.4+
     // We need to set the pathname to the data request path
     //#override setInitialURL
-    req.url =
-      initialURL.pathname +
-      convertToQueryString(routingResult.internalEvent.query);
+    // `invokeQuery` carries destination query values for server APIs, while
+    // `req.url` remains the browser-visible URL used by the App Router state.
+    req.url = initialURL.pathname + initialURL.search;
     //#endOverride
 
     await requestHandler(requestMetadata)(req, res);

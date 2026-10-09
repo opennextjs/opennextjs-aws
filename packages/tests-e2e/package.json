@@ -8,9 +8,8 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@playwright/test": "1.49.1",
+    "@playwright/test": "1.61.1",
     "start-server-and-test": "2.0.0",
-    "ts-node": "10.9.1"
-  },
-  "version": null
+    "ts-node": "10.9.2"
+  }
 }
