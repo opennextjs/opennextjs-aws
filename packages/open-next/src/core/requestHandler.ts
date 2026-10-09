@@ -10,11 +10,13 @@ import type {
 } from "types/open-next";
 import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
+import { compareSemver } from "utils/semver";
 
 import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
+import { getRouteMatchMetadata } from "./routeMatchMetadata";
 import {
   constructNextUrl,
   convertRes,
@@ -303,14 +305,34 @@ async function processRequest(
   }
 }
 
-async function handleNoFallbackError(
+/**
+ * Retries the next resolved route after Next.js rejects a fallback.
+ *
+ * Next.js 16.4+ requires an explicit match; older versions retain their own
+ * route matching and parameter-decoding error handling. Malformed parameters
+ * encountered while constructing a 16.4+ match produce a bad-request response.
+ *
+ * Next.js 16.4+ permits six attempts including the initial render. Older versions
+ * keep the legacy five-attempt cap.
+ *
+ * @param req The request reused for each rendering attempt
+ * @param res The response populated by Next.js
+ * @param routingResult The ordered route candidates and internal request
+ * @param metadata The request metadata retained from the previous attempt
+ * @param index The next candidate index, counting the initial render as index 0
+ * @return A promise that resolves after rendering a route or an error response
+ */
+export async function handleNoFallbackError(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
   routingResult: RoutingResult,
   metadata: Record<string, unknown>,
   index = 1,
 ) {
-  if (index >= 5) {
+  const maxAttempts = compareSemver(globalThis.nextVersion, ">=", "16.4.0")
+    ? 6
+    : 5;
+  if (index >= maxAttempts) {
     await tryRenderError("500", res, routingResult.internalEvent);
     return;
   }
@@ -318,11 +340,31 @@ async function handleNoFallbackError(
     await tryRenderError("404", res, routingResult.internalEvent);
     return;
   }
+  const route = routingResult.resolvedRoutes[index].route;
   try {
+    // Skip the call itself on older versions: decoding here can change their error handling.
+    let routeMatchMetadata = {};
+    if (compareSemver(globalThis.nextVersion, ">=", "16.4.0")) {
+      try {
+        routeMatchMetadata = getRouteMatchMetadata(
+          route,
+          routingResult.internalEvent.rawPath,
+        );
+      } catch (e) {
+        // Only match decoding is a bad request; rendering errors still use the 500 path.
+        if (!(e instanceof URIError)) {
+          throw e;
+        }
+        await tryRenderError("400", res, routingResult.internalEvent);
+        return;
+      }
+    }
     await requestHandler({
       ...routingResult,
-      invokeOutput: routingResult.resolvedRoutes[index].route,
+      invokeOutput: route,
       ...metadata,
+      // Must come after `metadata` to override the stale `match` of the previous attempt.
+      ...routeMatchMetadata,
     })(req, res);
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {
@@ -334,8 +376,18 @@ async function handleNoFallbackError(
   }
 }
 
+/**
+ * Renders a Next.js error response with fresh request metadata.
+ *
+ * Falls back to a JSON 500 response if rendering the error page fails.
+ *
+ * @param type The HTTP error status to render
+ * @param res The response populated by Next.js
+ * @param internalEvent The request supplying headers, body, and remote address
+ * @return A promise that resolves after writing the error response
+ */
 async function tryRenderError(
-  type: "404" | "500",
+  type: "400" | "404" | "500",
   res: OpenNextNodeResponse,
   internalEvent: InternalEvent,
 ) {
@@ -347,11 +399,11 @@ async function tryRenderError(
       body: internalEvent.body,
       remoteAddress: internalEvent.remoteAddress,
     });
-    // By setting this it will allow us to bypass and directly render the 404 or 500 page
+    // Bypass route matching and directly render the requested error response.
     const requestMetadata = {
       // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
-      invokePath: type === "404" ? "/404" : "/500",
-      invokeStatus: type === "404" ? 404 : 500,
+      invokePath: `/${type}`,
+      invokeStatus: Number(type),
       middlewareInvoke: false,
     };
     await requestHandler(requestMetadata)(_req, res);
