@@ -263,14 +263,15 @@ export default class Cache {
     const store = globalThis.__openNextAls.getStore();
     const writePromise = this.writeCache(key, data, ctx);
 
-    // Next.js ignores the value returned by `set`, so the write is registered on the request's
-    // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
-    // them in a detached chain of its own that only covers the write while `set` waits for it.
+    // Next.js ignores some cache handler results and does not reliably retain
+    // FETCH writes created during a Server Action Flight render. Register every
+    // write with the request runner before preserving FETCH's awaited behavior.
+    if (store !== undefined) {
+      store.pendingPromiseRunner.add(writePromise);
+    }
     if (data?.kind === "FETCH" || store === undefined) {
       await writePromise;
-      return;
     }
-    store.pendingPromiseRunner.add(writePromise);
   }
 
   private async writeCache(
