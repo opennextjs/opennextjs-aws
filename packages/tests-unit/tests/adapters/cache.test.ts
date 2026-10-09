@@ -12,8 +12,8 @@ declare global {
 
 describe("CacheHandler", () => {
   let cache: Cache;
-  // `set` registers non-`FETCH` writes as detached work on the request's promise runner. Tests
-  // that assert on what a write did need to wait for that work.
+  // `set` registers writes as detached work on the request's promise runner. Tests that assert
+  // on what a write did need to wait for that work.
   let detachedWrites: Promise<unknown>[];
   const awaitDetachedWrites = () => Promise.all(detachedWrites);
 
@@ -1095,7 +1095,7 @@ describe("CacheHandler", () => {
         );
       });
 
-      it("Should await FETCH writes without registering them as detached work", async () => {
+      it("Should await FETCH writes and register them as detached work", async () => {
         const write = deferredWrite();
         incrementalCache.set.mockReturnValueOnce(write.promise);
 
@@ -1119,7 +1119,7 @@ describe("CacheHandler", () => {
         await drainMicrotasks();
 
         expect(settled).toBe(false);
-        expect(detachedWrites).toHaveLength(0);
+        expect(detachedWrites).toEqual([write.promise]);
 
         write.resolve();
 
