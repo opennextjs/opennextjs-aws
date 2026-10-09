@@ -9,6 +9,8 @@ import {
   RoutesManifest,
 } from "config/index.js";
 
+import { selectAppPageEntry } from "../utils/routeCacheKey.js";
+
 // Only the fields of the Next.js route definition read when rendering a `match`
 interface RouteMatch {
   definition: {
@@ -58,6 +60,12 @@ export function getRouteMatchMetadata(
   };
 }
 
+/**
+ * Resolves a route to its manifest-backed Next.js definition.
+ *
+ * @param route The normalized route pattern selected for the retry
+ * @return The canonical route definition, or undefined when no entry matches
+ */
 function getRouteDefinition(
   route: string,
 ): RouteMatch["definition"] | undefined {
@@ -65,12 +73,14 @@ function getRouteDefinition(
     (appPath) => AppPathRoutesManifest[appPath] === route,
   );
   const appPages = appPaths.filter((appPath) => appPath.endsWith("/page"));
-  if (appPages.length > 0) {
+  // Select the same canonical entry as Next.js and the route cache owner.
+  const appPage = selectAppPageEntry(route, appPages);
+  if (appPage) {
     return {
       kind: "APP_PAGE",
       pathname: route,
-      page: appPages[0],
-      filename: getFilename(AppPathsManifest[appPages[0]]),
+      page: appPage,
+      filename: getFilename(AppPathsManifest[appPage]),
       appPaths: appPages,
     };
   }
