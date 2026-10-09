@@ -9,3 +9,4 @@ export { patchFetchCacheSetMissingWaitUntil } from "./patchFetchCacheWaitUntil.j
 export { patchBackgroundRevalidation } from "./patchBackgroundRevalidation.js";
 export { patchNodeEnvironment } from "./patchNodeEnvironment.js";
 export { patchOriginalNextConfig } from "./patchOriginalNextConfig.js";
+export { patchPagesApiRuntimeProd } from "./patchPagesApiRuntimeProd.js";
