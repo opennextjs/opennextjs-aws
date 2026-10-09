@@ -206,28 +206,24 @@ jobs:
             icon_url='https://i.imgur.com/QeXzqIy.png'
           fi
 
-          description="Test $result [$NEXT_VERSION](https://github.com/vercel/next.js/releases/tag/$NEXT_VERSION) — [view results](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)"
-          payload=$(jq -n \
-            --arg description "$description" \
-            --argjson color "$color" \
-            --arg footer "$footer" \
-            --arg icon_url "$icon_url" \
-            '{
-              username: "OpenNext E2E Test",
-              avatar_url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-              embeds: [{
-                description: $description,
-                color: $color,
-                footer: {
-                  text: $footer,
-                  icon_url: $icon_url
-                }
-              }]
-            }')
-
           curl -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \
-            -d "$payload"
+            --data-binary @- <<EOF
+          {
+            "username": "OpenNext E2E Test",
+            "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
+            "embeds": [
+              {
+                "description": "Test $result [$NEXT_VERSION](https://github.com/vercel/next.js/releases/tag/$NEXT_VERSION) — [view results](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)",
+                "color": $color,
+                "footer": {
+                  "text": "$footer",
+                  "icon_url": "$icon_url"
+                }
+              }
+            ]
+          }
+          EOF
 
       - name: Find pull request for branch
         id: find-pull-request
