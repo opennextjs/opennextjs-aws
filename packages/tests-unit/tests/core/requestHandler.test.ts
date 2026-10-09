@@ -7,7 +7,9 @@ const { requestHandler, nextHandler, getRouteMatchMetadata } = vi.hoisted(
     const nextHandler = vi.fn();
     return {
       nextHandler,
-      requestHandler: vi.fn(() => nextHandler),
+      requestHandler: vi.fn(
+        (_metadata: Record<string, unknown>) => nextHandler,
+      ),
       getRouteMatchMetadata: vi.fn(),
     };
   },
@@ -23,7 +25,18 @@ vi.mock("@opennextjs/aws/core/routeMatchMetadata.js", () => ({
 }));
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
+  NEXT_DIR: "/var/task/.next",
   NextConfig: {},
+  AppPathRoutesManifest: {},
+  AppPathsManifest: {},
+  PagesManifest: {
+    "/decode/[...rest]": "pages/decode/[...rest].js",
+  },
+  RoutesManifest: {
+    routes: {
+      dynamic: [{ page: "/decode/[...rest]", regex: "^/decode/(.+?)(?:/)?$" }],
+    },
+  },
 }));
 
 // The routing reads manifests which are not needed by `handleNoFallbackError`.
@@ -33,25 +46,27 @@ vi.mock("@opennextjs/aws/core/routingHandler.js", () => ({
 
 class NoFallbackError extends Error {}
 
-const routingResult = {
+const routingResult: RoutingResult = {
   internalEvent: {
     type: "core",
     method: "GET",
-    rawPath: "/foo",
-    url: "https://example.com/foo",
+    rawPath: "/foo/bar",
+    url: "https://example.com/foo/bar",
     headers: {},
     query: {},
     cookies: {},
     remoteAddress: "::1",
   },
   isExternalRewrite: false,
-  initialURL: "https://example.com/foo",
+  origin: false,
+  isISR: false,
+  initialURL: "https://example.com/foo/bar",
   resolvedRoutes: [
-    { route: "/[slug]", type: "app" },
-    { route: "/[...slug]", type: "app" },
-    { route: "/[[...slug]]", type: "app" },
+    { route: "/[slug]/[id]", type: "app" },
+    { route: "/[slug]/[...rest]", type: "app" },
+    { route: "/[...rest]", type: "app" },
   ],
-} as unknown as RoutingResult;
+};
 
 const req = {} as any;
 const res = {} as any;
@@ -59,37 +74,54 @@ const res = {} as any;
 describe("handleNoFallbackError", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getRouteMatchMetadata.mockReturnValue({});
+    nextHandler.mockReset();
+    getRouteMatchMetadata.mockReset().mockReturnValue({ match: undefined });
+    vi.stubGlobal("nextVersion", "16.4.0");
   });
 
-  it("retries the next resolved route", async () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("selects the next route with match metadata on Next.js 16.4.0", async () => {
+    const match = {
+      definition: { pathname: "/[slug]/[...rest]" },
+      params: { slug: "foo", rest: ["bar"] },
+    };
+    getRouteMatchMetadata.mockReturnValue({ match });
+
     await handleNoFallbackError(req, res, routingResult, {
-      invokePath: "/foo",
+      invokePath: "/foo/bar",
     });
 
-    expect(getRouteMatchMetadata).toHaveBeenCalledWith("/[...slug]", "/foo");
+    expect(getRouteMatchMetadata).toHaveBeenCalledOnce();
+    expect(getRouteMatchMetadata).toHaveBeenCalledWith(
+      "/[slug]/[...rest]",
+      "/foo/bar",
+    );
     expect(requestHandler).toHaveBeenCalledOnce();
     expect(requestHandler).toHaveBeenCalledWith(
       expect.objectContaining({
-        invokeOutput: "/[...slug]",
-        invokePath: "/foo",
+        invokeOutput: "/[slug]/[...rest]",
+        invokePath: "/foo/bar",
+        match,
       }),
     );
     expect(nextHandler).toHaveBeenCalledWith(req, res);
   });
 
   it("overrides the stale match of the previous attempt", async () => {
-    const match = { definition: { pathname: "/[...slug]" } };
+    const match = { definition: { pathname: "/[slug]/[...rest]" } };
     getRouteMatchMetadata.mockReturnValue({ match });
     await handleNoFallbackError(req, res, routingResult, {
-      match: { definition: { pathname: "/[slug]" } },
+      match: { definition: { pathname: "/[slug]/[id]" } },
     });
     expect(requestHandler.mock.calls[0][0]).toMatchObject({ match });
 
     requestHandler.mockClear();
     getRouteMatchMetadata.mockReturnValue({ match: undefined });
     await handleNoFallbackError(req, res, routingResult, {
-      match: { definition: { pathname: "/[slug]" } },
+      match: { definition: { pathname: "/[slug]/[id]" } },
     });
     const metadata = requestHandler.mock.calls[0][0] as Record<string, unknown>;
     expect(metadata).toHaveProperty("match", undefined);
@@ -101,7 +133,7 @@ describe("handleNoFallbackError", () => {
 
     expect(requestHandler).toHaveBeenCalledTimes(2);
     expect(requestHandler.mock.calls[1][0]).toMatchObject({
-      invokeOutput: "/[[...slug]]",
+      invokeOutput: "/[...rest]",
     });
   });
 
@@ -117,9 +149,9 @@ describe("handleNoFallbackError", () => {
     });
   });
 
-  it("renders the 500 page when the route can't be matched", async () => {
+  it("renders the 500 page when match generation throws", async () => {
     getRouteMatchMetadata.mockImplementation(() => {
-      throw new Error("DecodeError");
+      throw new URIError("URI malformed");
     });
     await handleNoFallbackError(req, res, routingResult, {});
 
@@ -127,6 +159,89 @@ describe("handleNoFallbackError", () => {
     expect(requestHandler.mock.calls[0][0]).toMatchObject({
       invokePath: "/500",
       invokeStatus: 500,
+    });
+  });
+
+  describe.each(["15.5.27", "16.3.8"])("Next.js %s", (version) => {
+    beforeEach(() => {
+      vi.stubGlobal("nextVersion", version);
+    });
+
+    it("preserves existing metadata across retries without generating a match", async () => {
+      const match = { definition: { pathname: "/[slug]/[id]" } };
+      const metadata = {
+        invokePath: "/foo/bar",
+        invokeQuery: { search: "a+b" },
+        match,
+      };
+      nextHandler.mockRejectedValueOnce(new NoFallbackError());
+
+      await handleNoFallbackError(req, res, routingResult, metadata);
+
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+      expect(requestHandler).toHaveBeenCalledTimes(2);
+      expect(requestHandler).toHaveBeenNthCalledWith(1, {
+        ...routingResult,
+        invokeOutput: "/[slug]/[...rest]",
+        ...metadata,
+      });
+      expect(requestHandler).toHaveBeenNthCalledWith(2, {
+        ...routingResult,
+        invokeOutput: "/[...rest]",
+        ...metadata,
+      });
+      for (const [actualMetadata] of requestHandler.mock.calls) {
+        expect(actualMetadata.match).toBe(match);
+      }
+      expect(nextHandler).toHaveBeenCalledTimes(2);
+      expect(nextHandler).toHaveBeenCalledWith(req, res);
+    });
+
+    it("does not introduce a match property when none was supplied", async () => {
+      await handleNoFallbackError(req, res, routingResult, {});
+
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+      expect(requestHandler).toHaveBeenCalledOnce();
+      expect(requestHandler.mock.calls[0][0]).not.toHaveProperty("match");
+      expect(nextHandler).toHaveBeenCalledWith(req, res);
+    });
+
+    it("leaves malformed fallback parameter decoding to Next.js", async () => {
+      const actual = await vi.importActual<
+        typeof import("@opennextjs/aws/core/routeMatchMetadata.js")
+      >("@opennextjs/aws/core/routeMatchMetadata.js");
+      const rawPath = "/decode/%ZZ/x";
+      // The first route captures only `x`; the catch-all would also decode `%ZZ`.
+      const malformedRoutingResult: RoutingResult = {
+        ...routingResult,
+        initialURL: `https://example.com${rawPath}`,
+        internalEvent: {
+          ...routingResult.internalEvent,
+          rawPath,
+          url: `https://example.com${rawPath}`,
+        },
+        resolvedRoutes: [
+          { route: "/decode/%ZZ/[id]", type: "page" },
+          { route: "/decode/[...rest]", type: "page" },
+        ],
+      };
+      expect(() =>
+        actual.getRouteMatchMetadata("/decode/[...rest]", rawPath),
+      ).toThrow(URIError);
+      getRouteMatchMetadata.mockImplementation(actual.getRouteMatchMetadata);
+
+      await handleNoFallbackError(req, res, malformedRoutingResult, {
+        invokePath: rawPath,
+      });
+
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+      expect(requestHandler).toHaveBeenCalledOnce();
+      expect(requestHandler).toHaveBeenCalledWith({
+        ...malformedRoutingResult,
+        invokeOutput: "/decode/[...rest]",
+        invokePath: rawPath,
+      });
+      expect(nextHandler).toHaveBeenCalledWith(req, res);
     });
   });
 });

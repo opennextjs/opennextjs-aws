@@ -37,7 +37,13 @@ const DYNAMIC_SEGMENT_REGEX = /\[{1,2}(\.\.\.)?([^\]]+)\]{1,2}$/;
  * route which threw the `NoFallbackError`. `match` is always returned (possibly `undefined`) so
  * that it overrides this stale match even when the route can't be matched.
  *
- * Older versions of Next.js ignore the `match` metadata and match routes from `invokeOutput`.
+ * Only used for Next.js 16.4+. Older versions retain their matcher-based retry path,
+ * including parameter-decoding error handling, without calling this helper.
+ *
+ * @param route The normalized route pattern selected for the retry
+ * @param pathname The final internal pathname to match against the route
+ * @return Metadata selecting the route, or explicitly clearing an unmatched route
+ * @throws {URIError} If a captured parameter contains malformed percent encoding
  */
 export function getRouteMatchMetadata(
   route: string,

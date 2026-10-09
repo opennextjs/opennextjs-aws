@@ -10,6 +10,7 @@ import type {
 } from "types/open-next";
 import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
+import { compareSemver } from "utils/semver";
 
 import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
@@ -304,6 +305,19 @@ async function processRequest(
   }
 }
 
+/**
+ * Retries the next resolved route after Next.js rejects a fallback.
+ *
+ * Next.js 16.4+ requires an explicit match; older versions retain their own
+ * route matching and parameter-decoding error handling.
+ *
+ * @param req The request reused for each rendering attempt
+ * @param res The response populated by Next.js
+ * @param routingResult The ordered route candidates and internal request
+ * @param metadata The request metadata retained from the previous attempt
+ * @param index The next route candidate to try
+ * @return A promise that resolves after rendering a route or an error response
+ */
 export async function handleNoFallbackError(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
@@ -321,12 +335,15 @@ export async function handleNoFallbackError(
   }
   const route = routingResult.resolvedRoutes[index].route;
   try {
-    // `getRouteMatchMetadata` can throw (e.g. `DecodeError` on a malformed percent-encoded
-    // param), it must be inside the `try` so that we still render an error page.
-    const routeMatchMetadata = getRouteMatchMetadata(
-      route,
-      routingResult.internalEvent.rawPath,
-    );
+    // Skip the call itself on older versions: decoding here can change their error handling.
+    // Keep it inside the `try` because malformed params can throw a URIError.
+    const routeMatchMetadata = compareSemver(
+      globalThis.nextVersion,
+      ">=",
+      "16.4.0",
+    )
+      ? getRouteMatchMetadata(route, routingResult.internalEvent.rawPath)
+      : {};
     await requestHandler({
       ...routingResult,
       invokeOutput: route,
