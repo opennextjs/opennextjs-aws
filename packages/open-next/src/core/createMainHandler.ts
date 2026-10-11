@@ -27,6 +27,14 @@ export async function createMainHandler() {
   globalThis.serverId = generateUniqueId();
   globalThis.openNextConfig = config;
 
+  // The wrapper module is imported before the routes are preloaded so that its global patches
+  // (e.g. the `Response` patch) apply to the preloaded route modules.
+  // Note: the wrapper module (or the custom wrapper factory) then runs before the other globals
+  // (queue, incrementalCache, tagCache, ...) are set.
+  const { wrapper, name } = await resolveWrapper(
+    thisFunction.override?.wrapper,
+  );
+
   // If route preloading behavior is set to start, it will wait for every single route to be preloaded before even creating the main handler.
   await globalThis.__next_route_preloader("start");
 
@@ -57,10 +65,6 @@ export async function createMainHandler() {
   const converter = await resolveConverter(thisFunction.override?.converter);
 
   // Then we create the handler
-  const { wrapper, name } = await resolveWrapper(
-    thisFunction.override?.wrapper,
-  );
-
   debug("Using wrapper", name);
 
   return wrapper(openNextHandler, converter);

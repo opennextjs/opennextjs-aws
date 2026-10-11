@@ -69,4 +69,21 @@ describe("proxyExternalRequest/fetch", () => {
       "cookie=value3",
     ]);
   });
+  it("the proxy should remove the internal encode body header from the response", async () => {
+    const fetchMock = vi.fn<typeof global.fetch>(
+      async () =>
+        new Response(null, {
+          headers: {
+            "x-opennext-encode-body": "manual",
+            "content-encoding": "gzip",
+          },
+        }),
+    );
+    globalThis.fetch = fetchMock;
+
+    const { headers } = await fetchProxy.proxy({ headers: {} });
+
+    expect(headers["x-opennext-encode-body"]).toBeUndefined();
+    expect(headers["content-encoding"]).toBe("gzip");
+  });
 });

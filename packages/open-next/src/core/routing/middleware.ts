@@ -13,6 +13,7 @@ import type {
   MiddlewareEvent,
 } from "types/open-next.js";
 import { ISR_HEADER, PRERENDER_REVALIDATE_HEADER } from "utils/cacheHeaders.js";
+import { ENCODE_BODY_HEADER } from "utils/encoding.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
@@ -135,6 +136,8 @@ export async function handleMiddleware(
     "x-middleware-rewrite",
     // We need to drop `content-encoding` because it will be decoded
     "content-encoding",
+    // Irrelevant once `content-encoding` is dropped, and must not reach the client
+    ENCODE_BODY_HEADER,
   ];
 
   const xMiddlewareKey = "x-middleware-request-";

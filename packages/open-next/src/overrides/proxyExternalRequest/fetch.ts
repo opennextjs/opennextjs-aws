@@ -1,4 +1,5 @@
 import type { ProxyExternalRequest } from "types/overrides";
+import { ENCODE_BODY_HEADER } from "utils/encoding";
 import { emptyReadableStream } from "utils/stream";
 
 const fetchProxy: ProxyExternalRequest = {
@@ -20,6 +21,10 @@ const fetchProxy: ProxyExternalRequest = {
     });
     const responseHeaders: Record<string, string | string[]> = {};
     response.headers.forEach((value, key) => {
+      // The header is internal: an upstream response must not be able to set it.
+      if (key === ENCODE_BODY_HEADER) {
+        return;
+      }
       const cur = responseHeaders[key];
       if (cur === undefined) {
         responseHeaders[key] = value;
