@@ -254,6 +254,47 @@ describe("handleMiddleware", () => {
     });
   });
 
+  it("should not expose the encode body header", async () => {
+    const event = createEvent({});
+    middleware.mockResolvedValue({
+      headers: new Headers({
+        "x-opennext-encode-body": "manual",
+        "content-encoding": "gzip",
+        "x-custom": "value",
+        "x-middleware-next": "1",
+      }),
+    });
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result).toEqual({
+      ...event,
+      responseHeaders: { "x-custom": "value" },
+      isExternalRewrite: false,
+    });
+  });
+
+  it("should not expose the encode body header in a response from middleware", async () => {
+    const event = createEvent({});
+    const body = toReadableStream("Hello, world!");
+    middleware.mockResolvedValue({
+      status: 200,
+      headers: new Headers({
+        "x-opennext-encode-body": "manual",
+        "content-encoding": "gzip",
+      }),
+      body,
+    });
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result).toEqual({
+      type: "core",
+      statusCode: 200,
+      headers: {},
+      body,
+      isBase64Encoded: false,
+    });
+  });
+
   it("should return a response from middleware", async () => {
     const event = createEvent({});
     const body = toReadableStream("Hello, world!");

@@ -8,6 +8,7 @@ import type {
   MiddlewareResult,
 } from "types/open-next";
 import type { Converter } from "types/overrides";
+import { createResponse, takeEncodeBodyTag } from "utils/encoding";
 import { getQueryFromSearchParams } from "./utils.js";
 
 declare global {
@@ -108,10 +109,10 @@ const converter: Converter<InternalEvent, InternalResult | MiddlewareResult> = {
       ? null
       : (result.body as ReadableStream);
 
-    return new Response(body, {
-      status: result.statusCode,
-      headers,
-    });
+    // The app returned a Response created with `encodeBody: "manual"`.
+    const encodeBodyManual = takeEncodeBodyTag(headers);
+
+    return createResponse(body, result.statusCode, headers, encodeBodyManual);
   },
   name: "edge",
 };

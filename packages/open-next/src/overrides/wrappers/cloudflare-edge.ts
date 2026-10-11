@@ -4,6 +4,10 @@ import type {
   MiddlewareResult,
 } from "types/open-next";
 import type { Wrapper, WrapperHandler } from "types/overrides";
+import { installResponsePatch } from "utils/encoding";
+
+// Tag the Responses created by the app with `encodeBody: "manual"`.
+installResponsePatch();
 
 const cfPropNameMapping: Record<
   string,
