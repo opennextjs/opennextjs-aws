@@ -53,6 +53,7 @@ describe("CacheHandler", () => {
   const invalidateCdnHandler = {
     name: "mock",
     invalidatePaths: vi.fn(),
+    invalidateTags: undefined as Mock | undefined,
   };
   globalThis.cdnInvalidationHandler = invalidateCdnHandler;
 
@@ -87,6 +88,7 @@ describe("CacheHandler", () => {
     globalThis.nextVersion = "14.0.0";
     tagCache.mode = "original";
     tagCache.getPathsByTags = undefined;
+    invalidateCdnHandler.invalidateTags = undefined;
   });
 
   describe("get", () => {
@@ -1261,6 +1263,24 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
     });
 
+    it("Should prefer tag invalidation in original mode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
+      tagCache.getByTag
+        .mockResolvedValueOnce(["/path1"])
+        .mockResolvedValueOnce(["/path2"]);
+
+      await cache.revalidateTag(["tag1", "tag2"]);
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(2);
+      expect(invalidateTags).toHaveBeenCalledOnce();
+      expect(invalidateTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(tagCache.writeTags.mock.invocationCallOrder[1]).toBeLessThan(
+        invalidateTags.mock.invocationCallOrder[0] as number,
+      );
+    });
+
     it("Should invalidate the pathname of scoped cache keys", async () => {
       const hash = "a".repeat(64);
       tagCache.getByTag.mockResolvedValueOnce([
@@ -1312,12 +1332,33 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
     });
 
+    it("Should invalidate tags without resolving paths for nextMode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi.fn();
+
+      await cache.revalidateTag(["tag1", "tag2"]);
+
+      expect(tagCache.getPathsByTags).not.toHaveBeenCalled();
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(invalidateTags).toHaveBeenCalledOnce();
+      expect(invalidateTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(tagCache.writeTags.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidateTags.mock.invocationCallOrder[0] as number,
+      );
+    });
+
     it("Should not call writeTags when the tag list is empty for nextMode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
       tagCache.mode = "nextMode";
       await cache.revalidateTag([]);
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(invalidateTags).not.toHaveBeenCalled();
     });
 
     it("Should invalidate the pathname of scoped cache keys for nextMode", async () => {
