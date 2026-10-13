@@ -510,6 +510,8 @@ describe("cacheInterceptor", () => {
 
   describe("internal headers stored in the cache entry", () => {
     const internalHeaders = {
+      // Removed by `getTagsFromValue` when reading the tags of the entry
+      "x-next-cache-tags": "_N_T_/layout,_N_T_/albums",
       "x-middleware-set-cookie": "session=secret; Path=/; HttpOnly",
     };
 
@@ -565,6 +567,7 @@ describe("cacheInterceptor", () => {
       expect(result.headers).toEqual(
         expect.objectContaining({ "x-custom": "value" }),
       );
+      expect(result.headers).not.toHaveProperty("x-next-cache-tags");
       expect(result.headers).not.toHaveProperty("x-middleware-set-cookie");
     });
 

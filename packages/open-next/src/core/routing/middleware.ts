@@ -145,10 +145,13 @@ export async function handleMiddleware(
 
   // These are internal headers used by Next.js, we don't want to expose them to the client
   // NOTE: keys must be in lowercase to match the normalized header keys.
+  // See `resolve-routes.ts` in Next.js for the headers it drops from the middleware response.
   const filteredHeaders = [
     "x-middleware-override-headers",
     "x-middleware-next",
     "x-middleware-rewrite",
+    "x-middleware-redirect",
+    "x-middleware-refresh",
     // We need to drop `content-encoding` because it will be decoded
     "content-encoding",
   ];
