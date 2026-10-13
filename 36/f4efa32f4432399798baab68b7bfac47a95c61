@@ -1,0 +1,29 @@
+packages/open-next/src/core/routing/middleware.ts
+  s_5edaac512aa0d5::t_15888e984bf386 37-39,49-52,149-152,155-162
+packages/tests-e2e/tests/appRouter/middleware.cookies.test.ts
+  s_5edaac512aa0d5::t_feafd0a6940101 40-56
+packages/open-next/src/core/routing/cacheInterceptor.ts
+  s_5edaac512aa0d5::t_6694961c74191b 9,59-89,301,567,595
+packages/open-next/src/http/util.ts
+  s_5edaac512aa0d5::t_3d3f043a2af278 75-103
+packages/tests-unit/tests/core/routing/cacheInterceptor.test.ts
+  s_5edaac512aa0d5::t_5b20c4618ec99b 511-593
+packages/tests-unit/tests/core/routing/middleware.test.ts
+  s_5edaac512aa0d5::t_6e4fc9c9bc3e42 5,444-532
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "36f4efa32f4432399798baab68b7bfac47a95c61",
+  "prompts": {},
+  "sessions": {
+    "s_5edaac512aa0d5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ecc16d0ecffeA6UgH4mCcM6yU4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
