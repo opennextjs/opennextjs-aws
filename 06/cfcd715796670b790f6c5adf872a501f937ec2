@@ -1,0 +1,23 @@
+packages/open-next/src/core/routing/middleware.ts
+  s_5edaac512aa0d5::t_ac4ecabd08cea1 139,144-145
+packages/open-next/src/core/routingHandler.ts
+  s_5edaac512aa0d5::t_c910b0ec20ca39 69
+packages/tests-unit/tests/core/routing/middleware.test.ts
+  s_5edaac512aa0d5::t_c1fc7f0c31f088 444-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "06cfcd715796670b790f6c5adf872a501f937ec2",
+  "prompts": {},
+  "sessions": {
+    "s_5edaac512aa0d5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ecc16d0ecffeA6UgH4mCcM6yU4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
