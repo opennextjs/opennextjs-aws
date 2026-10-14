@@ -1,0 +1,19 @@
+packages/open-next/src/core/routeMatchMetadata.ts
+  s_781ea0a54f4ba9::t_cca495bfe6f30f 12,14-17,62,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0039a59f961d200683e9293af3b4e8614a1ac580",
+  "prompts": {},
+  "sessions": {
+    "s_781ea0a54f4ba9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec707c0daffeqjwdZ57fwiTRsf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
