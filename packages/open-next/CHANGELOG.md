@@ -1,5 +1,11 @@
 # open-next
 
+## 4.1.10
+
+### Patch Changes
+
+- [`f30d0f2`](https://github.com/opennextjs/opennextjs-aws/commit/f30d0f2e926f5c7dacebabd937dc6022008145f1) Thanks [@Nicolapps](https://github.com/Nicolapps)! - fix: request headers deleted by the middleware are no longer forwarded
+
 ## 4.1.9
 
 ### Patch Changes
