@@ -35,9 +35,11 @@ const DYNAMIC_SEGMENT_REGEX = /\[{1,2}(\.\.\.)?([^\]]+)\]{1,2}$/;
  * Only used for Next.js 16.4+. Older versions retain their matcher-based retry path,
  * including parameter-decoding error handling, without calling this helper.
  *
- * @param route The normalized route pattern selected for the retry
- * @param pathname The final internal pathname to match against the route
- * @return Metadata selecting the route, or explicitly clearing an unmatched route
+ * @param route The route pattern selected for the retry, i.e. `/blog/[slug]`
+ * @param pathname The encoded internal pathname after routing, which may include the basePath, a locale prefix and
+ *   a trailing slash
+ * @return Metadata selecting the route, or `{ match: undefined }` when the route is unknown or doesn't match the
+ *   pathname (Next.js then renders a 404)
  * @throws {URIError} If a captured parameter contains malformed percent encoding
  */
 export function getRouteMatchMetadata(
@@ -54,10 +56,13 @@ export function getRouteMatchMetadata(
 }
 
 /**
- * Resolves a route to its manifest-backed Next.js definition.
+ * Resolves a route to its Next.js definition from the manifests.
  *
- * @param route The normalized route pattern selected for the retry
- * @return The canonical route definition, or undefined when no entry matches
+ * App pages take precedence over app route handlers, then pages (`/api` and `/api/*` are pages API routes).
+ * For app pages, the canonical entry is selected like Next.js when a route has parallel slots or route groups.
+ *
+ * @param route The route pattern selected for the retry, i.e. `/blog/[slug]`
+ * @return The route definition, or `undefined` when the route is in none of the manifests
  */
 function getRouteDefinition(route: string): RouteMatchDefinition | undefined {
   const appPaths = Object.keys(AppPathRoutesManifest).filter(
@@ -109,7 +114,8 @@ function getFilename(manifestPath: string | undefined): string {
 /**
  * Normalizes a pathname so it can be matched against route patterns.
  *
- * Strips the basePath, the locale and the trailing slash, which are not part of route patterns.
+ * Strips the basePath, then the locale (case-insensitive), then the trailing slash, which are not part of route
+ * patterns. The pathname is not decoded: params are decoded after matching, like Next.js.
  *
  * @param pathname The internal pathname of the request
  * @return The pathname without basePath, locale prefix and trailing slash

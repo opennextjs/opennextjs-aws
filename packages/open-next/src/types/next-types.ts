@@ -122,7 +122,8 @@ export interface RouteMatchDefinition {
 }
 
 /**
- * The Next.js `match` request meta (Next.js 16.4+).
+ * The Next.js `match` request meta, the route selected to render a request.
+ * OpenNext only passes it to Next.js 16.4+, which no longer selects the route from `invokeOutput`.
  * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-matches/route-match.ts
  */
 export interface RouteMatch {

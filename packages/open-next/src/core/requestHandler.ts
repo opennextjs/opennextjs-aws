@@ -310,19 +310,24 @@ async function processRequest(
 const MAX_RENDER_ATTEMPTS = 6;
 
 /**
- * Retries the next resolved route after Next.js rejects a fallback.
+ * Renders the next resolved route after a `fallback: false` route threw a `NoFallbackError`.
  *
- * Next.js 16.4+ requires an explicit match; older versions retain their own
- * route matching and parameter-decoding error handling. Malformed parameters
- * encountered while constructing a 16.4+ match produce a bad-request response.
+ * Mirrors the Next.js router server, which retries the next matching route:
+ * - Up to six attempts are made, including the initial render, before rendering a 500.
+ * - A 404 is rendered when no route candidate is left.
+ * - Another `NoFallbackError` retries the following candidate, any other error renders a 500.
  *
- * Like the Next.js router server, up to six attempts are made including the
- * initial render before rendering a 500.
+ * Next.js 16.4+ only renders the most specific route unless the route to render is passed as a
+ * `match` request meta (see `getRouteMatchMetadata`). A 400 is rendered when the params of that
+ * match can't be decoded, like Next.js does for a `DecodeError`. Older versions select the route
+ * from `invokeOutput` and receive exactly the same metadata as before.
+ *
+ * Errors are rendered as responses, this function does not throw.
  *
  * @param req The request reused for each rendering attempt
  * @param res The response populated by Next.js
  * @param routingResult The ordered route candidates and internal request
- * @param metadata The request metadata retained from the previous attempt
+ * @param metadata The request metadata of the initial attempt, mutated by Next.js (i.e. it contains the stale `match`)
  * @param index The next candidate index, counting the initial render as index 0
  * @return A promise that resolves after rendering a route or an error response
  */

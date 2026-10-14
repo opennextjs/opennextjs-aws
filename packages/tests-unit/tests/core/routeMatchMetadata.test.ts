@@ -26,6 +26,8 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
     "/slots/[...slug]/@b/page": "/slots/[...slug]",
     "/slots-reversed/[...slug]/@b/page": "/slots-reversed/[...slug]",
     "/slots-reversed/[...slug]/@a/page": "/slots-reversed/[...slug]",
+    "/static-app/page": "/static-app",
+    "/no-file/[id]/page": "/no-file/[id]",
   },
   AppPathsManifest: {
     "/[slug]/page": "app/[slug]/page.js",
@@ -44,11 +46,14 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
       "app/slots-reversed/[...slug]/@b/page.js",
     "/slots-reversed/[...slug]/@a/page":
       "app/slots-reversed/[...slug]/@a/page.js",
+    "/static-app/page": "app/static-app/page.js",
   },
   PagesManifest: {
     "/about": "pages/about.html",
     "/pages/[[...slug]]": "pages/pages/[[...slug]].js",
     "/api/[...path]": "pages/api/[...path].js",
+    "/api": "pages/api.js",
+    "/shop/[category]/[item]": "pages/shop/[category]/[item].js",
   },
   RoutesManifest: {
     routes: {
@@ -62,6 +67,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         { page: "/app-api/[id]", regex: "^/app\\-api/([^/]+?)(?:/)?$" },
         { page: "/pages/[[...slug]]", regex: "^/pages(?:/(.+?))?(?:/)?$" },
         { page: "/api/[...path]", regex: "^/api/(.+?)(?:/)?$" },
+        { page: "/no-file/[id]", regex: "^/no\\-file/([^/]+?)(?:/)?$" },
+        {
+          page: "/shop/[category]/[item]",
+          regex: "^/shop/([^/]+?)/([^/]+?)(?:/)?$",
+        },
         { page: "/parallel/[...slug]", regex: "^/parallel/(.+?)(?:/)?$" },
         { page: "/grouped/[...slug]", regex: "^/grouped/(.+?)(?:/)?$" },
         { page: "/slots/[...slug]", regex: "^/slots/(.+?)(?:/)?$" },
@@ -250,6 +260,74 @@ describe("getRouteMatchMetadata", () => {
   it("clears the match when the route has no definition", () => {
     expect(getRouteMatchMetadata("/unknown/[id]", "/unknown/1")).toStrictEqual({
       match: undefined,
+    });
+  });
+
+  it("matches a static app page without params", () => {
+    expect(getRouteMatchMetadata("/static-app", "/static-app/")).toStrictEqual({
+      match: {
+        definition: {
+          kind: "APP_PAGE",
+          pathname: "/static-app",
+          page: "/static-app/page",
+          filename: "/var/task/.next/server/app/static-app/page.js",
+          appPaths: ["/static-app/page"],
+        },
+        params: undefined,
+      },
+    });
+  });
+
+  it("matches the `/api` pages route as a pages API route", () => {
+    expect(getRouteMatchMetadata("/api", "/api").match?.definition).toEqual({
+      kind: "PAGES_API",
+      pathname: "/api",
+      page: "/api",
+      filename: "/var/task/.next/server/pages/api.js",
+    });
+  });
+
+  it("extracts several params in order", () => {
+    expect(
+      getRouteMatchMetadata("/shop/[category]/[item]", "/shop/shoes/42").match
+        ?.params,
+    ).toStrictEqual({ category: "shoes", item: "42" });
+  });
+
+  it("uses an empty filename when the manifest entry is missing", () => {
+    expect(
+      getRouteMatchMetadata("/no-file/[id]", "/no-file/1").match?.definition
+        .filename,
+    ).toBe("");
+  });
+
+  it("strips the basePath before the locale", () => {
+    NextConfig.basePath = "/base";
+    NextConfig.i18n = { locales: ["en", "fr"], defaultLocale: "en" };
+    expect(
+      getRouteMatchMetadata("/[slug]", "/base/fr/foo/").match?.params,
+    ).toEqual({ slug: "foo" });
+  });
+
+  it("strips the locale case-insensitively", () => {
+    NextConfig.i18n = { locales: ["en", "fr"], defaultLocale: "en" };
+    expect(getRouteMatchMetadata("/[slug]", "/FR/foo").match?.params).toEqual({
+      slug: "foo",
+    });
+  });
+
+  it("matches the root after stripping the locale", () => {
+    NextConfig.i18n = { locales: ["en", "fr"], defaultLocale: "en" };
+    expect(
+      getRouteMatchMetadata("/pages/[[...slug]]", "/fr/pages/").match?.params,
+    ).toStrictEqual({});
+    expect(getRouteMatchMetadata("/about", "/fr").match).toBeUndefined();
+  });
+
+  it("keeps a segment that only starts like a locale", () => {
+    NextConfig.i18n = { locales: ["en", "fr"], defaultLocale: "en" };
+    expect(getRouteMatchMetadata("/[slug]", "/french").match?.params).toEqual({
+      slug: "french",
     });
   });
 
