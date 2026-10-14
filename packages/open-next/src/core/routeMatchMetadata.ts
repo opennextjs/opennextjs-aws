@@ -9,19 +9,12 @@ import {
   RoutesManifest,
 } from "config/index.js";
 
-import { selectAppPageEntry } from "../utils/routeCacheKey.js";
+import type { RouteMatch, RouteMatchDefinition } from "types/next-types";
 
-// Only the fields of the Next.js route definition read when rendering a `match`
-interface RouteMatch {
-  definition: {
-    kind: "PAGES" | "PAGES_API" | "APP_PAGE" | "APP_ROUTE";
-    pathname: string;
-    page: string;
-    filename: string;
-    appPaths?: string[];
-  };
-  params?: Record<string, string | string[]>;
-}
+import {
+  normalizeLocalePath,
+  selectAppPageEntry,
+} from "../utils/routeCacheKey.js";
 
 // `[slug]`, `[...slug]` or `[[...slug]]`, possibly after an interception marker like `(.)`
 const DYNAMIC_SEGMENT_REGEX = /\[{1,2}(\.\.\.)?([^\]]+)\]{1,2}$/;
@@ -66,9 +59,7 @@ export function getRouteMatchMetadata(
  * @param route The normalized route pattern selected for the retry
  * @return The canonical route definition, or undefined when no entry matches
  */
-function getRouteDefinition(
-  route: string,
-): RouteMatch["definition"] | undefined {
+function getRouteDefinition(route: string): RouteMatchDefinition | undefined {
   const appPaths = Object.keys(AppPathRoutesManifest).filter(
     (appPath) => AppPathRoutesManifest[appPath] === route,
   );
@@ -132,13 +123,7 @@ function normalizePathname(pathname: string): string {
   ) {
     normalized = normalized.slice(basePath.length) || "/";
   }
-  const [, firstSegment] = normalized.split("/");
-  const isLocale = NextConfig.i18n?.locales.some(
-    (locale) => locale.toLowerCase() === firstSegment?.toLowerCase(),
-  );
-  if (isLocale) {
-    normalized = normalized.slice(firstSegment.length + 1) || "/";
-  }
+  normalized = normalizeLocalePath(normalized, NextConfig.i18n?.locales);
   return normalized !== "/" && normalized.endsWith("/")
     ? normalized.slice(0, -1)
     : normalized;

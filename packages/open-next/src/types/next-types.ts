@@ -101,6 +101,36 @@ export interface RouteDefinition {
   regex: string;
 }
 
+/**
+ * Kind of a Next.js route.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-kind.ts
+ */
+export type RouteKind = "PAGES" | "PAGES_API" | "APP_PAGE" | "APP_ROUTE";
+
+/**
+ * Subset of the Next.js route definition read when rendering a `match` request meta.
+ * Not to be confused with the routes manifest `RouteDefinition` above.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-definitions/route-definition.ts
+ */
+export interface RouteMatchDefinition {
+  kind: RouteKind;
+  pathname: string;
+  page: string;
+  filename: string;
+  /** Only for `APP_PAGE` routes */
+  appPaths?: string[];
+}
+
+/**
+ * The Next.js `match` request meta (Next.js 16.4+).
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-matches/route-match.ts
+ */
+export interface RouteMatch {
+  definition: RouteMatchDefinition;
+  /** `undefined` for static routes */
+  params?: Record<string, string | string[]>;
+}
+
 export interface DataRouteDefinition {
   page: string;
   dataRouteRegex: string;
