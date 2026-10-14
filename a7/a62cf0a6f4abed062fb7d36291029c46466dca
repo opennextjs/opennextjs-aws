@@ -1,0 +1,33 @@
+examples/pages-router/src/middleware.ts
+  s_b547ef362972e7::t_9340c08935c1ba 29
+examples/pages-router/src/pages/api/revalidate.ts
+  s_b547ef362972e7::t_e02436a109e3de 1-26
+examples/pages-router/src/pages/revalidate/[key].tsx
+  s_b547ef362972e7::t_71c3e19f0501e1 1-78
+.github/workflows/e2e.yml
+  s_b547ef362972e7::t_249c05f325c026 143
+packages/open-next/src/core/requestHandler.ts
+  s_b547ef362972e7::t_e903c4101664b8 64-68
+packages/tests-unit/tests/build/patch/patches/patchNextServer.next.test.ts
+  s_b547ef362972e7::t_f09a14f82c691a 1-61
+packages/tests-unit/tests/build/patch/patches/patchNextServer.test.ts
+  s_b547ef362972e7::t_a605a928264fd6 1-5,10,1082-1164
+packages/tests-unit/tests/core/revalidate.test.ts
+  s_b547ef362972e7::t_bd25bbcdfe5a3d 1-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a7a62cf0a6f4abed062fb7d36291029c46466dca",
+  "prompts": {},
+  "sessions": {
+    "s_b547ef362972e7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec70953f9ffe397HnfEyOO9lH7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
