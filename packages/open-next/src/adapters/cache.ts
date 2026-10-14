@@ -14,6 +14,7 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
+import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -264,14 +265,15 @@ export default class Cache {
     const store = globalThis.__openNextAls.getStore();
     const writePromise = this.writeCache(key, data, ctx);
 
-    // Next.js ignores the value returned by `set`, so the write is registered on the request's
-    // pending promise runner instead of being awaited. `FETCH` writes are awaited: Next.js runs
-    // them in a detached chain of its own that only covers the write while `set` waits for it.
+    // Next.js ignores some cache handler results and does not reliably retain
+    // FETCH writes created during a Server Action Flight render. Register every
+    // write with the request runner before preserving FETCH's awaited behavior.
+    if (store !== undefined) {
+      store.pendingPromiseRunner.add(writePromise);
+    }
     if (data?.kind === "FETCH" || store === undefined) {
       await writePromise;
-      return;
     }
-    store.pendingPromiseRunner.add(writePromise);
   }
 
   private async writeCache(
@@ -441,8 +443,9 @@ export default class Cache {
         if (paths.length > 0) {
           // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
           // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
+          // Fixed Next.js releases store route-scoped cache keys in the tag cache.
           await globalThis.cdnInvalidationHandler.invalidatePaths(
-            paths.map((path) => ({
+            paths.map(getPathFromRouteCacheKey).map((path) => ({
               initialPath: path,
               rawPath: path,
               resolvedRoutes: [
@@ -529,7 +532,8 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
-              .map((t) => `/${t.path}`),
+              // Fixed Next.js releases store route-scoped cache keys in the tag cache.
+              .map((t) => getPathFromRouteCacheKey(`/${t.path}`)),
           ),
         );
         if (uniquePaths.length > 0) {

@@ -1,5 +1,68 @@
 # open-next
 
+## 4.1.10
+
+### Patch Changes
+
+- [`f30d0f2`](https://github.com/opennextjs/opennextjs-aws/commit/f30d0f2e926f5c7dacebabd937dc6022008145f1) Thanks [@Nicolapps](https://github.com/Nicolapps)! - fix: request headers deleted by the middleware are no longer forwarded
+
+## 4.1.9
+
+### Patch Changes
+
+- [#1298](https://github.com/opennextjs/opennextjs-aws/pull/1298) [`0d40bcd`](https://github.com/opennextjs/opennextjs-aws/commit/0d40bcd5a422e1adda689fc44ec884835cd9eae1) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - Apply every matching `beforeFiles` rewrite in order so Next.js-generated
+  interception rewrites can run after user-defined rewrites. Preserve unused
+  source parameters in the rewritten query for subsequent rewrite conditions,
+  while keeping redirect query behavior unchanged.
+
+- [#1290](https://github.com/opennextjs/opennextjs-aws/pull/1290) [`6f6e6db`](https://github.com/opennextjs/opennextjs-aws/commit/6f6e6db5fa21eda13ece3bdfa1da5fed69d75582) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - perf: compile the routing matcher regular expressions only once
+
+- [#1287](https://github.com/opennextjs/opennextjs-aws/pull/1287) [`e18127e`](https://github.com/opennextjs/opennextjs-aws/commit/e18127e366588d8f5c8cdac103b19d6e9a0f3e76) Thanks [@vicb](https://github.com/vicb)! - fix: percent-encode query values when rebuilding the query string, so values containing "&", "=", "+" or "%" reach Next.js intact
+
+- [#1297](https://github.com/opennextjs/opennextjs-aws/pull/1297) [`6fc4919`](https://github.com/opennextjs/opennextjs-aws/commit/6fc4919160fa102472bc6ca54a524eef79a8b5f4) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: do not fail the build when `optimizeCss` is enabled and no CSS file is emitted
+
+- [#1284](https://github.com/opennextjs/opennextjs-aws/pull/1284) [`0152a70`](https://github.com/opennextjs/opennextjs-aws/commit/0152a708eef3dff2966b210fec3ea8bbbae7c7f8) Thanks [@vicb](https://github.com/vicb)! - fix: align route condition handling with Next.js
+
+  - Compile empty optional catch-all parameters in redirect and rewrite destinations.
+  - Interpolate route condition parameters in configured response headers.
+  - Allow matched destination parameters to contain values outside a single path segment.
+  - Fix `has` condition matching to follow Next.js semantics.
+  - Normalize host condition captures and expose implicit host parameters.
+  - Preserve separators for repeated parameters in rewrite destination queries.
+  - Expose value-less route condition values as destination parameters.
+  - Prevent missing route conditions from overwriting destination parameters.
+  - Match and capture repeated query conditions using their final value.
+
+- [#1300](https://github.com/opennextjs/opennextjs-aws/pull/1300) [`f4d8b70`](https://github.com/opennextjs/opennextjs-aws/commit/f4d8b7048633d66ef2078830dcee0d21d6e762db) Thanks [@vicb](https://github.com/vicb)! - fix: retain FETCH cache writes created during Server Action Flight rendering
+
+## 4.1.8
+
+### Patch Changes
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Await background work registered while a detached promise runner is draining.
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Apply `patchBackgroundRevalidation` to the compiled Next.js runtimes
+
+  Since Next 15.5 the route modules use their own `ResponseCache`, inlined and minified in `next/dist/compiled/next-server/*.runtime.prod.js`. The patch only targeted `server/response-cache/index.js` and matched the unminified `context.isPrefetch`, so these copies were left untouched and stale requests still triggered an in-process regeneration instead of only going through the revalidation queue.
+
+  Minified identifiers containing `$` are also supported.
+
+## 4.1.7
+
+### Patch Changes
+
+- [#1268](https://github.com/opennextjs/opennextjs-aws/pull/1268) [`dd902fda0324ccf0bc4dd58e96fd0728501b86e2`](https://github.com/opennextjs/opennextjs-aws/commit/dd902fda0324ccf0bc4dd58e96fd0728501b86e2) Thanks [@rishabhvenu](https://github.com/rishabhvenu)! - Resolve the request store each time the `@next/request-context` getter is called, instead of capturing the store of the request that last published it
+
+- [#1270](https://github.com/opennextjs/opennextjs-aws/pull/1270) [`ebfd9b9d1f8d34412b236daa4a6e39caa56653ee`](https://github.com/opennextjs/opennextjs-aws/commit/ebfd9b9d1f8d34412b236daa4a6e39caa56653ee) Thanks [@conico974](https://github.com/conico974)! - fix(cache): support scoped response cache keys in fixed Next.js releases
+
+  Next.js 15.5.27 and 16.3.8 scope response cache keys by their source route: `/route-cache/<kind>/<sha256(sourceRoute)>/$<pathname>`. OpenNext preserves emitted build keys, selects the matching owner before cache interception, and maps scoped keys back to the correct public route during CDN invalidation.
+
+- [#1265](https://github.com/opennextjs/opennextjs-aws/pull/1265) [`49401b402bbbe41aa7f74e80b452f47fa7c88ce0`](https://github.com/opennextjs/opennextjs-aws/commit/49401b402bbbe41aa7f74e80b452f47fa7c88ce0) Thanks [@Anurag-Bharati](https://github.com/Anurag-Bharati)! - Only serve cached responses for GET and HEAD requests in the cache interceptor
+
+  A progressively enhanced form (`<form action={serverAction}>`, or one wired through `useActionState`) submitted before hydration or with JavaScript disabled is a plain `multipart/form-data` POST whose action id travels in the body, not in the `next-action` header. With `enableCacheInterception` on, the interceptor answered it with the cached page, so the server action never ran and the submission was lost. Requests other than GET and HEAD now reach `NextServer`, matching Next.js, which never serves a possible server action from the cache.
+
+- [`5ba9354a36d92270c734390950e2ad39dc2ac4e4`](https://github.com/opennextjs/opennextjs-aws/commit/5ba9354a36d92270c734390950e2ad39dc2ac4e4) Thanks [@vicb](https://github.com/vicb)! - Fix external rewrites to destinations with a literal numeric port
+
 ## 4.1.6
 
 ### Patch Changes

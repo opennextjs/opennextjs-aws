@@ -51,15 +51,21 @@ export function isExternal(url?: string, host?: string) {
   return true;
 }
 
+/**
+ * Parses a raw query string into decoded scalar or repeated values.
+ *
+ * The result has the same shape the converters produce from `URLSearchParams`
+ * and follows Next.js's decoded query representation.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/querystring.ts#L34-L48
+ *
+ * @param query The query string without a leading question mark
+ * @returns The decoded scalar and repeated query values
+ *
+ * @__PURE__
+ */
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
-  const queryParts = query.split("&");
-  return getQueryFromIterator(
-    queryParts.map((p) => {
-      const [key, value] = p.split("=");
-      return [key, value] as const;
-    }),
-  );
+  return getQueryFromIterator(new URLSearchParams(query).entries());
 }
 
 /**
@@ -67,29 +73,36 @@ export function convertFromQueryString(query: string) {
  *
  * The URL is a route destination, i.e. a `path-to-regexp` pattern rather than a
  * well formed URL, so it can not be parsed with `new URL()` which would percent
- * encode some of the pattern characters.
+ * encode some of the pattern characters. Like Next.js, the fragment is kept
+ * separate from the query while destination parameters are interpolated.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L221-L299
  *
  * @param url The URL to split
  * @param isExternal Whether the URL points to an external host
- * @returns The protocol, hostname, pathname and query string of the URL
+ * @returns The protocol, hostname, pathname, query string and fragment
  * @throws When `isExternal` is true and the URL is not an absolute HTTP(S) URL
  *
  * @__PURE__
  */
 export function getUrlParts(url: string, isExternal: boolean) {
+  const hashIndex = url.indexOf("#");
+  const hash = hashIndex === -1 ? "" : url.slice(hashIndex);
+  const urlWithoutHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
+
   if (!isExternal) {
     const regex = /\/([^?]*)\??(.*)/;
-    const match = url.match(regex);
+    const match = urlWithoutHash.match(regex);
     return {
       hostname: "",
-      pathname: url.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
+      pathname: urlWithoutHash.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
       protocol: "",
       queryString: match?.[2] ?? "",
+      hash,
     };
   }
 
   const regex = /^(https?:)\/\/?([^\/\s?]+)(\/[^?]*)?(\?.*)?/;
-  const match = url.match(regex);
+  const match = urlWithoutHash.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
   }
@@ -98,6 +111,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
     hostname: match[2],
     pathname: match[3] ?? "",
     queryString: match[4]?.slice(1) ?? "",
+    hash,
   };
 }
 
@@ -153,20 +167,22 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * Make sure that multi-value query parameters are transformed to
  * ?key=value1&key=value2&... so that Next converts those parameters
  * to an array when reading the query parameters
- * query should be properly encoded before using this function
+ * Keys and values are expected decoded (as produced by the converters) and are
+ * percent-encoded here, so a value such as "h&m" survives as "h%26m"
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
-  const queryStrings: string[] = [];
+  const searchParams = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((entry) => queryStrings.push(`${key}=${entry}`));
+      value.forEach((entry) => searchParams.append(key, entry));
     } else {
-      queryStrings.push(`${key}=${value}`);
+      searchParams.append(key, value);
     }
   });
 
-  return queryStrings.length > 0 ? `?${queryStrings.join("&")}` : "";
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
 /**

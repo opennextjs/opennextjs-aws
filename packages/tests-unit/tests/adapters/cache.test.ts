@@ -16,8 +16,8 @@ declare global {
 
 describe("CacheHandler", () => {
   let cache: Cache;
-  // `set` registers non-`FETCH` writes as detached work on the request's promise runner. Tests
-  // that assert on what a write did need to wait for that work.
+  // `set` registers writes as detached work on the request's promise runner. Tests that assert
+  // on what a write did need to wait for that work.
   let detachedWrites: Promise<unknown>[];
   const awaitDetachedWrites = () => Promise.all(detachedWrites);
 
@@ -1142,7 +1142,7 @@ describe("CacheHandler", () => {
         );
       });
 
-      it("Should await FETCH writes without registering them as detached work", async () => {
+      it("Should await FETCH writes and register them as detached work", async () => {
         const write = deferredWrite();
         incrementalCache.set.mockReturnValueOnce(write.promise);
 
@@ -1166,7 +1166,7 @@ describe("CacheHandler", () => {
         await drainMicrotasks();
 
         expect(settled).toBe(false);
-        expect(detachedWrites).toHaveLength(0);
+        expect(detachedWrites).toEqual([write.promise]);
 
         write.resolve();
 
@@ -1209,6 +1209,46 @@ describe("CacheHandler", () => {
         await set;
         expect(settled).toBe(true);
       });
+    });
+  });
+
+  describe("route cache keys", () => {
+    const hash = "a".repeat(64);
+    const scopedKey = `/route-cache/APP_PAGE/${hash}/$/isr`;
+
+    it("Should use the scoped key on get", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(scopedKey, { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
+    });
+
+    it("Should use the scoped key on set", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(`/route-cache/PAGES/${hash}/$/index`, {
+        kind: "REDIRECT",
+        props: {},
+      });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${hash}/$/index`,
+        { type: "redirect", props: {} },
+        "cache",
+      );
+    });
+
+    it("Should use the scoped key on delete", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(`/route-cache/APP_ROUTE/${hash}/$/api/data`, undefined);
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.delete).toHaveBeenCalledWith(
+        `/route-cache/APP_ROUTE/${hash}/$/api/data`,
+      );
     });
   });
 
@@ -1268,6 +1308,23 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
     });
 
+    it("Should invalidate the pathname of scoped cache keys", async () => {
+      const hash = "a".repeat(64);
+      tagCache.getByTag.mockResolvedValueOnce([
+        `route-cache/APP_PAGE/${hash}/$/isr`,
+      ]);
+      tagCache.getByPath.mockResolvedValueOnce([]);
+      await cache.revalidateTag(`${SOFT_TAG_PREFIX}/isr`);
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/isr",
+          rawPath: "/isr",
+          resolvedRoutes: [{ type: "app", route: "/isr" }],
+        },
+      ]);
+    });
+
     it("Should not call invalidateCdnHandler.invalidatePaths for fetch cache key ", async () => {
       tagCache.getByTag.mockResolvedValueOnce(["123456"]);
       await cache.revalidateTag("tag");
@@ -1308,6 +1365,23 @@ describe("CacheHandler", () => {
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
+    it("Should invalidate the pathname of scoped cache keys for nextMode", async () => {
+      const hash = "a".repeat(64);
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi
+        .fn()
+        .mockResolvedValueOnce([`/route-cache/PAGES/${hash}/$/en/isr`]);
+      await cache.revalidateTag("tag");
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/en/isr",
+          rawPath: "/en/isr",
+          resolvedRoutes: [{ type: "app", route: "/en/isr" }],
+        },
+      ]);
     });
 
     it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {
