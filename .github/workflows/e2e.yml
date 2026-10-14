@@ -39,9 +39,7 @@ jobs:
       - name: Get Latest Next Version
         id: get_latest_version
         run: |
-          # TODO: Restore the latest version after https://github.com/opennextjs/opennextjs-aws/pull/1285
-          # latest_version=$(curl -s https://registry.npmjs.org/-/package/next/dist-tags | jq -r '.latest')
-          latest_version=16.3.8
+          latest_version=$(curl -s https://registry.npmjs.org/-/package/next/dist-tags | jq -r '.latest')
           echo "Latest version: $latest_version"
           echo "LATEST_VERSION=$latest_version" >> $GITHUB_ENV
           echo "LATEST_VERSION=$latest_version" >> $GITHUB_OUTPUT
