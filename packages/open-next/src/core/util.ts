@@ -11,6 +11,7 @@ import {
   applyOverride as applyNextjsRequireHooksOverride,
   overrideHooks as overrideNextjsRequireHooks,
 } from "./require-hooks.js";
+import { createRevalidate } from "./revalidate.js";
 
 // WORKAROUND: Set `__NEXT_PRIVATE_PREBUNDLED_REACT` to use prebundled Reac
 // See https://opennext.js.org/aws/v2/advanced/workaround#workaround-set-__next_private_prebundled_react-to-use-prebundled-react
@@ -78,6 +79,13 @@ const nextServer = new NextServer.default({
   dev: false,
   dir: __dirname,
 });
+
+// `res.revalidate()` in Pages Router API routes (Next 15.4+)
+if (typeof nextServer.revalidate === "function") {
+  nextServer.revalidate = createRevalidate(
+    nextServer.revalidate.bind(nextServer),
+  );
+}
 
 let routesLoaded = false;
 
