@@ -1,0 +1,23 @@
+examples/pages-router/src/middleware.ts
+  s_b547ef362972e7::t_9340c08935c1ba 29
+examples/pages-router/src/pages/api/revalidate.ts
+  s_b547ef362972e7::t_e02436a109e3de 1-26
+examples/pages-router/src/pages/revalidate/[key].tsx
+  s_b547ef362972e7::t_71c3e19f0501e1 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "69cb7245f2636e3a606aed7b06d538978a25a440",
+  "prompts": {},
+  "sessions": {
+    "s_b547ef362972e7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec70953f9ffe397HnfEyOO9lH7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
