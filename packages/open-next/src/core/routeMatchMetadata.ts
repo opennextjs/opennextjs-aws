@@ -105,14 +105,25 @@ function getRouteDefinition(
   return undefined;
 }
 
-function getFilename(manifestPath: string | undefined) {
+/**
+ * Resolves a manifest entry to the absolute path of the compiled server module.
+ *
+ * @param manifestPath The path relative to `.next/server`, as stored in the manifests
+ * @return The absolute module path, or an empty string when the entry is missing
+ */
+function getFilename(manifestPath: string | undefined): string {
   return manifestPath ? path.join(NEXT_DIR, "server", manifestPath) : "";
 }
 
 /**
+ * Normalizes a pathname so it can be matched against route patterns.
+ *
  * Strips the basePath, the locale and the trailing slash, which are not part of route patterns.
+ *
+ * @param pathname The internal pathname of the request
+ * @return The pathname without basePath, locale prefix and trailing slash
  */
-function normalizePathname(pathname: string) {
+function normalizePathname(pathname: string): string {
   const basePath = NextConfig.basePath;
   let normalized = pathname;
   if (
@@ -134,12 +145,19 @@ function normalizePathname(pathname: string) {
 }
 
 /**
- * Returns the params of `route` for `pathname`, or `null` if it doesn't match.
- * Static routes have `undefined` params.
+ * Extracts the decoded params of a route for a normalized pathname.
  *
- * Throws on malformed percent-encoded params, like Next.js.
+ * Static routes have `undefined` params. Missing optional catch-all params are omitted.
+ *
+ * @param route The route pattern, i.e. `/blog/[slug]`
+ * @param pathname The normalized pathname to match against the route
+ * @return The params, `undefined` for a matching static route, or `null` when the route doesn't match
+ * @throws {URIError} If a captured parameter contains malformed percent encoding, like Next.js
  */
-function getRouteParams(route: string, pathname: string) {
+function getRouteParams(
+  route: string,
+  pathname: string,
+): Record<string, string | string[]> | undefined | null {
   const dynamicRoute = RoutesManifest.routes.dynamic.find(
     ({ page }) => page === route,
   );
