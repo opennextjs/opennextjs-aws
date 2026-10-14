@@ -30,7 +30,18 @@ test.describe("fallback", () => {
     await expect(page.getByTestId("locale")).toHaveText("en");
   });
 
-  // Native Next.js 16.4 resets nl to en after fallthrough in this fixture; OpenNext retains nl.
+  // The locale is intentionally not asserted after a fallthrough.
+  //
+  // Native Next.js (`next start`, verified on 15.5.27, 16.3.8 and 16.4.0) renders the
+  // fallthrough page with the default locale: `/nl/fallback-intercepted/multi/a` gets `en`.
+  // The first attempt strips the locale from `req.url` (base-server.ts) and the router
+  // server retries the next route with that stripped URL after a `NoFallbackError`.
+  // OpenNext has always kept the request locale (`nl`) on every version.
+  //
+  // Next.js doesn't assert the locale after a fallthrough either: the only test with a
+  // non-default locale fallthrough (test/production/app-dir/route-scoped-cache,
+  // `/fr/closed/%73ibling/...`) only checks the status and the rendered route.
+  //
   // These cases compare route selection and params; the direct-match case checks locale.
   for (const { locale, prefix } of [
     { locale: "en", prefix: "" },
