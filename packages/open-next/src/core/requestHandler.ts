@@ -305,6 +305,10 @@ async function processRequest(
   }
 }
 
+// Rendering attempts (including the initial one) when falling through `fallback: false` routes.
+// The Next.js router server allows `handleIndex` 0..5 (`if (handleIndex > 5)`) since 13.4.13.
+const MAX_RENDER_ATTEMPTS = 6;
+
 /**
  * Retries the next resolved route after Next.js rejects a fallback.
  *
@@ -312,8 +316,8 @@ async function processRequest(
  * route matching and parameter-decoding error handling. Malformed parameters
  * encountered while constructing a 16.4+ match produce a bad-request response.
  *
- * Next.js 16.4+ permits six attempts including the initial render. Older versions
- * keep the legacy five-attempt cap.
+ * Like the Next.js router server, up to six attempts are made including the
+ * initial render before rendering a 500.
  *
  * @param req The request reused for each rendering attempt
  * @param res The response populated by Next.js
@@ -329,10 +333,7 @@ export async function handleNoFallbackError(
   metadata: Record<string, unknown>,
   index = 1,
 ) {
-  const maxAttempts = compareSemver(globalThis.nextVersion, ">=", "16.4.0")
-    ? 6
-    : 5;
-  if (index >= maxAttempts) {
+  if (index >= MAX_RENDER_ATTEMPTS) {
     await tryRenderError("500", res, routingResult.internalEvent);
     return;
   }

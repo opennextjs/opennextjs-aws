@@ -184,7 +184,7 @@ describe("handleNoFallbackError", () => {
     });
   });
 
-  it("allows the sixth matching route on Next.js 16.4", async () => {
+  it("allows the sixth matching route", async () => {
     // The initial attempt has already failed; reject the next four candidates.
     for (let attempt = 0; attempt < 4; attempt++) {
       nextHandler.mockRejectedValueOnce(new NoFallbackError());
@@ -204,7 +204,7 @@ describe("handleNoFallbackError", () => {
     expect(nextHandler).toHaveBeenCalledTimes(5);
   });
 
-  it("renders 404 when five candidates are exhausted on Next.js 16.4", async () => {
+  it("renders 404 when five candidates are exhausted", async () => {
     for (let attempt = 0; attempt < 4; attempt++) {
       nextHandler.mockRejectedValueOnce(new NoFallbackError());
     }
@@ -228,7 +228,7 @@ describe("handleNoFallbackError", () => {
     expect(getRouteMatchMetadata).toHaveBeenCalledTimes(4);
   });
 
-  it("stops before a seventh candidate on Next.js 16.4", async () => {
+  it("stops before a seventh candidate", async () => {
     requestHandler.mockImplementation((metadata) =>
       metadata.invokeStatus ? vi.fn() : nextHandler,
     );
@@ -352,35 +352,61 @@ describe("handleNoFallbackError", () => {
       expect(getRouteMatchMetadata).not.toHaveBeenCalled();
     });
 
-    it.each([5, 7])(
-      "keeps the five-attempt cap with %i route candidates",
-      async (routeCount) => {
-        for (let attempt = 0; attempt < 4; attempt++) {
-          nextHandler.mockRejectedValueOnce(new NoFallbackError());
-        }
+    it("allows the sixth matching route", async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        nextHandler.mockRejectedValueOnce(new NoFallbackError());
+      }
 
-        await handleNoFallbackError(
-          req,
-          res,
-          {
-            ...retryLimitRoutingResult,
-            resolvedRoutes: retryLimitRoutingResult.resolvedRoutes.slice(
-              0,
-              routeCount,
-            ),
-          },
-          {},
-        );
+      await handleNoFallbackError(req, res, retryLimitRoutingResult, {});
 
-        expect(requestHandler).toHaveBeenCalledTimes(5);
-        expect(requestHandler).toHaveBeenNthCalledWith(5, {
-          invokePath: "/500",
-          invokeStatus: 500,
-          middlewareInvoke: false,
-        });
-        expect(getRouteMatchMetadata).not.toHaveBeenCalled();
-      },
-    );
+      expect(requestHandler).toHaveBeenCalledTimes(5);
+      expect(requestHandler.mock.calls[4][0]).toMatchObject({
+        invokeOutput: "/retry/[a]/[...rest]",
+      });
+      expect(nextHandler).toHaveBeenCalledTimes(5);
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+    });
+
+    it("renders 404 when five candidates are exhausted", async () => {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        nextHandler.mockRejectedValueOnce(new NoFallbackError());
+      }
+
+      await handleNoFallbackError(
+        req,
+        res,
+        {
+          ...retryLimitRoutingResult,
+          resolvedRoutes: retryLimitRoutingResult.resolvedRoutes.slice(0, 5),
+        },
+        {},
+      );
+
+      expect(requestHandler).toHaveBeenCalledTimes(5);
+      expect(requestHandler).toHaveBeenNthCalledWith(5, {
+        invokePath: "/404",
+        invokeStatus: 404,
+        middlewareInvoke: false,
+      });
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+    });
+
+    it("stops before a seventh candidate", async () => {
+      requestHandler.mockImplementation((metadata) =>
+        metadata.invokeStatus ? vi.fn() : nextHandler,
+      );
+      nextHandler.mockRejectedValue(new NoFallbackError());
+
+      await handleNoFallbackError(req, res, retryLimitRoutingResult, {});
+
+      expect(requestHandler).toHaveBeenCalledTimes(6);
+      expect(requestHandler).toHaveBeenNthCalledWith(6, {
+        invokePath: "/500",
+        invokeStatus: 500,
+        middlewareInvoke: false,
+      });
+      expect(getRouteMatchMetadata).not.toHaveBeenCalled();
+    });
 
     it("preserves existing metadata across retries without generating a match", async () => {
       const match = { definition: { pathname: "/[slug]/[id]" } };
