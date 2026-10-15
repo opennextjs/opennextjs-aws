@@ -16,7 +16,14 @@ import type { CacheValue } from "types/overrides";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
-import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
+import {
+  INTERNAL_HEADER_CACHE_MISS,
+  clearIncrementalCacheEntry,
+  getIncrementalCacheEntry,
+  getTagsFromValue,
+  hasBeenRevalidated,
+  isStale,
+} from "utils/cache";
 import {
   CACHE_CONTROL_HEADER,
   NO_STORE_CACHE_CONTROL,
@@ -418,6 +425,16 @@ function getCacheKey(
     : undefined;
 }
 
+/**
+ * Carries the interceptor's miss decision over to the handler when the middleware is external: the
+ * middleware handler and the server handler do not share a request context in that mode.
+ */
+function setCacheMissHeader(event: MiddlewareEvent, cacheKey: string): void {
+  if (globalThis.openNextConfig.middleware?.external) {
+    event.headers[INTERNAL_HEADER_CACHE_MISS] = encodeURIComponent(cacheKey);
+  }
+}
+
 export async function cacheInterceptor(
   event: MiddlewareEvent,
   resolvedRoutes?: ResolvedRoute[],
@@ -474,10 +491,11 @@ export async function cacheInterceptor(
   debug("cacheKey", cacheKey);
   if (cacheKey) {
     try {
-      const cachedData = await globalThis.incrementalCache.get(cacheKey);
+      const cachedData = await getIncrementalCacheEntry(cacheKey);
       debug("cached data in interceptor", cachedData);
 
       if (!cachedData?.value) {
+        setCacheMissHeader(event, cacheKey);
         return event;
       }
       const tags = getTagsFromValue(cachedData.value);
@@ -491,6 +509,7 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
+          setCacheMissHeader(event, cacheKey);
           return event;
         }
       }
@@ -514,6 +533,10 @@ export async function cacheInterceptor(
             revalidationPath,
           );
           // The cache entry can not serve this request, fallback to the server.
+          if (!result) {
+            // The server reads the store again for this key, so it must not reuse this read
+            clearIncrementalCacheEntry(cacheKey);
+          }
           return result ?? event;
         }
         case "redirect": {
@@ -575,11 +598,14 @@ export async function cacheInterceptor(
           };
         }
         default:
+          // The server reads the store again for this key, so it must not reuse this read
+          clearIncrementalCacheEntry(cacheKey);
           return event;
       }
     } catch (e) {
       debug("Error while fetching cache", e);
-      // In case of error we fallback to the server
+      // In case of error we fallback to the server, which reads the store again
+      clearIncrementalCacheEntry(cacheKey);
       return event;
     }
   }
