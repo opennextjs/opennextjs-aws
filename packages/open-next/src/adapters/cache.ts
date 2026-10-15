@@ -12,11 +12,53 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
-import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
+import {
+  getPathFromRouteCacheKey,
+  useRouteCacheKeys,
+} from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
 export const SOFT_TAG_PREFIX = "_N_T_/";
+
+type NextCacheControl = { revalidate: number | false; expire?: number };
+
+/**
+ * Gives Next.js the cache control of an entry read from the incremental cache.
+ *
+ * Next.js decides whether an entry is stale from an in-memory map filled by the renders of
+ * the current process, then from the prerender manifest. After a cold start, a page of a
+ * dynamic route that was not prerendered is in neither, and Next.js falls back to a
+ * revalidation of 1 second. Next.js overwrites the seeded value when it renders the page.
+ * https://github.com/vercel/next.js/blob/v16.3.8/packages/next/src/server/lib/incremental-cache/shared-cache-controls.external.ts
+ *
+ * Only for Next.js versions using route cache keys, where the key of the entry is also the
+ * key of the map.
+ * https://github.com/opennextjs/opennextjs-aws/issues/1250
+ *
+ * @param key The key of the cache entry
+ * @param revalidate The revalidate value stored with the entry
+ * @param expire The expire value stored with the entry
+ */
+function seedCacheControl(
+  key: string,
+  revalidate?: number | false,
+  expire?: number,
+) {
+  if (revalidate === undefined || !useRouteCacheKeys(globalThis.nextVersion)) {
+    return;
+  }
+  try {
+    const cacheControls: Map<string, NextCacheControl> =
+      require("next/dist/server/lib/incremental-cache/shared-cache-controls.external.js")
+        .SharedCacheControls.cacheControls;
+    if (!cacheControls.has(key)) {
+      cacheControls.set(key, { revalidate, expire });
+    }
+  } catch (e) {
+    debug("Failed to seed the cache control", key, e);
+  }
+}
 
 function isFetchCache(
   options?:
@@ -129,6 +171,7 @@ export default class Cache {
       }
 
       const cacheData = cachedEntry.value;
+      seedCacheControl(key, cacheData.revalidate, cacheData.expire);
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
@@ -284,6 +327,7 @@ export default class Cache {
         await globalThis.incrementalCache.delete(key);
       } else {
         const revalidate = this.extractRevalidateForSet(ctx);
+        const expire = this.extractExpireForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
@@ -302,6 +346,7 @@ export default class Cache {
                   headers,
                 },
                 revalidate,
+                expire,
               },
               "cache",
             );
@@ -323,6 +368,7 @@ export default class Cache {
                     headers,
                   },
                   revalidate,
+                  expire,
                 },
                 "cache",
               );
@@ -334,6 +380,7 @@ export default class Cache {
                   html,
                   json: pageData,
                   revalidate,
+                  expire,
                 },
                 "cache",
               );
@@ -364,6 +411,7 @@ export default class Cache {
                   postponed,
                 },
                 revalidate,
+                expire,
                 segmentData: segmentData ? segmentToWrite : undefined,
               },
               "cache",
@@ -380,6 +428,7 @@ export default class Cache {
                 type: "redirect",
                 props: data.props,
                 revalidate,
+                expire,
               },
               "cache",
             );
@@ -617,6 +666,15 @@ export default class Cache {
     }
     if ("cacheControl" in ctx) {
       return ctx.cacheControl?.revalidate;
+    }
+    return undefined;
+  }
+
+  private extractExpireForSet(
+    ctx?: IncrementalCacheContext,
+  ): number | undefined {
+    if (typeof ctx === "object" && "cacheControl" in ctx) {
+      return ctx.cacheControl?.expire;
     }
     return undefined;
   }
