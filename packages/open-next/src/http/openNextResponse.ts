@@ -29,11 +29,7 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       return;
     }
     // Only allow status codes between 100 and 599 https://httpwg.org/specs/rfc9110.html#status.codes
-    if (
-      Number.isInteger(code) &&
-      code >= 100 &&
-      code <= 599
-    ) {
+    if (Number.isInteger(code) && code >= 100 && code <= 599) {
       this._statusCode = code;
     }
   }
