@@ -326,12 +326,47 @@ export type ProxyExternalRequest = BaseOverride & {
   proxy: (event: InternalEvent) => Promise<InternalResult>;
 };
 
+/**
+ * Describes a path whose CDN entries must be invalidated.
+ *
+ * Includes the path before and after routing as well as the routes that matched
+ * while resolving the request.
+ */
 type CDNPath = {
+  /** The original request pathname before route resolution. */
   initialPath: string;
+  /** The effective request pathname after route resolution. */
   rawPath: string;
+  /** The routes that matched while resolving the request. */
   resolvedRoutes: ResolvedRoute[];
 };
 
+/**
+ * Invalidates CDN entries after on-demand revalidation.
+ *
+ * Implementations must support path invalidation and may additionally support
+ * native cache-tag invalidation.
+ */
 export type CDNInvalidationHandler = BaseOverride & {
+  /**
+   * Invalidates CDN entries associated with resolved paths.
+   *
+   * @param paths Paths and routing metadata for the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
   invalidatePaths: (paths: CDNPath[]) => Promise<void>;
+  /**
+   * Invalidates CDN entries associated with cache tags.
+   *
+   * When omitted, OpenNext resolves tags to paths and calls `invalidatePaths`.
+   *
+   * The CDN integration must associate cached entries with these same tags for
+   * invalidation to have an effect. For response-based CDN caches, the wrapper
+   * or converter must propagate the request's cache tags to the provider's
+   * response metadata.
+   *
+   * @param tags Cache tags associated with the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
+  invalidateTags?: (tags: string[]) => Promise<void>;
 };
