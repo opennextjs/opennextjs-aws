@@ -13,6 +13,7 @@ import {
   copyTracedFiles,
   isExcluded,
   isNonLinuxPlatformPackage,
+  isPackageJson,
 } from "@opennextjs/aws/build/copyTracedFiles.js";
 import { vi } from "vitest";
 
@@ -214,5 +215,29 @@ describe("isNonLinuxPlatformPackage", () => {
         "/project/node_modules/turbo-linux-x64/bin/turbo",
       ),
     ).toBe(false);
+  });
+});
+
+describe("isPackageJson", () => {
+  test("should detect package.json", () => {
+    expect(isPackageJson("/project/node_modules/next/package.json")).toBe(true);
+    expect(isPackageJson("package.json")).toBe(true);
+  });
+
+  test("should not treat files whose names end with 'package.json' as package.json", () => {
+    // Regression: traced JSON data files in user code can have names like
+    // `care-package.json` that share the "package.json" suffix without being
+    // real package manifests. The previous `endsWith("package.json")` check
+    // mis-classified them, causing `Failed to copy <dir>` errors in the
+    // Cloudflare adapter's workerd-package copy step.
+    expect(isPackageJson("/project/data/tables/care-package.json")).toBe(false);
+    expect(isPackageJson("/project/fixtures/my-package.json")).toBe(false);
+  });
+
+  test("should handle Windows-style path separators", () => {
+    expect(isPackageJson("C:\\project\\node_modules\\next\\package.json")).toBe(
+      true,
+    );
+    expect(isPackageJson("C:\\project\\data\\care-package.json")).toBe(false);
   });
 });
