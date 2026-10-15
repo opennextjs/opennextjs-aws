@@ -71,6 +71,13 @@ export function middleware(request: NextRequest) {
     return fetch(new URL("/api/hello", request.url));
   }
   const rHeaders = new Headers(request.headers);
+  if (
+    path === "/api/request-headers-app" ||
+    path === "/api/request-headers-pages"
+  ) {
+    rHeaders.delete("x-untrusted-identity");
+    rHeaders.set("x-middleware-added", "trusted");
+  }
   const responseHeaders = new Headers();
   // Keep origin-cache tests out of CloudFront so repeated requests exercise
   // cacheInterceptor. The encoded spelling selects the catch-all route.
