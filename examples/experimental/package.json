@@ -18,10 +18,10 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@opennextjs/aws": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "typescript": "catalog:",
-    "@opennextjs/aws": "workspace:*"
+    "typescript": "catalog:"
   }
 }
