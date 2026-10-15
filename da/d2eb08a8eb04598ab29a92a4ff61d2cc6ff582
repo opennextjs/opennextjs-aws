@@ -1,0 +1,27 @@
+examples/app-pages-router/package.json
+  s_e6f057d17c08a0::t_8aae3ca2d49d32 3,22
+examples/app-router/package.json
+  s_e6f057d17c08a0::t_3c81d01b01d47c 3
+examples/experimental/package.json
+  s_e6f057d17c08a0::t_29355225de40fd 3,21,25
+examples/pages-router/package.json
+  s_e6f057d17c08a0::t_04589dd2c9cbd1 3,22,27-28
+pnpm-lock.yaml
+  s_e6f057d17c08a0::t_1db1a6d7ce9bc8 81-83,201-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dad2eb08a8eb04598ab29a92a4ff61d2cc6ff582",
+  "prompts": {},
+  "sessions": {
+    "s_e6f057d17c08a0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ec1b27835ffeqlLjb0MdYx0HsI",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Victor Berchet <victor@suumit.com>"
+    }
+  }
+}
