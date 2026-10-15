@@ -1,5 +1,29 @@
 # open-next
 
+## 4.1.11
+
+### Patch Changes
+
+- [#1285](https://github.com/opennextjs/opennextjs-aws/pull/1285) [`a4ab628`](https://github.com/opennextjs/opennextjs-aws/commit/a4ab62880bdba76040e04e38219b08f295c2b3d2) Thanks [@conico974](https://github.com/conico974)! - Allow up to six rendering attempts when falling through `fallback: false` routes, matching the Next.js router server (since Next.js 13.4.13). A sixth matching route candidate previously returned a 500.
+
+- [#1304](https://github.com/opennextjs/opennextjs-aws/pull/1304) [`b3c121d`](https://github.com/opennextjs/opennextjs-aws/commit/b3c121d5fa7e10606396601a3335082e335a4ef3) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: keep the runtime alive until fetch cache entries are written on Next.js 15.4+
+
+- [#1312](https://github.com/opennextjs/opennextjs-aws/pull/1312) [`c7c6d35`](https://github.com/opennextjs/opennextjs-aws/commit/c7c6d3546c1f375062b8836dbb6bffc26e4dfdff) Thanks [@vicb](https://github.com/vicb)! - chore: bump Next.js dependencies
+
+  Bump Next.js dependencies following [the security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+  - Next.js 15.5.28 and 16.4.1
+  - react and react-dom to 19.3.1
+  - sharp to 0.35.5
+
+- [#1285](https://github.com/opennextjs/opennextjs-aws/pull/1285) [`a4ab628`](https://github.com/opennextjs/opennextjs-aws/commit/a4ab62880bdba76040e04e38219b08f295c2b3d2) Thanks [@conico974](https://github.com/conico974)! - Fix pages with `fallback: false` returning a 404 instead of falling through to a less specific dynamic route on Next.js 16.4.
+
+  Preserve existing fallback routing and parameter-decoding behavior on Next.js versions before 16.4.
+
+  Select the canonical App Page entry for fallback routes with parallel slots or route groups on Next.js 16.4+.
+
+  Return a 400 instead of a 500 when decoding the selected fallback route's parameters fails on Next.js 16.4+, matching Next.js's bad-request handling.
+
 ## 4.1.10
 
 ### Patch Changes
