@@ -15,3 +15,10 @@ test("trailingSlash redirect with search parameters", async ({ page }) => {
   );
   expect(response?.request().url()).toMatch(/\/ssr\/\?happy=true$/);
 });
+
+test("trailingSlash redirect on an API route", async ({ request }) => {
+  const response = await request.get("/api/hello", { maxRedirects: 0 });
+
+  expect(response.status()).toBe(308);
+  expect(response.headers().location).toMatch(/\/api\/hello\/$/);
+});
