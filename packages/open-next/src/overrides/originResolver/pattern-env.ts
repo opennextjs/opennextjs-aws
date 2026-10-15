@@ -12,6 +12,20 @@ const cachedPatterns: Array<{
 }> = [];
 let initialized = false;
 
+// Convert cloudfront pattern to regex
+function cloudfrontPatternToRegex(pattern: string): RegExp {
+  const body = pattern
+    .split(/(\*\*|\*|\?)/)
+    .map((part) => {
+      if (part === "**") return "(.*)";
+      if (part === "*") return "([^/]*)";
+      if (part === "?") return ".";
+      return part.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    })
+    .join("");
+  return new RegExp(`/${body}`);
+}
+
 /**
  * Initializes the cached values on the first execution
  */
@@ -29,22 +43,10 @@ function initializeOnce(): void {
   for (const key in functions) {
     if (key !== "default") {
       const value = functions[key];
-      const regexes: RegExp[] = [];
-
-      for (const pattern of value.patterns) {
-        // Convert cloudfront pattern to regex
-        const regexPattern = `/${pattern
-          .replace(/\*\*/g, "(.*)")
-          .replace(/\*/g, "([^/]*)")
-          .replace(/\//g, "\\/")
-          .replace(/\?/g, ".")}`;
-        regexes.push(new RegExp(regexPattern));
-      }
-
       cachedPatterns.push({
         key,
         patterns: value.patterns,
-        regexes,
+        regexes: value.patterns.map(cloudfrontPatternToRegex),
       });
     }
   }
