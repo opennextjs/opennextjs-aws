@@ -66,6 +66,21 @@ fix:
  return globalThis.__openNextAls.getStore()?.waitUntil;
 `;
 
+// `NextServer#handleCatchallRenderRequest` computes the router-server-context
+// key (and the `relativeProjectDir` request meta) from
+// `path.relative(process.cwd(), this.dir)`. Route modules read the context
+// back using the `relativeProjectDir` baked in at build time, which is always
+// an empty string in OpenNext. Those only line up when `process.cwd()`
+// matches `this.dir`, which isn't guaranteed on every deployment target
+// (`process.chdir` is a no-op on Cloudflare Workers, for example). Bake the
+// build-time key in directly so the write side no longer depends on the
+// working directory.
+export const bakeRelativeProjectDirRule = `
+rule:
+  pattern: (0, $MOD.relative)(process.cwd(), this.dir)
+fix: "''"
+`;
+
 /**
  * Swaps the body for a throwing implementation
  *
@@ -149,6 +164,14 @@ export const patchNextServer: CodePatcher = {
       pathFilter,
       contentFilter: /getInternalWaitUntil/,
       patchCode: createPatchCode(provideInternalWaitUntil),
+    },
+    // Bake the build-time `relativeProjectDir` key into the router-server
+    // context registration and the `relativeProjectDir` request meta,
+    // instead of relying on `process.cwd()` matching the server directory.
+    {
+      pathFilter,
+      contentFilter: /RouterServerContextSymbol/,
+      patchCode: createPatchCode(bakeRelativeProjectDirRule),
     },
     ...babelPatches,
   ],
