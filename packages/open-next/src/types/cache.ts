@@ -75,11 +75,25 @@ export interface CacheHandlerContext {
   _requestHeaders: never;
   fetchCacheKeyPrefix?: string;
 }
+
+/**
+ * The lifetime of a cache entry, as Next.js passes it to `set()` in `ctx.cacheControl`.
+ */
+export interface CacheControl {
+  revalidate: number | false;
+  expire?: number;
+}
+
 export interface CacheHandlerValue {
   lastModified?: number;
   age?: number;
   cacheState?: string;
   value: IncrementalCacheValue | null;
+  /**
+   * The lifetime of the entry, read by Next.js from 16.4 on only.
+   * See `getCacheControl` and `seedCacheControl` in the cache adapter.
+   */
+  cacheControl?: CacheControl;
 }
 
 export type Extension = "cache" | "fetch" | "composable";
@@ -119,10 +133,7 @@ interface SetIncrementalFetchCacheContext {
 
 interface SetIncrementalResponseCacheContext {
   fetchCache?: false;
-  cacheControl?: {
-    revalidate: number | false;
-    expire?: number;
-  };
+  cacheControl?: CacheControl;
 
   /**
    * True if the route is enabled for PPR.

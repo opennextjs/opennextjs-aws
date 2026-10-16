@@ -1,8 +1,10 @@
 import type {
+  CacheControl,
   CacheHandlerValue,
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
+import type { CacheValue } from "types/overrides";
 import {
   getStaleLastModified,
   getTagsFromValue,
@@ -12,7 +14,10 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
-import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
+import {
+  getPathFromRouteCacheKey,
+  useRouteCacheKeys,
+} from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -39,6 +44,85 @@ function isFetchCache(
   }
   return false;
 }
+
+/**
+ * The lifetime to report for a cache entry.
+ *
+ * Next.js takes it from a per-route record that only the instance which rendered the page
+ * has filled, with the prerender manifest as a fallback. A page rendered on demand by a
+ * dynamic route is in neither, and Next.js then falls back to `revalidate: 1`. The
+ * lifetime stored with the entry is what fills that gap.
+ *
+ * @param isEntryStale Whether the tag cache reported the entry as stale
+ * @returns The lifetime to report, or `undefined` to leave it to Next.js
+ */
+function getCacheControl(
+  { revalidate, expire }: CacheValue<"cache">,
+  isEntryStale: boolean,
+): CacheControl | undefined {
+  // A build time entry has no stored lifetime and needs none, the prerender manifest has it.
+  if (revalidate === undefined) {
+    return undefined;
+  }
+  // Staleness is signalled through `lastModified` alone (see `getStaleLastModified`),
+  // which needs a numeric revalidate to offset. Reporting `revalidate: false` would make
+  // Next.js serve the entry as a fresh hit and skip the background revalidation.
+  if (isEntryStale && revalidate === false) {
+    return undefined;
+  }
+  return { revalidate, expire };
+}
+
+/**
+ * Next.js' record of route lifetimes, loaded lazily because the module only exists from
+ * Next.js 15.5 while the cache handler has to keep loading on older versions. `next` is
+ * external to the compiled handler, so this is the same map the server reads.
+ */
+let recordedCacheControls:
+  | Promise<Map<string, CacheControl> | undefined>
+  | undefined;
+
+function getRecordedCacheControls() {
+  recordedCacheControls ??= import(
+    "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js"
+  )
+    .then(
+      // `cacheControls` is private to TypeScript only, at runtime it is a static member.
+      ({ SharedCacheControls }) =>
+        (
+          SharedCacheControls as unknown as {
+            cacheControls: Map<string, CacheControl>;
+          }
+        ).cacheControls,
+    )
+    .catch((e) => {
+      debug("Failed to load the Next.js cache controls", e);
+      return undefined;
+    });
+  return recordedCacheControls;
+}
+
+/**
+ * Records a cache entry's lifetime where Next.js reads it from, for the versions that
+ * ignore a returned `cacheControl` (before 16.4).
+ *
+ * The key Next.js passes to the cache handler is the route cache key, which is also this
+ * map's key, so it is used as is; versions predating route cache keys key it by route and
+ * are skipped. As 16.4 does, the entry's lifetime overwrites the record for the route.
+ */
+async function seedCacheControl(key: string, cacheControl?: CacheControl) {
+  const nextVersion = globalThis.nextVersion;
+  if (
+    !cacheControl ||
+    compareSemver(nextVersion, ">=", "16.4.0") ||
+    !useRouteCacheKeys(nextVersion)
+  ) {
+    return;
+  }
+  const cacheControls = await getRecordedCacheControls();
+  cacheControls?.set(key, cacheControl);
+}
+
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
@@ -152,9 +236,13 @@ export default class Cache {
         _lastModified = getStaleLastModified(cacheData.revalidate);
       }
 
+      const _cacheControl = getCacheControl(cacheData, _isStale);
+      await seedCacheControl(key, _cacheControl);
+
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "APP_ROUTE"
@@ -195,6 +283,7 @@ export default class Cache {
           }
           return {
             lastModified: _lastModified,
+            cacheControl: _cacheControl,
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
@@ -223,6 +312,7 @@ export default class Cache {
         }
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "PAGES"
@@ -237,6 +327,7 @@ export default class Cache {
       if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: "REDIRECT",
             props: cacheData.props,
@@ -283,7 +374,7 @@ export default class Cache {
       if (data === null || data === undefined) {
         await globalThis.incrementalCache.delete(key);
       } else {
-        const revalidate = this.extractRevalidateForSet(ctx);
+        const cacheControl = this.extractCacheControlForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
@@ -301,7 +392,7 @@ export default class Cache {
                   status,
                   headers,
                 },
-                revalidate,
+                ...cacheControl,
               },
               "cache",
             );
@@ -322,7 +413,7 @@ export default class Cache {
                     status,
                     headers,
                   },
-                  revalidate,
+                  ...cacheControl,
                 },
                 "cache",
               );
@@ -333,7 +424,7 @@ export default class Cache {
                   type: "page",
                   html,
                   json: pageData,
-                  revalidate,
+                  ...cacheControl,
                 },
                 "cache",
               );
@@ -363,7 +454,7 @@ export default class Cache {
                   headers,
                   postponed,
                 },
-                revalidate,
+                ...cacheControl,
                 segmentData: segmentData ? segmentToWrite : undefined,
               },
               "cache",
@@ -379,7 +470,7 @@ export default class Cache {
               {
                 type: "redirect",
                 props: data.props,
-                revalidate,
+                ...cacheControl,
               },
               "cache",
             );
@@ -603,21 +694,25 @@ export default class Cache {
     }
   }
 
-  private extractRevalidateForSet(
+  /**
+   * The lifetime Next.js passed for the entry, stored alongside it so that `get` can
+   * report it back. Only the newest context shape carries an `expire`.
+   */
+  private extractCacheControlForSet(
     ctx?: IncrementalCacheContext,
-  ): number | false | undefined {
+  ): Partial<CacheControl> {
     if (ctx === undefined) {
-      return undefined;
+      return {};
     }
     if (typeof ctx === "number" || ctx === false) {
-      return ctx;
+      return { revalidate: ctx };
     }
     if ("revalidate" in ctx) {
-      return ctx.revalidate;
+      return { revalidate: ctx.revalidate };
     }
     if ("cacheControl" in ctx) {
-      return ctx.cacheControl?.revalidate;
+      return { ...ctx.cacheControl };
     }
-    return undefined;
+    return {};
   }
 }
