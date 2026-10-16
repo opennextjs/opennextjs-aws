@@ -25,6 +25,79 @@ function formatWarmerResponse(event: WarmerEvent) {
   return result;
 }
 
+const PIPE_FLUSH_TIMEOUT_MS = 5_000;
+const MIN_BODY_SETTLE_TIMEOUT_MS = 25_000;
+const SETTLE_SAFETY_MARGIN_MS = 10_000;
+
+function waitForWritableSettled(
+  stream: Writable,
+  timeoutMs: number,
+): Promise<"settled" | "timed-out"> {
+  if (stream.writableFinished || stream.destroyed) {
+    return Promise.resolve("settled");
+  }
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      removeListeners();
+      resolve("timed-out");
+    }, timeoutMs);
+    const onSettled = () => {
+      clearTimeout(timer);
+      removeListeners();
+      resolve("settled");
+    };
+    const removeListeners = () => {
+      stream.off("finish", onSettled);
+      stream.off("close", onSettled);
+      stream.off("error", onSettled);
+    };
+    stream.once("finish", onSettled);
+    stream.once("close", onSettled);
+    stream.once("error", onSettled);
+  });
+}
+
+/**
+ * The handler (and any `waitUntil` work) settling does not guarantee the
+ * response stream has flushed its final chunk: with
+ * `callbackWaitsForEmptyEventLoop = false` the sandbox can freeze before the
+ * piped stream's `end()` propagates, leaving the HTTP response without its
+ * terminal chunk. A CDN in front (e.g. CloudFront) then holds the pooled
+ * origin connection until its origin read timeout, and that connection is
+ * poisoned for the next request. Hold the invocation open until the stream
+ * settles, with a bounded force-end fallback. The body wait is derived from
+ * the invocation's remaining time so the fallback can only fire near the
+ * function timeout, never while a legitimate slow stream is still writing.
+ * See #1315.
+ */
+async function ensureResponseStreamSettles(
+  bodyStream: Writable,
+  responseStream: Writable,
+  context: { getRemainingTimeInMillis: () => number },
+): Promise<void> {
+  const bodySettleTimeoutMs = Math.max(
+    context.getRemainingTimeInMillis() - SETTLE_SAFETY_MARGIN_MS,
+    MIN_BODY_SETTLE_TIMEOUT_MS,
+  );
+  const bodyOutcome = await waitForWritableSettled(
+    bodyStream,
+    bodySettleTimeoutMs,
+  );
+  if (bodyOutcome === "timed-out") {
+    error("Response body stream did not end after the handler settled; forcing end");
+    bodyStream.end();
+  }
+  const responseOutcome = await waitForWritableSettled(
+    responseStream,
+    PIPE_FLUSH_TIMEOUT_MS,
+  );
+  if (responseOutcome === "timed-out") {
+    error("Response stream did not finish after body end; forcing end");
+    responseStream.end();
+    await waitForWritableSettled(responseStream, PIPE_FLUSH_TIMEOUT_MS);
+  }
+}
+
 const handler: WrapperHandler = async (handler, converter) =>
   awslambda.streamifyResponse(
     async (
@@ -79,6 +152,16 @@ const handler: WrapperHandler = async (handler, converter) =>
         compressedStream = responseStream;
       }
 
+      // `pipe()` does not forward source errors: a compressor error while the
+      // handler is writing would otherwise be an unhandled 'error' event and
+      // crash the process.
+      if (compressedStream !== responseStream) {
+        compressedStream.on("error", (err) => {
+          error(err);
+          responseStream.end();
+        });
+      }
+
       const streamCreator: StreamCreator = {
         writeHeaders: (_prelude) => {
           responseStream.setContentType(
@@ -124,6 +207,12 @@ const handler: WrapperHandler = async (handler, converter) =>
 
       // Keep the invocation alive until deferred `waitUntil` work settles.
       await promiseRunner.await();
+
+      await ensureResponseStreamSettles(
+        compressedStream ?? responseStream,
+        responseStream,
+        context,
+      );
 
       // return converter.convertTo(response);
     },
