@@ -68,9 +68,6 @@ importers:
       '@example/shared':
         specifier: workspace:*
         version: link:../shared
-      '@opennextjs/aws':
-        specifier: workspace:*
-        version: link:../../packages/open-next
       next:
         specifier: 'catalog:'
         version: 16.4.1(@playwright/test@1.61.1)(@types/node@20.17.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -81,6 +78,9 @@ importers:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
     devDependencies:
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       '@types/express-http-proxy':
         specifier: 1.6.7
         version: 1.6.7
@@ -198,6 +198,9 @@ importers:
         specifier: 'catalog:'
         version: 19.3.1(react@19.3.1)
     devDependencies:
+      '@opennextjs/aws':
+        specifier: workspace:*
+        version: link:../../packages/open-next
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.6

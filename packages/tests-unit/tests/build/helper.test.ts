@@ -104,11 +104,24 @@ describe("isNextVersionSupported", () => {
   });
 
   test("handles boundary case - exactly 2 years", () => {
-    mockDate("2026-10-21");
-    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    mockDate("2025-10-26");
+    expect(isNextVersionSupported("14.0.0")).toBe(true);
 
+    mockDate("2025-10-27");
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
+  });
+
+  test("keeps supporting a version older than 2 years until the second next major is released", () => {
     mockDate("2026-10-22");
-    expect(isNextVersionSupported("15.0.0")).toBe(false);
+    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    expect(isNextVersionSupported("15.5.28")).toBe(true);
+    expect(isNextVersionSupported("16.0.0")).toBe(true);
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
+
+    mockDate("2030-01-01");
+    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    expect(isNextVersionSupported("16.0.0")).toBe(true);
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
   });
 
   test("returns false for unknown major versions", () => {
