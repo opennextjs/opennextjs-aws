@@ -19,6 +19,33 @@ const nextConfig: NextConfig = {
         },
       ],
     },
+    {
+      source: "/condition-headers/:value",
+      has: [
+        {
+          type: "query",
+          key: "tenant",
+          value: "(?<value>.*)",
+        },
+        { type: "query", key: "my-query" },
+        { type: "query", key: "items" },
+      ],
+      missing: [
+        {
+          type: "query",
+          key: "blocked",
+          value: "(?<value>.*)",
+        },
+      ],
+      headers: [
+        { key: "x-:value", value: ":myquery" },
+        { key: "x-items", value: ":items*" },
+        {
+          key: "x-route-url",
+          value: "https://example.com/path?tenant=:value&next=(literal)+*",
+        },
+      ],
+    },
   ],
   rewrites: async () => [
     { source: "/rewrite", destination: "/", locale: false },
@@ -39,6 +66,59 @@ const nextConfig: NextConfig = {
       source: "/external-on-image",
       destination: "https://opennext.js.org/share.png",
     },
+    {
+      source: "/condition-catchall/:path*",
+      destination: "/:path*",
+    },
+    {
+      source: "/monitoring-tunnel",
+      destination:
+        "/api/query?organizationId=:organizationId&projectId=:projectId",
+      has: [
+        {
+          type: "query",
+          key: "o",
+          value: "(?<organizationId>\\d*)",
+        },
+        {
+          type: "query",
+          key: "p",
+          value: "(?<projectId>\\d*)",
+        },
+      ],
+    },
+    {
+      source: "/condition-repeated",
+      destination: "/api/query?selected=:selected",
+      has: [
+        {
+          type: "query",
+          key: "items",
+          value: "(?<selected>.*)",
+        },
+      ],
+    },
+    {
+      source: "/condition-value-less",
+      destination: "/api/query?selected=:items*",
+      has: [{ type: "query", key: "items" }],
+    },
+    {
+      source: "/condition-host",
+      destination: "/api/dynamic/:host",
+      has: [{ type: "host", value: ".+" }],
+    },
+    {
+      source: "/condition-missing/:value",
+      destination: "/api/dynamic/:value",
+      missing: [
+        {
+          type: "query",
+          key: "blocked",
+          value: "(?<value>.*)",
+        },
+      ],
+    },
   ],
   redirects: async () => [
     {
@@ -52,6 +132,18 @@ const nextConfig: NextConfig = {
       source: "/redirect-with-locale/",
       destination: "/ssr/",
       permanent: false,
+    },
+    {
+      source: "/protocol-redirect/:path*",
+      destination: "https://localhost:3002/:path*",
+      permanent: false,
+      has: [
+        {
+          type: "header",
+          key: "x-protocol",
+          value: "http",
+        },
+      ],
     },
   ],
   trailingSlash: true,

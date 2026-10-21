@@ -1,11 +1,14 @@
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import {
   fixDataPage,
+  getCompiledRegExp,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
+import type { RouteHas } from "@opennextjs/aws/types/next-types.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
@@ -211,6 +214,108 @@ describe("getNextConfigHeaders", () => {
     });
   });
 
+  it.each([
+    {
+      name: "header",
+      event: { headers: { "x-forwarded-proto": "https" } },
+      has: {
+        type: "header",
+        key: "x-forwarded-proto",
+        value: "http",
+      },
+    },
+    {
+      name: "cookie",
+      event: { cookies: { protocol: "https" } },
+      has: { type: "cookie", key: "protocol", value: "http" },
+    },
+    {
+      name: "query",
+      event: { url: "https://on/hello-world?protocol=https" },
+      has: { type: "query", key: "protocol", value: "http" },
+    },
+    {
+      name: "host",
+      event: { headers: { host: "not-on.example" } },
+      has: { type: "host", value: "on.example" },
+    },
+  ] satisfies {
+    name: string;
+    event: PartialEvent;
+    has: RouteHas;
+  }[])("should require an exact $name value match", ({ event, has }) => {
+    const result = getNextConfigHeaders(createEvent(event), [
+      {
+        source: "/(.*)",
+        regex: "^(?:/(.*))(?:/)?$",
+        headers: [{ key: "foo", value: "bar" }],
+        has: [has],
+      },
+    ]);
+
+    expect(result).toEqual({});
+  });
+
+  it("should not match an absent value-less query condition", () => {
+    const event = createEvent({
+      url: "https://on/hello-world",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/(.*)",
+        regex: "^(?:/(.*))(?:/)?$",
+        headers: [{ key: "x-robots-tag", value: "noindex" }],
+        has: [{ type: "query", key: "preview" }],
+      },
+    ]);
+
+    expect(result).toEqual({});
+  });
+
+  it("should match a present value-less query condition", () => {
+    const event = createEvent({
+      url: "https://on/hello-world?preview=1",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/(.*)",
+        regex: "^(?:/(.*))(?:/)?$",
+        headers: [{ key: "x-robots-tag", value: "noindex" }],
+        has: [{ type: "query", key: "preview" }],
+      },
+    ]);
+
+    expect(result).toEqual({ "x-robots-tag": "noindex" });
+  });
+
+  // Next.js checks whether the repeated query parameter is present before
+  // matching its final value. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L115
+  it.each([
+    { value: undefined, matches: true },
+    { value: ".*", matches: true },
+    { value: ".+", matches: false },
+  ])(
+    "should match a repeated query ending empty against $value",
+    ({ value, matches }) => {
+      const event = createEvent({
+        url: "https://on/hello-world?preview=1&preview=",
+      });
+
+      const result = getNextConfigHeaders(event, [
+        {
+          source: "/(.*)",
+          regex: "^(?:/(.*))(?:/)?$",
+          headers: [{ key: "x-robots-tag", value: "noindex" }],
+          has: [{ type: "query", key: "preview", value }],
+        },
+      ]);
+
+      expect(result).toEqual(matches ? { "x-robots-tag": "noindex" } : {});
+    },
+  );
+
   it("should return request headers for matching /* route with missing condition", () => {
     const event = createEvent({
       url: "https://on/hello-world",
@@ -266,8 +371,135 @@ describe("getNextConfigHeaders", () => {
     });
   });
 
+  // Next.js merges successful condition parameters into source parameters
+  // before compiling configured header keys and values.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L841-L860
+  it("should interpolate named and value-less conditions in header keys and values", () => {
+    const event = createEvent({
+      url: "https://on/headers?tenant=alpha&my-query=beta&items=one&items=two",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/headers",
+        regex: "^/headers(?:/)?$",
+        has: [
+          {
+            type: "query",
+            key: "tenant",
+            value: "(?<tenant>.*)",
+          },
+          { type: "query", key: "my-query" },
+          { type: "query", key: "items" },
+        ],
+        headers: [
+          { key: "x-:tenant", value: ":myquery" },
+          { key: "x-items", value: ":items*" },
+          {
+            key: "x-url",
+            value: "https://example.com/path?tenant=:tenant&next=(literal)+*",
+          },
+          { key: "x-literal", value: "urn:test:(literal)+*" },
+        ],
+      },
+    ]);
+
+    expect(result).toEqual({
+      "x-alpha": "beta",
+      "x-items": "one/two",
+      "x-url": "https://example.com/path?tenant=alpha&next=(literal)+*",
+      "x-literal": "urn:test:(literal)+*",
+    });
+  });
+
+  it("should let a condition parameter override a source parameter in headers", () => {
+    const event = createEvent({
+      url: "https://on/headers/from-source?tenant=condition",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/headers/:value",
+        regex: "^/headers(?:/([^/]+?))(?:/)?$",
+        has: [
+          {
+            type: "query",
+            key: "tenant",
+            value: "(?<value>.*)",
+          },
+        ],
+        missing: [
+          {
+            type: "query",
+            key: "blocked",
+            value: "(?<value>.*)",
+          },
+        ],
+        headers: [{ key: "x-value", value: ":value" }],
+      },
+    ]);
+
+    expect(result).toEqual({ "x-value": "condition" });
+  });
+
   it.todo(
     "should exercise the error scenario: 'Error matching header <key> with value <value>'",
+  );
+});
+
+describe("compiled regular expressions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should compile a configured pattern only once across requests", () => {
+    const regExpSpy = vi.spyOn(globalThis, "RegExp");
+    const event = createEvent({
+      url: "https://opennext.js.org/compiled-once",
+      headers: { "x-compiled": "yes" },
+    });
+    const headers = [
+      {
+        source: "/compiled-once",
+        regex: "^/compiled-once(?:/)?$",
+        headers: [{ key: "foo", value: ":flag" }],
+        has: [
+          {
+            type: "header",
+            key: "x-compiled",
+            value: "(?<flag>yes)",
+          } satisfies RouteHas,
+        ],
+      },
+    ];
+
+    const first = getNextConfigHeaders(event, headers);
+    const second = getNextConfigHeaders(event, headers);
+
+    const compiledPatterns = regExpSpy.mock.calls.map(([pattern]) => pattern);
+    expect(first).toEqual({ foo: "yes" });
+    expect(second).toEqual({ foo: "yes" });
+    expect(
+      compiledPatterns.filter((p) => p === "^/compiled-once(?:/)?$"),
+    ).toHaveLength(1);
+    expect(compiledPatterns.filter((p) => p === "^(?<flag>yes)$")).toHaveLength(
+      1,
+    );
+  });
+
+  it.each(["g", "y"])(
+    "should reset lastIndex of a shared expression with the %s flag",
+    (flags) => {
+      const regExp = getCompiledRegExp("a", flags);
+      expect(regExp.test("aa")).toBe(true);
+      expect(regExp.lastIndex).toBe(1);
+
+      const sameRegExp = getCompiledRegExp("a", flags);
+
+      expect(sameRegExp).toBe(regExp);
+      expect(sameRegExp.lastIndex).toBe(0);
+    },
   );
 });
 
@@ -341,6 +573,38 @@ describe("handleRedirects", () => {
     expect(result.headers.Location).toBe("https://on/new/api-route/secret");
   });
 
+  // Next.js compiles an empty optional catch-all instead of leaving the token
+  // in the destination. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
+  it.each([
+    {
+      destination: "https://example.com/:path*",
+      location: "https://example.com/",
+    },
+    {
+      destination: "https://example.com/:path*#section",
+      location: "https://example.com/#section",
+    },
+  ])(
+    "should redirect an empty optional catch-all to $location",
+    ({ destination, location }) => {
+      const event = createEvent({
+        url: "https://on/",
+      });
+
+      const result = handleRedirects(event, [
+        {
+          source: "/:path*",
+          destination,
+          locale: false,
+          statusCode: 308,
+          regex: "^(?!/_next)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+        },
+      ]);
+
+      expect(result.headers.Location).toBe(location);
+    },
+  );
+
   it("should not redirect unmatched path", () => {
     const event = createEvent({
       url: "https://on/api-route",
@@ -379,6 +643,36 @@ describe("handleRedirects", () => {
       "https://on/search?bar=hello+world&baz=new%2C+earth",
     );
   });
+
+  it.each([
+    {
+      destination: "/search?q=a%3Db#section",
+      location: "https://on/search?q=a%3Db#section",
+    },
+    {
+      destination: "https://external.com/search?q=a%3Db#section",
+      location: "https://external.com/search?q=a%3Db#section",
+    },
+  ])(
+    "should preserve the fragment when redirecting to $destination",
+    ({ destination, location }) => {
+      const event = createEvent({
+        url: "https://on/foo",
+      });
+
+      const result = handleRedirects(event, [
+        {
+          source: "/foo",
+          destination,
+          locale: false,
+          statusCode: 308,
+          regex: "^(?!/_next)/foo(?:/)?$",
+        },
+      ]);
+
+      expect(result.headers.Location).toBe(location);
+    },
+  );
 
   // For reference https://github.com/opennextjs/opennextjs-aws/issues/1217
   it("should redirect to the root with a query string", () => {
@@ -445,6 +739,426 @@ describe("handleRewrites", () => {
     });
   });
 
+  // Next.js disables path-to-regexp value validation when compiling a matched
+  // destination. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L254-L264
+  it.each([
+    { path: "/capture/", destination: "https://on/target/" },
+    { path: "/capture/a/b", destination: "https://on/target/a/b" },
+  ])("should compile the captured path in $path", ({ path, destination }) => {
+    const event = createEvent({
+      url: `https://on${path}`,
+    });
+    const rewrites = [
+      {
+        source: "/capture/:value(.*)",
+        destination: "/target/:value",
+        regex: "^/capture(?:/(.*))(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.url).toBe(destination);
+  });
+
+  // Next.js compiles non-path values without validating them against a path
+  // segment pattern. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L127-L160
+  it("should compile a slash-containing condition capture in the query", () => {
+    const event = createEvent({
+      url: "https://on/capture-query?value=a/b",
+    });
+    const rewrites = [
+      {
+        source: "/capture-query",
+        destination: "/target?next=:value",
+        regex: "^/capture-query(?:/)?$",
+        has: [
+          {
+            type: "query" as const,
+            key: "value",
+            value: "(?<value>.*)",
+          },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { value: "a/b", next: "a/b" },
+      rawPath: "/target",
+      url: "https://on/target?value=a%2Fb&next=a%2Fb",
+    });
+  });
+
+  // Adapted from Next.js's duplicate-query redirect regression.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1314-L1331
+  it.each([
+    {
+      search: "value=first&value=last",
+      rewrittenSearch: "value=first&value=last",
+      selected: "last",
+    },
+    {
+      search: "value=first&value=",
+      rewrittenSearch: "value=first&value=",
+      selected: "",
+    },
+    {
+      search: "value=first&value",
+      rewrittenSearch: "value=first&value=",
+      selected: "",
+    },
+  ])(
+    "should capture the final repeated query value from $search",
+    ({ search, rewrittenSearch, selected }) => {
+      const event = createEvent({
+        url: `https://on/repeated-query?${search}`,
+      });
+      const rewrites = [
+        {
+          source: "/repeated-query",
+          destination: "/target?selected=:selected",
+          regex: "^/repeated-query(?:/)?$",
+          has: [
+            {
+              type: "query" as const,
+              key: "value",
+              value: "(?<selected>.*)",
+            },
+          ],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        query: { value: ["first", selected], selected },
+        rawPath: "/target",
+        url: `https://on/target?${rewrittenSearch}&selected=${selected}`,
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
+
+  it("should still reject a missing required destination parameter", () => {
+    const event = createEvent({
+      url: "https://on/capture",
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/capture",
+          destination: "/target/:missing",
+          regex: "^/capture(?:/)?$",
+        },
+      ]),
+    ).toThrow('Expected "missing" to be a string');
+  });
+
+  // Next.js encodes hostname parameters when compiling external destinations.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L265-L270
+  it("should not let a captured slash reshape the destination authority", () => {
+    const event = createEvent({
+      url: "https://on/capture-host?tenant=evil.com/",
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/capture-host",
+          destination: "https://:tenant.internal/target",
+          regex: "^/capture-host(?:/)?$",
+          has: [
+            {
+              type: "query",
+              key: "tenant",
+              value: "(?<tenant>.*)",
+            },
+          ],
+        },
+      ]),
+    ).toThrow("Invalid URL");
+  });
+
+  // Adapted from Next.js's host capture redirect regression.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1292-L1312
+  it("should capture from a normalized hostname", () => {
+    const event = createEvent({
+      url: "https://on/capture-host",
+      headers: { host: "HELLO-test.EXAMPLE.com:3000" },
+    });
+    const rewrites = [
+      {
+        source: "/capture-host",
+        destination: "https://:subdomain.example.com/target",
+        regex: "^/capture-host(?:/)?$",
+        has: [
+          {
+            type: "host" as const,
+            value: "(?<subdomain>.*)-test\\.example\\.com",
+          },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      rawPath: "/target",
+      url: "https://hello.example.com/target",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+    expect(result.isExternalRewrite).toBe(true);
+  });
+
+  // Next.js exposes the full match as `host` when a host pattern has no named
+  // groups. https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L101-L110
+  it("should expose the normalized hostname as an implicit host capture", () => {
+    const event = createEvent({
+      url: "https://on/capture-host",
+      headers: { host: "EXAMPLE.com:3000" },
+    });
+    const rewrites = [
+      {
+        source: "/capture-host",
+        destination: "/target?matched=:host",
+        regex: "^/capture-host(?:/)?$",
+        has: [{ type: "host" as const, value: "example\\.com" }],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { host: "example.com", matched: "example.com" },
+      rawPath: "/target",
+      url: "https://on/target?host=example.com&matched=example.com",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
+  // Adapted from Next.js's value-less condition parameter regressions.
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes/custom-routes.test.ts#L1083-L1151
+  it.each([
+    {
+      name: "header",
+      event: { headers: { "x-tenant-123-id": "alpha" } },
+      has: { type: "header", key: "X-Tenant-123-ID" },
+      destination: "/target/:xtenantid",
+      path: "/target/alpha",
+      url: "https://on/target/alpha",
+    },
+    {
+      name: "cookie",
+      event: { cookies: { "session-id": "beta" } },
+      has: { type: "cookie", key: "session-id" },
+      destination: "/target/:sessionid",
+      path: "/target/beta",
+      url: "https://on/target/beta",
+    },
+    {
+      name: "query",
+      event: { url: "https://on/value-less?my-query=gamma" },
+      has: { type: "query", key: "my-query" },
+      destination: "/target/:myquery",
+      path: "/target/gamma",
+      url: "https://on/target/gamma?my-query=gamma",
+    },
+    {
+      name: "repeated query",
+      event: { url: "https://on/value-less?items=one&items=two" },
+      has: { type: "query", key: "items" },
+      destination: "/target/:items*",
+      path: "/target/one/two",
+      url: "https://on/target/one/two?items=one&items=two",
+    },
+  ] satisfies {
+    name: string;
+    event: PartialEvent;
+    has: RouteHas;
+    destination: string;
+    path: string;
+    url: string;
+  }[])(
+    "should expose a value-less $name condition",
+    ({ event: partialEvent, has, destination, path, url }) => {
+      const event = createEvent({
+        url: "https://on/value-less",
+        ...partialEvent,
+      });
+      const rewrites = [
+        {
+          source: "/value-less",
+          destination,
+          regex: "^/value-less(?:/)?$",
+          has: [has],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        rawPath: path,
+        url,
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
+
+  // Next.js compiles destination query values as non-path strings while
+  // preserving repeat separators.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
+  it("should separate repeated value-less parameters in a destination query", () => {
+    const event = createEvent({
+      url: "https://on/value-less?items=one&items=two",
+    });
+    const rewrites = [
+      {
+        source: "/value-less",
+        destination: "/target?selected=:items*",
+        regex: "^/value-less(?:/)?$",
+        has: [{ type: "query" as const, key: "items" }],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      query: { items: ["one", "two"], selected: "one/two" },
+      rawPath: "/target",
+      url: "https://on/target?items=one&items=two&selected=one%2Ftwo",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
+  it("should not expose a patterned condition without a capture group", () => {
+    const event = createEvent({
+      url: "https://on/value-less",
+      headers: { "x-tenant-id": "alpha" },
+    });
+
+    expect(() =>
+      handleRewrites(event, [
+        {
+          source: "/value-less",
+          destination: "/target/:xtenantid",
+          regex: "^/value-less(?:/)?$",
+          has: [{ type: "header", key: "x-tenant-id", value: "alpha" }],
+        },
+      ]),
+    ).toThrow('Expected "xtenantid" to be a string');
+  });
+
+  // Next.js uses successful `has` predicates to build parameters, while
+  // nonmatching `missing` predicates contribute nothing.
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L92-L125
+  it.each([
+    { type: "header", key: "x-blocked", value: "(?<value>.*)" },
+    { type: "cookie", key: "blocked", value: "(?<value>.*)" },
+    { type: "query", key: "blocked", value: "(?<value>.*)" },
+    { type: "host", value: "(?<value>.*)" },
+  ] satisfies RouteHas[])(
+    "should not let an absent $type condition overwrite a source parameter",
+    (missing) => {
+      const event = createEvent({ url: "https://on/source/from-source" });
+      const rewrites = [
+        {
+          source: "/source/:value",
+          destination: "/target/:value",
+          regex: "^/source(?:/([^/]+?))(?:/)?$",
+          missing: [missing],
+        },
+      ];
+
+      const result = handleRewrites(event, rewrites);
+
+      expect(result.internalEvent).toEqual({
+        ...event,
+        rawPath: "/target/from-source",
+        url: "https://on/target/from-source",
+      });
+      expect(result.__rewrite).toBe(rewrites[0]);
+    },
+  );
+
+  it("should not let a missing condition overwrite a has parameter", () => {
+    const event = createEvent({
+      url: "https://on/combined?tenant=alpha",
+    });
+    const rewrites = [
+      {
+        source: "/combined",
+        destination: "/target/:value",
+        regex: "^/combined(?:/)?$",
+        has: [{ type: "query" as const, key: "tenant", value: "(?<value>.*)" }],
+        missing: [
+          { type: "query" as const, key: "blocked", value: "(?<value>.*)" },
+        ],
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent).toEqual({
+      ...event,
+      rawPath: "/target/alpha",
+      url: "https://on/target/alpha?tenant=alpha",
+    });
+    expect(result.__rewrite).toBe(rewrites[0]);
+  });
+
+  it("should reject a rewrite when a missing condition matches", () => {
+    const event = createEvent({ url: "https://on/blocked?blocked=true" });
+
+    const result = handleRewrites(event, [
+      {
+        source: "/blocked",
+        destination: "/unexpected",
+        regex: "^/blocked(?:/)?$",
+        missing: [{ type: "query", key: "blocked", value: "true" }],
+      },
+    ]);
+
+    expect(result.internalEvent).toEqual(event);
+    expect(result.__rewrite).toBeUndefined();
+  });
+
+  // Related upstream catch-all fixture and tests:
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/next.config.js
+  // https://github.com/vercel/next.js/blob/ae745ba/test/e2e/custom-routes-catchall/custom-routes-catchall.test.ts
+  it("should rewrite an empty optional catch-all to the internal root", () => {
+    const event = createEvent({
+      url: "https://on/legacy",
+    });
+    const rewrites = [
+      {
+        source: "/legacy/:path*",
+        destination: "/:path*",
+        regex: "^/legacy(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result).toEqual({
+      internalEvent: {
+        ...event,
+        rawPath: "/",
+        url: "https://on/",
+      },
+      __rewrite: rewrites[0],
+      isExternalRewrite: false,
+    });
+  });
+
   it("should rewrite without params", () => {
     const event = createEvent({
       url: "https://on/foo",
@@ -468,6 +1182,26 @@ describe("handleRewrites", () => {
       __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
+  });
+
+  it("should keep encoded characters in query values when rewriting", () => {
+    const event = createEvent({
+      url: "https://on/foo/details?brand=h%26m",
+    });
+
+    const rewrites = [
+      {
+        source: "/foo/:section",
+        destination: "/bar?q=a%3Db#:section",
+        regex: "^/foo(?:/([^/]+?))(?:/)?$",
+      },
+    ];
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.query).toEqual({ brand: "h&m", q: "a=b" });
+    expect(result.internalEvent.url).toBe(
+      "https://on/bar?brand=h%26m&q=a%3Db#details",
+    );
   });
 
   it("should rewrite externally", () => {
@@ -545,9 +1279,9 @@ describe("handleRewrites", () => {
     expect(result).toEqual({
       internalEvent: {
         ...event,
-        query: { ref: "promo" },
+        query: { path: ["anything"], ref: "promo" },
         rawPath: "/",
-        url: "https://on/?ref=promo",
+        url: "https://on/?path=anything&ref=promo",
       },
       __rewrite: rewrites[0],
       isExternalRewrite: false,
@@ -645,6 +1379,113 @@ describe("handleRewrites", () => {
       __rewrite: rewrites[0],
       isExternalRewrite: false,
     });
+  });
+});
+
+describe("handleBeforeFilesRewrites", () => {
+  const userRewrite = {
+    source: "/@:org/:space/:path*",
+    destination: "/orgs/:org/s/:space/:path*",
+    regex: "^/@([^/]+?)/([^/]+?)(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+  };
+  const interceptionRewrite = {
+    source: "/orgs/:org/s/:space/delete",
+    destination: "/(...)orgs/:org/s/:space/delete",
+    regex: "^/orgs/([^/]+?)/s/([^/]+?)/delete(?:/)?$",
+    has: [{ type: "header", key: "next-url" } satisfies RouteHas],
+  };
+
+  it("should not rewrite with empty rewrites", () => {
+    const event = createEvent({ url: "https://on/foo?hello=world" });
+
+    const result = handleBeforeFilesRewrites(event, []);
+
+    expect(result).toEqual({
+      internalEvent: event,
+      isExternalRewrite: false,
+    });
+  });
+
+  // See https://github.com/opennextjs/opennextjs-aws/issues/1215
+  it("should apply a later rewrite to the result of an earlier one", () => {
+    const event = createEvent({
+      url: "https://on/@acme/demo/delete",
+      headers: { "next-url": "/orgs/acme" },
+    });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/(...)orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(interceptionRewrite);
+    expect(result.isExternalRewrite).toBe(false);
+  });
+
+  it("should keep the earlier rewrite when a later one does not match", () => {
+    const event = createEvent({ url: "https://on/@acme/demo/delete" });
+
+    const result = handleBeforeFilesRewrites(event, [
+      userRewrite,
+      interceptionRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/orgs/acme/s/demo/delete");
+    expect(result.__rewrite).toBe(userRewrite);
+  });
+
+  // Next.js adds unused parameters to the query and evaluates later rewrites
+  // against that updated query. See:
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L286-L302
+  // https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L863-L932
+  it("should expose unused source parameters to later rewrites", () => {
+    const event = createEvent({ url: "https://on/from/42" });
+    const firstRewrite = {
+      source: "/from/:id",
+      destination: "/middle",
+      regex: "^/from/([^/]+?)(?:/)?$",
+    };
+    const secondRewrite = {
+      source: "/middle",
+      destination: "/target/:id",
+      regex: "^/middle(?:/)?$",
+      has: [
+        { type: "query", key: "id", value: "(?<id>\\d+)" } satisfies RouteHas,
+      ],
+    };
+
+    const result = handleBeforeFilesRewrites(event, [
+      firstRewrite,
+      secondRewrite,
+    ]);
+
+    expect(result.internalEvent.rawPath).toBe("/target/42");
+    expect(result.internalEvent.query).toEqual({ id: "42" });
+    expect(result.__rewrite).toBe(secondRewrite);
+  });
+
+  it("should stop at an external rewrite", () => {
+    const event = createEvent({ url: "https://on/external/page" });
+    const externalRewrite = {
+      source: "/external/:path*",
+      destination: "https://example.com/proxied/:path*",
+      regex: "^/external(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+    const afterExternalRewrite = {
+      source: "/proxied/:path*",
+      destination: "/internal/:path*",
+      regex: "^/proxied(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
+    };
+
+    const result = handleBeforeFilesRewrites(event, [
+      externalRewrite,
+      afterExternalRewrite,
+    ]);
+
+    expect(result.internalEvent.url).toBe("https://example.com/proxied/page");
+    expect(result.__rewrite).toBe(externalRewrite);
+    expect(result.isExternalRewrite).toBe(true);
   });
 });
 

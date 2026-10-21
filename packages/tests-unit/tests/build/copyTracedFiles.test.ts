@@ -1,13 +1,94 @@
-import fs from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import url from "node:url";
 
 import {
   copyTracedFiles,
   isExcluded,
   isNonLinuxPlatformPackage,
 } from "@opennextjs/aws/build/copyTracedFiles.js";
+import { vi } from "vitest";
+
+// Note: the patch file is only emitted by the build, it does not exist when running from the sources
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...fs,
+    copyFileSync: (...args: Parameters<typeof fs.copyFileSync>) => {
+      if (String(args[0]).endsWith("patchedAsyncStorage.js")) {
+        fs.writeFileSync(args[1], "");
+      } else {
+        fs.copyFileSync(...args);
+      }
+    },
+  };
+});
+
+describe("copyTracedFiles", () => {
+  let buildOutputPath: string;
+  let outputDir: string;
+  let standaloneNextDir: string;
+
+  beforeEach(() => {
+    buildOutputPath = mkdtempSync(path.join(os.tmpdir(), "open-next-build-"));
+    outputDir = path.join(buildOutputPath, ".open-next");
+    standaloneNextDir = path.join(buildOutputPath, ".next/standalone/.next");
+    mkdirSync(path.join(standaloneNextDir, "server"), { recursive: true });
+    writeFileSync(path.join(standaloneNextDir, "BUILD_ID"), "build-id");
+    writeFileSync(
+      path.join(standaloneNextDir, "required-server-files.json"),
+      JSON.stringify({ config: { experimental: { optimizeCss: true } } }),
+    );
+    writeFileSync(
+      path.join(standaloneNextDir, "server/pages-manifest.json"),
+      "{}",
+    );
+    writeFileSync(
+      path.join(standaloneNextDir, "server/middleware-manifest.json"),
+      "{}",
+    );
+  });
+
+  afterEach(() => {
+    rmSync(buildOutputPath, { recursive: true, force: true });
+  });
+
+  function copy() {
+    return copyTracedFiles({
+      buildOutputPath,
+      packagePath: "",
+      outputDir,
+      routes: [],
+      bundledNextServer: false,
+      skipServerFiles: true,
+    });
+  }
+
+  it("should copy static/css when optimizeCss is enabled", async () => {
+    const cssDir = path.join(standaloneNextDir, "static/css");
+    mkdirSync(cssDir, { recursive: true });
+    writeFileSync(path.join(cssDir, "app.css"), "body{}");
+
+    await copy();
+
+    expect(
+      readFileSync(path.join(outputDir, ".next/static/css/app.css"), "utf8"),
+    ).toBe("body{}");
+  });
+
+  it("should not throw when optimizeCss is enabled and static/css does not exist", async () => {
+    await expect(copy()).resolves.toBeDefined();
+
+    expect(existsSync(path.join(outputDir, ".next/static/css"))).toBe(false);
+  });
+});
 
 describe("isExcluded", () => {
   test("should exclude sharp", () => {
@@ -144,15 +225,15 @@ describe("copyTracedFiles", () => {
   let outputDir: string;
 
   function writeFile(filePath: string, content: unknown) {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    writeFileSync(
       filePath,
       typeof content === "string" ? content : JSON.stringify(content),
     );
   }
 
   beforeEach(() => {
-    root = fs.mkdtempSync(path.join(os.tmpdir(), "open-next-copy-traced-"));
+    root = mkdtempSync(path.join(os.tmpdir(), "open-next-copy-traced-"));
     appDir = path.join(root, "app");
     dotNextDir = path.join(appDir, ".next");
     standaloneNextDir = path.join(dotNextDir, "standalone/.next");
@@ -170,22 +251,9 @@ describe("copyTracedFiles", () => {
   });
 
   afterEach(() => {
-    fs.rmSync(root, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   });
 
-  const patchStub = path.join(
-    path.dirname(url.fileURLToPath(import.meta.url)),
-    "../../../open-next/src/build/patch/patchedAsyncStorage.js",
-  );
-  const createdPatchStub = !fs.existsSync(patchStub);
-  if (createdPatchStub) {
-    fs.writeFileSync(patchStub, "// stub for tests\n");
-  }
-  afterAll(() => {
-    if (createdPatchStub) {
-      fs.rmSync(patchStub);
-    }
-  });
   function runCopyTracedFiles() {
     return copyTracedFiles({
       buildOutputPath: appDir,
@@ -213,8 +281,8 @@ describe("copyTracedFiles", () => {
     const pkgFile = path.join(outputDir, "node_modules/some-pkg/index.js");
     expect(tracedFiles).toContain(serverFile);
     expect(tracedFiles).toContain(pkgFile);
-    expect(fs.readFileSync(serverFile, "utf8")).toBe("server");
-    expect(fs.readFileSync(pkgFile, "utf8")).toBe("pkg");
+    expect(readFileSync(serverFile, "utf8")).toBe("server");
+    expect(readFileSync(pkgFile, "utf8")).toBe("pkg");
   });
 
   test.each<[string, string[]]>([
@@ -270,7 +338,7 @@ describe("copyTracedFiles", () => {
       }),
     ).rejects.toThrow(/resolves outside the output directory/);
 
-    expect(fs.existsSync(path.join(appDir, "node_modules"))).toBe(false);
-    expect(fs.readFileSync(outsideSrc, "utf8")).toBe("original next-server");
+    expect(existsSync(path.join(appDir, "node_modules"))).toBe(false);
+    expect(readFileSync(outsideSrc, "utf8")).toBe("original next-server");
   });
 });
