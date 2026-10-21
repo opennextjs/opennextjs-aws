@@ -1,5 +1,15 @@
 # open-next
 
+## 4.1.12
+
+### Patch Changes
+
+- [#1319](https://github.com/opennextjs/opennextjs-aws/pull/1319) [`b7b2123`](https://github.com/opennextjs/opennextjs-aws/commit/b7b21237498fd743d733a960d59e9dbda1cd84d6) Thanks [@muhammadrizkirijalags](https://github.com/muhammadrizkirijalags)! - fix(cli): honor --dangerously-use-unsupported-next-version when passed as standalone
+
+- [#1321](https://github.com/opennextjs/opennextjs-aws/pull/1321) [`6e0c1f9`](https://github.com/opennextjs/opennextjs-aws/commit/6e0c1f905b7c935e04c9fe98342de99e02ca6062) Thanks [@vicb](https://github.com/vicb)! - fix: keep supporting a Next.js major version until the second next major is released
+
+  Next.js 15 is no longer reported as unsupported 2 years after its release while Next.js 17 has not been released yet.
+
 ## 4.1.11
 
 ### Patch Changes
