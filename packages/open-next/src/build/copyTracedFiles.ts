@@ -5,6 +5,7 @@ import {
   copyFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -85,6 +86,86 @@ export function isNonLinuxPlatformPackage(srcPath: string): boolean {
   return nonLinuxPlatformRegex.test(srcPath);
 }
 
+/**
+ * `.nft.json` paths are relative to the trace file. Next writes them with
+ * POSIX separators, and on Windows it can write backslashes. Split on both
+ * so `..` cannot be smuggled through the other platform's separator.
+ */
+function tracedPathSegments(tracedPath: string): string[] {
+  return tracedPath.split(/[/\\]/);
+}
+
+function resolveTracedPath(
+  root: string,
+  subDir: string,
+  tracedPath: string,
+): string {
+  return path.resolve(root, subDir, ...tracedPathSegments(tracedPath));
+}
+
+function isPathInside(parent: string, candidate: string): boolean {
+  const relative = path.relative(path.resolve(parent), path.resolve(candidate));
+  if (relative === "") {
+    return true;
+  }
+  // `path.relative` returns an absolute path when `candidate` is on another
+  // Windows drive. A directory named `..foo` must stay inside.
+  if (path.isAbsolute(relative)) {
+    return false;
+  }
+  return relative.split(path.sep)[0] !== "..";
+}
+
+function isCopyableEntry(filePath: string): boolean {
+  try {
+    const stats = lstatSync(filePath);
+    // Keep pnpm symlinks as links. The copy loop re-creates them.
+    return stats.isFile() || stats.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prefer the standalone copy. When Next's standalone output omits a file that
+ * the trace still lists (Turbopack chunks owned only by `_global-error` or
+ * `_not-found`), use the `.next` build output instead.
+ * Never fall back to `node_modules` outside `.next`, and never to a path that
+ * escapes the project.
+ */
+function resolveTracedFileSource(
+  buildOutputPath: string,
+  standaloneNextDir: string,
+  dotNextDir: string,
+  subDir: string,
+  tracedPath: string,
+): string | null {
+  const standaloneSrc = resolveTracedPath(
+    standaloneNextDir,
+    subDir,
+    tracedPath,
+  );
+  if (
+    isPathInside(buildOutputPath, standaloneSrc) &&
+    isCopyableEntry(standaloneSrc)
+  ) {
+    return standaloneSrc;
+  }
+
+  const dotNextSrc = resolveTracedPath(dotNextDir, subDir, tracedPath);
+  if (isPathInside(dotNextDir, dotNextSrc) && isCopyableEntry(dotNextSrc)) {
+    return dotNextSrc;
+  }
+
+  // Missing inside the project: keep the standalone path so the copy loop
+  // still fails with ENOENT and the file stays out of the bundle.
+  if (isPathInside(buildOutputPath, standaloneSrc)) {
+    return standaloneSrc;
+  }
+
+  return null;
+}
+
 function copyPatchFile(outputDir: string) {
   const patchFile = path.join(__dirname, "patch", "patchedAsyncStorage.js");
   const outputPatchFile = path.join(outputDir, "patchedAsyncStorage.cjs");
@@ -148,9 +229,17 @@ export async function copyTracedFiles({
     ).files;
 
     files.forEach((tracedPath: string) => {
-      const src = path.join(standaloneNextDir, subDir, tracedPath);
-      const dst = path.join(outputNextDir, subDir, tracedPath);
-      filesToCopy.set(src, dst);
+      const src = resolveTracedFileSource(
+        buildOutputPath,
+        standaloneNextDir,
+        dotNextDir,
+        subDir,
+        tracedPath,
+      );
+      const dst = resolveTracedPath(outputNextDir, subDir, tracedPath);
+      if (src) {
+        filesToCopy.set(src, dst);
+      }
 
       const module = path.join(dotNextDir, subDir, tracedPath);
       if (module.endsWith("package.json")) {
@@ -261,7 +350,15 @@ File ${serverPath} does not exist
     logger.debug("Adding instrumentation trace files");
   }
 
-  if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
+  // Next 16 emits `server/middleware.js.nft.json` even when the app has no
+  // middleware. `createMiddleware` only treats that file as node middleware
+  // when `/_middleware` is registered here; do the same, or the standalone
+  // assertion in `computeCopyFilesForPage` throws on the Turbopack stub.
+  const functionsConfigManifest = loadFunctionsConfigManifest(dotNextDir);
+  if (
+    functionsConfigManifest.functions["/_middleware"] &&
+    existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))
+  ) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
     copyFileAndMakeOwnerWritable(
       path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
