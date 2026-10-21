@@ -11,7 +11,7 @@ if (Object.keys(args).includes("--help")) printHelp();
 await build(
   args["--config-path"],
   args["--node-externals"],
-  args["--dangerously-use-unsupported-next-version"] !== undefined,
+  Object.keys(args).includes("--dangerously-use-unsupported-next-version"),
 );
 
 function parseArgs() {
