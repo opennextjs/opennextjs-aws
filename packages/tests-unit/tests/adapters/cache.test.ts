@@ -1,7 +1,19 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
+import type { CacheControl } from "@opennextjs/aws/types/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
+import { SharedCacheControls } from "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js";
 import { type Mock, vi } from "vitest";
+
+/** The map the cache adapter records route lifetimes in before Next.js 16.4. */
+const recordedCacheControls = (
+  SharedCacheControls as unknown as {
+    cacheControls: Map<string, CacheControl>;
+  }
+).cacheControls;
+
+const ROUTE_CACHE_HASH = "a".repeat(64);
+const SCOPED_KEY = `/route-cache/APP_PAGE/${ROUTE_CACHE_HASH}/$/isr`;
 
 declare global {
   var openNextConfig: {
@@ -716,6 +728,99 @@ describe("CacheHandler", () => {
           expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
+
+      describe("cache control", () => {
+        const getEntry = (entry: Record<string, unknown>) => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}", ...entry },
+            lastModified: Date.now(),
+          });
+          return cache.get(SCOPED_KEY, { kindHint: "app" });
+        };
+
+        beforeEach(() => {
+          recordedCacheControls.clear();
+        });
+
+        describe("from 16.4", () => {
+          beforeEach(() => {
+            globalThis.nextVersion = "16.4.1";
+          });
+
+          it("Should report the lifetime of the entry", async () => {
+            const result = await getEntry({ revalidate: 120, expire: 3600 });
+
+            expect(result?.cacheControl).toEqual({
+              revalidate: 120,
+              expire: 3600,
+            });
+            // Next.js records the returned lifetime for the route itself.
+            expect(recordedCacheControls.size).toEqual(0);
+          });
+
+          it("Should report no lifetime for a build time entry", async () => {
+            const result = await getEntry({});
+
+            expect(result?.cacheControl).toBeUndefined();
+            expect(recordedCacheControls.size).toEqual(0);
+          });
+
+          it("Should report an entry cached indefinitely", async () => {
+            const result = await getEntry({ revalidate: false });
+
+            expect(result?.cacheControl).toEqual({ revalidate: false });
+          });
+
+          it("Should report no lifetime for a stale entry cached indefinitely", async () => {
+            tagCache.isStale.mockResolvedValueOnce(true);
+
+            const result = await getEntry({ revalidate: false });
+
+            // `revalidate: false` would make Next.js compute `revalidateAfter === false`,
+            // which the stale `lastModified` cannot override.
+            expect(result?.cacheControl).toBeUndefined();
+            expect(result?.lastModified).toEqual(1);
+          });
+        });
+
+        describe("before 16.4", () => {
+          beforeEach(() => {
+            globalThis.nextVersion = "15.5.28";
+          });
+
+          it("Should record the lifetime where Next.js reads it", async () => {
+            await getEntry({ revalidate: 120, expire: 3600 });
+
+            expect(recordedCacheControls.get(SCOPED_KEY)).toEqual({
+              revalidate: 120,
+              expire: 3600,
+            });
+          });
+
+          it("Should overwrite the lifetime recorded for the route", async () => {
+            recordedCacheControls.set(SCOPED_KEY, { revalidate: 60 });
+
+            await getEntry({ revalidate: 120, expire: 3600 });
+
+            expect(recordedCacheControls.get(SCOPED_KEY)).toEqual({
+              revalidate: 120,
+              expire: 3600,
+            });
+          });
+
+          it("Should record nothing when the key is not a route cache key", async () => {
+            globalThis.nextVersion = "15.5.0";
+            incrementalCache.get.mockResolvedValueOnce({
+              value: { type: "route", body: "{}", revalidate: 120 },
+              lastModified: Date.now(),
+            });
+
+            await cache.get("/isr", { kindHint: "app" });
+
+            expect(recordedCacheControls.size).toEqual(0);
+          });
+        });
+      });
     });
   });
 
@@ -1018,6 +1123,25 @@ describe("CacheHandler", () => {
       );
     });
 
+    it("Should store the lifetime passed by Next.js", async () => {
+      await cache.set(
+        "key",
+        { kind: "REDIRECT", props: {} },
+        { cacheControl: { revalidate: 120, expire: 3600 } },
+      );
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "redirect",
+          props: {},
+          revalidate: 120,
+          expire: 3600,
+        },
+        "cache",
+      );
+    });
+
     it("Should not set cache when for IMAGE (not implemented)", async () => {
       await cache.set("key", {
         kind: "IMAGE",
@@ -1166,15 +1290,14 @@ describe("CacheHandler", () => {
   });
 
   describe("route cache keys", () => {
-    const hash = "a".repeat(64);
-    const scopedKey = `/route-cache/APP_PAGE/${hash}/$/isr`;
+    const hash = ROUTE_CACHE_HASH;
 
     it("Should use the scoped key on get", async () => {
       globalThis.nextVersion = "16.3.8";
 
-      await cache.get(scopedKey, { kindHint: "app" });
+      await cache.get(SCOPED_KEY, { kindHint: "app" });
 
-      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
+      expect(incrementalCache.get).toHaveBeenCalledWith(SCOPED_KEY, "cache");
     });
 
     it("Should use the scoped key on set", async () => {
