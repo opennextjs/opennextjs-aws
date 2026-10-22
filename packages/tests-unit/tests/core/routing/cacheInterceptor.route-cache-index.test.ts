@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { vi } from "vitest";
 
 // A root catch-all makes every path ISR, so it gets its own config mock.
@@ -75,7 +76,11 @@ const incrementalCache = {
   delete: vi.fn(),
 };
 
+const createStore = () => ({ requestCache: new RequestCache() });
+let store = createStore();
+
 globalThis.incrementalCache = incrementalCache;
+globalThis.__openNextAls = { getStore: () => store };
 
 const catchAllKey = (pathname: string) =>
   `/route-cache/PAGES/${createHash("sha256").update("/[...slug]").digest("hex")}/$${pathname}`;
@@ -83,6 +88,8 @@ const catchAllKey = (pathname: string) =>
 describe("cacheInterceptor - dynamic route rendering /index (next >= 16.3.8)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    store = createStore();
+    globalThis.__openNextAls = { getStore: () => store };
     globalThis.nextVersion = "16.3.8";
     globalThis.openNextConfig = {
       dangerous: { disableTagCache: false, disableIncrementalCache: false },
@@ -93,13 +100,19 @@ describe("cacheInterceptor - dynamic route rendering /index (next >= 16.3.8)", (
   it("should use the key Next.js uses for `/` when a catch-all renders /index", async () => {
     await cacheInterceptor(createEvent("/index"));
 
-    expect(incrementalCache.get).toHaveBeenCalledWith(catchAllKey("/index"));
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      catchAllKey("/index"),
+      "cache",
+    );
   });
 
   it("should use the key Next.js uses for `/<locale>` when a catch-all renders /<locale>/index", async () => {
     await cacheInterceptor(createEvent("/nl/index"));
 
-    expect(incrementalCache.get).toHaveBeenCalledWith(catchAllKey("/nl"));
+    expect(incrementalCache.get).toHaveBeenCalledWith(
+      catchAllKey("/nl"),
+      "cache",
+    );
   });
 
   it("should keep nested index segments", async () => {
@@ -107,6 +120,7 @@ describe("cacheInterceptor - dynamic route rendering /index (next >= 16.3.8)", (
 
     expect(incrementalCache.get).toHaveBeenCalledWith(
       catchAllKey("/foo/index"),
+      "cache",
     );
   });
 
@@ -115,6 +129,7 @@ describe("cacheInterceptor - dynamic route rendering /index (next >= 16.3.8)", (
 
     expect(incrementalCache.get).toHaveBeenCalledWith(
       catchAllKey("/index/index/foo"),
+      "cache",
     );
   });
 });

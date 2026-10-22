@@ -7,6 +7,12 @@ import { localizePath } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
+import {
+  INTERNAL_HEADER_CACHE_MISS,
+  getIncrementalCacheEntry,
+  getTagsFromValue,
+} from "@opennextjs/aws/utils/cache.js";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import { fromReadableStream } from "@opennextjs/aws/utils/stream.js";
 import { vi } from "vitest";
 
@@ -139,13 +145,23 @@ declare global {
   var nextVersion: string;
 }
 
+const createStore = () => ({
+  requestCache: new RequestCache(),
+  writtenTags: new Set<string>(),
+  pendingPromiseRunner: { add: vi.fn() },
+});
+let store = createStore();
+
 globalThis.incrementalCache = incrementalCache;
 globalThis.tagCache = tagCache;
 globalThis.queue = queue;
+globalThis.__openNextAls = { getStore: () => store };
 
 beforeEach(() => {
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
   vi.clearAllMocks();
+  store = createStore();
+  globalThis.__openNextAls = { getStore: () => store };
   globalThis.nextVersion = "16.0.0";
   globalThis.openNextConfig = {
     dangerous: {
@@ -233,7 +249,7 @@ describe("cacheInterceptor", () => {
 
     const body = await fromReadableStream(result.body);
     expect(body).toEqual("Hello, world!");
-    expect(incrementalCache.get).toHaveBeenCalledWith("/albums");
+    expect(incrementalCache.get).toHaveBeenCalledWith("/albums", "cache");
     expect(tagCache.getLastModified).toHaveBeenCalledWith(
       "/albums",
       expect.any(Number),
@@ -290,7 +306,7 @@ describe("cacheInterceptor", () => {
 
     const body = await fromReadableStream(result.body);
     expect(body).toEqual("Index page");
-    expect(incrementalCache.get).toHaveBeenCalledWith("/index");
+    expect(incrementalCache.get).toHaveBeenCalledWith("/index", "cache");
     expect(tagCache.getLastModified).toHaveBeenCalledWith(
       "/index",
       expect.any(Number),
@@ -320,7 +336,7 @@ describe("cacheInterceptor", () => {
 
     const result = await cacheInterceptor(event);
 
-    expect(incrementalCache.get).toHaveBeenCalledWith("/index");
+    expect(incrementalCache.get).toHaveBeenCalledWith("/index", "cache");
     expect(queue.send).toHaveBeenCalledWith(
       expect.objectContaining({
         MessageBody: expect.objectContaining({
@@ -377,6 +393,114 @@ describe("cacheInterceptor", () => {
     const result = await cacheInterceptor(event);
 
     expect(result).toEqual(event);
+    // Without an external middleware no header is set
+    expect((result as any).headers[INTERNAL_HEADER_CACHE_MISS]).toBeUndefined();
+  });
+
+  describe("cache miss handoff to an external middleware handler", () => {
+    beforeEach(() => {
+      globalThis.openNextConfig.middleware = { external: true };
+    });
+
+    it("should mark the event when the entry is a miss", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce(undefined);
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers[INTERNAL_HEADER_CACHE_MISS]).toEqual(
+        encodeURIComponent("/albums"),
+      );
+    });
+
+    it("should mark the event when the entry has been revalidated", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "app", html: "Hello, world!" },
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers[INTERNAL_HEADER_CACHE_MISS]).toEqual(
+        encodeURIComponent("/albums"),
+      );
+    });
+
+    it("should not mark the event when the entry is served", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "app", html: "Hello, world!" },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers[INTERNAL_HEADER_CACHE_MISS]).toBeUndefined();
+    });
+
+    it("should not mark the event for an entry it cannot serve", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "unknown" },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers[INTERNAL_HEADER_CACHE_MISS]).toBeUndefined();
+    });
+
+    it("should not mark the event when the read fails", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockRejectedValueOnce(new Error("mock error"));
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers[INTERNAL_HEADER_CACHE_MISS]).toBeUndefined();
+    });
+  });
+
+  it("should keep the tags of a revalidated entry for the handler", async () => {
+    const event = createEvent({ url: "/albums" });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+        meta: { headers: { "x-next-cache-tags": "tag-a" } },
+      },
+    });
+    tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+    await cacheInterceptor(event);
+
+    const entry = await getIncrementalCacheEntry("/albums");
+    expect(getTagsFromValue(entry?.value)).toEqual(["tag-a"]);
+  });
+
+  it("should let the handler read the store again when it cannot serve the entry", async () => {
+    const event = createEvent({ url: "/albums" });
+    incrementalCache.get.mockResolvedValueOnce({ value: { type: "unknown" } });
+
+    await cacheInterceptor(event);
+
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "app", html: "Hello, world!" },
+    });
+    const entry = await getIncrementalCacheEntry("/albums");
+
+    expect(incrementalCache.get).toHaveBeenCalledTimes(2);
+    expect(entry?.value?.type).toEqual("app");
+  });
+
+  it("should let the handler reuse the interceptor read of a miss", async () => {
+    const event = createEvent({ url: "/albums" });
+    incrementalCache.get.mockResolvedValueOnce(undefined);
+
+    await cacheInterceptor(event);
+
+    expect(incrementalCache.get).toHaveBeenCalledTimes(1);
+    // the miss is memoized for the rest of the request, so the handler does not read again
+    await expect(getIncrementalCacheEntry("/albums")).resolves.toBeNull();
+    expect(incrementalCache.get).toHaveBeenCalledTimes(1);
   });
 
   it("should bypass the tag cache when shouldBypassTagCache is true", async () => {
@@ -1222,6 +1346,7 @@ describe("cacheInterceptor", () => {
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
         `/route-cache/APP_PAGE/${sha256("/(group)/albums/page")}/$/albums`,
+        "cache",
       );
     });
 
@@ -1230,6 +1355,7 @@ describe("cacheInterceptor", () => {
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
         `/route-cache/APP_PAGE/${sha256("/page")}/$/index`,
+        "cache",
       );
     });
 
@@ -1238,6 +1364,7 @@ describe("cacheInterceptor", () => {
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
         `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+        "cache",
       );
     });
 
@@ -1248,6 +1375,7 @@ describe("cacheInterceptor", () => {
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
         `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+        "cache",
       );
     });
 
@@ -1256,6 +1384,7 @@ describe("cacheInterceptor", () => {
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
         `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+        "cache",
       );
     });
 
@@ -1319,6 +1448,7 @@ describe("cacheInterceptor", () => {
         );
         expect(incrementalCache.get).toHaveBeenCalledWith(
           `/route-cache/PAGES/${sha256("/[...slug]")}/$/fr/entry`,
+          "cache",
         );
       } finally {
         NextConfig.basePath = undefined;
@@ -1535,7 +1665,7 @@ describe("cacheInterceptor", () => {
 
       const result = await cacheInterceptor(event);
 
-      expect(incrementalCache.get).toHaveBeenCalledWith("/isr/21");
+      expect(incrementalCache.get).toHaveBeenCalledWith("/isr/21", "cache");
       expect(result.statusCode).toBe(404);
       expect(result.headers["cache-control"]).toBe(NO_STORE);
     });
