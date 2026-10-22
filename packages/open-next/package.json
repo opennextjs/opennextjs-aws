@@ -3,7 +3,7 @@
     "access": "public"
   },
   "name": "@opennextjs/aws",
-  "version": "4.1.12",
+  "version": "4.1.13",
   "bin": {
     "open-next": "./dist/index.js"
   },
