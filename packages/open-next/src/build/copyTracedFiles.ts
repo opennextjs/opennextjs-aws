@@ -127,6 +127,7 @@ export async function copyTracedFiles({
   const standaloneNextDir = path.join(standaloneDir, packagePath, ".next");
   const standaloneServerDir = path.join(standaloneNextDir, "server");
   const outputNextDir = path.join(outputDir, packagePath, ".next");
+  const outputRoot = path.resolve(outputDir);
 
   // Files to copy
   // Map from files in the `.next/standalone` to files in the `.open-next` folder
@@ -298,6 +299,15 @@ File ${serverPath} does not exist
   //Files we actually want to include
   routes.forEach((route) => {
     computeCopyFilesForPage(route);
+  });
+
+  // Validate outside the route error handlers, which can suppress errors.
+  filesToCopy.forEach((dst, src) => {
+    if (!path.resolve(dst).startsWith(`${outputRoot}${path.sep}`)) {
+      throw new Error(
+        `Traced file ${src} resolves outside the output directory: ${dst}`,
+      );
+    }
   });
 
   // Only files that are actually copied
