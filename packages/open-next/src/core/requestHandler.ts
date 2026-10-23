@@ -63,6 +63,11 @@ export async function openNextHandler(
       if (initialHeaders["x-forwarded-host"]) {
         initialHeaders.host = initialHeaders["x-forwarded-host"];
       }
+      const requestStore = globalThis.__openNextAls.getStore();
+      if (requestStore) {
+        // Used by `res.revalidate()`, see `core/revalidate.ts`
+        requestStore.host = initialHeaders.host;
+      }
       debug("internalEvent", internalEvent);
 
       // These 3 will get overwritten by the routing handler if not using an external middleware
