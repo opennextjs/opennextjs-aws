@@ -1257,6 +1257,42 @@ describe("CacheHandler", () => {
         expect(cacheControls.has(scopedKey)).toBe(false);
       });
 
+      it("Should not seed from Next.js 16.4", async () => {
+        globalThis.nextVersion = "16.4.0";
+        mockEntry({ revalidate: 120, expire: 3600 });
+
+        await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(cacheControls.size).toBe(0);
+      });
+
+      it("Should return the cache control stored with the entry", async () => {
+        globalThis.nextVersion = "16.4.0";
+        mockEntry({ revalidate: 120, expire: 3600 });
+
+        const result = await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(result?.cacheControl).toEqual({ revalidate: 120, expire: 3600 });
+      });
+
+      it("Should return only revalidate for an entry stored without expire", async () => {
+        globalThis.nextVersion = "16.4.0";
+        mockEntry({ revalidate: 120 });
+
+        const result = await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(result?.cacheControl).toEqual({ revalidate: 120 });
+      });
+
+      it("Should not return a cache control when the entry has no revalidate", async () => {
+        globalThis.nextVersion = "16.4.0";
+        mockEntry({});
+
+        const result = await cache.get(scopedKey, { kindHint: "app" });
+
+        expect(result?.cacheControl).toBeUndefined();
+      });
+
       it("Should not seed before Next.js uses route cache keys", async () => {
         globalThis.nextVersion = "16.3.7";
         mockEntry({ revalidate: 120, expire: 3600 });

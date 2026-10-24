@@ -80,6 +80,10 @@ export interface CacheHandlerValue {
   age?: number;
   cacheState?: string;
   value: IncrementalCacheValue | null;
+  /**
+   * Read by Next.js 16.4+ in place of the cache control it remembers from its own renders.
+   */
+  cacheControl?: { revalidate: number | false; expire?: number };
 }
 
 export type Extension = "cache" | "fetch" | "composable";

@@ -33,7 +33,8 @@ type NextCacheControl = { revalidate: number | false; expire?: number };
  * https://github.com/vercel/next.js/blob/v16.3.8/packages/next/src/server/lib/incremental-cache/shared-cache-controls.external.ts
  *
  * Only for Next.js versions using route cache keys, where the key of the entry is also the
- * key of the map.
+ * key of the map. From Next.js 16.4, `get()` returns the cache control instead, see
+ * `getCacheControl`.
  * https://github.com/opennextjs/opennextjs-aws/issues/1250
  *
  * @param key The key of the cache entry
@@ -45,7 +46,11 @@ function seedCacheControl(
   revalidate?: number | false,
   expire?: number,
 ) {
-  if (revalidate === undefined || !useRouteCacheKeys(globalThis.nextVersion)) {
+  if (
+    revalidate === undefined ||
+    !useRouteCacheKeys(globalThis.nextVersion) ||
+    compareSemver(globalThis.nextVersion, ">=", "16.4.0")
+  ) {
     return;
   }
   try {
@@ -58,6 +63,26 @@ function seedCacheControl(
   } catch (e) {
     debug("Failed to seed the cache control", key, e);
   }
+}
+
+/**
+ * Returns the cache control stored with an entry, for `get()` to pass to Next.js.
+ *
+ * Next.js 16.4+ prefers it over the cache control it remembers from its own renders, so an
+ * entry keeps its lifetime after a cold start. Older versions ignore it.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/lib/incremental-cache/index.ts
+ *
+ * @param revalidate The revalidate value stored with the entry
+ * @param expire The expire value stored with the entry
+ */
+function getCacheControl(
+  revalidate?: number | false,
+  expire?: number,
+): NextCacheControl | undefined {
+  if (revalidate === undefined) {
+    return undefined;
+  }
+  return expire === undefined ? { revalidate } : { revalidate, expire };
 }
 
 function isFetchCache(
@@ -172,6 +197,10 @@ export default class Cache {
 
       const cacheData = cachedEntry.value;
       seedCacheControl(key, cacheData.revalidate, cacheData.expire);
+      const cacheControl = getCacheControl(
+        cacheData.revalidate,
+        cacheData.expire,
+      );
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
@@ -198,6 +227,7 @@ export default class Cache {
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "APP_ROUTE"
@@ -238,6 +268,7 @@ export default class Cache {
           }
           return {
             lastModified: _lastModified,
+            cacheControl,
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
@@ -266,6 +297,7 @@ export default class Cache {
         }
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "PAGES"
@@ -280,6 +312,7 @@ export default class Cache {
       if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: "REDIRECT",
             props: cacheData.props,
