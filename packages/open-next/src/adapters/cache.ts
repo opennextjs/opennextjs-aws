@@ -12,11 +12,78 @@ import {
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
 import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
-import { getPathFromRouteCacheKey } from "../utils/routeCacheKey";
+import {
+  getPathFromRouteCacheKey,
+  useRouteCacheKeys,
+} from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
 export const SOFT_TAG_PREFIX = "_N_T_/";
+
+type NextCacheControl = { revalidate: number | false; expire?: number };
+
+/**
+ * Gives Next.js the cache control of an entry read from the incremental cache.
+ *
+ * Next.js decides whether an entry is stale from an in-memory map filled by the renders of
+ * the current process, then from the prerender manifest. After a cold start, a page of a
+ * dynamic route that was not prerendered is in neither, and Next.js falls back to a
+ * revalidation of 1 second. Next.js overwrites the seeded value when it renders the page.
+ * https://github.com/vercel/next.js/blob/v16.3.8/packages/next/src/server/lib/incremental-cache/shared-cache-controls.external.ts
+ *
+ * Only for Next.js versions using route cache keys, where the key of the entry is also the
+ * key of the map. From Next.js 16.4, `get()` returns the cache control instead, see
+ * `getCacheControl`.
+ * https://github.com/opennextjs/opennextjs-aws/issues/1250
+ *
+ * @param key The key of the cache entry
+ * @param revalidate The revalidate value stored with the entry
+ * @param expire The expire value stored with the entry
+ */
+function seedCacheControl(
+  key: string,
+  revalidate?: number | false,
+  expire?: number,
+) {
+  if (
+    revalidate === undefined ||
+    !useRouteCacheKeys(globalThis.nextVersion) ||
+    compareSemver(globalThis.nextVersion, ">=", "16.4.0")
+  ) {
+    return;
+  }
+  try {
+    const cacheControls: Map<string, NextCacheControl> =
+      require("next/dist/server/lib/incremental-cache/shared-cache-controls.external.js")
+        .SharedCacheControls.cacheControls;
+    if (!cacheControls.has(key)) {
+      cacheControls.set(key, { revalidate, expire });
+    }
+  } catch (e) {
+    debug("Failed to seed the cache control", key, e);
+  }
+}
+
+/**
+ * Returns the cache control stored with an entry, for `get()` to pass to Next.js.
+ *
+ * Next.js 16.4+ prefers it over the cache control it remembers from its own renders, so an
+ * entry keeps its lifetime after a cold start. Older versions ignore it.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/lib/incremental-cache/index.ts
+ *
+ * @param revalidate The revalidate value stored with the entry
+ * @param expire The expire value stored with the entry
+ */
+function getCacheControl(
+  revalidate?: number | false,
+  expire?: number,
+): NextCacheControl | undefined {
+  if (revalidate === undefined) {
+    return undefined;
+  }
+  return expire === undefined ? { revalidate } : { revalidate, expire };
+}
 
 function isFetchCache(
   options?:
@@ -129,6 +196,11 @@ export default class Cache {
       }
 
       const cacheData = cachedEntry.value;
+      seedCacheControl(key, cacheData.revalidate, cacheData.expire);
+      const cacheControl = getCacheControl(
+        cacheData.revalidate,
+        cacheData.expire,
+      );
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
@@ -155,6 +227,7 @@ export default class Cache {
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "APP_ROUTE"
@@ -195,6 +268,7 @@ export default class Cache {
           }
           return {
             lastModified: _lastModified,
+            cacheControl,
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
@@ -223,6 +297,7 @@ export default class Cache {
         }
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "PAGES"
@@ -237,6 +312,7 @@ export default class Cache {
       if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
+          cacheControl,
           value: {
             kind: "REDIRECT",
             props: cacheData.props,
@@ -284,6 +360,7 @@ export default class Cache {
         await globalThis.incrementalCache.delete(key);
       } else {
         const revalidate = this.extractRevalidateForSet(ctx);
+        const expire = this.extractExpireForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
@@ -302,6 +379,7 @@ export default class Cache {
                   headers,
                 },
                 revalidate,
+                expire,
               },
               "cache",
             );
@@ -323,6 +401,7 @@ export default class Cache {
                     headers,
                   },
                   revalidate,
+                  expire,
                 },
                 "cache",
               );
@@ -334,6 +413,7 @@ export default class Cache {
                   html,
                   json: pageData,
                   revalidate,
+                  expire,
                 },
                 "cache",
               );
@@ -364,6 +444,7 @@ export default class Cache {
                   postponed,
                 },
                 revalidate,
+                expire,
                 segmentData: segmentData ? segmentToWrite : undefined,
               },
               "cache",
@@ -380,6 +461,7 @@ export default class Cache {
                 type: "redirect",
                 props: data.props,
                 revalidate,
+                expire,
               },
               "cache",
             );
@@ -617,6 +699,15 @@ export default class Cache {
     }
     if ("cacheControl" in ctx) {
       return ctx.cacheControl?.revalidate;
+    }
+    return undefined;
+  }
+
+  private extractExpireForSet(
+    ctx?: IncrementalCacheContext,
+  ): number | undefined {
+    if (typeof ctx === "object" && "cacheControl" in ctx) {
+      return ctx.cacheControl?.expire;
     }
     return undefined;
   }
