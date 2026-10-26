@@ -1,6 +1,7 @@
 name: E2E Tests
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 0 * * *"
   push:
@@ -10,24 +11,96 @@ on:
       - 'packages/tests-e2e/**'
     branches:
       - main
+  # Adding the `run-e2e` label to a pull request triggers a manual run
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  # Only actual e2e runs share the stage, other labels get their own group so they do not wait in the queue
+  group: ${{ (github.event_name != 'pull_request' || github.event.label.name == 'run-e2e') && 'e2e-shared-stage' || format('e2e-skip-{0}', github.run_id) }}
+  queue: max
 
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-  PLAYWRIGHT_BROWSERS_PATH: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  # Commit tested by the run and used to report the status on pull requests
+  E2E_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 permissions:
   id-token: write # This is required for requesting the JWT
   contents: read # This is required for actions/checkout
+  pull-requests: write # This is required for finding a pull request for the branch and removing the `run-e2e` label
+  statuses: write # This is required for reporting manual runs on pull requests
 
 jobs:
+  # For manual runs (workflow_dispatch or `run-e2e` label), find the pull request and mark the E2E status as pending
+  # The final status is reported by the `report` job
+  pending_status:
+    runs-on: ubuntu-latest
+    # Pull requests from forks do not have access to the secrets required to deploy
+    if: >-
+      github.repository == 'opennextjs/opennextjs-aws' && (
+        github.event_name == 'workflow_dispatch' || (
+          github.event_name == 'pull_request' &&
+          github.event.label.name == 'run-e2e' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        )
+      )
+
+    steps:
+      - name: Find pull request for branch
+        id: find-pull-request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            pull_request=$PR_NUMBER
+          else
+            pull_request=$(gh api --method GET "repos/$GITHUB_REPOSITORY/pulls" \
+              -f state=open \
+              -f "head=$GITHUB_REPOSITORY_OWNER:$GITHUB_REF_NAME" \
+              --jq '.[0].number // empty')
+          fi
+          echo "number=$pull_request" >> "$GITHUB_OUTPUT"
+
+      # Remove the label so that it can be added again to trigger a new run
+      - name: Remove run-e2e label
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels/run-e2e" || true
+
+      - name: Report pending status on Pull Request
+        if: steps.find-pull-request.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$E2E_SHA" \
+            -f state=pending \
+            -f context='E2E Tests (manual)' \
+            -f description='The manually triggered E2E tests are running' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+    outputs:
+      pullRequest: ${{ steps.find-pull-request.outputs.number }}
+
   # Checks the latest Nextjs Version, if it's not been tested before, it will
   # Continue to the next job where it does the actual Playwright tests
   check_next_version:
     runs-on: ubuntu-latest
     # Only run this on the official sst repo
-    if: github.repository == 'opennextjs/opennextjs-aws'
+    # For pull requests, only run when the `run-e2e` label is added on a branch of this repo
+    if: >-
+      github.repository == 'opennextjs/opennextjs-aws' && (
+        github.event_name != 'pull_request' || (
+          github.event.label.name == 'run-e2e' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        )
+      )
 
     steps:
       - name: Get Latest Next Version
@@ -68,16 +141,18 @@ jobs:
       previousNextVersion: ${{ steps.get_latest_version.outputs.LATEST_VERSION }}
       cacheKey: ${{ steps.cache-previous.outputs.cache-primary-key }}
 
-  # If the event is push (merged and pushed into main) or if
+  # If the event is push (merged and pushed into main), a manual run, or if
   # the latest Nextjs version hasn't been tested, run the Playwright tests
   e2e:
     needs: check_next_version
-    if: github.event_name == 'push' || needs.check_next_version.outputs.skip != 'true'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || needs.check_next_version.outputs.skip != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          # Test the pull request head (not the merge commit) as this is where the status is reported
+          ref: ${{ env.E2E_SHA }}
           fetch-depth: 0
 
       - name: Configure AWS credentials
@@ -132,7 +207,7 @@ jobs:
 
       # Ensure the code patches still match the code of the Next version installed above
       - name: Check code patches against the installed Nextjs
-        run: pnpm --filter tests-unit exec vitest run patchBackgroundRevalidation.next
+        run: pnpm --filter tests-unit exec vitest run patchBackgroundRevalidation.next patchFetchCacheWaitUntil.next
 
       # Deploy e2e stage
       - name: Deploy NextjsSite
@@ -174,45 +249,72 @@ jobs:
           path: previous_version.txt
           key: ${{ needs.check_next_version.outputs.cacheKey }}
 
-      #############################
-      # Report status to Discord
-      #############################
-      - name: Report success
-        if: success()
+  report:
+    name: Report Status
+    needs: [pending_status, check_next_version, e2e]
+    # Always run for manual runs (`pending_status` not skipped) so that the pending status on the pull request is resolved
+    if: always() && (needs.pending_status.result != 'skipped' || (github.ref == 'refs/heads/main' && (needs.e2e.result == 'success' || needs.e2e.result == 'failure' || needs.e2e.result == 'cancelled')))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report status on Discord
+        if: github.ref == 'refs/heads/main' && (needs.e2e.result == 'success' || needs.e2e.result == 'failure')
+        env:
+          E2E_RESULT: ${{ needs.e2e.result }}
+          NEXT_VERSION: ${{ needs.check_next_version.outputs.previousNextVersion }}
         run: |
-          curl -X POST "$DISCORD_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d '{
-            "username": "OpenNext E2E Test",
-            "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
-            "embeds": [
-              {
-                "description": "Test succeeded [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
-                "color": 3061373,
-                "footer": {
-                  "text": "🍌 Ook-ook! Eeek-aak-eek! 🍌",
-                  "icon_url": "https://i.imgur.com/u2ENxCk.png"
-                }
-              }
-            ]
-          }'
+          if [ "$E2E_RESULT" = "success" ]; then
+            result=succeeded
+            color=3061373
+            footer='🍌 Ook-ook! Eeek-aak-eek! 🍌'
+            icon_url='https://i.imgur.com/u2ENxCk.png'
+          else
+            result=failed
+            color=14687834
+            footer='🥓 Oink oink... 🥓'
+            icon_url='https://i.imgur.com/QeXzqIy.png'
+          fi
 
-      - name: Report failure
-        if: failure()
-        run: |
           curl -X POST "$DISCORD_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d '{
+            -H "Content-Type: application/json" \
+            --data-binary @- <<EOF
+          {
             "username": "OpenNext E2E Test",
             "avatar_url": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
             "embeds": [
               {
-                "description": "Test failed [${{ needs.check_next_version.outputs.previousNextVersion }}](https://github.com/vercel/next.js/releases/tag/${{ needs.check_next_version.outputs.previousNextVersion }}) — [view results](https://github.com/${{ github.repository }}/actions/runs/${{github.run_id}})",
-                "color": 14687834,
+                "description": "Test $result [$NEXT_VERSION](https://github.com/vercel/next.js/releases/tag/$NEXT_VERSION) — [view results](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)",
+                "color": $color,
                 "footer": {
-                  "text": "🥓 Oink oink... 🥓",
-                  "icon_url": "https://i.imgur.com/QeXzqIy.png"
+                  "text": "$footer",
+                  "icon_url": "$icon_url"
                 }
               }
             ]
-          }'
+          }
+          EOF
+
+      - name: Report status on Pull Request
+        if: needs.pending_status.outputs.pullRequest != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          if [ "$E2E_RESULT" = "success" ]; then
+            state=success
+            description='The manually triggered E2E tests passed'
+          elif [ "$E2E_RESULT" = "failure" ]; then
+            state=failure
+            description='The manually triggered E2E tests failed'
+          elif [ "$E2E_RESULT" = "cancelled" ]; then
+            state=error
+            description='The manually triggered E2E tests were cancelled'
+          else
+            state=error
+            description='The manually triggered E2E tests did not run'
+          fi
+
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$E2E_SHA" \
+            -f state="$state" \
+            -f context='E2E Tests (manual)' \
+            -f description="$description" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

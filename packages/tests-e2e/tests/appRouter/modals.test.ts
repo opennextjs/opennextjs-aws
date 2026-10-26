@@ -22,3 +22,21 @@ test("Route modal and interception", async ({ page }) => {
   const notModal = page.getByText("Not Modal", { exact: true });
   await expect(notModal).toBeVisible();
 });
+
+// A user beforeFiles rewrite must run before Next.js's generated interception
+// rewrite. https://github.com/opennextjs/opennextjs-aws/issues/1215
+test("Route interception after a beforeFiles rewrite", async ({ page }) => {
+  await page.goto("/@acme/demo");
+  await page.getByRole("link", { name: "Delete space" }).click();
+  await page.waitForURL("/@acme/demo/delete");
+
+  await expect(
+    page.getByRole("dialog", { name: "Intercepted delete" }),
+  ).toBeVisible();
+
+  await page.reload();
+  await page.waitForURL("/@acme/demo/delete");
+  await expect(
+    page.getByRole("heading", { name: "Standalone delete" }),
+  ).toBeVisible();
+});

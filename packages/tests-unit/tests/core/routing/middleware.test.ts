@@ -254,6 +254,41 @@ describe("handleMiddleware", () => {
     });
   });
 
+  it("should remove the request headers deleted by the middleware", async () => {
+    const event = createEvent({
+      headers: {
+        host: "localhost",
+        "x-kept": "kept",
+        "x-updated": "old",
+        "x-deleted": "deleted",
+      },
+    });
+    middleware.mockResolvedValue({
+      headers: new Headers({
+        "x-middleware-override-headers": "host,x-kept,x-updated,x-added",
+        "x-middleware-request-host": "localhost",
+        "x-middleware-request-x-kept": "kept",
+        "x-middleware-request-x-updated": "new",
+        "x-middleware-request-x-added": "added",
+        "x-middleware-next": "1",
+      }),
+    });
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(middlewareLoader).toHaveBeenCalled();
+    expect(result).toEqual({
+      ...event,
+      headers: {
+        host: "localhost",
+        "x-kept": "kept",
+        "x-updated": "new",
+        "x-added": "added",
+      },
+      responseHeaders: {},
+      isExternalRewrite: false,
+    });
+  });
+
   it("should return a response from middleware", async () => {
     const event = createEvent({});
     const body = toReadableStream("Hello, world!");
@@ -371,9 +406,9 @@ describe("handleMiddleware", () => {
       forEach(fn: (value: string, key: string) => void) {
         fn(
           "appSession.0=AAA; HttpOnly; Path=/, appSession.1=BBB; HttpOnly; Path=/, appSession.2=CCC; HttpOnly; Path=/",
-          "set-cookie",
+          "Set-Cookie",
         );
-        fn("https://example.com/", "location");
+        fn("https://example.com/", "Location");
       },
       get(name: string) {
         if (name.toLowerCase() === "location") return "https://example.com/";

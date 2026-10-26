@@ -18,7 +18,13 @@ export default {
   functions: {
     api: {
       override: devOverride,
-      routes: ["app/api/client/route", "app/api/host/route", "pages/api/hello"],
+      routes: [
+        "app/api/client/route",
+        "app/api/host/route",
+        "app/api/request-headers-app/route",
+        "pages/api/hello",
+        "pages/api/request-headers-pages",
+      ],
       patterns: ["/api/*"],
     },
   },
