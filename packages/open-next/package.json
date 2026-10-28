@@ -60,12 +60,19 @@
     "@types/express": "5.0.6",
     "@types/node": "catalog:",
     "concurrently": "^9.2.4",
+    "diff": "catalog:",
     "next": "catalog:",
     "tsc-alias": "^1.9.7",
     "typescript": "catalog:"
   },
   "peerDependencies": {
+    "diff": "catalog:",
     "next": ">=15.5.28 <16 || >=16.4.1"
+  },
+  "peerDependenciesMeta": {
+    "diff": {
+      "optional": true
+    }
   },
   "bugs": {
     "url": "https://github.com/opennextjs/opennextjs-aws/issues"
