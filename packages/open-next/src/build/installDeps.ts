@@ -23,11 +23,9 @@ export function installDependencies(
     logger.info(`Installing dependencies for ${name}...`);
     // We then need to run install in the tempDir
     // We don't install in the output dir directly because it could contain a package.json, and npm would then try to reinstall not complete deps from tracing the files
+    // npm filters platform-specific optional dependencies (e.g. sharp's @img/* packages) by --cpu; --arch was never the right flag and npm >= 11 rejects both --arch and --target
     const archOption = installOptions.arch
-      ? `--arch=${installOptions.arch}`
-      : "";
-    const targetOption = installOptions.nodeVersion
-      ? `--target=${installOptions.nodeVersion}`
+      ? `--cpu=${installOptions.arch}`
       : "";
     const libcOption = installOptions.libc
       ? `--libc=${installOptions.libc}`
@@ -35,7 +33,7 @@ export function installDependencies(
     const osOption = `--os=${installOptions.os ?? "linux"}`;
 
     const additionalArgs = installOptions.additionalArgs ?? "";
-    const installCommand = `npm install ${osOption} ${archOption} ${targetOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
+    const installCommand = `npm install ${osOption} ${archOption} ${libcOption} ${additionalArgs} ${installOptions.packages.join(" ")}`;
     execSync(installCommand, {
       stdio: "pipe",
       cwd: tempInstallDir,
