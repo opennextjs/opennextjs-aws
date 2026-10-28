@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { installDependencies } from "@opennextjs/aws/build/installDeps.js";
+import logger from "@opennextjs/aws/logger.js";
 import { vi } from "vitest";
 
 vi.mock("node:child_process", async (importOriginal) => {
@@ -38,7 +39,7 @@ describe("installDependencies", () => {
     return vi.mocked(execSync).mock.calls[0][0] as string;
   }
 
-  it("should use --cpu instead of --arch and omit --target (npm >= 11 rejects both)", () => {
+  it("should use --cpu instead of --arch and omit --target - npm 12 rejects (npm 11 warns) both", () => {
     installDependencies(outputDir, {
       packages: ["sharp@0.35.5"],
       arch: "arm64",
@@ -54,6 +55,19 @@ describe("installDependencies", () => {
     expect(command).toContain("sharp@0.35.5");
     expect(command).not.toContain("--arch");
     expect(command).not.toContain("--target");
+  });
+
+  it("should warn that nodeVersion is deprecated", () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    installDependencies(outputDir, {
+      packages: ["sharp@0.35.5"],
+      nodeVersion: "18",
+    });
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("install.nodeVersion is deprecated"),
+    );
+    warn.mockRestore();
   });
 
   it("should omit --cpu when arch is not set", () => {
