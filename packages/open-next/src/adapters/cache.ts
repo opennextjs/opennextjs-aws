@@ -24,7 +24,7 @@ export const SOFT_TAG_PREFIX = "_N_T_/";
 type NextCacheControl = { revalidate: number | false; expire?: number };
 
 /**
- * Gives Next.js the cache control of an entry read from the incremental cache.
+ * Gives Next.js < 16.4 the cache control of an entry read from the incremental cache.
  *
  * Next.js decides whether an entry is stale from an in-memory map filled by the renders of
  * the current process, then from the prerender manifest. After a cold start, a page of a
@@ -32,57 +32,37 @@ type NextCacheControl = { revalidate: number | false; expire?: number };
  * revalidation of 1 second. Next.js overwrites the seeded value when it renders the page.
  * https://github.com/vercel/next.js/blob/v16.3.8/packages/next/src/server/lib/incremental-cache/shared-cache-controls.external.ts
  *
- * Only for Next.js versions using route cache keys, where the key of the entry is also the
- * key of the map. From Next.js 16.4, `get()` returns the cache control instead, see
- * `getCacheControl`.
+ * Next.js 16.4+ reads the `cacheControl` returned by `get()` instead. Before 15.4 the map
+ * is bundled in the Next.js runtime and can not be reached.
  * https://github.com/opennextjs/opennextjs-aws/issues/1250
  *
  * @param key The key of the cache entry
- * @param revalidate The revalidate value stored with the entry
- * @param expire The expire value stored with the entry
+ * @param cacheControl The cache control stored with the entry
  */
-function seedCacheControl(
-  key: string,
-  revalidate?: number | false,
-  expire?: number,
-) {
+function seedCacheControl(key: string, cacheControl: NextCacheControl) {
+  const version = globalThis.nextVersion;
   if (
-    revalidate === undefined ||
-    !useRouteCacheKeys(globalThis.nextVersion) ||
-    compareSemver(globalThis.nextVersion, ">=", "16.4.0")
+    compareSemver(version, "<", "15.4.0") ||
+    compareSemver(version, ">=", "16.4.0")
   ) {
     return;
   }
+  // Mirrors `toRoute` used by Next.js before route cache keys.
+  const route = useRouteCacheKeys(version)
+    ? key
+    : key.replace(/(?:\/index)?\/?$/, "") || "/";
   try {
-    const cacheControls: Map<string, NextCacheControl> =
+    const { cacheControls } =
       require("next/dist/server/lib/incremental-cache/shared-cache-controls.external.js")
-        .SharedCacheControls.cacheControls;
-    if (!cacheControls.has(key)) {
-      cacheControls.set(key, { revalidate, expire });
+        .SharedCacheControls as {
+        cacheControls: Map<string, NextCacheControl>;
+      };
+    if (!cacheControls.has(route)) {
+      cacheControls.set(route, cacheControl);
     }
   } catch (e) {
     debug("Failed to seed the cache control", key, e);
   }
-}
-
-/**
- * Returns the cache control stored with an entry, for `get()` to pass to Next.js.
- *
- * Next.js 16.4+ prefers it over the cache control it remembers from its own renders, so an
- * entry keeps its lifetime after a cold start. Older versions ignore it.
- * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/lib/incremental-cache/index.ts
- *
- * @param revalidate The revalidate value stored with the entry
- * @param expire The expire value stored with the entry
- */
-function getCacheControl(
-  revalidate?: number | false,
-  expire?: number,
-): NextCacheControl | undefined {
-  if (revalidate === undefined) {
-    return undefined;
-  }
-  return expire === undefined ? { revalidate } : { revalidate, expire };
 }
 
 function isFetchCache(
@@ -196,11 +176,13 @@ export default class Cache {
       }
 
       const cacheData = cachedEntry.value;
-      seedCacheControl(key, cacheData.revalidate, cacheData.expire);
-      const cacheControl = getCacheControl(
-        cacheData.revalidate,
-        cacheData.expire,
-      );
+      const cacheControl =
+        cacheData.revalidate === undefined
+          ? undefined
+          : { revalidate: cacheData.revalidate, expire: cacheData.expire };
+      if (cacheControl) {
+        seedCacheControl(key, cacheControl);
+      }
 
       const meta = cacheData.meta;
       const tags = getTagsFromValue(cacheData);
