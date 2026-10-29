@@ -768,24 +768,32 @@ describe("CacheHandler", () => {
           expect(result?.cacheControl).toEqual({ revalidate: 120 });
         });
 
-        it("Should report the lifetime of a stale entry", async () => {
-          tagCache.isStale.mockResolvedValueOnce(true);
+        it.each([
+          {
+            stored: { revalidate: 120, expire: 3600 },
+            cacheControl: { revalidate: 120, expire: 3600 },
+            lastModified: Date.now() - 120_001,
+          },
+          // Next.js would serve the entry as a hit with `revalidate: false`.
+          {
+            stored: { revalidate: false },
+            cacheControl: { revalidate: 1 },
+            lastModified: 1,
+          },
+          // Next.js would use the `expire` of the prerender manifest and revalidate it
+          // in the foreground.
+          { stored: {}, cacheControl: { revalidate: 1 }, lastModified: 1 },
+        ])(
+          "Should report a stale entry stored with $stored as stale",
+          async ({ stored, cacheControl, lastModified }) => {
+            tagCache.isStale.mockResolvedValueOnce(true);
 
-          const result = await getEntry({ revalidate: 120 });
+            const result = await getEntry(stored);
 
-          expect(result?.cacheControl).toEqual({ revalidate: 120 });
-          expect(result?.lastModified).toEqual(Date.now() - 120_001);
-        });
-
-        it("Should report no lifetime for a stale entry cached indefinitely", async () => {
-          tagCache.isStale.mockResolvedValueOnce(true);
-
-          const result = await getEntry({ revalidate: false });
-
-          // With `revalidate: false`, Next.js would ignore the stale `lastModified`.
-          expect(result?.cacheControl).toBeUndefined();
-          expect(result?.lastModified).toEqual(1);
-        });
+            expect(result?.cacheControl).toStrictEqual(cacheControl);
+            expect(result?.lastModified).toEqual(lastModified);
+          },
+        );
 
         it("Should not report a lifetime for a fetch entry", async () => {
           incrementalCache.get.mockResolvedValueOnce({

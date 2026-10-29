@@ -53,6 +53,12 @@ function isFetchCache(
  * dynamic route is in neither, and Next.js then falls back to `revalidate: 1`. The
  * lifetime stored with the entry fills that gap.
  *
+ * A stale entry is signalled by offsetting `lastModified` by `revalidate` (see
+ * `getStaleLastModified`), which needs a numeric `revalidate`. Without one, Next.js would use
+ * its own lifetime: `revalidate: false` serves the entry as a hit, and the `expire` of the
+ * prerender manifest turns it into a blocking revalidation. `{ revalidate: 1 }` is reported
+ * instead, Next.js records the actual lifetime again when the entry is re-rendered.
+ *
  * @param value The cache entry
  * @param isEntryStale Whether the tag cache reported the entry as stale
  * @returns The lifetime to report, or `undefined` to leave it to Next.js
@@ -61,13 +67,11 @@ function getCacheControl(
   { revalidate, expire }: CacheValue<"cache">,
   isEntryStale: boolean,
 ): CacheControl | undefined {
+  if (isEntryStale && typeof revalidate !== "number") {
+    return { revalidate: 1 };
+  }
   // A build time entry has no stored lifetime, the prerender manifest has it.
   if (revalidate === undefined) {
-    return undefined;
-  }
-  // A stale entry is signalled by offsetting `lastModified` by `revalidate` (see
-  // `getStaleLastModified`). With `revalidate: false`, Next.js would serve it as a hit.
-  if (isEntryStale && revalidate === false) {
     return undefined;
   }
   return { revalidate, expire };
