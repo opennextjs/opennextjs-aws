@@ -46,13 +46,14 @@ function isFetchCache(
 }
 
 /**
- * The lifetime to report for a cache entry.
+ * Returns the lifetime to report to Next.js for a cache entry.
  *
  * Next.js takes it from a per-route record that only the instance which rendered the page
  * has filled, with the prerender manifest as a fallback. A page rendered on demand by a
  * dynamic route is in neither, and Next.js then falls back to `revalidate: 1`. The
- * lifetime stored with the entry is what fills that gap.
+ * lifetime stored with the entry fills that gap.
  *
+ * @param value The cache entry
  * @param isEntryStale Whether the tag cache reported the entry as stale
  * @returns The lifetime to report, or `undefined` to leave it to Next.js
  */
@@ -60,34 +61,35 @@ function getCacheControl(
   { revalidate, expire }: CacheValue<"cache">,
   isEntryStale: boolean,
 ): CacheControl | undefined {
-  // A build time entry has no stored lifetime and needs none, the prerender manifest has it.
+  // A build time entry has no stored lifetime, the prerender manifest has it.
   if (revalidate === undefined) {
     return undefined;
   }
-  // Staleness is signalled through `lastModified` alone (see `getStaleLastModified`),
-  // which needs a numeric revalidate to offset. Reporting `revalidate: false` would make
-  // Next.js serve the entry as a fresh hit and skip the background revalidation.
+  // A stale entry is signalled by offsetting `lastModified` by `revalidate` (see
+  // `getStaleLastModified`). With `revalidate: false`, Next.js would serve it as a hit.
   if (isEntryStale && revalidate === false) {
     return undefined;
   }
   return { revalidate, expire };
 }
 
-/**
- * Next.js' record of route lifetimes, loaded lazily because the module only exists from
- * Next.js 15.5 while the cache handler has to keep loading on older versions. `next` is
- * external to the compiled handler, so this is the same map the server reads.
- */
-let recordedCacheControls:
-  | Promise<Map<string, CacheControl> | undefined>
-  | undefined;
+let sharedCacheControls: Promise<Map<string, CacheControl> | undefined>;
 
-function getRecordedCacheControls() {
-  recordedCacheControls ??= import(
+/**
+ * Returns the map Next.js keeps the lifetime of routes in.
+ *
+ * The module is loaded lazily, and only once: a static import would pull `next` into the
+ * external middleware bundle. `next` is external to the compiled cache handler, so this is
+ * the map the server reads.
+ *
+ * @returns The map, or `undefined` when the module can not be loaded
+ */
+function getSharedCacheControls() {
+  sharedCacheControls ??= import(
     "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js"
   )
+    // `cacheControls` is only private to TypeScript.
     .then(
-      // `cacheControls` is private to TypeScript only, at runtime it is a static member.
       ({ SharedCacheControls }) =>
         (
           SharedCacheControls as unknown as {
@@ -99,18 +101,20 @@ function getRecordedCacheControls() {
       debug("Failed to load the Next.js cache controls", e);
       return undefined;
     });
-  return recordedCacheControls;
+  return sharedCacheControls;
 }
 
 /**
- * Records a cache entry's lifetime where Next.js reads it from, for the versions that
- * ignore a returned `cacheControl` (before 16.4).
+ * Records the lifetime of a cache entry where Next.js < 16.4 reads it.
  *
- * The key Next.js passes to the cache handler is the route cache key, which is also this
- * map's key, so it is used as is; versions predating route cache keys key it by route and
- * are skipped. As 16.4 does, the entry's lifetime overwrites the record for the route.
+ * Next.js 16.4+ reads the `cacheControl` returned by `get()` instead. The map is keyed by
+ * route cache key, which is the key passed to the cache handler. Versions without route
+ * cache keys are skipped. Like 16.4, the lifetime of the entry overwrites the recorded one.
+ *
+ * @param key The key of the cache entry
+ * @param cacheControl The lifetime to record
  */
-async function seedCacheControl(key: string, cacheControl?: CacheControl) {
+async function recordCacheControl(key: string, cacheControl?: CacheControl) {
   const nextVersion = globalThis.nextVersion;
   if (
     !cacheControl ||
@@ -119,8 +123,7 @@ async function seedCacheControl(key: string, cacheControl?: CacheControl) {
   ) {
     return;
   }
-  const cacheControls = await getRecordedCacheControls();
-  cacheControls?.set(key, cacheControl);
+  (await getSharedCacheControls())?.set(key, cacheControl);
 }
 
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
@@ -237,7 +240,7 @@ export default class Cache {
       }
 
       const _cacheControl = getCacheControl(cacheData, _isStale);
-      await seedCacheControl(key, _cacheControl);
+      await recordCacheControl(key, _cacheControl);
 
       if (cacheData?.type === "route") {
         return {
@@ -695,8 +698,13 @@ export default class Cache {
   }
 
   /**
-   * The lifetime Next.js passed for the entry, stored alongside it so that `get` can
-   * report it back. Only the newest context shape carries an `expire`.
+   * Returns the lifetime Next.js passed to `set()`.
+   *
+   * It is stored with the entry so that `get()` can report it. Only the newest context
+   * shape carries an `expire`.
+   *
+   * @param ctx The context passed to `set()`
+   * @returns The lifetime, empty when there is none
    */
   private extractCacheControlForSet(
     ctx?: IncrementalCacheContext,

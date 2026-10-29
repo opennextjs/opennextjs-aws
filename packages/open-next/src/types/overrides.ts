@@ -136,10 +136,8 @@ export type CacheValue<CacheType extends CacheEntryType> =
      */
     revalidate?: number | false;
     /**
-     * The other half of Next.js' `CacheControl`, stored for the same reason as
-     * `revalidate`: the entry's lifetime has to survive the instance that wrote it.
-     * Read back by the cache adapter only - the cache interceptor still derives its
-     * CDN headers from `revalidate` alone.
+     * This is available for page cache entry, but only at runtime.
+     * The cache interceptor does not use it.
      */
     expire?: number;
   };

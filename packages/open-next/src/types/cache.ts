@@ -90,8 +90,7 @@ export interface CacheHandlerValue {
   cacheState?: string;
   value: IncrementalCacheValue | null;
   /**
-   * The lifetime of the entry, read by Next.js from 16.4 on only.
-   * See `getCacheControl` and `seedCacheControl` in the cache adapter.
+   * The lifetime of the entry, only read by Next.js 16.4+.
    */
   cacheControl?: CacheControl;
 }
