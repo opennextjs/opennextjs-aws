@@ -73,7 +73,8 @@ function getCacheControl(
   return { revalidate, expire };
 }
 
-let sharedCacheControls: Promise<Map<string, CacheControl> | undefined>;
+// `null` until the module is loaded, `undefined` when it can not be loaded.
+let sharedCacheControls: Map<string, CacheControl> | undefined | null = null;
 
 /**
  * Returns the map Next.js keeps the lifetime of routes in.
@@ -84,23 +85,23 @@ let sharedCacheControls: Promise<Map<string, CacheControl> | undefined>;
  *
  * @returns The map, or `undefined` when the module can not be loaded
  */
-function getSharedCacheControls() {
-  sharedCacheControls ??= import(
-    "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js"
-  )
-    // `cacheControls` is only private to TypeScript.
-    .then(
-      ({ SharedCacheControls }) =>
-        (
-          SharedCacheControls as unknown as {
-            cacheControls: Map<string, CacheControl>;
-          }
-        ).cacheControls,
-    )
-    .catch((e) => {
+async function getSharedCacheControls() {
+  if (sharedCacheControls === null) {
+    try {
+      const { SharedCacheControls } = await import(
+        "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js"
+      );
+      // `cacheControls` is only private to TypeScript.
+      sharedCacheControls = (
+        SharedCacheControls as unknown as {
+          cacheControls: Map<string, CacheControl>;
+        }
+      ).cacheControls;
+    } catch (e) {
       debug("Failed to load the Next.js cache controls", e);
-      return undefined;
-    });
+      sharedCacheControls = undefined;
+    }
+  }
   return sharedCacheControls;
 }
 
