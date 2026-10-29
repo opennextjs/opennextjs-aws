@@ -23,3 +23,4 @@ catalog:
   typescript: 5.9.3
   esbuild: 0.28.2
   express: ^5.2.1
+  diff: ^9.0.0

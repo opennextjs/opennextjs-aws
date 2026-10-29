@@ -6,6 +6,7 @@ import type { AwsLambdaEvent, AwsLambdaReturn } from "types/aws-lambda";
 import type { InternalResult, StreamCreator } from "types/open-next";
 import type { WrapperHandler } from "types/overrides";
 import { error } from "../../adapters/logger";
+import { getBrotliQuality } from "../../utils/compression";
 import { formatWarmerResponse } from "./aws-lambda";
 
 const handler: WrapperHandler =
@@ -87,11 +88,7 @@ function compressBody(body: ReadableStream, encoding: string | null) {
       case "br":
         transform = zlib.createBrotliCompress({
           params: {
-            // This is a compromise between speed and compression ratio.
-            // The default one will most likely timeout an AWS Lambda with default configuration on large bodies (>6mb).
-            // Therefore we set it to 6, which is a good compromise.
-            [zlib.constants.BROTLI_PARAM_QUALITY]:
-              Number(process.env.BROTLI_QUALITY) ?? 6,
+            [zlib.constants.BROTLI_PARAM_QUALITY]: getBrotliQuality(),
           },
         });
         break;

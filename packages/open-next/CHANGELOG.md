@@ -1,5 +1,23 @@
 # open-next
 
+## 4.1.13
+
+### Patch Changes
+
+- [#1323](https://github.com/opennextjs/opennextjs-aws/pull/1323) [`d51c9c2`](https://github.com/opennextjs/opennextjs-aws/commit/d51c9c226ad14f24a3cf36f924473e06d3d8bc3e) Thanks [@jadenv](https://github.com/jadenv)! - fix: honor `BROTLI_QUALITY` in the `aws-lambda-streaming` wrapper and default it to 6
+
+  The streaming wrapper compressed every Brotli response at quality 11, which costs an order of magnitude more CPU than quality 6 for a few percent smaller output and delays the first byte of every response. The `aws-lambda-compressed` wrapper meant to default to 6 but used quality 0 when `BROTLI_QUALITY` was unset (`Number(undefined) ?? 6` is `NaN`).
+
+## 4.1.12
+
+### Patch Changes
+
+- [#1319](https://github.com/opennextjs/opennextjs-aws/pull/1319) [`b7b2123`](https://github.com/opennextjs/opennextjs-aws/commit/b7b21237498fd743d733a960d59e9dbda1cd84d6) Thanks [@muhammadrizkirijalags](https://github.com/muhammadrizkirijalags)! - fix(cli): honor --dangerously-use-unsupported-next-version when passed as standalone
+
+- [#1321](https://github.com/opennextjs/opennextjs-aws/pull/1321) [`6e0c1f9`](https://github.com/opennextjs/opennextjs-aws/commit/6e0c1f905b7c935e04c9fe98342de99e02ca6062) Thanks [@vicb](https://github.com/vicb)! - fix: keep supporting a Next.js major version until the second next major is released
+
+  Next.js 15 is no longer reported as unsupported 2 years after its release while Next.js 17 has not been released yet.
+
 ## 4.1.11
 
 ### Patch Changes
