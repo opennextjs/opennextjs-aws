@@ -21,15 +21,15 @@ export function installDependencies(
       path.join(os.tmpdir(), `open-next-install-${name}`),
     );
     logger.info(`Installing dependencies for ${name}...`);
-    // We then need to run install in the tempDir
-    // We don't install in the output dir directly because it could contain a package.json, and npm would then try to reinstall not complete deps from tracing the files
-    // npm filters platform-specific optional dependencies (e.g. sharp's @img/* packages) by --cpu; npm 12 rejects (npm 11 warns) both --arch and --target
-    const cpuOption = installOptions.arch ? `--cpu=${installOptions.arch}` : "";
     if (installOptions.nodeVersion) {
       logger.warn(
         "install.nodeVersion is deprecated and ignored (npm no longer supports --target)",
       );
     }
+    // We then need to run install in the tempDir
+    // We don't install in the output dir directly because it could contain a package.json, and npm would then try to reinstall not complete deps from tracing the files
+    // npm filters platform-specific optional dependencies (e.g. sharp's @img/* packages) by --cpu; npm 12 rejects (npm 11 warns) both --arch and --target
+    const cpuOption = installOptions.arch ? `--cpu=${installOptions.arch}` : "";
     const libcOption = installOptions.libc
       ? `--libc=${installOptions.libc}`
       : "";
