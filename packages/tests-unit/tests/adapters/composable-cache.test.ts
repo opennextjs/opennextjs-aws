@@ -1,4 +1,5 @@
 import ComposableCache from "@opennextjs/aws/adapters/composable-cache";
+import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import {
   fromReadableStream,
   toReadableStream,
@@ -50,19 +51,24 @@ describe("Composable cache handler", () => {
   globalThis.cdnInvalidationHandler = invalidateCdnHandler;
   const writtenTags = new Set();
 
+  const createStore = () => ({
+    pendingPromiseRunner: {
+      withResolvers: vi.fn().mockReturnValue({
+        resolve: vi.fn(),
+      }),
+    },
+    writtenTags,
+    requestCache: new RequestCache(),
+  });
+  let store = createStore();
+
   globalThis.__openNextAls = {
-    getStore: () => ({
-      pendingPromiseRunner: {
-        withResolvers: vi.fn().mockReturnValue({
-          resolve: vi.fn(),
-        }),
-      },
-      writtenTags,
-    }),
+    getStore: () => store,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    store = createStore();
 
     globalThis.openNextConfig = {
       dangerous: {
@@ -267,6 +273,43 @@ describe("Composable cache handler", () => {
 
       // Wait for set to complete
       await setPromise;
+    });
+
+    it("should not return a pending write from another request", async () => {
+      // A write whose request context is torn down never settles.
+      const neverSettles = new Promise<never>(() => {});
+
+      // Request A starts the write...
+      void ComposableCache.set("pending-key", neverSettles);
+
+      // ...and request B asks for the same key. It must reach the store
+      // rather than attach to A's promise (which would hang this test).
+      store = createStore();
+      const result = await ComposableCache.get("pending-key");
+
+      expect(result).toBeDefined();
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        "pending-key",
+        "composable",
+      );
+    });
+
+    it("should fall through to the store when there is no request context", async () => {
+      const neverSettles = new Promise<never>(() => {});
+      void ComposableCache.set("pending-key", neverSettles);
+
+      const getStore = globalThis.__openNextAls.getStore;
+      globalThis.__openNextAls.getStore = () => undefined;
+      try {
+        const result = await ComposableCache.get("pending-key");
+        expect(result).toBeDefined();
+        expect(incrementalCache.get).toHaveBeenCalledWith(
+          "pending-key",
+          "composable",
+        );
+      } finally {
+        globalThis.__openNextAls.getStore = getStore;
+      }
     });
   });
 

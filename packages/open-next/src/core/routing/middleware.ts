@@ -6,11 +6,13 @@ import {
   NextConfig,
   PrerenderManifest,
 } from "config/index.js";
+import { parseSetCookieHeader } from "http/util.js";
 import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
 } from "types/open-next.js";
+import { ISR_HEADER, PRERENDER_REVALIDATE_HEADER } from "utils/cacheHeaders.js";
 import { emptyReadableStream } from "utils/stream.js";
 
 import { getQueryFromSearchParams } from "../../overrides/converters/utils.js";
@@ -41,11 +43,15 @@ function defaultMiddlewareLoader() {
 }
 
 /**
+ * Runs matching Next.js middleware and applies its routing result.
  *
- * @param internalEvent the internal event
- * @param initialSearch the initial query string as it was received in the handler
- * @param middlewareLoader Only used for unit test
- * @returns `Promise<MiddlewareEvent | InternalResult>`
+ * Middleware request-header overrides are normalized and filtered to Next.js's allowlist.
+ *
+ * @param internalEvent The internal request event.
+ * @param initialSearch The initial query string received by the handler.
+ * @param middlewareLoader The middleware loader, overridden by unit tests.
+ * @return The middleware-adjusted event or a terminal middleware response.
+ * @throws When middleware loading, execution, or response processing fails.
  */
 export async function handleMiddleware(
   internalEvent: InternalEvent,
@@ -58,8 +64,8 @@ export async function handleMiddleware(
   // We should only do that if the request has the correct `x-prerender-revalidate` header
   // The `x-prerender-revalidate` header is set at build time and should be safe to trust
   if (
-    headers["x-isr"] &&
-    headers["x-prerender-revalidate"] ===
+    headers[ISR_HEADER] &&
+    headers[PRERENDER_REVALIDATE_HEADER] ===
       PrerenderManifest?.preview?.previewModeId
   )
     return internalEvent;
@@ -121,12 +127,16 @@ export async function handleMiddleware(
 
     We can delete `x-middleware-override-headers` and check if the key starts with
     x-middleware-request- to set the req headers
+
+    The request headers that are not listed in `x-middleware-override-headers` have been
+    deleted by the middleware and must not be forwarded.
   */
   const responseHeaders = result.headers as Headers;
   const reqHeaders: Record<string, string> = {};
   const resHeaders: Record<string, string | string[]> = {};
 
   // These are internal headers used by Next.js, we don't want to expose them to the client
+  // NOTE: keys must be in lowercase to match the normalized header keys.
   const filteredHeaders = [
     "x-middleware-override-headers",
     "x-middleware-next",
@@ -137,25 +147,49 @@ export async function handleMiddleware(
 
   const xMiddlewareKey = "x-middleware-request-";
   responseHeaders.forEach((value, key) => {
-    if (key.startsWith(xMiddlewareKey)) {
-      const k = key.substring(xMiddlewareKey.length);
+    // Always use the normalized key (lowercase) for comparison and storage.
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey.startsWith(xMiddlewareKey)) {
+      const k = normalizedKey.substring(xMiddlewareKey.length);
       reqHeaders[k] = value;
     } else {
-      if (filteredHeaders.includes(key.toLowerCase())) return;
-      if (key.toLowerCase() === "set-cookie") {
-        resHeaders[key] = resHeaders[key]
-          ? [...resHeaders[key], value]
-          : [value];
-      } else if (
-        REDIRECTS.has(statusCode) &&
-        key.toLowerCase() === "location"
-      ) {
-        resHeaders[key] = normalizeLocationHeader(value, internalEvent.url);
+      if (filteredHeaders.includes(normalizedKey)) return;
+      // Headers.forEach folds same-name headers; use getSetCookie() below instead.
+      if (normalizedKey === "set-cookie") return;
+      if (REDIRECTS.has(statusCode) && normalizedKey === "location") {
+        resHeaders[normalizedKey] = normalizeLocationHeader(
+          value,
+          internalEvent.url,
+        );
       } else {
-        resHeaders[key] = value;
+        resHeaders[normalizedKey] = value;
       }
     }
   });
+  // Next folds the cookies set through `cookies()` in the middleware into a single
+  // comma-joined `set-cookie` header, so each entry here may be compound.
+  // Next itself splits them back in `runMiddleware` (`next-server.ts`).
+  const setCookies = responseHeaders
+    .getSetCookie()
+    .flatMap((maybeCompoundCookie) =>
+      parseSetCookieHeader(maybeCompoundCookie),
+    );
+  if (setCookies.length > 0) {
+    resHeaders["set-cookie"] = setCookies;
+  }
+
+  const overrideHeaders = responseHeaders.get("x-middleware-override-headers");
+  const overriddenHeaders =
+    overrideHeaders === null
+      ? undefined
+      : new Set(
+          overrideHeaders.split(",").map((key) => key.trim().toLowerCase()),
+        );
+  const newHeaders: Record<string, string> = Object.fromEntries(
+    [...Object.entries(internalEvent.headers), ...Object.entries(reqHeaders)]
+      .map(([key, value]) => [key.toLowerCase(), value] as const)
+      .filter(([key]) => !overriddenHeaders || overriddenHeaders.has(key)),
+  );
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above
@@ -201,7 +235,7 @@ export async function handleMiddleware(
     url: newUrl,
     rawPath: new URL(newUrl).pathname,
     type: internalEvent.type,
-    headers: { ...internalEvent.headers, ...reqHeaders },
+    headers: newHeaders,
     body: internalEvent.body,
     method: internalEvent.method,
     query: middlewareQuery,

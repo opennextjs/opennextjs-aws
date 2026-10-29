@@ -21,6 +21,22 @@ test.describe("Middleware Cookies", () => {
 
     expect(await page.getByTestId("foo").textContent()).toBe("bar");
   });
+  test("should split the compound cookies of a direct middleware response", async ({
+    page,
+    context,
+  }) => {
+    // Next folds the cookies set through `cookies()` into a single comma-joined
+    // `set-cookie` header, they have to be split back for the browser to accept them.
+    await page.goto("/redirect");
+    await page.waitForURL("/redirect-destination");
+
+    const cookies = await context.cookies();
+    const first = cookies.find(({ name }) => name === "test");
+    expect(first?.value).toEqual("success");
+
+    const second = cookies.find(({ name }) => name === "test2");
+    expect(second?.value).toEqual("success2");
+  });
   test("should not expose internal Next headers in response", async ({
     page,
     context,

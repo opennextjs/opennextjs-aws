@@ -1,6 +1,9 @@
 /* eslint-disable sonarjs/no-duplicate-string */
+import { createHash } from "node:crypto";
+
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
+import { localizePath } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
@@ -9,6 +12,31 @@ import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
+  RoutesManifest: {
+    basePath: "",
+    locales: [],
+    routes: {
+      static: [],
+      dynamic: [
+        { page: "/admin/[slug]", regex: "^/admin/([^/]+?)(?:/)?$" },
+        { page: "/isr/[id]", regex: "^/isr/([^/]+?)(?:/)?$" },
+        { page: "/dynamic/[id]", regex: "^/dynamic/([^/]+?)(?:/)?$" },
+        { page: "/[...slug]", regex: "^/(.+?)(?:/)?$" },
+      ],
+    },
+  },
+  AppPathRoutesManifest: {},
+  AppPathsManifest: {
+    "/page": "app/page.js",
+    "/(group)/albums/page": "app/(group)/albums/page.js",
+    "/admin/[slug]/page": "app/admin/[slug]/page.js",
+    "/isr/[id]/page": "app/isr/[id]/page.js",
+    "/dynamic/[id]/page": "app/dynamic/[id]/page.js",
+  },
+  PagesManifest: {
+    "/revalidate": "pages/revalidate.js",
+    "/[...slug]": "pages/[...slug].js",
+  },
   PrerenderManifest: {
     routes: {
       "/": {
@@ -31,14 +59,36 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         srcRoute: "/admin/[slug]",
         dataRoute: "/admin/%ZZ.rsc",
       },
+      "/admin/safe": {
+        initialRevalidateSeconds: 60,
+        srcRoute: "/admin/[slug]",
+        dataRoute: "/admin/safe.rsc",
+      },
     },
-    dynamicRoutes: {},
+    dynamicRoutes: {
+      // A `dynamicParams: true` route. Entries for ids that `generateStaticParams` did
+      // not return are absent from `routes` above, they are runtime write-backs.
+      "/isr/[id]": {
+        routeRegex: "^/isr/([^/]+?)(?:/)?$",
+        dataRoute: null,
+        fallback: null,
+        dataRouteRegex: null,
+      },
+      "/[...slug]": {
+        routeRegex: "^/(.+?)(?:/)?$",
+        dataRoute: null,
+        fallback: null,
+        dataRouteRegex: null,
+      },
+    },
   },
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: MiddlewareEvent) => event.rawPath,
+  localizePath: vi.fn((event: MiddlewareEvent) => event.rawPath),
 }));
+
+const localizePathMock = vi.mocked(localizePath);
 
 type PartialEvent = Partial<
   Omit<MiddlewareEvent, "body" | "rawPath" | "query">
@@ -128,6 +178,24 @@ describe("cacheInterceptor", () => {
     expect(result).toEqual(event);
   });
 
+  it.each(["POST", "PUT", "PATCH", "DELETE"])(
+    "should take no action for a %s request",
+    async (method) => {
+      const event = createEvent({
+        url: "/albums",
+        method,
+        headers: {
+          "content-type": "multipart/form-data; boundary=x",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    },
+  );
+
   it("should not intercept a path containing a malformed escape", async () => {
     const event = createEvent({
       url: "/%61dmin/%ZZ",
@@ -187,6 +255,23 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should quote the etag as an HTTP entity-tag", async () => {
+    const event = createEvent({
+      url: "/albums",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+
+    const expectedEtag = `"${createHash("md5").update("Hello, world!").digest("hex")}"`;
+    expect(result.headers.etag).toBe(expectedEtag);
   });
 
   it("should retrieve index app router content from the index cache key", async () => {
@@ -251,6 +336,30 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  it("should not duplicate the root slash during revalidation", async () => {
+    NextConfig.trailingSlash = true;
+    NextConfig.basePath = "/base";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "app", html: "Index page", revalidate: 60 },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    });
+
+    try {
+      await cacheInterceptor(
+        createEvent({ url: "/base/", headers: { host: "example.com" } }),
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({ url: "/base/" }),
+        }),
+      );
+    } finally {
+      NextConfig.trailingSlash = undefined;
+      NextConfig.basePath = undefined;
+    }
   });
 
   it("should take no action when tagCache lasModified is -1 for app type", async () => {
@@ -586,7 +695,7 @@ describe("cacheInterceptor", () => {
     expect(result.statusCode).toBe(403);
   });
 
-  it("should return the rewriteStatusCode if there is a cached status code", async () => {
+  it("should return the cached status code over the rewriteStatusCode", async () => {
     const event = createEvent({
       url: "/albums",
       rewriteStatusCode: 203,
@@ -597,6 +706,25 @@ describe("cacheInterceptor", () => {
         html: "Hello, world!",
         meta: {
           status: 404,
+        },
+      },
+    });
+
+    const result = await cacheInterceptor(event);
+    expect(result.statusCode).toBe(404);
+  });
+
+  it("should return the rewriteStatusCode if the cached status code is 200", async () => {
+    const event = createEvent({
+      url: "/albums",
+      rewriteStatusCode: 203,
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "app",
+        html: "Hello, world!",
+        meta: {
+          status: 200,
         },
       },
     });
@@ -669,6 +797,62 @@ describe("cacheInterceptor", () => {
       );
     });
 
+    it("should not interpret an absent segment header as the string undefined", async () => {
+      const event = createEvent({ url: "/albums", headers: { rsc: "1" } });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          rsc: "RSC content",
+          segmentData: { undefined: "Not the requested payload" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(await fromReadableStream(result.body)).toEqual("RSC content");
+      expect(result.headers["x-nextjs-prerender"]).toBeUndefined();
+      expect(result.headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+
+    it("should ignore the segment header on an HTML request", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: { "next-router-segment-prefetch": "/layout" },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(await fromReadableStream(result.body)).toEqual("HTML content");
+      expect(result.headers["content-type"]).toEqual(
+        "text/html; charset=utf-8",
+      );
+      expect(result.headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+
+    it("should serve an empty segment payload without requiring html or rsc", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: { rsc: "1", "next-router-segment-prefetch": "/layout" },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: { type: "app", segmentData: { "/layout": "" } },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toEqual(200);
+      expect(await fromReadableStream(result.body)).toEqual("");
+      expect(result.headers["x-nextjs-prerender"]).toEqual("1");
+      expect(result.headers["x-nextjs-postponed"]).toEqual("2");
+    });
+
     it("should return segment data when next-router-segment-prefetch header matches segmentData", async () => {
       const event = createEvent({
         url: "/albums",
@@ -700,32 +884,42 @@ describe("cacheInterceptor", () => {
       );
     });
 
-    it("should fall back to RSC when segment key does not exist in segmentData", async () => {
-      const event = createEvent({
-        url: "/albums",
-        headers: {
-          rsc: "1",
-          "next-router-segment-prefetch": "/not-here",
-        },
-      });
-      incrementalCache.get.mockResolvedValueOnce({
-        value: {
-          type: "app",
-          html: "HTML content",
-          rsc: "RSC content",
-          segmentData: { "/layout": "Segment content" },
-        },
-      });
+    // Never the full page: that is the response shape the router cannot accept.
+    it.each([
+      { segmentData: { "/layout": "Segment content" }, segment: "/not-here" },
+      { segmentData: {}, segment: "/layout" },
+      { segmentData: { "/layout": "Segment content" }, segment: "" },
+    ])(
+      "should fall back without revalidation for a missing segment: %j",
+      async ({ segmentData, segment }) => {
+        const event = createEvent({
+          url: "/revalidate",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": segment,
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            rsc: "RSC content",
+            segmentData,
+          },
+          lastModified: new Date("2024-01-01T00:00:00Z").getTime(),
+        });
 
-      const result = await cacheInterceptor(event);
+        const result = await cacheInterceptor(event);
 
-      const body = await fromReadableStream(result.body);
-      expect(body).toEqual("RSC content");
-      expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
-      expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
-    });
+        expect(result).toEqual(event);
+        expect(queue.send).not.toHaveBeenCalled();
+      },
+    );
 
-    it("should fall back to RSC when prefetchInlining is enabled", async () => {
+    // An entry with no segments at all is not a segment-cache route. Next serves the full
+    // payload and omits `x-nextjs-postponed`, which is how the router tells "no segment
+    // cache here" from "segment cache miss".
+    it("should return RSC content for a segment prefetch of an entry without segmentData", async () => {
       const event = createEvent({
         url: "/albums",
         headers: {
@@ -738,10 +932,8 @@ describe("cacheInterceptor", () => {
           type: "app",
           html: "HTML content",
           rsc: "RSC content",
-          segmentData: { "/layout": "Segment content" },
         },
       });
-      (NextConfig as any).experimental = { prefetchInlining: true };
 
       const result = await cacheInterceptor(event);
 
@@ -749,6 +941,412 @@ describe("cacheInterceptor", () => {
       expect(body).toEqual("RSC content");
       expect((result as any).headers["x-nextjs-prerender"]).toBeUndefined();
       expect((result as any).headers["x-nextjs-postponed"]).toBeUndefined();
+    });
+
+    // Inlining only changes which segments the build emits, and `segmentData` holds
+    // exactly those, so a cached segment is served whatever the setting. Next normalizes
+    // every truthy value to `{ maxSize, maxBundleSize }` and enables it by default since
+    // 16.2, which used to make this branch unreachable.
+    // See https://github.com/opennextjs/opennextjs-aws/issues/1212
+    it.each([
+      ["an object", { maxSize: 2048, maxBundleSize: 10240 }],
+      ["a boolean", true],
+      ["disabled", false],
+      ["absent", undefined],
+    ])(
+      "should return segment data when prefetchInlining is %s",
+      async (_, prefetchInlining) => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            rsc: "RSC content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+        (NextConfig as any).experimental = { prefetchInlining };
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+        expect(result).toEqual(
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              "x-nextjs-prerender": "1",
+              "x-nextjs-postponed": "2",
+            }),
+          }),
+        );
+      },
+    );
+
+    it("should fall back to the server for a segment inherited from Object.prototype", async () => {
+      const event = createEvent({
+        url: "/albums",
+        headers: {
+          rsc: "1",
+          "next-router-segment-prefetch": "constructor",
+        },
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "HTML content",
+          rsc: "RSC content",
+          segmentData: { "/layout": "Segment content" },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+    });
+
+    // `rsc` is absent from the cached value when the build collected neither a
+    // `.rsc` nor a `.prefetch.rsc` file for the entry. Note that a postponed PPR
+    // route is not one of those cases: Next.js skips its `.rsc` but does write a
+    // `.prefetch.rsc`, which `createAssets` stores in the same field.
+    describe("missing rsc", () => {
+      it("should serve segment data when rsc is missing and the segment key matches", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+        expect((result as any).headers["x-nextjs-prerender"]).toEqual("1");
+        expect((result as any).headers["x-nextjs-postponed"]).toEqual("2");
+      });
+
+      it("should serve the HTML when rsc is missing on a non-RSC request", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("HTML content");
+        expect((result as any).headers["content-type"]).toEqual(
+          "text/html; charset=utf-8",
+        );
+      });
+
+      it("should take no action for an RSC request when rsc is missing", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for an RSC request when rsc is missing and the segment key does not match", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/not-here",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      // A segment prefetch is served from `segmentData` alone, the full page payload is
+      // not needed.
+      it("should serve the segment when rsc is missing and prefetchInlining is enabled", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: {
+            rsc: "1",
+            "next-router-segment-prefetch": "/layout",
+          },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+            segmentData: { "/layout": "Segment content" },
+          },
+        });
+        (NextConfig as any).experimental = {
+          prefetchInlining: { maxSize: 2048, maxBundleSize: 10240 },
+        };
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("Segment content");
+      });
+
+      it("should not queue a revalidation when falling back to the server", async () => {
+        const event = createEvent({
+          url: "/revalidate",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "HTML content",
+          },
+          lastModified: new Date("2024-01-01T00:00:00Z").getTime(),
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+        expect(queue.send).not.toHaveBeenCalled();
+      });
+    });
+
+    // `html` is absent from the cached value when Next.js does not write the
+    // `.html` file at build time.
+    describe("missing html", () => {
+      it("should serve the RSC payload when html is missing on an RSC request", async () => {
+        const event = createEvent({
+          url: "/albums",
+          headers: { rsc: "1" },
+        });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual("RSC content");
+      });
+
+      it("should take no action for a document request when html is missing", async () => {
+        const event = createEvent({ url: "/albums" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "RSC content",
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should take no action for a page document request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        expect(result).toEqual(event);
+      });
+
+      it("should serve the json for a page data request when html is missing", async () => {
+        const event = createEvent({ url: "/revalidate?__nextDataReq=1" });
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: { hello: "world" },
+          },
+        });
+
+        const result = await cacheInterceptor(event);
+
+        const body = await fromReadableStream(result.body);
+        expect(body).toEqual('{"hello":"world"}');
+      });
+    });
+  });
+
+  describe("route cache keys (next >= 16.3.8)", () => {
+    const sha256 = (value: string) =>
+      createHash("sha256").update(value).digest("hex");
+
+    beforeEach(() => {
+      globalThis.nextVersion = "16.3.8";
+      incrementalCache.get.mockReset().mockResolvedValueOnce({});
+    });
+
+    it("should use the scoped key of a prerendered app page", async () => {
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/(group)/albums/page")}/$/albums`,
+      );
+    });
+
+    it("should use the scoped key of the index route", async () => {
+      await cacheInterceptor(createEvent({ url: "/" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/page")}/$/index`,
+      );
+    });
+
+    it("should use the scoped key of a prerendered pages route", async () => {
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use scoped keys for the Next.js 15.5.27 backport", async () => {
+      globalThis.nextVersion = "15.5.27";
+
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use the scoped key of an entry cached at runtime", async () => {
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+      );
+    });
+
+    it("should not check the cache for a dynamic route that is not ISR", async () => {
+      const event = createEvent({ url: "/dynamic/7" });
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should use the tag cache with the scoped key", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "app", html: "<html></html>", rsc: "rsc" },
+        lastModified: Date.now(),
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(tagCache.getLastModified).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+        expect.any(Number),
+      );
+    });
+
+    it("should reject a concrete prerender owned by another route", async () => {
+      const event = createEvent({ url: "/%61dmin/safe" });
+
+      expect(
+        await cacheInterceptor(event, [{ route: "/[...slug]", type: "page" }]),
+      ).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should fail closed when routing cannot prove an owner", async () => {
+      const event = createEvent({ url: "/albums" });
+
+      expect(await cacheInterceptor(event, [])).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should remove basePath before locale detection", async () => {
+      NextConfig.basePath = "/base";
+      NextConfig.i18n = {
+        defaultLocale: "en",
+        locales: ["en", "fr"],
+      } as any;
+      localizePathMock.mockImplementationOnce((event) =>
+        event.rawPath.startsWith("/fr/")
+          ? event.rawPath
+          : `/en${event.rawPath}`,
+      );
+
+      try {
+        await cacheInterceptor(createEvent({ url: "/base/fr/entry" }), [
+          { route: "/[...slug]", type: "page" },
+        ]);
+
+        expect(localizePathMock).toHaveBeenCalledWith(
+          expect.objectContaining({ rawPath: "/fr/entry" }),
+        );
+        expect(incrementalCache.get).toHaveBeenCalledWith(
+          `/route-cache/PAGES/${sha256("/[...slug]")}/$/fr/entry`,
+        );
+      } finally {
+        NextConfig.basePath = undefined;
+        NextConfig.i18n = undefined;
+      }
+    });
+
+    it("should revalidate encoded aliases through their original spelling", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "page", html: "stale", revalidate: 60 },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(
+        createEvent({
+          url: "/%63ache-victim/stale",
+          headers: { host: "example.com" },
+        }),
+        [{ route: "/[...slug]", type: "page" }],
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({
+            url: "/%63ache-victim/stale",
+          }),
+        }),
+      );
     });
   });
 
@@ -864,6 +1462,242 @@ describe("cacheInterceptor", () => {
         }),
       );
       expect(queue.send).not.toHaveBeenCalled();
+    });
+  });
+
+  // Next.js writes `notFound()` results and other error responses to the incremental
+  // cache, so the interceptor can serve them. It must not let the CDN keep them:
+  // `OpenNextNodeResponse.fixHeadersForError` does this on the server path, and the
+  // interceptor bypasses it by returning a result directly.
+  describe("error status codes", () => {
+    const NO_STORE = "private, no-cache, no-store, max-age=0, must-revalidate";
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("should not cache a 404 app router response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      // The body and the status are still served from the cache, only the
+      // cache-control changes.
+      expect(await fromReadableStream(result.body)).toEqual("<html>404</html>");
+      expect(result).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          headers: expect.objectContaining({
+            "cache-control": NO_STORE,
+            "content-type": "text/html; charset=utf-8",
+          }),
+        }),
+      );
+    });
+
+    it("should not cache a 500 app router response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>500</html>",
+          meta: { status: 500 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(500);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    // The reported case: `notFound()` on a `dynamicParams: true` route. The entry is a
+    // runtime write-back so it is absent from the prerender manifest, and the route
+    // declares no `revalidate`, which used to make it look like SSG and earn a
+    // `s-maxage=31536000`.
+    it("should not cache a 404 for a dynamic route absent from the prerender manifest", async () => {
+      const event = createEvent({ url: "/isr/21" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(incrementalCache.get).toHaveBeenCalledWith("/isr/21");
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache a 404 page router response", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "page",
+          html: "<html>404</html>",
+          revalidate: 60,
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache a 404 route handler response", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "route",
+          body: '{"error":"not found"}',
+          meta: {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          },
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(await fromReadableStream(result.body)).toEqual(
+        '{"error":"not found"}',
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          statusCode: 404,
+          headers: expect.objectContaining({
+            "cache-control": NO_STORE,
+            "content-type": "application/json",
+          }),
+        }),
+      );
+    });
+
+    // The entry's own headers are spread after the computed cache control, so the
+    // override has to be applied last to win over both.
+    it("should override a cache-control stored in the entry headers", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: {
+            status: 404,
+            headers: { "cache-control": "s-maxage=31536000" },
+          },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    it("should not cache when the error status comes from rewriteStatusCode", async () => {
+      const event = createEvent({ url: "/albums", rewriteStatusCode: 404 });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+    });
+
+    // A stale error entry must still be queued for revalidation, otherwise the 404
+    // stays in the incremental cache instead of merely being uncacheable at the CDN.
+    it("should still queue a revalidation for a stale 404", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          revalidate: 60,
+          meta: { status: 404 },
+        },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(queue.send).toHaveBeenCalled();
+      expect(result.headers["cache-control"]).toBe(NO_STORE);
+      expect(result.headers["x-opennext-cache"]).toBe("STALE");
+    });
+
+    // Only 404 and 500 are overridden, the rest are the application's own errors and
+    // it owns their cache headers.
+    it("should leave other error status codes cacheable", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Gone",
+          meta: { status: 410 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(410);
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
+    });
+
+    it("should leave a 200 untouched", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
+    });
+
+    it("should keep the cached headers when OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS is true", async () => {
+      vi.stubEnv("OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS", "true");
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "<html>404</html>",
+          meta: { status: 404 },
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(
+        "s-maxage=31536000, stale-while-revalidate=2592000",
+      );
     });
   });
 });

@@ -14,11 +14,13 @@ import type {
 
 import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
+import { NO_STORE_CACHE_CONTROL } from "../utils/cacheHeaders";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {
   fixDataPage,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
@@ -169,7 +171,7 @@ export default async function routingHandler(
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
-      const beforeRewrite = handleRewrites(
+      const beforeRewrite = handleBeforeFilesRewrites(
         eventOrResult,
         RoutesManifest.rewrites.beforeFiles,
       );
@@ -231,6 +233,13 @@ export default async function routingHandler(
     const isRouteFoundBeforeAllRewrites =
       isStaticRoute || isDynamicRoute || isExternalRewrite;
 
+    // Resolve against the final internal pathname after every rewrite phase.
+    // These ordered matches are also the authoritative cache owner candidates.
+    const resolvedRoutes: ResolvedRoute[] = [
+      ...staticRouteMatcher(eventOrResult.rawPath),
+      ...dynamicRouteMatcher(eventOrResult.rawPath),
+    ];
+
     // If we still haven't found a route, we show the 404 page
     // We need to ensure that rewrites are applied before showing the 404 page
     if (
@@ -248,18 +257,18 @@ export default async function routingHandler(
         url: constructNextUrl(eventOrResult.url, "/404"),
         headers: {
           ...eventOrResult.headers,
-          "x-middleware-response-cache-control":
-            "private, no-cache, no-store, max-age=0, must-revalidate",
+          "x-middleware-response-cache-control": NO_STORE_CACHE_CONTROL,
         },
       };
     }
 
     if (
       globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+      !isExternalRewrite &&
       !isInternalResult(eventOrResult)
     ) {
       debug("Cache interception enabled");
-      eventOrResult = await cacheInterceptor(eventOrResult);
+      eventOrResult = await cacheInterceptor(eventOrResult, resolvedRoutes);
       if (isInternalResult(eventOrResult)) {
         applyMiddlewareHeaders(eventOrResult, headers);
         return eventOrResult;
@@ -268,11 +277,6 @@ export default async function routingHandler(
 
     // We apply the headers from the middleware response last
     applyMiddlewareHeaders(eventOrResult, headers);
-
-    const resolvedRoutes: ResolvedRoute[] = [
-      ...foundStaticRoute,
-      ...foundDynamicRoute,
-    ];
 
     debug("resolvedRoutes", resolvedRoutes);
 

@@ -4,6 +4,11 @@ import https from "node:https";
 import path from "node:path";
 
 import { createGenericHandler } from "../core/createGenericHandler.js";
+import {
+  ISR_HEADER,
+  NEXTJS_CACHE_HEADER,
+  PRERENDER_REVALIDATE_HEADER,
+} from "../utils/cacheHeaders.js";
 import { debug, error } from "./logger.js";
 
 const prerenderManifest = loadPrerenderManifest();
@@ -48,8 +53,9 @@ const defaultHandler = async (event: RevalidateEvent) => {
           {
             method: "HEAD",
             headers: {
-              "x-prerender-revalidate": prerenderManifest.preview.previewModeId,
-              "x-isr": "1",
+              [PRERENDER_REVALIDATE_HEADER]:
+                prerenderManifest.preview.previewModeId,
+              [ISR_HEADER]: "1",
             },
           },
           (res) => {
@@ -61,7 +67,7 @@ const defaultHandler = async (event: RevalidateEvent) => {
             });
             if (
               !ALLOWED_STATUS_CODES.includes(res.statusCode ?? 0) ||
-              res.headers["x-nextjs-cache"] !== "REVALIDATED"
+              res.headers[NEXTJS_CACHE_HEADER] !== "REVALIDATED"
             ) {
               failedRecords.push(record);
             }

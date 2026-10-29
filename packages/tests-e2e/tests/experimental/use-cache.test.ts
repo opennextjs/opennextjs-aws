@@ -46,6 +46,68 @@ test.describe("Composable Cache", () => {
     expect(newFullyCachedText).not.toEqual(initialFullyCachedText);
   });
 
+  test("revalidateTag should invalidate an on-demand use cache page", async ({
+    page,
+    request,
+  }) => {
+    // Two bounded polling loops (warm-up then revalidation), so this needs more headroom
+    // than the other tests in this file.
+    test.setTimeout(90000);
+    const path = `/use-cache/on-demand/${Date.now()}`;
+
+    // The first request generates the page on demand, and the path/tag association is
+    // written during that `set` - behind a detached promise, into an eventually consistent
+    // store. Wait until the entry is actually served from the cache before revalidating,
+    // otherwise `revalidateTag` may not see the association yet and would leave the page
+    // untouched.
+    let warmupCache: string | undefined;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const warmupResponse = await page.goto(path);
+      expect(warmupResponse?.status()).toEqual(200);
+      const warmupHeaders = warmupResponse?.headers() ?? {};
+      warmupCache =
+        warmupHeaders["x-nextjs-cache"] ?? warmupHeaders["x-opennext-cache"];
+      if (warmupCache === "HIT" || warmupCache === "STALE") {
+        break;
+      }
+      await page.waitForTimeout(1000);
+    }
+    expect(warmupCache).toMatch(/^(HIT|STALE)$/);
+
+    const taggedComponent = page.getByTestId("fully-cached-with-tag");
+    await expect(taggedComponent).toBeVisible();
+    const initialText = await taggedComponent.textContent();
+
+    const response = await request.get("/api/revalidate");
+    expect(response.status()).toEqual(200);
+    expect(await response.text()).toEqual("DONE");
+
+    let refreshedResponse = await page.goto(path);
+    let refreshedText = await taggedComponent.textContent();
+    for (
+      let attempt = 0;
+      attempt < 10 && refreshedText === initialText;
+      attempt++
+    ) {
+      await page.waitForTimeout(1000);
+      refreshedResponse = await page.goto(path);
+      refreshedText = await taggedComponent.textContent();
+    }
+
+    // `cacheTag` inside a `use cache` function propagates to the enclosing page entry, so
+    // a changed value proves the page entry was invalidated and not just the inner
+    // composable cache entry.
+    expect(refreshedText).not.toEqual(initialText);
+    const cacheHeader =
+      refreshedResponse?.headers()["x-nextjs-cache"] ??
+      refreshedResponse?.headers()["x-opennext-cache"];
+    // `revalidateTag` expires the tag immediately, so the request that returns the new
+    // content is normally a blocking MISS. If the revalidation marker lands late, an
+    // earlier request may be served from cache and the new content then surfaces on a
+    // later HIT.
+    expect(cacheHeader).toMatch(/^(MISS|HIT)$/);
+  });
+
   test("cached component should work in isr", async ({ page }) => {
     await page.goto("/use-cache/isr");
 

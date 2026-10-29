@@ -20,6 +20,13 @@ import type {
 import { ReadableStream } from "node:stream/web";
 import { debug, error } from "../../adapters/logger.js";
 import { isBinaryContentType } from "../../utils/binary.js";
+import {
+  CACHE_CONTROL_HEADER,
+  ISR_HEADER,
+  NEXTJS_CACHE_HEADER,
+  NO_STORE_CACHE_CONTROL,
+  fixCacheControlForError,
+} from "../../utils/cacheHeaders.js";
 import { localizePath } from "./i18n/index.js";
 import { generateMessageGroupId } from "./queue.js";
 
@@ -44,35 +51,58 @@ export function isExternal(url?: string, host?: string) {
   return true;
 }
 
+/**
+ * Parses a raw query string into decoded scalar or repeated values.
+ *
+ * The result has the same shape the converters produce from `URLSearchParams`
+ * and follows Next.js's decoded query representation.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/querystring.ts#L34-L48
+ *
+ * @param query The query string without a leading question mark
+ * @returns The decoded scalar and repeated query values
+ *
+ * @__PURE__
+ */
 export function convertFromQueryString(query: string) {
   if (query === "") return {};
-  const queryParts = query.split("&");
-  return getQueryFromIterator(
-    queryParts.map((p) => {
-      const [key, value] = p.split("=");
-      return [key, value] as const;
-    }),
-  );
+  return getQueryFromIterator(new URLSearchParams(query).entries());
 }
 
 /**
+ * Splits an URL into its parts
+ *
+ * The URL is a route destination, i.e. a `path-to-regexp` pattern rather than a
+ * well formed URL, so it can not be parsed with `new URL()` which would percent
+ * encode some of the pattern characters. Like Next.js, the fragment is kept
+ * separate from the query while destination parameters are interpolated.
+ * https://github.com/vercel/next.js/blob/3439bde/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L221-L299
+ *
+ * @param url The URL to split
+ * @param isExternal Whether the URL points to an external host
+ * @returns The protocol, hostname, pathname, query string and fragment
+ * @throws When `isExternal` is true and the URL is not an absolute HTTP(S) URL
  *
  * @__PURE__
  */
 export function getUrlParts(url: string, isExternal: boolean) {
+  const hashIndex = url.indexOf("#");
+  const hash = hashIndex === -1 ? "" : url.slice(hashIndex);
+  const urlWithoutHash = hashIndex === -1 ? url : url.slice(0, hashIndex);
+
   if (!isExternal) {
     const regex = /\/([^?]*)\??(.*)/;
-    const match = url.match(regex);
+    const match = urlWithoutHash.match(regex);
     return {
       hostname: "",
-      pathname: match?.[1] ? `/${match[1]}` : url,
+      pathname: urlWithoutHash.startsWith("/") ? `/${match?.[1] ?? ""}` : "",
       protocol: "",
       queryString: match?.[2] ?? "",
+      hash,
     };
   }
 
-  const regex = /^(https?:)\/\/?([^\/\s]+)(\/[^?]*)?(\?.*)?/;
-  const match = url.match(regex);
+  const regex = /^(https?:)\/\/?([^\/\s?]+)(\/[^?]*)?(\?.*)?/;
+  const match = urlWithoutHash.match(regex);
   if (!match) {
     throw new Error(`Invalid external URL: ${url}`);
   }
@@ -81,6 +111,7 @@ export function getUrlParts(url: string, isExternal: boolean) {
     hostname: match[2],
     pathname: match[3] ?? "",
     queryString: match[4]?.slice(1) ?? "",
+    hash,
   };
 }
 
@@ -136,20 +167,22 @@ export function convertRes(res: OpenNextNodeResponse): InternalResult {
  * Make sure that multi-value query parameters are transformed to
  * ?key=value1&key=value2&... so that Next converts those parameters
  * to an array when reading the query parameters
- * query should be properly encoded before using this function
+ * Keys and values are expected decoded (as produced by the converters) and are
+ * percent-encoded here, so a value such as "h&m" survives as "h%26m"
  * @__PURE__
  */
 export function convertToQueryString(query: Record<string, string | string[]>) {
-  const queryStrings: string[] = [];
+  const searchParams = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
     if (Array.isArray(value)) {
-      value.forEach((entry) => queryStrings.push(`${key}=${entry}`));
+      value.forEach((entry) => searchParams.append(key, entry));
     } else {
-      queryStrings.push(`${key}=${value}`);
+      searchParams.append(key, value);
     }
   });
 
-  return queryStrings.length > 0 ? `?${queryStrings.join("&")}` : "";
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
 /**
@@ -234,11 +267,6 @@ export function convertBodyToReadableStream(
   });
 }
 
-enum CommonHeaders {
-  CACHE_CONTROL = "cache-control",
-  NEXT_CACHE = "x-nextjs-cache",
-}
-
 /**
  *
  * @__PURE__
@@ -249,11 +277,10 @@ export function fixCacheHeaderForHtmlPages(
 ) {
   // We don't want to cache error pages
   if (internalEvent.rawPath === "/404" || internalEvent.rawPath === "/500") {
-    if (process.env.OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS === "true") {
-      return;
-    }
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+    fixCacheControlForError(
+      headers,
+      internalEvent.rawPath === "/404" ? 404 : 500,
+    );
     return;
   }
   const localizedPath = localizePath(internalEvent);
@@ -264,7 +291,7 @@ export function fixCacheHeaderForHtmlPages(
     HtmlPages.includes(localizedPath) &&
     !internalEvent.headers["x-middleware-prefetch"]
   ) {
-    headers[CommonHeaders.CACHE_CONTROL] =
+    headers[CACHE_CONTROL_HEADER] =
       "public, max-age=0, s-maxage=31536000, must-revalidate";
   }
 }
@@ -275,13 +302,13 @@ export function fixCacheHeaderForHtmlPages(
  */
 export function fixSWRCacheHeader(headers: OutgoingHttpHeaders) {
   // WORKAROUND: `NextServer` does not set correct SWR cache headers — https://github.com/sst/open-next#workaround-nextserver-does-not-set-correct-swr-cache-headers
-  let cacheControl = headers[CommonHeaders.CACHE_CONTROL];
+  let cacheControl = headers[CACHE_CONTROL_HEADER];
   if (!cacheControl) return;
   if (Array.isArray(cacheControl)) {
     cacheControl = cacheControl.join(",");
   }
   if (typeof cacheControl !== "string") return;
-  headers[CommonHeaders.CACHE_CONTROL] = cacheControl.replace(
+  headers[CACHE_CONTROL_HEADER] = cacheControl.replace(
     /\bstale-while-revalidate(?!=)/,
     "stale-while-revalidate=2592000", // 30 days
   );
@@ -314,7 +341,7 @@ export async function revalidateIfRequired(
   headers: OutgoingHttpHeaders,
   req?: IncomingMessage,
 ) {
-  if (headers[CommonHeaders.NEXT_CACHE] === "STALE") {
+  if (headers[NEXTJS_CACHE_HEADER] === "STALE") {
     // If the URL is rewritten, revalidation needs to be done on the rewritten URL.
     // - Link to Next.js doc: https://nextjs.org/docs/pages/building-your-application/data-fetching/incremental-static-regeneration#on-demand-revalidation
     // - Link to NextInternalRequestMeta: https://github.com/vercel/next.js/blob/57ab2818b93627e91c937a130fb56a36c41629c3/packages/next/src/server/request-meta.ts#L11
@@ -365,22 +392,21 @@ export async function revalidateIfRequired(
  */
 export function fixISRHeaders(headers: OutgoingHttpHeaders) {
   const sMaxAgeRegex = /s-maxage=(\d+)/;
-  const match = headers[CommonHeaders.CACHE_CONTROL]?.match(sMaxAgeRegex);
+  const match = headers[CACHE_CONTROL_HEADER]?.match(sMaxAgeRegex);
   const sMaxAge = match ? Number.parseInt(match[1]) : undefined;
   // We only apply the fix if the cache-control header contains s-maxage
   if (!sMaxAge) {
     return;
   }
-  if (headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED") {
-    headers[CommonHeaders.CACHE_CONTROL] =
-      "private, no-cache, no-store, max-age=0, must-revalidate";
+  if (headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
+    headers[CACHE_CONTROL_HEADER] = NO_STORE_CACHE_CONTROL;
     return;
   }
   const _lastModified = globalThis.__openNextAls.getStore()?.lastModified ?? 0;
-  if (headers[CommonHeaders.NEXT_CACHE] === "HIT" && _lastModified > 0) {
+  if (headers[NEXTJS_CACHE_HEADER] === "HIT" && _lastModified > 0) {
     debug(
       "cache-control",
-      headers[CommonHeaders.CACHE_CONTROL],
+      headers[CACHE_CONTROL_HEADER],
       _lastModified,
       Date.now(),
     );
@@ -390,18 +416,17 @@ export function fixISRHeaders(headers: OutgoingHttpHeaders) {
       // calculate age
       const age = Math.round((Date.now() - _lastModified) / 1000);
       const remainingTtl = Math.max(sMaxAge - age, 1);
-      headers[CommonHeaders.CACHE_CONTROL] =
+      headers[CACHE_CONTROL_HEADER] =
         `s-maxage=${remainingTtl}, stale-while-revalidate=2592000`;
     }
   }
-  if (headers[CommonHeaders.NEXT_CACHE] !== "STALE") return;
+  if (headers[NEXTJS_CACHE_HEADER] !== "STALE") return;
 
   // If the cache is stale, we revalidate in the background
   // In order for CloudFront SWR to work, we set the stale-while-revalidate value to 2 seconds
   // This will cause CloudFront to cache the stale data for a short period of time while we revalidate in the background
   // Once the revalidation is complete, CloudFront will serve the fresh data
-  headers[CommonHeaders.CACHE_CONTROL] =
-    "s-maxage=2, stale-while-revalidate=2592000";
+  headers[CACHE_CONTROL_HEADER] = "s-maxage=2, stale-while-revalidate=2592000";
 }
 
 /**
@@ -446,11 +471,8 @@ export async function invalidateCDNOnRequest(
 ) {
   const { internalEvent, resolvedRoutes, initialURL } = params;
   const initialPath = new URL(initialURL).pathname;
-  const isIsrRevalidation = internalEvent.headers["x-isr"] === "1";
-  if (
-    !isIsrRevalidation &&
-    headers[CommonHeaders.NEXT_CACHE] === "REVALIDATED"
-  ) {
+  const isIsrRevalidation = internalEvent.headers[ISR_HEADER] === "1";
+  if (!isIsrRevalidation && headers[NEXTJS_CACHE_HEADER] === "REVALIDATED") {
     await globalThis.cdnInvalidationHandler.invalidatePaths([
       {
         initialPath,

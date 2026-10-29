@@ -14,12 +14,18 @@ export default function middleware(request: NextRequest) {
     return NextResponse.rewrite(new URL("/", request.url));
   }
 
-  return NextResponse.next({
-    headers: {
-      "x-middleware-test": "1",
-      "x-random-node": crypto.randomUUID(),
-    },
-  });
+  const headers: Record<string, string> = {
+    "x-middleware-test": "1",
+    "x-random-node": crypto.randomUUID(),
+  };
+
+  // It is so that cloudfront doesn't cache the response
+  if (request.nextUrl.pathname.startsWith("/use-cache/on-demand")) {
+    headers["cache-control"] =
+      "private, no-cache, no-store, max-age=0, must-revalidate";
+  }
+
+  return NextResponse.next({ headers });
 }
 
 export const config = {

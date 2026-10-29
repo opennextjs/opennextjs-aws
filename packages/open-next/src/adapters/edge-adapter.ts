@@ -46,14 +46,14 @@ const defaultHandler = async (
       });
       const responseHeaders: Record<string, string | string[]> = {};
       response.headers.forEach((value, key) => {
-        if (key.toLowerCase() === "set-cookie") {
-          responseHeaders[key] = responseHeaders[key]
-            ? [...responseHeaders[key], value]
-            : [value];
-        } else {
-          responseHeaders[key] = value;
-        }
+        // Headers.forEach folds same-name headers; use getSetCookie() below instead.
+        if (key.toLowerCase() === "set-cookie") return;
+        responseHeaders[key] = value;
       });
+      const setCookies = response.headers.getSetCookie();
+      if (setCookies.length > 0) {
+        responseHeaders["set-cookie"] = setCookies;
+      }
 
       const body =
         (response.body as ReadableStream<Uint8Array>) ?? emptyReadableStream();

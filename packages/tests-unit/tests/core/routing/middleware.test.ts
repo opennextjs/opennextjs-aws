@@ -254,6 +254,41 @@ describe("handleMiddleware", () => {
     });
   });
 
+  it("should remove the request headers deleted by the middleware", async () => {
+    const event = createEvent({
+      headers: {
+        host: "localhost",
+        "x-kept": "kept",
+        "x-updated": "old",
+        "x-deleted": "deleted",
+      },
+    });
+    middleware.mockResolvedValue({
+      headers: new Headers({
+        "x-middleware-override-headers": "host,x-kept,x-updated,x-added",
+        "x-middleware-request-host": "localhost",
+        "x-middleware-request-x-kept": "kept",
+        "x-middleware-request-x-updated": "new",
+        "x-middleware-request-x-added": "added",
+        "x-middleware-next": "1",
+      }),
+    });
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(middlewareLoader).toHaveBeenCalled();
+    expect(result).toEqual({
+      ...event,
+      headers: {
+        host: "localhost",
+        "x-kept": "kept",
+        "x-updated": "new",
+        "x-added": "added",
+      },
+      responseHeaders: {},
+      isExternalRewrite: false,
+    });
+  });
+
   it("should return a response from middleware", async () => {
     const event = createEvent({});
     const body = toReadableStream("Hello, world!");
@@ -362,5 +397,118 @@ describe("handleMiddleware", () => {
         url: "https://test.me/path?something=General%2520Banner",
       }),
     );
+  });
+
+  it("should preserve multiple set-cookie headers from a terminal middleware response", async () => {
+    // Headers.forEach folds same-name headers; simulate that to keep the test
+    // runtime-independent while getSetCookie() still returns them split.
+    const foldingHeaders = {
+      forEach(fn: (value: string, key: string) => void) {
+        fn(
+          "appSession.0=AAA; HttpOnly; Path=/, appSession.1=BBB; HttpOnly; Path=/, appSession.2=CCC; HttpOnly; Path=/",
+          "Set-Cookie",
+        );
+        fn("https://example.com/", "Location");
+      },
+      get(name: string) {
+        if (name.toLowerCase() === "location") return "https://example.com/";
+        return null;
+      },
+      getSetCookie() {
+        return [
+          "appSession.0=AAA; HttpOnly; Path=/",
+          "appSession.1=BBB; HttpOnly; Path=/",
+          "appSession.2=CCC; HttpOnly; Path=/",
+        ];
+      },
+    };
+
+    const event = createEvent({});
+    middleware.mockResolvedValue({
+      status: 302,
+      headers: foldingHeaders,
+      body: null,
+    });
+
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result.headers["set-cookie"]).toEqual([
+      "appSession.0=AAA; HttpOnly; Path=/",
+      "appSession.1=BBB; HttpOnly; Path=/",
+      "appSession.2=CCC; HttpOnly; Path=/",
+    ]);
+    expect(result.headers.location).toEqual("https://example.com/");
+  });
+
+  it("should split the compound set-cookie header Next uses for cookies() in the middleware", async () => {
+    // Next folds the cookies set through `cookies()` in the middleware into a
+    // single comma-joined `set-cookie` header.
+    const compoundCookie =
+      "compound1=value1; Path=/; Expires=Thu, 01 Jan 2026 00:00:00 GMT, compound2=value2; Path=/; HttpOnly";
+    const foldingHeaders = {
+      forEach(fn: (value: string, key: string) => void) {
+        fn(compoundCookie, "set-cookie");
+        fn("http://localhost/rewrite", "x-middleware-rewrite");
+      },
+      get(name: string) {
+        if (name.toLowerCase() === "x-middleware-rewrite")
+          return "http://localhost/rewrite";
+        return null;
+      },
+      getSetCookie() {
+        return [compoundCookie];
+      },
+    };
+
+    const event = createEvent({ headers: { host: "localhost" } });
+    middleware.mockResolvedValue({
+      status: 200,
+      headers: foldingHeaders,
+      body: null,
+    });
+
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result.responseHeaders?.["set-cookie"]).toEqual([
+      "compound1=value1; Path=/; Expires=Thu, 01 Jan 2026 00:00:00 GMT",
+      "compound2=value2; Path=/; HttpOnly",
+    ]);
+  });
+
+  it("should preserve multiple set-cookie headers when middleware returns next() with a rewrite", async () => {
+    const foldingHeaders = {
+      forEach(fn: (value: string, key: string) => void) {
+        fn(
+          "appSession.0=AAA; HttpOnly; Path=/, appSession.1=BBB; HttpOnly; Path=/",
+          "set-cookie",
+        );
+        fn("http://localhost/rewrite", "x-middleware-rewrite");
+      },
+      get(name: string) {
+        if (name.toLowerCase() === "x-middleware-rewrite")
+          return "http://localhost/rewrite";
+        return null;
+      },
+      getSetCookie() {
+        return [
+          "appSession.0=AAA; HttpOnly; Path=/",
+          "appSession.1=BBB; HttpOnly; Path=/",
+        ];
+      },
+    };
+
+    const event = createEvent({ headers: { host: "localhost" } });
+    middleware.mockResolvedValue({
+      status: 200,
+      headers: foldingHeaders,
+      body: null,
+    });
+
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    expect(result.responseHeaders?.["set-cookie"]).toEqual([
+      "appSession.0=AAA; HttpOnly; Path=/",
+      "appSession.1=BBB; HttpOnly; Path=/",
+    ]);
   });
 });

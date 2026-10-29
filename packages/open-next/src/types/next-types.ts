@@ -84,9 +84,11 @@ export interface NextConfig {
     appDir?: boolean;
     optimizeCss?: boolean;
     // Used by Next to know if we should send a single RSC or split it into multiple ones.
-    // Can be an object but only the boolean is supported for now in OpenNext.
-    // Added in Next 16.2
-    prefetchInlining?: boolean;
+    // Added in Next 16.2.
+    // Next normalizes a truthy value into an object, so this is only ever `false`,
+    // `undefined` or an object - never `true` - in `required-server-files.json`.
+    // Do not test it for truthiness expecting a flag.
+    prefetchInlining?: boolean | { maxSize: number; maxBundleSize: number };
   };
   images: ImageConfig;
   poweredByHeader?: boolean;
@@ -97,6 +99,37 @@ export interface NextConfig {
 export interface RouteDefinition {
   page: string;
   regex: string;
+}
+
+/**
+ * Kind of a Next.js route.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-kind.ts
+ */
+export type RouteKind = "PAGES" | "PAGES_API" | "APP_PAGE" | "APP_ROUTE";
+
+/**
+ * Subset of the Next.js route definition read when rendering a `match` request meta.
+ * Not to be confused with the routes manifest `RouteDefinition` above.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-definitions/route-definition.ts
+ */
+export interface RouteMatchDefinition {
+  kind: RouteKind;
+  pathname: string;
+  page: string;
+  filename: string;
+  /** Only for `APP_PAGE` routes */
+  appPaths?: string[];
+}
+
+/**
+ * The Next.js `match` request meta, the route selected to render a request.
+ * OpenNext only passes it to Next.js 16.4+, which no longer selects the route from `invokeOutput`.
+ * https://github.com/vercel/next.js/blob/v16.4.0/packages/next/src/server/route-matches/route-match.ts
+ */
+export interface RouteMatch {
+  definition: RouteMatchDefinition;
+  /** `undefined` for static routes */
+  params?: Record<string, string | string[]>;
 }
 
 export interface DataRouteDefinition {
@@ -172,12 +205,15 @@ export interface PrerenderManifest {
     {
       // TODO: add the rest when needed for PPR
       initialRevalidateSeconds: number | false;
+      srcRoute?: string | null;
+      dataRoute?: string | null;
     }
   >;
   dynamicRoutes: {
     [route: string]: {
       routeRegex: string;
       fallback: string | false | null;
+      fallbackSourceRoute?: string;
       dataRouteRegex: string;
     };
   };

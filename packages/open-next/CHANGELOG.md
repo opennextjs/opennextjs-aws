@@ -1,5 +1,277 @@
 # open-next
 
+## 4.1.13
+
+### Patch Changes
+
+- [#1323](https://github.com/opennextjs/opennextjs-aws/pull/1323) [`d51c9c2`](https://github.com/opennextjs/opennextjs-aws/commit/d51c9c226ad14f24a3cf36f924473e06d3d8bc3e) Thanks [@jadenv](https://github.com/jadenv)! - fix: honor `BROTLI_QUALITY` in the `aws-lambda-streaming` wrapper and default it to 6
+
+  The streaming wrapper compressed every Brotli response at quality 11, which costs an order of magnitude more CPU than quality 6 for a few percent smaller output and delays the first byte of every response. The `aws-lambda-compressed` wrapper meant to default to 6 but used quality 0 when `BROTLI_QUALITY` was unset (`Number(undefined) ?? 6` is `NaN`).
+
+## 4.1.12
+
+### Patch Changes
+
+- [#1319](https://github.com/opennextjs/opennextjs-aws/pull/1319) [`b7b2123`](https://github.com/opennextjs/opennextjs-aws/commit/b7b21237498fd743d733a960d59e9dbda1cd84d6) Thanks [@muhammadrizkirijalags](https://github.com/muhammadrizkirijalags)! - fix(cli): honor --dangerously-use-unsupported-next-version when passed as standalone
+
+- [#1321](https://github.com/opennextjs/opennextjs-aws/pull/1321) [`6e0c1f9`](https://github.com/opennextjs/opennextjs-aws/commit/6e0c1f905b7c935e04c9fe98342de99e02ca6062) Thanks [@vicb](https://github.com/vicb)! - fix: keep supporting a Next.js major version until the second next major is released
+
+  Next.js 15 is no longer reported as unsupported 2 years after its release while Next.js 17 has not been released yet.
+
+## 4.1.11
+
+### Patch Changes
+
+- [#1285](https://github.com/opennextjs/opennextjs-aws/pull/1285) [`a4ab628`](https://github.com/opennextjs/opennextjs-aws/commit/a4ab62880bdba76040e04e38219b08f295c2b3d2) Thanks [@conico974](https://github.com/conico974)! - Allow up to six rendering attempts when falling through `fallback: false` routes, matching the Next.js router server (since Next.js 13.4.13). A sixth matching route candidate previously returned a 500.
+
+- [#1304](https://github.com/opennextjs/opennextjs-aws/pull/1304) [`b3c121d`](https://github.com/opennextjs/opennextjs-aws/commit/b3c121d5fa7e10606396601a3335082e335a4ef3) Thanks [@mathurshubham](https://github.com/mathurshubham)! - fix: keep the runtime alive until fetch cache entries are written on Next.js 15.4+
+
+- [#1312](https://github.com/opennextjs/opennextjs-aws/pull/1312) [`c7c6d35`](https://github.com/opennextjs/opennextjs-aws/commit/c7c6d3546c1f375062b8836dbb6bffc26e4dfdff) Thanks [@vicb](https://github.com/vicb)! - chore: bump Next.js dependencies
+
+  Bump Next.js dependencies following [the security update on Oct 14](https://nextjs.org/blog/nextjs-security-update-october-14-2026)
+
+  - Next.js 15.5.28 and 16.4.1
+  - react and react-dom to 19.3.1
+  - sharp to 0.35.5
+
+- [#1285](https://github.com/opennextjs/opennextjs-aws/pull/1285) [`a4ab628`](https://github.com/opennextjs/opennextjs-aws/commit/a4ab62880bdba76040e04e38219b08f295c2b3d2) Thanks [@conico974](https://github.com/conico974)! - Fix pages with `fallback: false` returning a 404 instead of falling through to a less specific dynamic route on Next.js 16.4.
+
+  Preserve existing fallback routing and parameter-decoding behavior on Next.js versions before 16.4.
+
+  Select the canonical App Page entry for fallback routes with parallel slots or route groups on Next.js 16.4+.
+
+  Return a 400 instead of a 500 when decoding the selected fallback route's parameters fails on Next.js 16.4+, matching Next.js's bad-request handling.
+
+## 4.1.10
+
+### Patch Changes
+
+- [`f30d0f2`](https://github.com/opennextjs/opennextjs-aws/commit/f30d0f2e926f5c7dacebabd937dc6022008145f1) Thanks [@Nicolapps](https://github.com/Nicolapps)! - fix: request headers deleted by the middleware are no longer forwarded
+
+## 4.1.9
+
+### Patch Changes
+
+- [#1298](https://github.com/opennextjs/opennextjs-aws/pull/1298) [`0d40bcd`](https://github.com/opennextjs/opennextjs-aws/commit/0d40bcd5a422e1adda689fc44ec884835cd9eae1) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - Apply every matching `beforeFiles` rewrite in order so Next.js-generated
+  interception rewrites can run after user-defined rewrites. Preserve unused
+  source parameters in the rewritten query for subsequent rewrite conditions,
+  while keeping redirect query behavior unchanged.
+
+- [#1290](https://github.com/opennextjs/opennextjs-aws/pull/1290) [`6f6e6db`](https://github.com/opennextjs/opennextjs-aws/commit/6f6e6db5fa21eda13ece3bdfa1da5fed69d75582) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - perf: compile the routing matcher regular expressions only once
+
+- [#1287](https://github.com/opennextjs/opennextjs-aws/pull/1287) [`e18127e`](https://github.com/opennextjs/opennextjs-aws/commit/e18127e366588d8f5c8cdac103b19d6e9a0f3e76) Thanks [@vicb](https://github.com/vicb)! - fix: percent-encode query values when rebuilding the query string, so values containing "&", "=", "+" or "%" reach Next.js intact
+
+- [#1297](https://github.com/opennextjs/opennextjs-aws/pull/1297) [`6fc4919`](https://github.com/opennextjs/opennextjs-aws/commit/6fc4919160fa102472bc6ca54a524eef79a8b5f4) Thanks [@Adnan-Husayn](https://github.com/Adnan-Husayn)! - fix: do not fail the build when `optimizeCss` is enabled and no CSS file is emitted
+
+- [#1284](https://github.com/opennextjs/opennextjs-aws/pull/1284) [`0152a70`](https://github.com/opennextjs/opennextjs-aws/commit/0152a708eef3dff2966b210fec3ea8bbbae7c7f8) Thanks [@vicb](https://github.com/vicb)! - fix: align route condition handling with Next.js
+
+  - Compile empty optional catch-all parameters in redirect and rewrite destinations.
+  - Interpolate route condition parameters in configured response headers.
+  - Allow matched destination parameters to contain values outside a single path segment.
+  - Fix `has` condition matching to follow Next.js semantics.
+  - Normalize host condition captures and expose implicit host parameters.
+  - Preserve separators for repeated parameters in rewrite destination queries.
+  - Expose value-less route condition values as destination parameters.
+  - Prevent missing route conditions from overwriting destination parameters.
+  - Match and capture repeated query conditions using their final value.
+
+- [#1300](https://github.com/opennextjs/opennextjs-aws/pull/1300) [`f4d8b70`](https://github.com/opennextjs/opennextjs-aws/commit/f4d8b7048633d66ef2078830dcee0d21d6e762db) Thanks [@vicb](https://github.com/vicb)! - fix: retain FETCH cache writes created during Server Action Flight rendering
+
+## 4.1.8
+
+### Patch Changes
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Await background work registered while a detached promise runner is draining.
+
+- [#1267](https://github.com/opennextjs/opennextjs-aws/pull/1267) [`dbca6afdf20b8967dcb5053a62bfd652e6cf2762`](https://github.com/opennextjs/opennextjs-aws/commit/dbca6afdf20b8967dcb5053a62bfd652e6cf2762) Thanks [@conico974](https://github.com/conico974)! - Apply `patchBackgroundRevalidation` to the compiled Next.js runtimes
+
+  Since Next 15.5 the route modules use their own `ResponseCache`, inlined and minified in `next/dist/compiled/next-server/*.runtime.prod.js`. The patch only targeted `server/response-cache/index.js` and matched the unminified `context.isPrefetch`, so these copies were left untouched and stale requests still triggered an in-process regeneration instead of only going through the revalidation queue.
+
+  Minified identifiers containing `$` are also supported.
+
+## 4.1.7
+
+### Patch Changes
+
+- [#1268](https://github.com/opennextjs/opennextjs-aws/pull/1268) [`dd902fda0324ccf0bc4dd58e96fd0728501b86e2`](https://github.com/opennextjs/opennextjs-aws/commit/dd902fda0324ccf0bc4dd58e96fd0728501b86e2) Thanks [@rishabhvenu](https://github.com/rishabhvenu)! - Resolve the request store each time the `@next/request-context` getter is called, instead of capturing the store of the request that last published it
+
+- [#1270](https://github.com/opennextjs/opennextjs-aws/pull/1270) [`ebfd9b9d1f8d34412b236daa4a6e39caa56653ee`](https://github.com/opennextjs/opennextjs-aws/commit/ebfd9b9d1f8d34412b236daa4a6e39caa56653ee) Thanks [@conico974](https://github.com/conico974)! - fix(cache): support scoped response cache keys in fixed Next.js releases
+
+  Next.js 15.5.27 and 16.3.8 scope response cache keys by their source route: `/route-cache/<kind>/<sha256(sourceRoute)>/$<pathname>`. OpenNext preserves emitted build keys, selects the matching owner before cache interception, and maps scoped keys back to the correct public route during CDN invalidation.
+
+- [#1265](https://github.com/opennextjs/opennextjs-aws/pull/1265) [`49401b402bbbe41aa7f74e80b452f47fa7c88ce0`](https://github.com/opennextjs/opennextjs-aws/commit/49401b402bbbe41aa7f74e80b452f47fa7c88ce0) Thanks [@Anurag-Bharati](https://github.com/Anurag-Bharati)! - Only serve cached responses for GET and HEAD requests in the cache interceptor
+
+  A progressively enhanced form (`<form action={serverAction}>`, or one wired through `useActionState`) submitted before hydration or with JavaScript disabled is a plain `multipart/form-data` POST whose action id travels in the body, not in the `next-action` header. With `enableCacheInterception` on, the interceptor answered it with the cached page, so the server action never ran and the submission was lost. Requests other than GET and HEAD now reach `NextServer`, matching Next.js, which never serves a possible server action from the cache.
+
+- [`5ba9354a36d92270c734390950e2ad39dc2ac4e4`](https://github.com/opennextjs/opennextjs-aws/commit/5ba9354a36d92270c734390950e2ad39dc2ac4e4) Thanks [@vicb](https://github.com/vicb)! - Fix external rewrites to destinations with a literal numeric port
+
+## 4.1.6
+
+### Patch Changes
+
+- [#1259](https://github.com/opennextjs/opennextjs-aws/pull/1259) [`7168bfc1d3852d0884ec1ba7aa73d8d2f96b76a8`](https://github.com/opennextjs/opennextjs-aws/commit/7168bfc1d3852d0884ec1ba7aa73d8d2f96b76a8) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Make the SQS revalidation queue non-blocking via `waitUntil`
+
+  The `sqs` and `sqs-lite` queue overrides awaited the SQS `SendMessage` on the request path, so enqueuing a stale-page revalidation held up the response until SQS acknowledged. When a `waitUntil` is available on the request store, the send is now handed to it and `send` returns immediately, so the SQS round trip runs after the body is flushed. Without a `waitUntil` (edge, or a wrapper that does not provide one) it still awaits inline, so behaviour is unchanged there.
+
+- [#1258](https://github.com/opennextjs/opennextjs-aws/pull/1258) [`8faf3cee26a14435486c2bc828f2d7c7371fe1dd`](https://github.com/opennextjs/opennextjs-aws/commit/8faf3cee26a14435486c2bc828f2d7c7371fe1dd) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Provide `waitUntil` from the AWS streaming wrappers
+
+  The `aws-apigw-streaming` and `aws-lambda-streaming` wrappers now pass a `waitUntil` to the request handler, backed by a set of pending promises awaited before the response stream closes. Previously only the Cloudflare wrappers provided `waitUntil`, so on AWS deferred work scheduled after the response body was sent (background revalidation, cache write-through) was not guaranteed to complete, and the `withWaitUntil` route preloading behaviour silently fell back to `none`. Both are now supported on AWS.
+
+- [#1257](https://github.com/opennextjs/opennextjs-aws/pull/1257) [`37abe01ce4d176c71483694a5989cf9b07baae7f`](https://github.com/opennextjs/opennextjs-aws/commit/37abe01ce4d176c71483694a5989cf9b07baae7f) Thanks [@nicholas-c](https://github.com/nicholas-c)! - Register the composable cache handler at the top-level `cacheHandlers` config key for Next.js 16
+
+  Next.js 16 promoted `cacheHandlers` out of `experimental` to a top-level config key. At runtime `loadCustomCacheHandlers` reads `nextConfig.cacheHandlers`, so the handler OpenNext injected only under `experimental.cacheHandlers` was ignored on Next >= 16 — the composable (`use cache`) path fell back to Next's in-memory default handler and never reached the configured incremental cache override, so composable entries were never persisted. The handler is now registered at the top level as well (the `experimental` copy is kept for older Next versions).
+
+- [#1249](https://github.com/opennextjs/opennextjs-aws/pull/1249) [`36175702119d1786f2763e6d6cb347788da34c02`](https://github.com/opennextjs/opennextjs-aws/commit/36175702119d1786f2763e6d6cb347788da34c02) Thanks [@km-tr](https://github.com/km-tr)! - fix: defer incremental cache writes so they do not block the response
+
+  `Cache.set` awaited the store write and the tag update, so both landed in the TTFB. Next.js
+  awaits `incrementalCache.set` in `response-cache/index.js` while it produces the response and
+  does not use the returned value.
+
+  The write is now registered on the request's pending promise runner, which hands it to
+  `waitUntil` when the wrapper provides one and awaits it before the handler returns otherwise.
+  `FETCH` entries keep being awaited: Next.js writes them from a detached chain of its own, and
+  that chain keeps the entry alive only while `set` does not return before it is stored.
+
+  Errors are still caught and logged, and the tag update still runs after the entry is written.
+
+- [#1211](https://github.com/opennextjs/opennextjs-aws/pull/1211) [`3ddc7014e89b8674135c1cc1ae30c828869cfdac`](https://github.com/opennextjs/opennextjs-aws/commit/3ddc7014e89b8674135c1cc1ae30c828869cfdac) Thanks [@ntltd](https://github.com/ntltd)! - Fix `patchBackgroundRevalidation` silently no-opping on Next.js 16
+
+  The patch's ast-grep rule matched the unary expression `!cachedResponse.isStale`,
+  but Next.js 16.0.0 renamed that local to `previousIncrementalCacheEntry`. The rule
+  matched nothing, so `commitEdits([])` returned the source unchanged and the patch
+  was skipped on every Next.js 16 build — while still being reported as applied in
+  the `OPEN_NEXT_DEBUG` output, since the log line is emitted before the edit is
+  attempted.
+
+  The rule now matches `!$ENTRY.isStale` instead of hardcoding the identifier, which
+  keeps working on Next.js 14 and 15 and fixes 16. The existing unit test used a
+  frozen pre-16 snippet as its fixture, so it kept passing throughout; a Next 16
+  fixture has been added alongside it, plus an assertion that the outer
+  `isStale !== -1` guard introduced in 16 is not matched by mistake.
+
+- [#1248](https://github.com/opennextjs/opennextjs-aws/pull/1248) [`cdad3e6c9dd98813136793429bd0acea3a444595`](https://github.com/opennextjs/opennextjs-aws/commit/cdad3e6c9dd98813136793429bd0acea3a444595) Thanks [@conico974](https://github.com/conico974)! - fix: serve segment prefetches from the cache interceptor on Next 16
+
+  The segment response branch was gated on `!NextConfig.experimental.prefetchInlining`.
+  Next normalizes every truthy `prefetchInlining` into `{ maxSize, maxBundleSize }` and
+  enables it by default since 16.2, so the negation was always `false` and the branch was
+  unreachable: every `Next-Router-Segment-Prefetch` request was answered with the full page
+  payload. The router never recorded the prefetch as satisfied and re-requested it
+  indefinitely.
+
+  The gate is gone. Inlining only changes _which_ segments the build emits - an emitted
+  segment then being a bundle that already holds its inlined ancestors - and `segmentData`
+  holds exactly those, which is exactly the set the router asks for. When the entry holds
+  segments but not the requested one, the interceptor now falls back to the server, which
+  answers with the empty 404 Next would, instead of a payload of a different shape.
+
+  Also fixed in the same expression: the header was template stringified, so a missing one
+  became the literal `"undefined"` and the `Boolean()` guard was always true; and membership
+  was tested with `in`, which matches inherited keys, so a
+  `next-router-segment-prefetch: constructor` request resolved to a function off
+  `Object.prototype`. `prefetchInlining` is now typed as
+  `boolean | { maxSize: number; maxBundleSize: number }` to match what Next emits.
+
+- [#1248](https://github.com/opennextjs/opennextjs-aws/pull/1248) [`cdad3e6c9dd98813136793429bd0acea3a444595`](https://github.com/opennextjs/opennextjs-aws/commit/cdad3e6c9dd98813136793429bd0acea3a444595) Thanks [@conico974](https://github.com/conico974)! - fix: read and write local fetch cache entries in the build's `__fetch` namespace
+
+  The `fs-dev` incremental cache now honors the cache type, so local ISR reuses
+  build-time fetch and `unstable_cache` data instead of treating those entries as
+  misses. Fetch entries no longer share file paths with page and route entries.
+
+- [#1251](https://github.com/opennextjs/opennextjs-aws/pull/1251) [`ef36ff876cbc42aea9955ba36fe91d4a7aac97c6`](https://github.com/opennextjs/opennextjs-aws/commit/ef36ff876cbc42aea9955ba36fe91d4a7aac97c6) Thanks [@vicb](https://github.com/vicb)! - Bump minimum Next.js dependencies to 15.5.26 and 16.3.6
+
+## 4.1.5
+
+### Patch Changes
+
+- [#1245](https://github.com/opennextjs/opennextjs-aws/pull/1245) [`f18de4d5a3f7b7b9317a65d512c65004e471a505`](https://github.com/opennextjs/opennextjs-aws/commit/f18de4d5a3f7b7b9317a65d512c65004e471a505) Thanks [@isaacrowntree](https://github.com/isaacrowntree)! - fix: scope the composable cache's pending writes to the request, not the isolate
+
+  The map of in-flight `'use cache'` writes was module-scoped. On a runtime that serves many concurrent requests from one isolate (e.g. Cloudflare Workers) a pending write promise from one request could be handed to another; if the first request's context was torn down before the write settled, the second hung and the key stayed poisoned for the life of the isolate. The map now lives in the per-request `RequestCache`.
+
+- [#1219](https://github.com/opennextjs/opennextjs-aws/pull/1219) [`4246f9ed94e3f5c7d154115d812a196aa970fa8e`](https://github.com/opennextjs/opennextjs-aws/commit/4246f9ed94e3f5c7d154115d812a196aa970fa8e) Thanks [@wxxw1xwwx-beep](https://github.com/wxxw1xwwx-beep)! - Pass `process.env` explicitly when spawning the Next.js build
+
+  `setStandaloneBuildMode` communicates with the Next.js build by mutating
+  `process.env` (`NEXT_PRIVATE_STANDALONE`, `NEXT_PRIVATE_OUTPUT_TRACE_ROOT`)
+  immediately before `buildNextjsApp` spawns it. Node forwards those mutations to
+  the child process by default, but Bun builds the child environment from a
+  snapshot taken at startup unless `env` is passed explicitly, so the build never
+  enters standalone mode. The failure surfaces much later in `createCacheAssets`
+  as `ENOENT ... .next/standalone/.next/server/pages-manifest.json`, which gives
+  no hint of the real cause. Passing `env: process.env` makes both runtimes
+  behave the same.
+
+- [#1244](https://github.com/opennextjs/opennextjs-aws/pull/1244) [`b9aabb903281eab8363ddf6c3e505caef1bb16b7`](https://github.com/opennextjs/opennextjs-aws/commit/b9aabb903281eab8363ddf6c3e505caef1bb16b7) Thanks [@cpruijsen](https://github.com/cpruijsen)! - fix: quote cache interceptor ETag values so they are valid HTTP entity-tags
+
+- [#1240](https://github.com/opennextjs/opennextjs-aws/pull/1240) [`66111316c08d81ff390d67a307bde9ca40d04ae7`](https://github.com/opennextjs/opennextjs-aws/commit/66111316c08d81ff390d67a307bde9ca40d04ae7) Thanks [@conico974](https://github.com/conico974)! - fix: split the compound `set-cookie` header set by `cookies()` in the middleware
+
+## 4.1.4
+
+### Patch Changes
+
+- [#1234](https://github.com/opennextjs/opennextjs-aws/pull/1234) [`ff83cbe`](https://github.com/opennextjs/opennextjs-aws/commit/ff83cbef2577209e8d00ee0bcea559288c9d9fe5) Thanks [@sommeeeer](https://github.com/sommeeeer)! - fix(e2e): AVIF was renabled for optimization in Next 16.3.4
+
+## 4.1.3
+
+### Patch Changes
+
+- [#1231](https://github.com/opennextjs/opennextjs-aws/pull/1231) [`a4dbe4d6702b3b4a99a7548f6268155c55ed7e35`](https://github.com/opennextjs/opennextjs-aws/commit/a4dbe4d6702b3b4a99a7548f6268155c55ed7e35) Thanks [@conico974](https://github.com/conico974)! - Improve status code handling in cacheInterceptor
+
+- [#1191](https://github.com/opennextjs/opennextjs-aws/pull/1191) [`1d90a751868410575a141409bff7e2d713297b58`](https://github.com/opennextjs/opennextjs-aws/commit/1d90a751868410575a141409bff7e2d713297b58) Thanks [@jdnurmi](https://github.com/jdnurmi)! - fix: use getSetCookie() to preserve multiple Set-Cookie headers in middleware
+
+## 4.1.2
+
+### Patch Changes
+
+- [#1227](https://github.com/opennextjs/opennextjs-aws/pull/1227) [`dd6ea23dfdc84c54c7d27950794faf67b4d930f1`](https://github.com/opennextjs/opennextjs-aws/commit/dd6ea23dfdc84c54c7d27950794faf67b4d930f1) Thanks [@vicb](https://github.com/vicb)! - Stop the cache interceptor from serving cached 404 and 500 responses with a cacheable `cache-control`.
+
+  `notFound()` results on ISR routes are written to the incremental cache by Next.js, and the interceptor served them with the entry's own `cache-control` — up to `s-maxage=31536000` for a route that declares no `revalidate`. A transient 404 could therefore be held at the CDN for a year. The interceptor now applies the same override the server path already applies in `OpenNextNodeResponse.fixHeadersForError`, which it was bypassing by returning a result directly. As on the server path, only 404 and 500 are overridden, and `OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS=true` opts out.
+
+- [#1226](https://github.com/opennextjs/opennextjs-aws/pull/1226) [`78ca8fe40d80fbe950e8478fc3400d40614e195d`](https://github.com/opennextjs/opennextjs-aws/commit/78ca8fe40d80fbe950e8478fc3400d40614e195d) Thanks [@lcordier42](https://github.com/lcordier42)! - Forward `images.dangerouslyAllowLocalIP` to `fetchExternalImage` on Next.js 16 instead of hardcoding `false`, so external images served from hosts resolving to private IPs (e.g. an internal media proxy) can be optimized again when the user has explicitly opted out of the SSRF guard in their Next.js config.
+
+## 4.1.1
+
+### Patch Changes
+
+- [#1209](https://github.com/opennextjs/opennextjs-aws/pull/1209) [`cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff`](https://github.com/opennextjs/opennextjs-aws/commit/cff61c8c2279a4e8b5ad91f7ff1693fdf48e36ff) Thanks [@cgcompassion](https://github.com/cgcompassion)! - Persist runtime cache tag associations for App Router `APP_PAGE` entries when using original-mode tag caches, including pages generated on demand and tags added after the build.
+
+- [#1195](https://github.com/opennextjs/opennextjs-aws/pull/1195) [`eb04b808731abdab6ed5c8dd30f0eb3b17355336`](https://github.com/opennextjs/opennextjs-aws/commit/eb04b808731abdab6ed5c8dd30f0eb3b17355336) Thanks [@JiahaoZhu11](https://github.com/JiahaoZhu11)! - Fix `server/instrumentation.js does not exist` build failure on Next.js 16
+
+  On Next.js 16 the standalone output no longer copies `server/instrumentation.js`
+  into the standalone directory, but `copyTracedFiles` copies the instrumentation
+  `.nft.json` trace and then asserts the `.js` file exists in the standalone dir,
+  throwing `File server/instrumentation.js does not exist` during the server
+  bundle. The instrumentation file is now copied from the build dir into the
+  standalone dir (mirroring the existing `.nft.json` copy) so the assertion passes
+  and the file ships in the bundle.
+
+- [#1194](https://github.com/opennextjs/opennextjs-aws/pull/1194) [`d8b13fa5a885d0e31d3c9cc72040c2b66784e07f`](https://github.com/opennextjs/opennextjs-aws/commit/d8b13fa5a885d0e31d3c9cc72040c2b66784e07f) Thanks [@conico974](https://github.com/conico974)! - Fix for undefined rsc data in the cache
+
+  A cache entry does not always hold every field: the build only stores `rsc` when it
+  collected a `.rsc` or a `.prefetch.rsc` file, and only stores `html` when it collected an
+  `.html` file. `CachedFile` claimed both were always present, so `Buffer.from(cacheData.rsc)`
+  threw on such an entry and the cache handler turned that into a permanent miss.
+
+  `rsc` and `html` are now optional and an entry that lacks the data needed to serve a
+  request is reported as a miss instead of being served incomplete. The cache interceptor
+  falls back to the server for those entries rather than serving an empty RSC payload, which
+  a CDN could otherwise cache.
+
+- [#1223](https://github.com/opennextjs/opennextjs-aws/pull/1223) [`a828810a5cb517d77cbe1b455f8b0b9d14a46610`](https://github.com/opennextjs/opennextjs-aws/commit/a828810a5cb517d77cbe1b455f8b0b9d14a46610) Thanks [@conico974](https://github.com/conico974)! - Update Next.js and sharp versions
+
+- [#1207](https://github.com/opennextjs/opennextjs-aws/pull/1207) [`33422799811e281a0882f2be24264730ae68fff0`](https://github.com/opennextjs/opennextjs-aws/commit/33422799811e281a0882f2be24264730ae68fff0) Thanks [@conico974](https://github.com/conico974)! - Fix stale entries being revalidated in a blocking way on Next.js 16.3
+
+  To flag a cache entry as stale, the incremental cache adapter reported a
+  `lastModified` of `1` (i.e. right after the epoch) to Next.js. Starting with
+  Next.js 16.3 the incremental cache also compares `lastModified + expire` to now
+  and forces a blocking revalidation (`x-nextjs-cache: REVALIDATED`) when that is
+  in the past, which an epoch based value always is. Stale entries were therefore
+  never served while revalidating in the background.
+
+  On Next.js 16.3 and above, stale entries now report a `lastModified` just past
+  their revalidate window, so they stay inside their expire window and are served
+  stale as intended. Earlier versions keep the previous behaviour.
+
+- [#1220](https://github.com/opennextjs/opennextjs-aws/pull/1220) [`1824810351c9c56880a1e57c77235b04c0982108`](https://github.com/opennextjs/opennextjs-aws/commit/1824810351c9c56880a1e57c77235b04c0982108) Thanks [@vicb](https://github.com/vicb)! - fix `getgetUrlParts()` when the path name is empty (root)
+
 ## 4.1.0
 
 ### Minor Changes

@@ -321,7 +321,10 @@ const NEXT_RELEASE_DATES: Record<number, string> = {
 
 /**
  * Check if a Next.js version is supported by the Next.js team.
+ *
  * Major versions are supported for 2 years following their initial release.
+ * A major version is also considered supported as long as it is the Active or Maintenance LTS,
+ * that is until the second next major version is released (i.e. 15 is supported until 17 is released).
  *
  * @param version - The Next.js version to check (semver format)
  * @returns true if the version is currently supported, false otherwise
@@ -333,10 +336,15 @@ export function isNextVersionSupported(version: string): boolean {
     return false;
   }
 
-  const releaseDateStr = NEXT_RELEASE_DATES[Number(match[0])];
+  const major = Number(match[0]);
+  const releaseDateStr = NEXT_RELEASE_DATES[major];
 
   if (!releaseDateStr) {
     return false;
+  }
+
+  if (!NEXT_RELEASE_DATES[major + 2]) {
+    return true;
   }
 
   const releaseDate = new Date(releaseDateStr);

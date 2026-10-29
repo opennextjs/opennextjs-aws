@@ -12,6 +12,10 @@ declare global {
 
 describe("CacheHandler", () => {
   let cache: Cache;
+  // `set` registers writes as detached work on the request's promise runner. Tests that assert
+  // on what a write did need to wait for that work.
+  let detachedWrites: Promise<unknown>[];
+  const awaitDetachedWrites = () => Promise.all(detachedWrites);
 
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
   const getFetchCacheSpy = vi.spyOn(Cache.prototype, "getFetchCache");
@@ -60,10 +64,14 @@ describe("CacheHandler", () => {
     vi.clearAllMocks();
 
     // Reset the getStore mock to return a fresh Set for each test
+    detachedWrites = [];
     (globalThis.__openNextAls.getStore as Mock).mockReturnValue({
       pendingPromiseRunner: {
         withResolvers: vi.fn().mockReturnValue({
           resolve: vi.fn(),
+        }),
+        add: vi.fn((promise: Promise<unknown>) => {
+          detachedWrites.push(promise);
         }),
       },
       writtenTags: new Set(),
@@ -448,6 +456,106 @@ describe("CacheHandler", () => {
         });
       });
 
+      // `rsc` is absent from the cache file when the build collected neither a
+      // `.rsc` nor a `.prefetch.rsc` file for the entry. Next.js leaves `rscData`
+      // undefined for fallback shells and postponed PPR routes as well, see
+      // `file-system-cache.ts`, so an undefined value is expected downstream.
+      it("Should return an undefined rscData when cache data type is app without rsc (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+            segmentData: {
+              segment1: "data1",
+            },
+            meta: {
+              status: 200,
+              postponed: "postponed-data",
+            },
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toEqual({
+          value: {
+            kind: "APP_PAGE",
+            html: "<html></html>",
+            rscData: undefined,
+            status: 200,
+            headers: undefined,
+            postponed: "postponed-data",
+            segmentData: new Map([["segment1", Buffer.from("data1")]]),
+          },
+          lastModified: Date.now(),
+        });
+        expect((result as any).value.rscData).toBeUndefined();
+      });
+
+      it("Should return an empty rscData when cache data type is app with an empty rsc (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+            rsc: "",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        // An empty `rsc` is a payload of its own, only an absent `rsc` maps to `undefined`.
+        expect((result as any).value.rscData).toEqual(Buffer.alloc(0));
+      });
+
+      it("Should return null when cache data type is app without html (Next 15+)", async () => {
+        globalThis.nextVersion = "15.0.0";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            rsc: "rsc-data",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
+      });
+
+      it("Should return null when cache data type is page without html", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "page",
+            json: {},
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toBeNull();
+      });
+
+      // On Next.js < 15 an app page is returned as a `PAGE` whose `pageData` holds the RSC
+      // payload, there is nothing to return when `rsc` is absent.
+      it("Should return null when cache data type is app without rsc (Next 14)", async () => {
+        incrementalCache.get.mockResolvedValueOnce({
+          value: {
+            type: "app",
+            html: "<html></html>",
+          },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect(result).toBeNull();
+      });
+
       it("Should return value when cache data type is redirect", async () => {
         incrementalCache.get.mockResolvedValueOnce({
           value: {
@@ -752,6 +860,121 @@ describe("CacheHandler", () => {
       );
     });
 
+    // `x-next-cache-tags` carries the tags collected during the render, as a comma
+    // separated string. Only entries reachable by `revalidateTag` are covered here: an App
+    // Router page is a `PAGE` with a string `pageData` before Next 15 and an `APP_PAGE`
+    // from Next 15 on. A `PAGE` with an object `pageData` is a Pages Router entry, which
+    // `revalidateTag` never reaches.
+    it.each([
+      {
+        cacheKind: "PAGE",
+        data: {
+          kind: "PAGE" as const,
+          html: "<html></html>",
+          pageData: "rsc",
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+      {
+        cacheKind: "APP_PAGE",
+        data: {
+          kind: "APP_PAGE" as const,
+          html: "<html></html>",
+          rscData: Buffer.from("rsc"),
+          status: 200,
+          headers: { "x-next-cache-tags": "existing-tag,new-tag" },
+        },
+      },
+    ])("Should persist cache tags for $cacheKind entries", async ({ data }) => {
+      tagCache.getByPath.mockResolvedValueOnce(["existing-tag"]);
+
+      await cache.set("key", data);
+      await awaitDetachedWrites();
+
+      expect(tagCache.getByPath).toHaveBeenCalledWith("key");
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        {
+          path: "key",
+          tag: "new-tag",
+          revalidatedAt: 1,
+        },
+      ]);
+    });
+
+    it("Should set cache when for APP_PAGE without rscData", async () => {
+      await cache.set("key", {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: undefined,
+        status: 200,
+        headers: {},
+        postponed: "postponed-data",
+      });
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        {
+          type: "app",
+          html: "<html></html>",
+          rsc: undefined,
+          meta: {
+            status: 200,
+            headers: {},
+            postponed: "postponed-data",
+          },
+        },
+        "cache",
+      );
+      // `toHaveBeenCalledWith` ignores undefined properties, so we assert on the
+      // written value to make sure `rsc` is not serialized.
+      expect(incrementalCache.set.mock.calls[0][1].rsc).toBeUndefined();
+    });
+
+    it("Should set cache when for APP_PAGE with an empty rscData", async () => {
+      await cache.set("key", {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: Buffer.alloc(0),
+        status: 200,
+        headers: {},
+      });
+
+      expect(incrementalCache.set.mock.calls[0][1].rsc).toEqual("");
+    });
+
+    // `get` maps an absent `rsc` to `undefined` and an empty `rsc` to an empty buffer, so
+    // both values written here come back unchanged.
+    it.each([
+      { rscData: undefined, rsc: undefined },
+      { rscData: Buffer.alloc(0), rsc: "" },
+    ])(
+      "Should round-trip an APP_PAGE with rscData: $rscData",
+      async ({ rscData, rsc }) => {
+        globalThis.nextVersion = "15.0.0";
+
+        await cache.set("key", {
+          kind: "APP_PAGE",
+          html: "<html></html>",
+          rscData,
+          status: 200,
+          headers: {},
+        });
+
+        const written = incrementalCache.set.mock.calls[0][1];
+        expect(written.rsc).toEqual(rsc);
+
+        incrementalCache.get.mockResolvedValueOnce({
+          value: written,
+          lastModified: Date.now(),
+        });
+        const result = await cache.get("key", { kindHint: "app" });
+
+        expect((result as any).value.rscData).toEqual(rscData);
+      },
+    );
+
     it("Should set cache when for FETCH", async () => {
       await cache.set("key", {
         kind: "FETCH",
@@ -813,6 +1036,173 @@ describe("CacheHandler", () => {
         cache.set("key", { kind: "REDIRECT", props: {} }),
       ).resolves.not.toThrow();
     });
+
+    describe("deferred write", () => {
+      const deferredWrite = () => {
+        let resolve!: () => void;
+        const promise = new Promise<void>((r) => {
+          resolve = r;
+        });
+        return { promise, resolve };
+      };
+
+      // Only the store write is unresolved, so a few ticks are enough for `set` to reach it.
+      const drainMicrotasks = async (ticks = 20) => {
+        for (let i = 0; i < ticks; i++) {
+          await Promise.resolve();
+        }
+      };
+
+      it("Should register the write as detached work instead of awaiting it", async () => {
+        const write = deferredWrite();
+        incrementalCache.set.mockReturnValueOnce(write.promise);
+        tagCache.getByPath.mockResolvedValueOnce([]);
+
+        let settled = false;
+        const set = cache
+          .set("key", {
+            kind: "APP_PAGE",
+            html: "<html></html>",
+            rscData: Buffer.from("rsc"),
+            status: 200,
+            headers: { "x-next-cache-tags": "new-tag" },
+          })
+          .then(() => {
+            settled = true;
+          });
+
+        await drainMicrotasks();
+
+        // `set` is done while the store write is still pending, and the write was handed to the
+        // runner instead of the response
+        expect(settled).toBe(true);
+        expect(incrementalCache.set).toHaveBeenCalled();
+        expect(detachedWrites).toHaveLength(1);
+        const [handedOver] = detachedWrites;
+        expect(tagCache.getByPath).not.toHaveBeenCalled();
+
+        write.resolve();
+
+        // The tags are only updated once the entry is in the store
+        await set;
+        await expect(handedOver).resolves.toBeUndefined();
+        expect(tagCache.getByPath).toHaveBeenCalledWith("key");
+        expect(tagCache.writeTags).toHaveBeenCalledWith([
+          { path: "key", tag: "new-tag", revalidatedAt: 1 },
+        ]);
+        expect(incrementalCache.set.mock.invocationCallOrder[0]).toBeLessThan(
+          tagCache.writeTags.mock.invocationCallOrder[0] as number,
+        );
+      });
+
+      it("Should await FETCH writes and register them as detached work", async () => {
+        const write = deferredWrite();
+        incrementalCache.set.mockReturnValueOnce(write.promise);
+
+        let settled = false;
+        const set = cache
+          .set("key", {
+            kind: "FETCH",
+            data: {
+              headers: {},
+              body: "{}",
+              url: "https://example.com",
+              status: 200,
+              tags: [],
+            },
+            revalidate: 60,
+          })
+          .then(() => {
+            settled = true;
+          });
+
+        await drainMicrotasks();
+
+        expect(settled).toBe(false);
+        expect(detachedWrites).toEqual([write.promise]);
+
+        write.resolve();
+
+        await set;
+        expect(settled).toBe(true);
+      });
+
+      it("Should swallow a failed write instead of rejecting", async () => {
+        incrementalCache.set.mockRejectedValueOnce(new Error("Error"));
+
+        await expect(
+          cache.set("key", { kind: "REDIRECT", props: {} }),
+        ).resolves.not.toThrow();
+
+        // The promise handed to the runner still settles when the write fails
+        await expect(awaitDetachedWrites()).resolves.toBeDefined();
+        // A failed store write skips the tag update
+        expect(tagCache.getByPath).not.toHaveBeenCalled();
+      });
+
+      it("Should await the write when there is no request context", async () => {
+        (globalThis.__openNextAls.getStore as Mock).mockReturnValue(undefined);
+        const write = deferredWrite();
+        incrementalCache.set.mockReturnValueOnce(write.promise);
+
+        let settled = false;
+        const set = cache
+          .set("key", { kind: "REDIRECT", props: {} })
+          .then(() => {
+            settled = true;
+          });
+
+        await drainMicrotasks();
+
+        expect(incrementalCache.set).toHaveBeenCalled();
+        expect(settled).toBe(false);
+
+        write.resolve();
+
+        await set;
+        expect(settled).toBe(true);
+      });
+    });
+  });
+
+  describe("route cache keys", () => {
+    const hash = "a".repeat(64);
+    const scopedKey = `/route-cache/APP_PAGE/${hash}/$/isr`;
+
+    it("Should use the scoped key on get", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.get(scopedKey, { kindHint: "app" });
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(scopedKey, "cache");
+    });
+
+    it("Should use the scoped key on set", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(`/route-cache/PAGES/${hash}/$/index`, {
+        kind: "REDIRECT",
+        props: {},
+      });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${hash}/$/index`,
+        { type: "redirect", props: {} },
+        "cache",
+      );
+    });
+
+    it("Should use the scoped key on delete", async () => {
+      globalThis.nextVersion = "16.3.8";
+
+      await cache.set(`/route-cache/APP_ROUTE/${hash}/$/api/data`, undefined);
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.delete).toHaveBeenCalledWith(
+        `/route-cache/APP_ROUTE/${hash}/$/api/data`,
+      );
+    });
   });
 
   describe("revalidateTag", () => {
@@ -871,6 +1261,23 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
     });
 
+    it("Should invalidate the pathname of scoped cache keys", async () => {
+      const hash = "a".repeat(64);
+      tagCache.getByTag.mockResolvedValueOnce([
+        `route-cache/APP_PAGE/${hash}/$/isr`,
+      ]);
+      tagCache.getByPath.mockResolvedValueOnce([]);
+      await cache.revalidateTag(`${SOFT_TAG_PREFIX}/isr`);
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/isr",
+          rawPath: "/isr",
+          resolvedRoutes: [{ type: "app", route: "/isr" }],
+        },
+      ]);
+    });
+
     it("Should not call invalidateCdnHandler.invalidatePaths for fetch cache key ", async () => {
       tagCache.getByTag.mockResolvedValueOnce(["123456"]);
       await cache.revalidateTag("tag");
@@ -911,6 +1318,23 @@ describe("CacheHandler", () => {
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+    });
+
+    it("Should invalidate the pathname of scoped cache keys for nextMode", async () => {
+      const hash = "a".repeat(64);
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi
+        .fn()
+        .mockResolvedValueOnce([`/route-cache/PAGES/${hash}/$/en/isr`]);
+      await cache.revalidateTag("tag");
+
+      expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalledWith([
+        {
+          initialPath: "/en/isr",
+          rawPath: "/en/isr",
+          resolvedRoutes: [{ type: "app", route: "/en/isr" }],
+        },
+      ]);
     });
 
     it("Should call writeTags and invalidateCdnHandler.invalidatePaths for nextMode that supports getPathsByTags", async () => {

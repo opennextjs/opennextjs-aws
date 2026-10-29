@@ -2,15 +2,25 @@ packages:
   - "examples/*"
   - "packages/*"
 
+allowBuilds:
+  '@biomejs/biome': true
+  aws-crt: true
+  aws-sdk: true
+  esbuild: true
+  sharp: true
+  turbo: true
+
 catalog:
-  next: 16.3.0
-  react: 19.2.6
-  react-dom: 19.2.6
+  next: 16.4.1
+  react: 19.3.1
+  react-dom: 19.3.1
   "@types/node": 20.17.6
-  "@types/react": 19.2.6
-  "@types/react-dom": 19.2.3
-  autoprefixer: 10.4.15
-  postcss: 8.4.27
+  "@types/react": 19.3.0
+  "@types/react-dom": 19.3.0
+  autoprefixer: 10.6.1
+  postcss: 8.5.23
   tailwindcss: 3.3.3
   typescript: 5.9.3
-  esbuild: 0.25.4
+  esbuild: 0.28.2
+  express: ^5.2.1
+  diff: ^9.0.0

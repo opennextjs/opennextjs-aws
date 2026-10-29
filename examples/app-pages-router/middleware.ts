@@ -11,6 +11,12 @@ const topLevelAwait = await new Promise<string>((resolve) => {
   }, 10);
 });
 
+/**
+ * Applies middleware behavior used by the mixed-router test application.
+ *
+ * @param request Incoming Next.js request.
+ * @return A middleware response, rewrite, redirect, or proxied response.
+ */
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
@@ -65,7 +71,28 @@ export function middleware(request: NextRequest) {
     return fetch(new URL("/api/hello", request.url));
   }
   const rHeaders = new Headers(request.headers);
+  if (
+    path === "/api/request-headers-app" ||
+    path === "/api/request-headers-pages"
+  ) {
+    rHeaders.delete("x-untrusted-identity");
+    rHeaders.set("x-middleware-added", "trusted");
+  }
+  const responseHeaders = new Headers();
+  // Keep origin-cache tests out of CloudFront so repeated requests exercise
+  // cacheInterceptor. The encoded spelling selects the catch-all route.
+  if (
+    path === "/albums" ||
+    path.startsWith("/cache-victim/") ||
+    path.startsWith("/%63ache-victim/")
+  ) {
+    responseHeaders.set(
+      "cache-control",
+      "private, no-cache, no-store, max-age=0, must-revalidate",
+    );
+  }
   const r = NextResponse.next({
+    headers: responseHeaders,
     request: {
       headers: rHeaders,
     },

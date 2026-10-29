@@ -3,12 +3,13 @@ import { Readable, type Writable } from "node:stream";
 import type { APIGatewayProxyEvent, APIGatewayProxyEventV2 } from "aws-lambda";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
-import type { StreamCreator } from "types/open-next";
+import type { StreamCreator, WaitUntil } from "types/open-next";
 import { debug } from "../../adapters/logger";
 import type {
   WarmerEvent,
   WarmerResponse,
 } from "../../adapters/warmer-function";
+import { DetachedPromiseRunner } from "../../utils/promise";
 
 // Accepts either API Gateway payload format (v1/REST or v2/HTTP). The paired
 // converter (`aws-apigw-v1` or `aws-apigw-v2`) is responsible for parsing the
@@ -72,6 +73,16 @@ const handler: WrapperHandler = async (handler, converter) =>
         responseStream.end();
       });
 
+      // AWS provides no native `waitUntil`, so back it with the shared
+      // `DetachedPromiseRunner`, which tracks the deferred promises and awaits
+      // (and logs the failures of) them before the stream closes. This keeps
+      // the Lambda alive for deferred work (background revalidation, cache
+      // write-through) that starts after the response body is sent — matching
+      // the `waitUntil` the Cloudflare wrappers pass through, and enabling the
+      // `withWaitUntil` route preloading that otherwise falls back to `none`.
+      const promiseRunner = new DetachedPromiseRunner();
+      const waitUntil: WaitUntil = (promise) => promiseRunner.add(promise);
+
       const streamCreator: StreamCreator = {
         writeHeaders: (_prelude) => {
           // No content-encoding header — API Gateway streaming does not
@@ -90,7 +101,10 @@ const handler: WrapperHandler = async (handler, converter) =>
         },
       };
 
-      const response = await handler(internalEvent, { streamCreator });
+      const response = await handler(internalEvent, {
+        streamCreator,
+        waitUntil,
+      });
 
       const isUsingEdge = globalThis.isEdgeRuntime ?? false;
       if (isUsingEdge) {
@@ -102,6 +116,9 @@ const handler: WrapperHandler = async (handler, converter) =>
         });
         Readable.fromWeb(response.body).pipe(stream as Writable);
       }
+
+      // Keep the invocation alive until deferred `waitUntil` work settles.
+      await promiseRunner.await();
     },
   );
 
