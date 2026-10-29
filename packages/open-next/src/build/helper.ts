@@ -519,7 +519,10 @@ export function getPackagePath(options: BuildOptions) {
 export function getBundlerRuntime(
   options: BuildOptions,
 ): "webpack" | "turbopack" {
-  const dotNextServerPath = path.join(options.appPath, ".next/server");
+  const dotNextServerPath = path.join(
+    options.appBuildOutputPath,
+    ".next/server",
+  );
   if (fs.existsSync(path.join(dotNextServerPath, "webpack-runtime.js"))) {
     return "webpack";
   }
