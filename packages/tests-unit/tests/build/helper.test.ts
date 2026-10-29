@@ -2,8 +2,10 @@ import fs from "node:fs";
 import {
   compareSemver,
   findNextConfig,
+  getBundlerRuntime,
   isNextVersionSupported,
 } from "@opennextjs/aws/build/helper.js";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { afterEach, vi } from "vitest";
 
 vi.mock("node:fs");
@@ -208,5 +210,53 @@ describe("findNextConfig", () => {
       path: "/test/app/next.config.ts",
       isTypescript: true,
     });
+  });
+});
+
+describe("getBundlerRuntime", () => {
+  const options = {
+    appPath: "/test/app",
+    appBuildOutputPath: "/test/output",
+  } as BuildOptions;
+
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReset();
+  });
+
+  test("returns webpack when the webpack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/output/.next/server/webpack-runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("webpack");
+  });
+
+  test("returns turbopack when the turbopack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) =>
+        filePath === "/test/output/.next/server/chunks/[turbopack]_runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("turbopack");
+  });
+
+  test("returns turbopack when the ssr turbopack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) =>
+        filePath ===
+        "/test/output/.next/server/chunks/ssr/[turbopack]_runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("turbopack");
+  });
+
+  test("ignores the .next folder in appPath when buildOutputPath differs", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/.next/server/webpack-runtime.js",
+    );
+
+    expect(() => getBundlerRuntime(options)).toThrow(
+      "Unable to determine Next.js runtime (webpack or turbopack)",
+    );
   });
 });
