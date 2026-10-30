@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadConfig } from "config/util.js";
+import { getOpenNextBuildId, loadConfig } from "config/util.js";
 import { safeParseJsonFile } from "utils/safe-json-parse.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
@@ -81,6 +81,9 @@ export function createStaticAssets(
 /**
  * Create the cache assets.
  *
+ * The cache entries, the fetch cache entries and the tag cache seed are prefixed with the Open Next build id
+ * so that they match the keys used at runtime.
+ *
  * @param options Build options.
  * @returns Whether the tag cache is used, and the meta files collected.
  */
@@ -89,9 +92,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = buildHelper.getPackagePath(options);
-  const buildId = buildHelper.getBuildId(options);
   const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
-  const openNextBuildId = nextConfig.deploymentId ?? buildId;
+  // Must match `process.env.OPEN_NEXT_BUILD_ID` used at runtime to read the cache entries and the tags
+  const openNextBuildId = getOpenNextBuildId(
+    nextConfig,
+    buildHelper.getBuildId(options),
+  );
 
   let useTagCache = false;
 
@@ -253,8 +259,8 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         .split(",")
         .forEach((tag: string) => {
           metaFiles.push({
-            tag: { S: path.posix.join(buildId, tag.trim()) },
-            path: { S: path.posix.join(buildId, cacheKey) },
+            tag: { S: path.posix.join(openNextBuildId, tag.trim()) },
+            path: { S: path.posix.join(openNextBuildId, cacheKey) },
             revalidatedAt: { N: "1" },
           });
         });
@@ -267,7 +273,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     ".next/cache/fetch-cache",
   );
   if (fs.existsSync(fetchCachePath)) {
-    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+    const fetchOutputPath = path.join(
+      outputDir,
+      "cache",
+      "__fetch",
+      openNextBuildId,
+    );
     fs.mkdirSync(fetchOutputPath, { recursive: true });
     fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
 
@@ -279,9 +290,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         const fileData = safeParseJsonFile(fileContent, absolutePath);
         fileData?.tags?.forEach((tag: string) => {
           metaFiles.push({
-            tag: { S: path.posix.join(buildId, tag) },
+            tag: { S: path.posix.join(openNextBuildId, tag) },
             path: {
-              S: path.posix.join(buildId, relativePath),
+              S: path.posix.join(openNextBuildId, relativePath),
             },
             revalidatedAt: { N: "1" },
           });
