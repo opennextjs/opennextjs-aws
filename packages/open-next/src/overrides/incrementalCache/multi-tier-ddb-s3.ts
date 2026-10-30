@@ -69,7 +69,7 @@ const multiTierCache: IncrementalCache = {
     if (localCacheEntry) {
       if (Date.now() - localCacheEntry.lastModified < localCacheTTL) {
         debug("Using local cache without checking ddb");
-        return localCacheEntry;
+        return structuredClone(localCacheEntry);
       }
       try {
         // Here we'll check ddb metadata to see if the local cache is still valid
@@ -97,7 +97,7 @@ const multiTierCache: IncrementalCache = {
             : 0;
           if (lastModified <= localCacheEntry.lastModified) {
             debug("Using local cache after checking ddb");
-            return localCacheEntry;
+            return structuredClone(localCacheEntry);
           }
         }
       } catch (e) {
@@ -106,8 +106,11 @@ const multiTierCache: IncrementalCache = {
     }
     const result = await S3Cache.get(key, isFetch);
     if (result?.value) {
+      // Callers change the entry they read (getTagsFromValue deletes the cache-tags header), so
+      // the local cache keeps its own copy and hands out copies. Otherwise the first read strips
+      // the tags from the cached entry and revalidateTag/updateTag stop invalidating it.
       localCache.set(key, {
-        value: result.value,
+        value: structuredClone(result.value),
         lastModified: result.lastModified ?? Date.now(),
       });
     }
