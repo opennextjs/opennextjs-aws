@@ -23,6 +23,7 @@ import type {
   InternalResult,
   StreamCreator,
 } from "types/open-next.js";
+import { compareSemver } from "utils/semver.js";
 import { emptyReadableStream, toReadableStream } from "utils/stream.js";
 
 import type { OpenNextHandlerOptions } from "types/overrides.js";
@@ -35,8 +36,12 @@ import { setNodeEnv } from "./util.js";
 setNodeEnv();
 const nextDir = path.join(__dirname, ".next");
 const config = loadConfig(nextDir);
-// Used to compute the static ETag, it must change on every deployment
-const openNextBuildId = getOpenNextBuildId(config, loadBuildId(nextDir));
+const buildId = loadBuildId(nextDir);
+// Used to compute the static ETag, it must change on every deployment.
+// Since Next 16.2, the build id is a constant when `deploymentId` is set.
+const etagBuildId = compareSemver(globalThis.nextVersion, ">=", "16.2.0")
+  ? getOpenNextBuildId(config, buildId)
+  : buildId;
 const nextConfig = {
   ...defaultConfig,
   images: {
@@ -155,7 +160,7 @@ function computeEtag(imageParams: {
         href: imageParams.href,
         width: imageParams.width,
         quality: imageParams.quality,
-        buildId: openNextBuildId,
+        buildId: etagBuildId,
       }),
     )
     .digest("base64");
