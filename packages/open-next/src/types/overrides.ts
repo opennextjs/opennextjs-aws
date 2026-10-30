@@ -363,12 +363,19 @@ export type CDNInvalidationHandler = BaseOverride & {
   /**
    * Invalidates CDN entries associated with cache tags.
    *
-   * When omitted, OpenNext resolves tags to paths and calls `invalidatePaths`.
+   * Called once per `revalidateTag` call, after the tag cache has been updated,
+   * with the tags passed to Next.js as is: hard tags from `revalidateTag()` and
+   * soft tags (prefixed with `_N_T_/`) from `revalidatePath()`. Tags are not
+   * expanded, i.e. the hard tags of the paths matching a soft tag are not added.
    *
-   * The CDN integration must associate cached entries with these same tags for
-   * invalidation to have an effect. For response-based CDN caches, the wrapper
-   * or converter must propagate the request's cache tags to the provider's
-   * response metadata.
+   * When provided, `invalidatePaths` is no longer called for tag revalidation.
+   * It is still used for `res.revalidate()` in the Pages Router.
+   * When omitted, OpenNext resolves the tags to paths and calls `invalidatePaths`.
+   *
+   * The CDN integration must associate cached entries with the same tags, both
+   * hard and soft, for invalidation to have an effect. For response-based CDN
+   * caches, the wrapper or converter must propagate the request's cache tags to
+   * the provider's response metadata.
    *
    * @param tags Cache tags associated with the entries to invalidate.
    * @returns A promise that resolves when invalidation is complete.
