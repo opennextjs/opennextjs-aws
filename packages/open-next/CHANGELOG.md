@@ -1,5 +1,44 @@
 # open-next
 
+## 4.1.14
+
+### Patch Changes
+
+- [#1208](https://github.com/opennextjs/opennextjs-aws/pull/1208) [`ae169c5`](https://github.com/opennextjs/opennextjs-aws/commit/ae169c5ae68536be093adf9d9913ff69de9cf14c) Thanks [@yuanzhixiang](https://github.com/yuanzhixiang)! - fix: respect `buildOutputPath` when detecting the Next.js bundler (webpack or turbopack)
+
+  Setting `buildOutputPath` to a value other than `.` could fail the build with `Unable to determine Next.js runtime (webpack or turbopack)`.
+
+- [#1328](https://github.com/opennextjs/opennextjs-aws/pull/1328) [`52cc971`](https://github.com/opennextjs/opennextjs-aws/commit/52cc97130fd2a5226c1a11bfec8278d8ce956423) Thanks [@cpruijsen](https://github.com/cpruijsen)! - fix: pass `--cpu` instead of `--arch` and drop `--target` when installing function dependencies
+
+  npm 12 rejects (npm 11 warns) the `--arch` and `--target` flags, so the install failed and, because the error was only logged, the image optimization function deployed without `sharp`. npm filters platform-specific optional dependencies (sharp's `@img/*` packages) by `--cpu`, so `arch` is now passed as `--cpu`. `InstallOptions.nodeVersion` is kept but deprecated and no longer passed to npm.
+
+- [#1308](https://github.com/opennextjs/opennextjs-aws/pull/1308) [`2db5768`](https://github.com/opennextjs/opennextjs-aws/commit/2db576848db9ae5394f0a00603a909a1ac66f520) Thanks [@vicb](https://github.com/vicb)! - feat: support native CDN tag invalidation
+
+  Allow CDN invalidation overrides to invalidate the original cache tags directly while preserving path invalidation as the fallback for existing handlers.
+
+- [#1317](https://github.com/opennextjs/opennextjs-aws/pull/1317) [`b558c35`](https://github.com/opennextjs/opennextjs-aws/commit/b558c3568803aee8a1cbbb72262f0ce5bf5b1e10) Thanks [@alexdupre](https://github.com/alexdupre)! - fix: report the lifetime of a cache entry to Next.js
+
+  A page rendered on demand by a dynamic route was reported as stale one second after it was written by any instance that did not render it. The `expire` passed by Next.js is now stored with the entry, and `get` reports both `revalidate` and `expire`.
+
+- [#1333](https://github.com/opennextjs/opennextjs-aws/pull/1333) [`b9334d8`](https://github.com/opennextjs/opennextjs-aws/commit/b9334d821b6ffa8f287d8e1270f4d82fe3baac3a) Thanks [@vicb](https://github.com/vicb)! - fix: use the right build id when `deploymentId` is set
+
+  Since Next 16.2, `.next/BUILD_ID` is a constant when `deploymentId` is set without `generateBuildId`.
+
+  - The build-time tag cache seed and fetch cache now use the Open Next build id, so `revalidateTag`/`revalidatePath` work for prerendered entries.
+  - On Next >= 16.2, the image optimization static ETag now changes on every deployment.
+  - The CloudFront invalidation of `/_next/data/` URLs now uses the Next build id, which is the one in the URLs.
+  - An empty `deploymentId` now falls back to the build id instead of producing un-prefixed cache keys.
+
+- [#1310](https://github.com/opennextjs/opennextjs-aws/pull/1310) [`3968ee4`](https://github.com/opennextjs/opennextjs-aws/commit/3968ee4460bdb5f632936f99c7296d2a802384b0) Thanks [@vicb](https://github.com/vicb)! - fix: support `res.revalidate()` in Pages Router API routes on Next 15.4+
+
+  `res.revalidate()` used to throw `Invariant: missing internal router-server-methods this is an internal bug`.
+
+  Pages served by the same function are now revalidated in-process (as with `next start`) and then invalidated in the CDN. Pages served by another split function are revalidated with a `HEAD` request that only forwards the revalidation headers.
+
+- [#1331](https://github.com/opennextjs/opennextjs-aws/pull/1331) [`80215a4`](https://github.com/opennextjs/opennextjs-aws/commit/80215a4de2537f383b8af5186159cf6e70094cb3) Thanks [@vicb](https://github.com/vicb)! - fix: serve entries marked stale by `revalidateTag(tag, "max")` with stale-while-revalidate
+
+  On Next.js 16.4+, a stale entry with `revalidate: false` was served as a hit until its tag expired, and a stale prerendered entry was revalidated in the foreground.
+
 ## 4.1.13
 
 ### Patch Changes
