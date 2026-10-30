@@ -496,6 +496,17 @@ export default class Cache {
     }
   }
 
+  /**
+   * Revalidates cache entries associated with one or more tags.
+   *
+   * The tag cache is updated before the CDN is invalidated. CDN handlers that
+   * support tag invalidation receive the original tags; other handlers retain
+   * the existing path-based invalidation behavior.
+   *
+   * @param tags Tags whose cache entries should be revalidated.
+   * @param durations Optional stale and expiry durations.
+   * @returns A promise that resolves when revalidation is complete.
+   */
   public async revalidateTag(
     tags: string | string[],
     durations?: { expire?: number },
@@ -510,9 +521,9 @@ export default class Cache {
     }
 
     try {
-      if (globalThis.tagCache.mode === "nextMode") {
-        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+      const cdnInvalidationHandler = globalThis.cdnInvalidationHandler;
 
+      if (globalThis.tagCache.mode === "nextMode") {
         const now = Date.now();
         const tagsToWrite = _tags.map((tag) => {
           if (durations) {
@@ -534,23 +545,27 @@ export default class Cache {
         });
 
         await writeTags(tagsToWrite);
-        if (paths.length > 0) {
-          // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
-          // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
-          // Fixed Next.js releases store route-scoped cache keys in the tag cache.
-          await globalThis.cdnInvalidationHandler.invalidatePaths(
-            paths.map(getPathFromRouteCacheKey).map((path) => ({
-              initialPath: path,
-              rawPath: path,
-              resolvedRoutes: [
-                {
-                  route: path,
-                  // TODO: ideally here we should check if it's an app router page or route
-                  type: "app",
-                },
-              ],
-            })),
-          );
+        if (cdnInvalidationHandler.invalidateTags) {
+          await cdnInvalidationHandler.invalidateTags(_tags);
+        } else {
+          const paths =
+            (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+          if (paths.length > 0) {
+            // Fixed Next.js releases store route-scoped cache keys in the tag cache.
+            await cdnInvalidationHandler.invalidatePaths(
+              paths.map(getPathFromRouteCacheKey).map((path) => ({
+                initialPath: path,
+                rawPath: path,
+                resolvedRoutes: [
+                  {
+                    route: path,
+                    // TODO: ideally here we should check if it's an app router page or route
+                    type: "app",
+                  },
+                ],
+              })),
+            );
+          }
         }
         return;
       }
@@ -619,6 +634,10 @@ export default class Cache {
         // Update all keys with the given tag with revalidatedAt set to now
         await writeTags(toInsert);
 
+        if (cdnInvalidationHandler.invalidateTags) {
+          continue;
+        }
+
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`
         const uniquePaths = Array.from(
@@ -631,7 +650,7 @@ export default class Cache {
           ),
         );
         if (uniquePaths.length > 0) {
-          await globalThis.cdnInvalidationHandler.invalidatePaths(
+          await cdnInvalidationHandler.invalidatePaths(
             uniquePaths.map((path) => ({
               initialPath: path,
               rawPath: path,
@@ -645,6 +664,9 @@ export default class Cache {
             })),
           );
         }
+      }
+      if (cdnInvalidationHandler.invalidateTags) {
+        await cdnInvalidationHandler.invalidateTags(_tags);
       }
     } catch (e) {
       error("Failed to revalidate tag", e);
