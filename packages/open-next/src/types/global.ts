@@ -69,6 +69,13 @@ interface OpenNextRequestContext {
   writtenTags: Set<string>;
   /** Per-request in-memory cache. Overrides can use this to store data scoped to the current request. */
   requestCache: RequestCache;
+  /**
+   * Host of the request (`x-forwarded-host` or `host` header).
+   *
+   * Used by `res.revalidate()` to revalidate pages served by another split function.
+   * Only available in main functions.
+   */
+  host?: string;
 }
 
 declare global {

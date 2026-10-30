@@ -159,6 +159,45 @@ describe("createCacheAssets", () => {
     });
   });
 
+  it("should prefix the cache with the deployment id when set", () => {
+    const deploymentId = "dpl-1";
+    writeFile(path.join(root, ".next/required-server-files.json"), {
+      config: { deploymentId },
+    });
+    writeFile(path.join(root, ".next/cache/fetch-cache/fetch-key"), {
+      tags: ["fetch-tag"],
+    });
+
+    const { metaFiles } = createCacheAssets(getOptions("16.3.7"));
+
+    const cacheDir = path.join(root, ".open-next/cache");
+    expect(fs.existsSync(path.join(cacheDir, deploymentId, "isr.cache"))).toBe(
+      true,
+    );
+    expect(
+      fs.existsSync(path.join(cacheDir, "__fetch", deploymentId, "fetch-key")),
+    ).toBe(true);
+    expect(fs.existsSync(path.join(cacheDir, BUILD_ID))).toBe(false);
+    expect(fs.existsSync(path.join(cacheDir, "__fetch", BUILD_ID))).toBe(false);
+    expect(metaFiles).toContainEqual({
+      tag: { S: `${deploymentId}/_N_T_/isr` },
+      path: { S: `${deploymentId}/isr` },
+      revalidatedAt: { N: "1" },
+    });
+    expect(metaFiles).toContainEqual({
+      tag: { S: `${deploymentId}/fetch-tag` },
+      path: { S: `${deploymentId}/fetch-key` },
+      revalidatedAt: { N: "1" },
+    });
+    expect(
+      metaFiles.every(
+        ({ tag, path }) =>
+          tag.S.startsWith(`${deploymentId}/`) &&
+          path.S.startsWith(`${deploymentId}/`),
+      ),
+    ).toBe(true);
+  });
+
   it("should reject metadata keys that escape the cache output", () => {
     const serverDir = path.join(root, ".next/standalone/.next/server");
     writeFile(path.join(serverDir, "app/isr.meta"), {
