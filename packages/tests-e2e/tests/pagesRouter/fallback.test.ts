@@ -20,11 +20,68 @@ test.describe("fallback", () => {
   test("should work with fallback intercepted by dynamic route", async ({
     page,
   }) => {
-    await page.goto("/fallback-intercepted/something/");
+    const response = await page.goto("/fallback-intercepted/something/");
+    expect(response?.status()).toBe(200);
     const h1 = page.locator("h1");
     await expect(h1).toHaveText("Dynamic Fallback Page");
     const p = page.getByTestId("message");
     await expect(p).toHaveText("This is a dynamic fallback page.");
+    await expect(page.getByTestId("slugs")).toHaveText('["something"]');
+    await expect(page.getByTestId("locale")).toHaveText("en");
+  });
+
+  // The locale is intentionally not asserted after a fallthrough.
+  //
+  // Native Next.js (`next start`, verified on 15.5.27, 16.3.8 and 16.4.0) renders the
+  // fallthrough page with the default locale: `/nl/fallback-intercepted/multi/a` gets `en`.
+  // The first attempt strips the locale from `req.url` (base-server.ts) and the router
+  // server retries the next route with that stripped URL after a `NoFallbackError`.
+  // OpenNext has always kept the request locale (`nl`) on every version.
+  //
+  // Next.js doesn't assert the locale after a fallthrough either: the only test with a
+  // non-default locale fallthrough (test/production/app-dir/route-scoped-cache,
+  // `/fr/closed/%73ibling/...`) only checks the status and the rendered route.
+  //
+  // These cases compare route selection and params; the direct-match case checks locale.
+  for (const { locale, prefix } of [
+    { locale: "en", prefix: "" },
+    { locale: "nl", prefix: "/nl" },
+  ]) {
+    for (const { name, path, slugs } of [
+      { name: "spaces", path: "a%20b", slugs: ["multi", "a b"] },
+      { name: "encoded slashes", path: "a%2Fb", slugs: ["multi", "a/b"] },
+      {
+        name: "literal percent sequences",
+        path: "a%252Fb",
+        slugs: ["multi", "a%2Fb"],
+      },
+      { name: "multiple segments", path: "a/b", slugs: ["multi", "a", "b"] },
+    ]) {
+      test(`falls through excluded routes with ${name} (${locale})`, async ({
+        page,
+      }) => {
+        const response = await page.goto(
+          `${prefix}/fallback-intercepted/multi/${path}/`,
+        );
+
+        expect(response?.status()).toBe(200);
+        await expect(page.locator("h1")).toHaveText("Dynamic Fallback Page");
+        await expect(page.getByTestId("slugs")).toHaveText(
+          JSON.stringify(slugs),
+        );
+      });
+    }
+  }
+
+  test("uses the nondefault locale for a directly matched catch-all", async ({
+    page,
+  }) => {
+    const response = await page.goto("/nl/fallback-intercepted/direct/path/");
+
+    expect(response?.status()).toBe(200);
+    await expect(page.locator("h1")).toHaveText("Dynamic Fallback Page");
+    await expect(page.getByTestId("slugs")).toHaveText('["direct","path"]');
+    await expect(page.getByTestId("locale")).toHaveText("nl");
   });
 
   test("should work with fallback page pregenerated", async ({ page }) => {

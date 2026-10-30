@@ -56,7 +56,7 @@ export function getStaleLastModified(revalidate?: number | false): number {
     return 1;
   }
   if (typeof revalidate !== "number") {
-    // Without a revalidate value Next cannot derive an expire time either,
+    // The cache adapter then reports `{ revalidate: 1 }` without `expire` (see `getCacheControl`),
     // so the historical sentinel is still safe here.
     return 1;
   }

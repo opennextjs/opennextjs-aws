@@ -135,6 +135,11 @@ export type CacheValue<CacheType extends CacheEntryType> =
      * This is available for page cache entry, but only at runtime.
      */
     revalidate?: number | false;
+    /**
+     * This is available for page cache entry, but only at runtime.
+     * The cache interceptor does not use it.
+     */
+    expire?: number;
   };
 
 export type IncrementalCache = {
