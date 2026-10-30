@@ -521,7 +521,7 @@ export default class Cache {
     }
 
     try {
-      const invalidateTags = globalThis.cdnInvalidationHandler.invalidateTags;
+      const cdnInvalidationHandler = globalThis.cdnInvalidationHandler;
 
       if (globalThis.tagCache.mode === "nextMode") {
         const now = Date.now();
@@ -545,14 +545,14 @@ export default class Cache {
         });
 
         await writeTags(tagsToWrite);
-        if (invalidateTags) {
-          await invalidateTags(_tags);
+        if (cdnInvalidationHandler.invalidateTags) {
+          await cdnInvalidationHandler.invalidateTags(_tags);
         } else {
           const paths =
             (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
           if (paths.length > 0) {
             // Fixed Next.js releases store route-scoped cache keys in the tag cache.
-            await globalThis.cdnInvalidationHandler.invalidatePaths(
+            await cdnInvalidationHandler.invalidatePaths(
               paths.map(getPathFromRouteCacheKey).map((path) => ({
                 initialPath: path,
                 rawPath: path,
@@ -634,7 +634,7 @@ export default class Cache {
         // Update all keys with the given tag with revalidatedAt set to now
         await writeTags(toInsert);
 
-        if (invalidateTags) {
+        if (cdnInvalidationHandler.invalidateTags) {
           continue;
         }
 
@@ -650,7 +650,7 @@ export default class Cache {
           ),
         );
         if (uniquePaths.length > 0) {
-          await globalThis.cdnInvalidationHandler.invalidatePaths(
+          await cdnInvalidationHandler.invalidatePaths(
             uniquePaths.map((path) => ({
               initialPath: path,
               rawPath: path,
@@ -665,8 +665,8 @@ export default class Cache {
           );
         }
       }
-      if (invalidateTags) {
-        await invalidateTags(_tags);
+      if (cdnInvalidationHandler.invalidateTags) {
+        await cdnInvalidationHandler.invalidateTags(_tags);
       }
     } catch (e) {
       error("Failed to revalidate tag", e);

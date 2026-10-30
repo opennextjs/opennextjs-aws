@@ -1572,6 +1572,35 @@ describe("CacheHandler", () => {
       );
     });
 
+    it.each(["original", "nextMode"] as const)(
+      "Should call invalidateTags with the handler as `this` in %s",
+      async (mode) => {
+        class TagInvalidationHandler {
+          name = "tag-handler";
+          invalidatedTags: string[] = [];
+          invalidatePaths = vi.fn();
+          async invalidateTags(tags: string[]) {
+            this.invalidatedTags.push(...tags);
+          }
+        }
+        const handler = new TagInvalidationHandler();
+        globalThis.cdnInvalidationHandler = handler;
+        tagCache.mode = mode;
+        if (mode === "original") {
+          tagCache.getByTag.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+        }
+
+        try {
+          await cache.revalidateTag(["tag1", "tag2"]);
+        } finally {
+          globalThis.cdnInvalidationHandler = invalidateCdnHandler;
+        }
+
+        expect(handler.invalidatedTags).toEqual(["tag1", "tag2"]);
+        expect(handler.invalidatePaths).not.toHaveBeenCalled();
+      },
+    );
+
     it("Should not call writeTags when the tag list is empty for nextMode", async () => {
       const invalidateTags = vi.fn();
       invalidateCdnHandler.invalidateTags = invalidateTags;
