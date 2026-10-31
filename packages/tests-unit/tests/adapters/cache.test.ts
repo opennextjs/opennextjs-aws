@@ -1,6 +1,8 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import Cache, { SOFT_TAG_PREFIX } from "@opennextjs/aws/adapters/cache.js";
+import type { CacheControl } from "@opennextjs/aws/types/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
+import { SharedCacheControls } from "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js";
 import { type Mock, vi } from "vitest";
 
 declare global {
@@ -53,6 +55,7 @@ describe("CacheHandler", () => {
   const invalidateCdnHandler = {
     name: "mock",
     invalidatePaths: vi.fn(),
+    invalidateTags: undefined as Mock | undefined,
   };
   globalThis.cdnInvalidationHandler = invalidateCdnHandler;
 
@@ -87,6 +90,7 @@ describe("CacheHandler", () => {
     globalThis.nextVersion = "14.0.0";
     tagCache.mode = "original";
     tagCache.getPathsByTags = undefined;
+    invalidateCdnHandler.invalidateTags = undefined;
   });
 
   describe("get", () => {
@@ -716,6 +720,168 @@ describe("CacheHandler", () => {
           expect(tagCache.isStale).not.toHaveBeenCalled();
         });
       });
+
+      describe("cache control", () => {
+        // The map Next.js < 16.4 reads the lifetime of routes from.
+        const recordedCacheControls = (
+          SharedCacheControls as unknown as {
+            cacheControls: Map<string, CacheControl>;
+          }
+        ).cacheControls;
+        const SCOPED_KEY = `/route-cache/APP_PAGE/${"a".repeat(64)}/$/isr`;
+        const getEntry = (entry: Record<string, unknown>) => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}", ...entry },
+            lastModified: Date.now(),
+          });
+          return cache.get(SCOPED_KEY, { kindHint: "app" });
+        };
+
+        beforeEach(() => {
+          globalThis.nextVersion = "16.4.1";
+          recordedCacheControls.clear();
+        });
+
+        it.each([
+          {
+            stored: { revalidate: 120, expire: 3600 },
+            expected: { revalidate: 120, expire: 3600 },
+          },
+          { stored: { revalidate: 120 }, expected: { revalidate: 120 } },
+          { stored: { revalidate: false }, expected: { revalidate: false } },
+          // Build time entries have no stored lifetime
+          { stored: {}, expected: undefined },
+        ])(
+          "Should report $expected for an entry stored with $stored",
+          async ({ stored, expected }) => {
+            const result = await getEntry(stored);
+
+            expect(result?.cacheControl).toEqual(expected);
+          },
+        );
+
+        it.each([
+          { type: "app", html: "<html></html>", rsc: "rsc" },
+          { type: "page", html: "<html></html>", json: {} },
+          { type: "redirect", props: {} },
+        ])("Should report the lifetime of a $type entry", async (entry) => {
+          const result = await getEntry({ ...entry, revalidate: 120 });
+
+          expect(result?.cacheControl).toEqual({ revalidate: 120 });
+        });
+
+        it.each([
+          {
+            stored: { revalidate: 120, expire: 3600 },
+            cacheControl: { revalidate: 120, expire: 3600 },
+            lastModified: Date.now() - 120_001,
+          },
+          // Next.js would serve the entry as a hit with `revalidate: false`.
+          {
+            stored: { revalidate: false },
+            cacheControl: { revalidate: 1 },
+            lastModified: 1,
+          },
+          // Next.js would use the `expire` of the prerender manifest and revalidate it
+          // in the foreground.
+          { stored: {}, cacheControl: { revalidate: 1 }, lastModified: 1 },
+        ])(
+          "Should report a stale entry stored with $stored as stale",
+          async ({ stored, cacheControl, lastModified }) => {
+            tagCache.isStale.mockResolvedValueOnce(true);
+
+            const result = await getEntry(stored);
+
+            expect(result?.cacheControl).toStrictEqual(cacheControl);
+            expect(result?.lastModified).toEqual(lastModified);
+          },
+        );
+
+        it("Should not report a lifetime for a fetch entry", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { kind: "FETCH", data: {}, revalidate: 120 },
+            lastModified: Date.now(),
+          });
+
+          const result = await cache.get(SCOPED_KEY, { kindHint: "fetch" });
+
+          expect(result).not.toHaveProperty("cacheControl");
+          expect(recordedCacheControls.size).toEqual(0);
+        });
+
+        describe("record for Next.js < 16.4", () => {
+          it.each([
+            { version: "15.5.28", recorded: true },
+            { version: "16.3.8", recorded: true },
+            // Next.js reads the returned lifetime
+            { version: "16.4.1", recorded: false },
+            // The map is not keyed by route cache key
+            { version: "15.5.26", recorded: false },
+            { version: "16.3.7", recorded: false },
+          ])(
+            "Should record the lifetime on Next.js $version: $recorded",
+            async ({ version, recorded }) => {
+              globalThis.nextVersion = version;
+
+              await getEntry({ revalidate: 120, expire: 3600 });
+
+              expect(Object.fromEntries(recordedCacheControls)).toEqual(
+                recorded
+                  ? { [SCOPED_KEY]: { revalidate: 120, expire: 3600 } }
+                  : {},
+              );
+            },
+          );
+
+          it("Should overwrite the recorded lifetime", async () => {
+            globalThis.nextVersion = "15.5.28";
+            recordedCacheControls.set(SCOPED_KEY, { revalidate: 60 });
+
+            await getEntry({ revalidate: 120, expire: 3600 });
+
+            expect(recordedCacheControls.get(SCOPED_KEY)).toEqual({
+              revalidate: 120,
+              expire: 3600,
+            });
+          });
+
+          it("Should not record an entry without lifetime", async () => {
+            globalThis.nextVersion = "15.5.28";
+
+            await getEntry({});
+
+            expect(recordedCacheControls.size).toEqual(0);
+          });
+
+          it("Should still return the entry when the Next.js map can not be loaded", async () => {
+            const sharedCacheControlsModule =
+              "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js";
+            vi.resetModules();
+            vi.doMock(sharedCacheControlsModule, () => {
+              throw new Error("Cannot find module");
+            });
+            try {
+              const { default: FreshCache } = await import(
+                "@opennextjs/aws/adapters/cache.js"
+              );
+              globalThis.nextVersion = "15.5.28";
+              incrementalCache.get.mockResolvedValueOnce({
+                value: { type: "route", body: "{}", revalidate: 120 },
+                lastModified: Date.now(),
+              });
+
+              const result = await new FreshCache().get(SCOPED_KEY, {
+                kindHint: "app",
+              });
+
+              expect(result?.cacheControl).toEqual({ revalidate: 120 });
+              expect(recordedCacheControls.size).toEqual(0);
+            } finally {
+              vi.doUnmock(sharedCacheControlsModule);
+            }
+          });
+        });
+      });
     });
   });
 
@@ -1018,6 +1184,64 @@ describe("CacheHandler", () => {
       );
     });
 
+    it.each([
+      { ctx: undefined, stored: {} },
+      { ctx: 60, stored: { revalidate: 60 } },
+      { ctx: false, stored: { revalidate: false } },
+      { ctx: { revalidate: 60 }, stored: { revalidate: 60 } },
+      {
+        ctx: { cacheControl: { revalidate: 120 } },
+        stored: { revalidate: 120 },
+      },
+      {
+        ctx: { cacheControl: { revalidate: 120, expire: 3600 } },
+        stored: { revalidate: 120, expire: 3600 },
+      },
+      { ctx: { fetchCache: false }, stored: {} },
+    ] as const)(
+      "Should store the lifetime from the context $ctx",
+      async ({ ctx, stored }) => {
+        await cache.set("key", { kind: "REDIRECT", props: {} }, ctx as any);
+        await awaitDetachedWrites();
+
+        expect(incrementalCache.set).toHaveBeenCalledWith(
+          "key",
+          { type: "redirect", props: {}, ...stored },
+          "cache",
+        );
+      },
+    );
+
+    it.each([
+      { kind: "APP_ROUTE", body: Buffer.from("{}"), status: 200, headers: {} },
+      {
+        kind: "PAGES",
+        html: "<html></html>",
+        pageData: {},
+        status: 200,
+        headers: {},
+      },
+      {
+        kind: "APP_PAGE",
+        html: "<html></html>",
+        rscData: Buffer.from("rsc"),
+        status: 200,
+        headers: {},
+      },
+    ])("Should store the lifetime of a $kind entry", async (data) => {
+      globalThis.nextVersion = "16.4.1";
+      await cache.set("key", data as any, {
+        cacheControl: { revalidate: 120, expire: 3600 },
+      });
+      await awaitDetachedWrites();
+
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        "key",
+        expect.objectContaining({ revalidate: 120, expire: 3600 }),
+        "cache",
+      );
+    });
+
     it("Should not set cache when for IMAGE (not implemented)", async () => {
       await cache.set("key", {
         kind: "IMAGE",
@@ -1261,6 +1485,24 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).toHaveBeenCalled();
     });
 
+    it("Should prefer tag invalidation in original mode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
+      tagCache.getByTag
+        .mockResolvedValueOnce(["/path1"])
+        .mockResolvedValueOnce(["/path2"]);
+
+      await cache.revalidateTag(["tag1", "tag2"]);
+
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(2);
+      expect(invalidateTags).toHaveBeenCalledOnce();
+      expect(invalidateTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(tagCache.writeTags.mock.invocationCallOrder[1]).toBeLessThan(
+        invalidateTags.mock.invocationCallOrder[0] as number,
+      );
+    });
+
     it("Should invalidate the pathname of scoped cache keys", async () => {
       const hash = "a".repeat(64);
       tagCache.getByTag.mockResolvedValueOnce([
@@ -1312,12 +1554,62 @@ describe("CacheHandler", () => {
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
     });
 
+    it("Should invalidate tags without resolving paths for nextMode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
+      tagCache.mode = "nextMode";
+      tagCache.getPathsByTags = vi.fn();
+
+      await cache.revalidateTag(["tag1", "tag2"]);
+
+      expect(tagCache.getPathsByTags).not.toHaveBeenCalled();
+      expect(tagCache.writeTags).toHaveBeenCalledTimes(1);
+      expect(invalidateTags).toHaveBeenCalledOnce();
+      expect(invalidateTags).toHaveBeenCalledWith(["tag1", "tag2"]);
+      expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(tagCache.writeTags.mock.invocationCallOrder[0]).toBeLessThan(
+        invalidateTags.mock.invocationCallOrder[0] as number,
+      );
+    });
+
+    it.each(["original", "nextMode"] as const)(
+      "Should call invalidateTags with the handler as `this` in %s",
+      async (mode) => {
+        class TagInvalidationHandler {
+          name = "tag-handler";
+          invalidatedTags: string[] = [];
+          invalidatePaths = vi.fn();
+          async invalidateTags(tags: string[]) {
+            this.invalidatedTags.push(...tags);
+          }
+        }
+        const handler = new TagInvalidationHandler();
+        globalThis.cdnInvalidationHandler = handler;
+        tagCache.mode = mode;
+        if (mode === "original") {
+          tagCache.getByTag.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+        }
+
+        try {
+          await cache.revalidateTag(["tag1", "tag2"]);
+        } finally {
+          globalThis.cdnInvalidationHandler = invalidateCdnHandler;
+        }
+
+        expect(handler.invalidatedTags).toEqual(["tag1", "tag2"]);
+        expect(handler.invalidatePaths).not.toHaveBeenCalled();
+      },
+    );
+
     it("Should not call writeTags when the tag list is empty for nextMode", async () => {
+      const invalidateTags = vi.fn();
+      invalidateCdnHandler.invalidateTags = invalidateTags;
       tagCache.mode = "nextMode";
       await cache.revalidateTag([]);
 
       expect(tagCache.writeTags).not.toHaveBeenCalled();
       expect(invalidateCdnHandler.invalidatePaths).not.toHaveBeenCalled();
+      expect(invalidateTags).not.toHaveBeenCalled();
     });
 
     it("Should invalidate the pathname of scoped cache keys for nextMode", async () => {

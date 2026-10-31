@@ -1,8 +1,13 @@
-import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
+import {
+  applyRule,
+  parseCode,
+  patchCode,
+} from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
   createEmptyBodyRule,
   disablePreloadingRule,
   emptyHandleNextImageRequestRule,
+  exposeRevalidateRule,
   provideInternalWaitUntil,
   removeMiddlewareManifestRule,
 } from "@opennextjs/aws/build/patch/patches/patchNextServer.js";
@@ -1072,6 +1077,89 @@ class NextNodeServer extends _baseserver.default {
                      throw Object.defineProperty(new Error('invariant: imageOptimizer should not be called in minimal mode'), "__NEXT_ERROR_CODE", {
         "
       `);
+    });
+  });
+  describe("exposeRevalidateRule", () => {
+    // Next 15.4 - 16.x
+    const routerServerContextCode = `
+class NextNodeServer extends _baseserver.default {
+    constructor(){
+        this.handleCatchallRenderRequest = async (req, res, parsedUrl)=>{
+            const relativeProjectDir = (0, _path.relative)(process.cwd(), this.dir);
+            const existingServerContext = _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir];
+            if (!existingServerContext) {
+                _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir] = {
+                    render404: this.render404.bind(this)
+                };
+            }
+        };
+    }
+}
+`;
+
+    // Next canary also exposes `getAssetPrefix`
+    const routerServerContextWithAssetPrefixCode = `
+_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir] = {
+    render404: this.render404.bind(this),
+    getAssetPrefix: this.getAssetPrefix.bind(this)
+};
+`;
+
+    it("should add revalidate to the router server context", () => {
+      expect(
+        computePatchDiff(
+          "next-server.js",
+          routerServerContextCode,
+          exposeRevalidateRule,
+        ),
+      ).toMatchInlineSnapshot(`
+        "Index: next-server.js
+        ===================================================================
+        --- next-server.js
+        +++ next-server.js
+        @@ -1,13 +1,13 @@
+        -
+         class NextNodeServer extends _baseserver.default {
+             constructor(){
+                 this.handleCatchallRenderRequest = async (req, res, parsedUrl)=>{
+                     const relativeProjectDir = (0, _path.relative)(process.cwd(), this.dir);
+                     const existingServerContext = _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir];
+                     if (!existingServerContext) {
+                         _routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir] = {
+        -                    render404: this.render404.bind(this)
+        +                    render404: this.render404.bind(this),
+        +revalidate: this.revalidate.bind(this)
+                         };
+                     }
+                 };
+             }
+        "
+      `);
+    });
+
+    it("should keep the other properties of the router server context", () => {
+      expect(
+        patchCode(routerServerContextWithAssetPrefixCode, exposeRevalidateRule),
+      ).toMatchInlineSnapshot(`
+        "_routerservercontext.routerServerGlobal[_routerservercontext.RouterServerContextSymbol][relativeProjectDir] = {
+            render404: this.render404.bind(this),
+        revalidate: this.revalidate.bind(this),
+            getAssetPrefix: this.getAssetPrefix.bind(this)
+        };
+        "
+      `);
+    });
+
+    it("should only patch once", () => {
+      const patched = patchCode(routerServerContextCode, exposeRevalidateRule);
+      expect(
+        applyRule(exposeRevalidateRule, parseCode(patched)).matches,
+      ).toHaveLength(0);
+    });
+
+    it("should not patch other calls to render404", () => {
+      const code = "async function f() { await this.render404(req, res); }";
+      expect(patchCode(code, exposeRevalidateRule)).toBe(code);
     });
   });
 });

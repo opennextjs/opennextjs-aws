@@ -6,6 +6,7 @@ import type { Plugin } from "esbuild";
 import type { MiddlewareInfo } from "types/next-types.js";
 
 import {
+  getOpenNextBuildId,
   loadAppPathRoutesManifest,
   loadAppPathsManifest,
   loadAppPathsManifestKeys,
@@ -158,6 +159,7 @@ ${contents}
         async () => {
           const NextConfig = loadConfig(nextDir);
           const BuildId = loadBuildId(nextDir);
+          const OpenNextBuildId = getOpenNextBuildId(NextConfig, BuildId);
           const HtmlPages = loadHtmlPages(nextDir);
           const RoutesManifest = loadRoutesManifest(nextDir);
           const ConfigHeaders = loadConfigHeaders(nextDir);
@@ -195,7 +197,7 @@ ${contents}
   export const PagesManifest = ${JSON.stringify(PagesManifest)};
 
   process.env.NEXT_BUILD_ID = BuildId;
-  process.env.OPEN_NEXT_BUILD_ID = NextConfig.deploymentId ?? BuildId;
+  process.env.OPEN_NEXT_BUILD_ID = ${JSON.stringify(OpenNextBuildId)};
   process.env.NEXT_PREVIEW_MODE_ID = PrerenderManifest?.preview?.previewModeId;
 `;
           return { contents };
