@@ -596,6 +596,53 @@ describe("CacheHandler", () => {
         });
       });
 
+      // A stale not found is a miss, so that Next.js re-runs `getStaticProps` before
+      // responding: the 404 page would otherwise hide the `STALE` status that triggers
+      // the revalidation.
+      it("Should return null when a notFound entry is past its revalidate", async () => {
+        globalThis.nextVersion = "16.4.1";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: { type: "notFound", revalidate: 120, expire: 3600 },
+          lastModified: Date.now() - 121 * 1000,
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toBeNull();
+      });
+
+      it("Should return a null value when a notFound entry is within its revalidate", async () => {
+        globalThis.nextVersion = "16.4.1";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: { type: "notFound", revalidate: 120, expire: 3600 },
+          lastModified: Date.now() - 119 * 1000,
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toEqual({
+          value: null,
+          lastModified: Date.now() - 119 * 1000,
+          cacheControl: { revalidate: 120, expire: 3600 },
+        });
+      });
+
+      it("Should never consider a notFound entry with revalidate false stale", async () => {
+        globalThis.nextVersion = "16.4.1";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: { type: "notFound", revalidate: false },
+          lastModified: Date.now() - 2 * 365 * 24 * 60 * 60 * 1000,
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toEqual({
+          value: null,
+          lastModified: Date.now() - 2 * 365 * 24 * 60 * 60 * 1000,
+          cacheControl: { revalidate: false },
+        });
+      });
+
       it("Should return null when incremental cache fails", async () => {
         incrementalCache.get.mockRejectedValueOnce(new Error("Error"));
 
