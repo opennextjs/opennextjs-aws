@@ -95,6 +95,11 @@ export type CachedFile =
       type: "route";
       body: string;
       meta?: Meta;
+    }
+  | {
+      /** A page whose `getStaticProps` returned `notFound: true`. */
+      type: "notFound";
+      meta?: Meta;
     };
 
 // type taken from: https://github.com/vercel/next.js/blob/9a1cd356/packages/next/src/server/response-cache/types.ts#L26-L38

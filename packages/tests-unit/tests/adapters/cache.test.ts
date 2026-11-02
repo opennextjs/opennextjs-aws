@@ -579,6 +579,23 @@ describe("CacheHandler", () => {
         });
       });
 
+      // Next.js reads an entry with a `null` value as a cached `notFound: true`.
+      it("Should return a null value when cache data type is notFound", async () => {
+        globalThis.nextVersion = "16.4.1";
+        incrementalCache.get.mockResolvedValueOnce({
+          value: { type: "notFound", revalidate: 120, expire: 3600 },
+          lastModified: Date.now(),
+        });
+
+        const result = await cache.get("key", { kindHint: "pages" });
+
+        expect(result).toEqual({
+          value: null,
+          lastModified: Date.now(),
+          cacheControl: { revalidate: 120, expire: 3600 },
+        });
+      });
+
       it("Should return null when incremental cache fails", async () => {
         incrementalCache.get.mockRejectedValueOnce(new Error("Error"));
 
@@ -886,11 +903,23 @@ describe("CacheHandler", () => {
   });
 
   describe("set", () => {
-    it("Should delete cache when data is undefined", async () => {
-      await cache.set("key", undefined);
+    // Next.js sets a `null` value for a page whose `getStaticProps` returns `notFound: true`.
+    it.each([null, undefined])(
+      "Should store a not found entry when data is %s",
+      async (data) => {
+        await cache.set("key", data as any, {
+          cacheControl: { revalidate: 120, expire: 3600 },
+        });
+        await awaitDetachedWrites();
 
-      expect(incrementalCache.delete).toHaveBeenCalled();
-    });
+        expect(incrementalCache.delete).not.toHaveBeenCalled();
+        expect(incrementalCache.set).toHaveBeenCalledWith(
+          "key",
+          { type: "notFound", revalidate: 120, expire: 3600 },
+          "cache",
+        );
+      },
+    );
 
     it("Should set cache when for ROUTE", async () => {
       await cache.set("key", {
@@ -1417,14 +1446,16 @@ describe("CacheHandler", () => {
       );
     });
 
-    it("Should use the scoped key on delete", async () => {
+    it("Should use the scoped key for a not found entry", async () => {
       globalThis.nextVersion = "16.3.8";
 
-      await cache.set(`/route-cache/APP_ROUTE/${hash}/$/api/data`, undefined);
+      await cache.set(`/route-cache/PAGES/${hash}/$/posts/1`, null as any);
       await awaitDetachedWrites();
 
-      expect(incrementalCache.delete).toHaveBeenCalledWith(
-        `/route-cache/APP_ROUTE/${hash}/$/api/data`,
+      expect(incrementalCache.set).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${hash}/$/posts/1`,
+        { type: "notFound" },
+        "cache",
       );
     });
   });

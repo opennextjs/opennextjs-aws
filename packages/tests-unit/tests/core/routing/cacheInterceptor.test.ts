@@ -524,6 +524,24 @@ describe("cacheInterceptor", () => {
     expect(result).toEqual(event);
   });
 
+  // The server renders the 404 page from the cached not found.
+  it("should take no action when cache returns a not found entry", async () => {
+    const event = createEvent({
+      url: "/revalidate",
+    });
+    incrementalCache.get.mockResolvedValueOnce({
+      value: {
+        type: "notFound",
+        revalidate: 60,
+      },
+      lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+    });
+
+    const result = await cacheInterceptor(event);
+
+    expect(result).toEqual(event);
+  });
+
   it("should retrieve route content from cache with text content", async () => {
     const event = createEvent({
       url: "/albums",
