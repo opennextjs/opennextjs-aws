@@ -1,3 +1,6 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+
 import type {
   CacheValue,
   NextModeTagCacheWriteInput,
@@ -7,6 +10,26 @@ import type {
 import { debug } from "../adapters/logger";
 import { CACHE_TAGS_HEADER } from "./cacheHeaders";
 import { compareSemver } from "./semver";
+
+/**
+ * Computes the key used to store a composable (`"use cache"`) entry.
+ *
+ * The cache key provided by Next.js embeds the serialized arguments of the cached function and may
+ * contain any UTF-16 string. Storage backends transform keys (path normalization, URL parsing,
+ * UTF-8 encoding, ...) which could map distinct Next.js keys to the same stored entry.
+ *
+ * The storage key is the sha256 of the exact UTF-16 code units of the cache key, as a 64 characters
+ * lowercase hex string that every backend can store as is.
+ *
+ * @param cacheKey The cache key provided by Next.js
+ * @returns The key to use for the incremental cache and the tag cache
+ */
+export function getComposableCacheStorageKey(cacheKey: string): string {
+  return createHash("sha256")
+    .update(Buffer.from(cacheKey, "utf16le"))
+    .digest("hex");
+}
+
 /**
  *
  * @param key The key for that specific cache entry
