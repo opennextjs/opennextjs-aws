@@ -9,9 +9,14 @@ const fetchProxy: ProxyExternalRequest = {
 
     const headers = Object.fromEntries(
       Object.entries(eventHeaders).filter(
-        ([key]) => key.toLowerCase() !== "cf-connecting-ip",
+        ([key]) =>
+          !["cf-connecting-ip", "x-forwarded-host"].includes(key.toLowerCase()),
       ),
     );
+    // Like Next.js, do not relay the `x-forwarded-host` sent by the client
+    if (eventHeaders.host) {
+      headers["x-forwarded-host"] = eventHeaders.host;
+    }
 
     const response = await fetch(url, {
       method,
