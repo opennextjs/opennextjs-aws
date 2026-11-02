@@ -198,6 +198,39 @@ describe("createCacheAssets", () => {
     ).toBe(true);
   });
 
+  it.each([
+    {
+      nextVersion: "16.4.1",
+      meta: {
+        routeCache: {
+          key: `/route-cache/PAGES/${sha256("/items/[id]")}/$/items/[id]`,
+          owner: { kind: "PAGES", sourceRoute: "/items/[id]" },
+          isFallback: true,
+        },
+      },
+      cacheFile: `route-cache/PAGES/${sha256("/items/[id]")}/$/items/[id].cache`,
+    },
+    // Older versions write the shell without a `.meta` file
+    { nextVersion: "16.2.0", meta: undefined, cacheFile: "items/[id].cache" },
+  ])(
+    "should cache the Pages Router fallback shell as a page with empty page data for Next.js $nextVersion",
+    ({ nextVersion, meta, cacheFile }) => {
+      const serverDir = path.join(root, ".next/standalone/.next/server");
+      // `fallback: true` routes get an `.html` shell but no `.json`
+      writeFile(path.join(serverDir, "pages/items/[id].html"), "<html></html>");
+      if (meta) {
+        writeFile(path.join(serverDir, "pages/items/[id].meta"), meta);
+      }
+
+      createCacheAssets(getOptions(nextVersion));
+
+      const cacheDir = path.join(root, ".open-next/cache", BUILD_ID);
+      expect(
+        JSON.parse(fs.readFileSync(path.join(cacheDir, cacheFile), "utf8")),
+      ).toMatchObject({ type: "page", html: "<html></html>", json: {} });
+    },
+  );
+
   it("should reject metadata keys that escape the cache output", () => {
     const serverDir = path.join(root, ".next/standalone/.next/server");
     writeFile(path.join(serverDir, "app/isr.meta"), {

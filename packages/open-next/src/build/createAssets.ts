@@ -130,6 +130,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     string,
     {
       legacyKey: string;
+      isPagesRouter: boolean;
       meta?: string;
       html?: string;
       json?: string;
@@ -174,6 +175,7 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
             cacheArtifacts[artifactId] = {
               ...existingArtifact,
               legacyKey,
+              isPagesRouter: sourceDir.endsWith(path.join("server", "pages")),
               [fileType]: existingArtifact?.[fileType] ?? absolutePath,
             };
             break;
@@ -229,11 +231,15 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         )
       : {};
 
+    // Next.js writes no `.json` for the fallback shell of a `fallback: true` Pages Router
+    // route. Its file system cache returns the shell with empty page data.
+    const pageData = files.isPagesRouter ? (cacheJson ?? {}) : cacheJson;
+
     const cacheFileContent = {
-      type: files.body ? "route" : files.json ? "page" : "app",
+      type: files.body ? "route" : pageData ? "page" : "app",
       meta: cacheFileMeta,
       html: files.html ? fs.readFileSync(files.html, "utf8") : undefined,
-      json: cacheJson,
+      json: pageData,
       rsc: files.rsc ? fs.readFileSync(files.rsc, "utf8") : undefined,
       body: files.body
         ? fs
