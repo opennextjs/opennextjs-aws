@@ -32,6 +32,11 @@ export default async function proxy(request: NextRequest) {
       },
     });
   }
+  // An exact pathname check must not be bypassed with a trailing slash.
+  // For: trailing.test.ts
+  if (path === "/api/protected") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   if (path === "/rewrite-external") {
     const u = new URL("https://opennext.js.org/share.png");
     return NextResponse.rewrite(u);
