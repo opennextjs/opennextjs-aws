@@ -231,6 +231,33 @@ describe("createCacheAssets", () => {
     },
   );
 
+  it("should keep the page data of a Pages Router entry that has a `.json`", () => {
+    const serverDir = path.join(root, ".next/standalone/.next/server");
+    writeFile(path.join(serverDir, "pages/blog.html"), "<html></html>");
+    writeFile(path.join(serverDir, "pages/blog.json"), { pageProps: { a: 1 } });
+
+    createCacheAssets(getOptions("16.2.0"));
+
+    const cacheDir = path.join(root, ".open-next/cache", BUILD_ID);
+    expect(
+      JSON.parse(fs.readFileSync(path.join(cacheDir, "blog.cache"), "utf8")),
+    ).toMatchObject({ type: "page", json: { pageProps: { a: 1 } } });
+  });
+
+  it("should keep an App Router entry without a `.json` as an app entry", () => {
+    const serverDir = path.join(root, ".next/standalone/.next/server");
+    writeFile(path.join(serverDir, "app/about.html"), "<html></html>");
+
+    createCacheAssets(getOptions("16.2.0"));
+
+    const cacheDir = path.join(root, ".open-next/cache", BUILD_ID);
+    const cache = JSON.parse(
+      fs.readFileSync(path.join(cacheDir, "about.cache"), "utf8"),
+    );
+    expect(cache.type).toBe("app");
+    expect(cache.json).toBeUndefined();
+  });
+
   it("should reject metadata keys that escape the cache output", () => {
     const serverDir = path.join(root, ".next/standalone/.next/server");
     writeFile(path.join(serverDir, "app/isr.meta"), {
