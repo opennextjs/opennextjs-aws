@@ -1,10 +1,25 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+
 import ComposableCache from "@opennextjs/aws/adapters/composable-cache";
+import { getComposableCacheStorageKey } from "@opennextjs/aws/utils/cache.js";
 import { RequestCache } from "@opennextjs/aws/utils/requestCache.js";
 import {
   fromReadableStream,
   toReadableStream,
 } from "@opennextjs/aws/utils/stream";
 import { vi } from "vitest";
+
+/**
+ * Computes the expected storage key for a cache key.
+ *
+ * Mirrors `getComposableCacheStorageKey` so that the tests check the actual key format.
+ *
+ * @param cacheKey The cache key provided by Next.js
+ * @returns The sha256 hex digest of the UTF-16 code units of the key
+ */
+const storageKey = (cacheKey: string) =>
+  createHash("sha256").update(Buffer.from(cacheKey, "utf16le")).digest("hex");
 
 describe("Composable cache handler", () => {
   vi.useFakeTimers().setSystemTime("2024-01-02T00:00:00Z");
@@ -84,7 +99,7 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(incrementalCache.get).toHaveBeenCalledWith(
-        "test-key",
+        storageKey("test-key"),
         "composable",
       );
       expect(result).toBeDefined();
@@ -158,7 +173,7 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(tagCache.getLastModified).toHaveBeenCalledWith(
-        "test-key",
+        storageKey("test-key"),
         expect.any(Number),
       );
       expect(result).toBeDefined();
@@ -235,7 +250,7 @@ describe("Composable cache handler", () => {
       const result = await ComposableCache.get("test-key");
 
       expect(tagCache.isStale).toHaveBeenCalledWith(
-        "test-key",
+        storageKey("test-key"),
         expect.any(Number),
       );
       expect(result).toBeDefined();
@@ -289,7 +304,7 @@ describe("Composable cache handler", () => {
 
       expect(result).toBeDefined();
       expect(incrementalCache.get).toHaveBeenCalledWith(
-        "pending-key",
+        storageKey("pending-key"),
         "composable",
       );
     });
@@ -304,7 +319,7 @@ describe("Composable cache handler", () => {
         const result = await ComposableCache.get("pending-key");
         expect(result).toBeDefined();
         expect(incrementalCache.get).toHaveBeenCalledWith(
-          "pending-key",
+          storageKey("pending-key"),
           "composable",
         );
       } finally {
@@ -332,14 +347,14 @@ describe("Composable cache handler", () => {
       await ComposableCache.set("test-key", Promise.resolve(entry));
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "test-key",
+        storageKey("test-key"),
         expect.objectContaining({
           tags: ["tag1", "tag2"],
           value: "test-value",
         }),
         "composable",
       );
-      expect(tagCache.getByPath).toHaveBeenCalledWith("test-key");
+      expect(tagCache.getByPath).toHaveBeenCalledWith(storageKey("test-key"));
     });
 
     it("should write new tags not already stored", async () => {
@@ -358,8 +373,8 @@ describe("Composable cache handler", () => {
       await ComposableCache.set("test-key", Promise.resolve(entry));
 
       expect(tagCache.writeTags).toHaveBeenCalledWith([
-        { tag: "tag2", path: "test-key" },
-        { tag: "tag3", path: "test-key" },
+        { tag: "tag2", path: storageKey("test-key") },
+        { tag: "tag3", path: storageKey("test-key") },
       ]);
     });
 
@@ -412,7 +427,7 @@ describe("Composable cache handler", () => {
       await ComposableCache.set("test-key", Promise.resolve(entry));
 
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "test-key",
+        storageKey("test-key"),
         expect.objectContaining({
           value: "test-content",
         }),
@@ -690,6 +705,98 @@ describe("Composable cache handler", () => {
     });
   });
 
+  describe("storage key", () => {
+    const entry = () => ({
+      value: toReadableStream("test-value"),
+      tags: ["tag1"],
+      stale: 0,
+      timestamp: Date.now(),
+      expire: Date.now() + 1000,
+      revalidate: 3600,
+    });
+
+    it("should be a sha256 hex digest", () => {
+      expect(getComposableCacheStorageKey("test-key")).toMatch(
+        /^[0-9a-f]{64}$/,
+      );
+      expect(getComposableCacheStorageKey("test-key")).toBe(
+        storageKey("test-key"),
+      );
+      // Known vector: sha256 of the UTF-16LE encoding of "a" (bytes 0x61 0x00)
+      expect(getComposableCacheStorageKey("a")).toBe(
+        "ffe9aaeaa2a2d5048174df0b80599ef0197ec024c4b051bc9860cff58ef7f9f3",
+      );
+    });
+
+    it("should use the UTF-16 code units of the key", () => {
+      // Lone surrogates would all be replaced with U+FFFD by a UTF-8 encoding
+      const keys = ["k\uD800", "k\uDC00", "k\uFFFD", "k\uD800\uDC00", "k"];
+      const storageKeys = keys.map(getComposableCacheStorageKey);
+      expect(new Set(storageKeys).size).toBe(keys.length);
+    });
+
+    it("should read the entry written with the same key", async () => {
+      tagCache.mode = "nextMode";
+      // Normalizes keys the way URL-based backends do (dot segments, `\` to `/`, ...)
+      const normalize = (key: string) =>
+        new URL(`http://cache.local/${key}.composable`).pathname;
+      const storage = new Map<string, unknown>();
+      const backendKeys: string[] = [];
+      const getImplementation = incrementalCache.get.getMockImplementation();
+      incrementalCache.set.mockImplementation(async (key, value) => {
+        backendKeys.push(key);
+        storage.set(normalize(key), value);
+      });
+      incrementalCache.get.mockImplementation(async (key) => {
+        backendKeys.push(key);
+        const value = storage.get(normalize(key));
+        return value ? { value, lastModified: Date.now() } : null;
+      });
+
+      try {
+        const key = '["build","fn",["a/x/../y\\\\z"]]';
+        const collidingKey = '["build","fn",["a/y//z"]]';
+        expect(normalize(collidingKey)).toBe(normalize(key));
+
+        await ComposableCache.set(key, Promise.resolve(entry()));
+        const result = await ComposableCache.get(key);
+        expect(result).toBeDefined();
+        expect(await fromReadableStream(result!.value)).toBe("test-value");
+
+        expect(await ComposableCache.get(collidingKey)).toBeUndefined();
+        for (const backendKey of backendKeys) {
+          expect(backendKey).toMatch(/^[0-9a-f]{64}$/);
+        }
+      } finally {
+        incrementalCache.get.mockImplementation(getImplementation!);
+        incrementalCache.set.mockReset();
+      }
+    });
+
+    it("should use the storage key for the tag cache in original mode", async () => {
+      tagCache.mode = "original";
+      tagCache.getByPath.mockResolvedValueOnce([]);
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+      const key = '["build","fn",["../a"]]';
+
+      await ComposableCache.set(key, Promise.resolve(entry()));
+      await ComposableCache.get(key);
+
+      expect(tagCache.getByPath).toHaveBeenCalledWith(storageKey(key));
+      expect(tagCache.writeTags).toHaveBeenCalledWith([
+        { tag: "tag1", path: storageKey(key) },
+      ]);
+      expect(tagCache.getLastModified).toHaveBeenCalledWith(
+        storageKey(key),
+        expect.any(Number),
+      );
+      expect(tagCache.isStale).toHaveBeenCalledWith(
+        storageKey(key),
+        expect.any(Number),
+      );
+    });
+  });
+
   describe("integration tests", () => {
     it("should handle complete cache lifecycle", async () => {
       // Set a cache entry
@@ -706,7 +813,7 @@ describe("Composable cache handler", () => {
 
       // Verify it was stored
       expect(incrementalCache.set).toHaveBeenCalledWith(
-        "integration-key",
+        storageKey("integration-key"),
         expect.objectContaining({
           value: "integration-test",
           tags: ["integration-tag"],

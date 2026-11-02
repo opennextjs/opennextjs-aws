@@ -1,6 +1,6 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheValue, OriginalTagCache } from "types/overrides";
-import { isStale, writeTags } from "utils/cache";
+import { getComposableCacheStorageKey, isStale, writeTags } from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
@@ -20,6 +20,9 @@ import { debug } from "./logger";
  * flight from the same render while making a cross-request share impossible.
  * With no ALS store (e.g. at build time) the dedupe is skipped and `get` falls
  * through to the incremental cache.
+ *
+ * The map is keyed by the cache key provided by Next.js: it is an in-memory exact string
+ * comparison so there is no need to use the storage key (see `getComposableCacheStorageKey`).
  */
 const PENDING_WRITES_CACHE_KEY = "composable-cache:pending-writes";
 
@@ -31,6 +34,16 @@ const getPendingWritePromiseMap = () =>
     );
 
 export default {
+  /**
+   * Reads a composable cache entry.
+   *
+   * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
+   * see `getComposableCacheStorageKey`.
+   *
+   * @param cacheKey The cache key provided by Next.js
+   * @returns The cache entry, or `undefined` on a miss or when the entry has been revalidated.
+   * Errors are caught and reported as a miss.
+   */
   async get(cacheKey: string) {
     try {
       // We first check if we have a pending write for this cache key
@@ -45,8 +58,9 @@ export default {
           }));
         }
       }
+      const storageKey = getComposableCacheStorageKey(cacheKey);
       const result = await globalThis.incrementalCache.get(
-        cacheKey,
+        storageKey,
         "composable",
       );
       if (!result?.value?.value) {
@@ -72,7 +86,7 @@ export default {
         // Check if tags are stale – entry is valid but needs background revalidation
         const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await isStale(cacheKey, result.value.tags, result.lastModified);
+          : await isStale(storageKey, result.value.tags, result.lastModified);
         if (isCacheStale) {
           revalidate = -1;
         }
@@ -83,7 +97,7 @@ export default {
         const hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : (await globalThis.tagCache.getLastModified(
-              cacheKey,
+              storageKey,
               result.lastModified,
             )) === -1;
         if (hasBeenRevalidated) return undefined;
@@ -91,7 +105,7 @@ export default {
         // Check if tags are stale – entry is valid but needs background revalidation
         const isCacheStale = result.shouldBypassTagCache
           ? false
-          : await isStale(cacheKey, result.value.tags, result.lastModified);
+          : await isStale(storageKey, result.value.tags, result.lastModified);
         if (isCacheStale) {
           revalidate = -1;
         }
@@ -108,6 +122,16 @@ export default {
     }
   },
 
+  /**
+   * Writes a composable cache entry.
+   *
+   * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
+   * see `getComposableCacheStorageKey`.
+   *
+   * @param cacheKey The cache key provided by Next.js
+   * @param pendingEntry The entry to store, resolves once the cached function has completed
+   * @throws When the entry can not be resolved or when the incremental cache or tag cache write fails
+   */
   async set(cacheKey: string, pendingEntry: Promise<ComposableCacheEntry>) {
     const promiseEntry = pendingEntry.then(async (entry) => ({
       ...entry,
@@ -119,8 +143,9 @@ export default {
     const entry = await promiseEntry.finally(() => {
       pendingWritePromiseMap?.delete(cacheKey);
     });
+    const storageKey = getComposableCacheStorageKey(cacheKey);
     await globalThis.incrementalCache.set(
-      cacheKey,
+      storageKey,
       {
         ...entry,
         value: entry.value,
@@ -128,10 +153,10 @@ export default {
       "composable",
     );
     if (globalThis.tagCache.mode === "original") {
-      const storedTags = await globalThis.tagCache.getByPath(cacheKey);
+      const storedTags = await globalThis.tagCache.getByPath(storageKey);
       const tagsToWrite = entry.tags.filter((tag) => !storedTags.includes(tag));
       if (tagsToWrite.length > 0) {
-        await writeTags(tagsToWrite.map((tag) => ({ tag, path: cacheKey })));
+        await writeTags(tagsToWrite.map((tag) => ({ tag, path: storageKey })));
       }
     }
   },
