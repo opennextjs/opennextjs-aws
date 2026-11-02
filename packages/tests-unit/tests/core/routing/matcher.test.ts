@@ -526,6 +526,91 @@ describe("handleRedirects", () => {
     expect(result.headers.Location).toEqual("https://on/api-route");
   });
 
+  describe("API routes", () => {
+    afterEach(() => {
+      NextConfig.trailingSlash = undefined;
+      NextConfig.skipTrailingSlashRedirect = undefined;
+    });
+
+    it.each(["https://on/api/admin/", "https://on/api/"])(
+      "should remove the trailing slash of %s like Next.js",
+      (url) => {
+        NextConfig.trailingSlash = false;
+        NextConfig.skipTrailingSlashRedirect = false;
+        const event = createEvent({ url });
+
+        const result = handleRedirects(event, []);
+
+        expect(result?.statusCode).toEqual(308);
+        expect(result?.headers.Location).toEqual(url.replace(/\/$/, ""));
+      },
+    );
+
+    it("should keep the query when removing the trailing slash", () => {
+      NextConfig.trailingSlash = false;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = createEvent({ url: "https://on/api/admin/?a=1" });
+
+      const result = handleRedirects(event, []);
+
+      expect(result?.statusCode).toEqual(308);
+      expect(result?.headers.Location).toEqual("https://on/api/admin?a=1");
+    });
+
+    it("should add the trailing slash with trailingSlash: true like Next.js", () => {
+      NextConfig.trailingSlash = true;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = createEvent({ url: "https://on/api/admin" });
+
+      const result = handleRedirects(event, []);
+
+      expect(result?.statusCode).toEqual(308);
+      expect(result?.headers.Location).toEqual("https://on/api/admin/");
+    });
+
+    it.each(["https://on/api/admin", "https://on/page"])(
+      "should add the trailing slash of %s with a client supplied __nextDataReq like Next.js",
+      (url) => {
+        NextConfig.trailingSlash = true;
+        NextConfig.skipTrailingSlashRedirect = false;
+        const event = createEvent({ url: `${url}?__nextDataReq=1` });
+
+        const result = handleRedirects(event, []);
+
+        expect(result?.statusCode).toEqual(308);
+        expect(result?.headers.Location).toEqual(`${url}/?__nextDataReq=1`);
+      },
+    );
+
+    it("should not redirect data requests with trailingSlash: true like Next.js", () => {
+      NextConfig.trailingSlash = true;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = fixDataPage(
+        createEvent({ url: "https://on/_next/data/abc/page.json" }),
+        "abc",
+      ) as InternalEvent;
+
+      expect(event.rawPath).toEqual("/page");
+      expect(handleRedirects(event, [])).toBeUndefined();
+    });
+
+    it("should not redirect the canonical pathname", () => {
+      NextConfig.trailingSlash = false;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = createEvent({ url: "https://on/api/admin" });
+
+      expect(handleRedirects(event, [])).toBeUndefined();
+    });
+
+    it("should not redirect when skipTrailingSlashRedirect is true", () => {
+      NextConfig.trailingSlash = false;
+      NextConfig.skipTrailingSlashRedirect = true;
+      const event = createEvent({ url: "https://on/api/admin/" });
+
+      expect(handleRedirects(event, [])).toBeUndefined();
+    });
+  });
+
   it("should not redirect trailing slash when skipTrailingSlashRedirect is true", () => {
     const event = createEvent({
       url: "https://on/api-route/",
