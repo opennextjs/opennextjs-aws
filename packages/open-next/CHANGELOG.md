@@ -1,5 +1,51 @@
 # open-next
 
+## 4.1.15
+
+### Patch Changes
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`9564cb4`](https://github.com/opennextjs/opennextjs-aws/commit/9564cb4538ccee51d7929f279eb4dc82fe591b2d) Thanks [@vicb](https://github.com/vicb)! - fix: use a hash of the composable cache key as storage key
+
+  The `"use cache"` handler now stores entries in the incremental cache and the tag cache under the sha256 of the key provided by Next.js instead of the raw key, so that every storage backend gets a fixed format key.
+
+  Existing `"use cache"` entries are not read after the upgrade and will be regenerated on first access.
+
+- [#1340](https://github.com/opennextjs/opennextjs-aws/pull/1340) [`9307c09`](https://github.com/opennextjs/opennextjs-aws/commit/9307c095f3ac6fdc47b7f5a81dab22be79423667) Thanks [@vicb](https://github.com/vicb)! - chore: bump Next.js dependencies
+
+  Bump Next.js dependencies following [the security release on Nov 3](https://nextjs.org/blog/november-2026-security-release)
+
+  - Next.js 15.5.29 and 16.4.5
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`7bb7b9c`](https://github.com/opennextjs/opennextjs-aws/commit/7bb7b9c8d49d60f7d74fbbe29d1505c15f7948cb) Thanks [@vicb](https://github.com/vicb)! - fix: do not relay the client `x-forwarded-host` to external rewrite upstreams
+
+  Like Next.js, the `node` and `fetch` external request proxies now set `x-forwarded-host` to the host of the incoming request instead of forwarding the value sent by the client.
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`ee0247f`](https://github.com/opennextjs/opennextjs-aws/commit/ee0247f688e886fe72ef515fd9902d79ea08311f) Thanks [@vicb](https://github.com/vicb)! - fix: do not forward stale framing headers to the Node.js response
+
+  The `node` and `express-dev` wrappers no longer trust the `content-length` and `transfer-encoding` headers set by the app:
+
+  - `transfer-encoding` is always removed, Node.js picks the transfer coding.
+  - A `content-length` that is not a valid length (e.g. `abc`, `-1`, `4, 4`) is removed.
+  - `content-length` is kept for HEAD requests and 304 responses.
+  - Otherwise `content-length` is only kept when the body has exactly the declared length. The body is buffered (up to 10 MB) until this is known. When the length doesn't match, or is larger than 10 MB, `content-length` is removed and Node.js frames the body itself (e.g. chunked on HTTP/1.1).
+
+  Responses without a `content-length` (e.g. streamed pages) are still streamed. Responses with a `content-length` up to 10 MB are now sent once the whole body is received, so a slow body with a declared length (e.g. a `fetch()` response returned by a middleware) no longer streams. CloudFront only compresses responses with a `content-length`, so it keeps compressing those.
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`b353f1d`](https://github.com/opennextjs/opennextjs-aws/commit/b353f1d1f6512f2bfcc9915f359d1475fc81c77c) Thanks [@vicb](https://github.com/vicb)! - fix: do not route requests with dynamic segment placeholder values
+
+  Requests binding a dynamic segment of an App Router page to its own placeholder (e.g. `[slug]` for `app/[slug]/page.tsx`, `[...slug]` or `[[...slug]]` for catch-all segments) are routed to the 404 page. Next.js versions before 16.4.5 treat such values as unresolved params.
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`90c2c4c`](https://github.com/opennextjs/opennextjs-aws/commit/90c2c4cac05d9d879b563084b7bbf8e85847f31c) Thanks [@vicb](https://github.com/vicb)! - fix: do not expose the internal `x-middleware-set-cookie` header on the response.
+
+- [#1342](https://github.com/opennextjs/opennextjs-aws/pull/1342) [`3b482a1`](https://github.com/opennextjs/opennextjs-aws/commit/3b482a12a0b581fa70426fd14c647503a89024ec) Thanks [@vicb](https://github.com/vicb)! - fix: apply the trailing slash redirect to API routes
+
+  Like Next.js, `/api/*` paths are now redirected to their canonical form (with or without a trailing slash, depending on `trailingSlash`) before the middleware runs.
+  Previously the middleware could see a non-canonical pathname, e.g. `/api/admin/`, and checks comparing the exact pathname could be bypassed.
+
+  The `__nextDataReq` query parameter no longer prevents the trailing slash redirect. Like Next.js, only `/_next/data` requests are not redirected.
+
+  Behavior change: requests to a non-canonical `/api/*` path (e.g. `/api/webhook/` with the default `trailingSlash: false`) now receive a `308` redirect instead of reaching the route. Clients that don't follow redirects, such as some webhook senders, must use the canonical URL.
+
 ## 4.1.14
 
 ### Patch Changes
