@@ -73,6 +73,35 @@ export function parseSetCookieHeader(
 }
 
 /**
+ * Converts the headers of a response returned by an edge function.
+ *
+ * `Set-Cookie` headers are returned as a list.
+ * The internal `x-middleware-set-cookie` header is dropped: `NextResponse` sets it when
+ * `response.cookies` is modified (i.e. in a route handler) and it contains the `HttpOnly` cookies.
+ *
+ * @param headers The headers of the response
+ * @returns The response headers to send to the client
+ */
+export function convertEdgeResponseHeaders(
+  headers: Pick<Headers, "forEach" | "getSetCookie">,
+): Record<string, string | string[]> {
+  const responseHeaders: Record<string, string | string[]> = {};
+  headers.forEach((value, key) => {
+    const lowerKey = key.toLowerCase();
+    // Headers.forEach folds same-name headers; use getSetCookie() below instead.
+    if (lowerKey === "set-cookie" || lowerKey === "x-middleware-set-cookie") {
+      return;
+    }
+    responseHeaders[key] = value;
+  });
+  const setCookies = headers.getSetCookie();
+  if (setCookies.length > 0) {
+    responseHeaders["set-cookie"] = setCookies;
+  }
+  return responseHeaders;
+}
+
+/**
  *
  * Get the query object from an iterable of [key, value] pairs
  * @param it - The iterable of [key, value] pairs

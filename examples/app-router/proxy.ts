@@ -20,6 +20,21 @@ export default async function proxy(request: NextRequest) {
     });
     return NextResponse.redirect(u);
   }
+  // `response.cookies` also copies the cookies in the internal `x-middleware-set-cookie` header
+  // which must not be exposed to the client.
+  // Note: `cookies()` must not be used here as Next would then override the `set-cookie` header.
+  // For: middleware.cookies.test.ts
+  if (path === "/redirect-http-only-cookie") {
+    const u = new URL("/redirect-destination", `${protocol}://${host}`);
+    const response = NextResponse.redirect(u);
+    response.cookies.set("http-only", "secret", { httpOnly: true });
+    return response;
+  }
+  if (path === "/api/middleware-http-only-cookie") {
+    const response = NextResponse.json({ hello: "middleware" });
+    response.cookies.set("http-only", "secret", { httpOnly: true });
+    return response;
+  }
   if (path === "/rewrite") {
     const u = new URL("/rewrite-destination", `${protocol}://${host}`);
     return NextResponse.rewrite(u);
