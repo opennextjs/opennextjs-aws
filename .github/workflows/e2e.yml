@@ -15,11 +15,6 @@ on:
   pull_request:
     types: [labeled]
 
-concurrency:
-  # Only actual e2e runs share the stage, other labels get their own group so they do not wait in the queue
-  group: ${{ (github.event_name != 'pull_request' || github.event.label.name == 'run-e2e') && 'e2e-shared-stage' || format('e2e-skip-{0}', github.run_id) }}
-  queue: max
-
 env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +77,7 @@ jobs:
           gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$E2E_SHA" \
             -f state=pending \
             -f context='E2E Tests (manual)' \
-            -f description='The manually triggered E2E tests are running' \
+            -f description='The manually triggered E2E tests are queued or running' \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
     outputs:
@@ -146,6 +141,12 @@ jobs:
   e2e:
     needs: check_next_version
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || needs.check_next_version.outputs.skip != 'true'
+    # Runs share the e2e stage and are queued so that only one deploys and tests at a time.
+    # The concurrency is set on this job (not the workflow) so that the other jobs run right away:
+    # the pending status is reported and the run shows as in progress while this job waits in the queue.
+    concurrency:
+      group: e2e-shared-stage
+      queue: max
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
