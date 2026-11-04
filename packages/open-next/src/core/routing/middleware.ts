@@ -34,6 +34,9 @@ const middleMatch = getMiddlewareMatch(
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 
+// Internal header set by `NextResponse` when `response.cookies` is modified.
+const MIDDLEWARE_SET_COOKIE_HEADER = "x-middleware-set-cookie";
+
 type Middleware = (request: Request) => Response | Promise<Response>;
 type MiddlewareLoader = () => Promise<{ default: Middleware }>;
 
@@ -46,6 +49,10 @@ function defaultMiddlewareLoader() {
  * Runs matching Next.js middleware and applies its routing result.
  *
  * Middleware request-header overrides are normalized and filtered to Next.js's allowlist.
+ *
+ * Next.js internal headers are never exposed on the response.
+ * `x-middleware-set-cookie` is only forwarded on the request headers of the returned `MiddlewareEvent`,
+ * regardless of the allowlist.
  *
  * @param internalEvent The internal request event.
  * @param initialSearch The initial query string received by the handler.
@@ -134,6 +141,7 @@ export async function handleMiddleware(
   const responseHeaders = result.headers as Headers;
   const reqHeaders: Record<string, string> = {};
   const resHeaders: Record<string, string | string[]> = {};
+  let middlewareSetCookie: string | undefined;
 
   // These are internal headers used by Next.js, we don't want to expose them to the client
   // NOTE: keys must be in lowercase to match the normalized header keys.
@@ -154,6 +162,13 @@ export async function handleMiddleware(
       reqHeaders[k] = value;
     } else {
       if (filteredHeaders.includes(normalizedKey)) return;
+      // `x-middleware-set-cookie` holds a copy of the cookies set by the middleware,
+      // including the `HttpOnly` ones. It must never be sent to the client.
+      // It is only forwarded on the request (see below) so that `cookies().get()` sees them.
+      if (normalizedKey === MIDDLEWARE_SET_COOKIE_HEADER) {
+        middlewareSetCookie = value;
+        return;
+      }
       // Headers.forEach folds same-name headers; use getSetCookie() below instead.
       if (normalizedKey === "set-cookie") return;
       if (REDIRECTS.has(statusCode) && normalizedKey === "location") {
@@ -190,6 +205,11 @@ export async function handleMiddleware(
       .map(([key, value]) => [key.toLowerCase(), value] as const)
       .filter(([key]) => !overriddenHeaders || overriddenHeaders.has(key)),
   );
+  // Next.js forwards `x-middleware-set-cookie` after applying the override allowlist,
+  // so it is never filtered out (see `resolve-routes.ts`).
+  if (middlewareSetCookie !== undefined) {
+    newHeaders[MIDDLEWARE_SET_COOKIE_HEADER] = middlewareSetCookie;
+  }
 
   // If the middleware returned a Rewrite, set the `url` to the pathname of the rewrite
   // NOTE: the header was added to `req` from above

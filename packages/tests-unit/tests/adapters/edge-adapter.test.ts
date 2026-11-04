@@ -1,20 +1,7 @@
 // edge-adapter imports globalThis.isEdgeRuntime and createGenericHandler which
 // require heavy bundled context. Unit-test the header harvest logic directly.
-
-function harvestHeaders(
-  headers: Pick<Headers, "forEach" | "getSetCookie">,
-): Record<string, string | string[]> {
-  const responseHeaders: Record<string, string | string[]> = {};
-  headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") return;
-    responseHeaders[key] = value;
-  });
-  const setCookies = headers.getSetCookie();
-  if (setCookies.length > 0) {
-    responseHeaders["set-cookie"] = setCookies;
-  }
-  return responseHeaders;
-}
+import { convertEdgeResponseHeaders as harvestHeaders } from "@opennextjs/aws/http/util.js";
+import { NextResponse } from "next/server.js";
 
 // Simulates Headers.forEach folding same-name headers (WHATWG-compliant behavior
 // on runtimes where this occurs), while getSetCookie() still returns them split.
@@ -72,6 +59,21 @@ describe("edge-adapter header harvest", () => {
     );
     expect(out["content-type"]).toBe("application/json");
     expect(out["x-request-id"]).toBe("abc-123");
+  });
+
+  it("does not expose x-middleware-set-cookie from a route handler NextResponse", () => {
+    const response = NextResponse.json({ token: "abc" });
+    response.cookies.set("session", "secret", { httpOnly: true });
+    // Sanity check: NextResponse copies the cookies in the internal header
+    expect(response.headers.get("x-middleware-set-cookie")).toContain(
+      "session=secret",
+    );
+
+    const out = harvestHeaders(response.headers);
+
+    expect(out).not.toHaveProperty("x-middleware-set-cookie");
+    expect(out["set-cookie"]).toEqual(["session=secret; Path=/; HttpOnly"]);
+    expect(out["content-type"]).toBe("application/json");
   });
 
   it("omits set-cookie key when there are no cookies", () => {

@@ -11,6 +11,7 @@ function filterHeadersForProxy(
   const filteredHeaders: Record<string, string | string[]> = {};
   const disallowedHeaders = [
     "host",
+    "x-forwarded-host",
     "connection",
     "via",
     "x-cache",
@@ -38,6 +39,10 @@ const nodeProxy: ProxyExternalRequest = {
     debug("proxyRequest", url);
     return new Promise<InternalResult>((resolve, reject) => {
       const filteredHeaders = filterHeadersForProxy(headers);
+      // Like Next.js, do not relay the `x-forwarded-host` sent by the client
+      if (headers.host) {
+        filteredHeaders["x-forwarded-host"] = headers.host;
+      }
       debug("filteredHeaders", filteredHeaders);
       const req = request(
         url,

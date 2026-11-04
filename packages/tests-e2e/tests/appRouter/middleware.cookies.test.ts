@@ -37,6 +37,30 @@ test.describe("Middleware Cookies", () => {
     const second = cookies.find(({ name }) => name === "test2");
     expect(second?.value).toEqual("success2");
   });
+  for (const { path, status } of [
+    { path: "/redirect-http-only-cookie", status: 307 },
+    { path: "/api/middleware-http-only-cookie", status: 200 },
+  ]) {
+    test(`should not expose x-middleware-set-cookie on a direct middleware response (${path})`, async ({
+      request,
+    }) => {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status()).toBe(status);
+
+      const headers = response.headersArray();
+      const setCookies = headers
+        .filter(({ name }) => name.toLowerCase() === "set-cookie")
+        .map(({ value }) => value);
+      expect(setCookies.some((c) => c.startsWith("http-only=secret"))).toBe(
+        true,
+      );
+      expect(
+        headers.some(
+          ({ name }) => name.toLowerCase() === "x-middleware-set-cookie",
+        ),
+      ).toBe(false);
+    });
+  }
   test("should not expose internal Next headers in response", async ({
     page,
     context,

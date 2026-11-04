@@ -508,6 +508,89 @@ describe("cacheInterceptor", () => {
     );
   });
 
+  describe("internal headers stored in the cache entry", () => {
+    const internalHeaders = {
+      "x-middleware-set-cookie": "session=secret; Path=/; HttpOnly",
+    };
+
+    it.each([
+      [
+        "app",
+        {
+          type: "app",
+          html: "Hello, world!",
+          meta: { headers: { "x-custom": "value", ...internalHeaders } },
+        },
+      ],
+      [
+        "page",
+        {
+          type: "page",
+          html: "Hello, world!",
+          json: {},
+          meta: { headers: { "x-custom": "value", ...internalHeaders } },
+        },
+      ],
+      [
+        "route",
+        {
+          type: "route",
+          body: "{}",
+          meta: {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "set-cookie": "session=secret; Path=/; HttpOnly",
+              "x-custom": "value",
+              ...internalHeaders,
+            },
+          },
+        },
+      ],
+      [
+        "redirect",
+        {
+          type: "redirect",
+          meta: {
+            status: 302,
+            headers: { "x-custom": "value", ...internalHeaders },
+          },
+        },
+      ],
+    ])("should not expose them for a %s entry", async (_, value) => {
+      incrementalCache.get.mockResolvedValueOnce({ value });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(result.headers).toEqual(
+        expect.objectContaining({ "x-custom": "value" }),
+      );
+      expect(result.headers).not.toHaveProperty("x-middleware-set-cookie");
+    });
+
+    it("should keep the set-cookie header of a route entry", async () => {
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "route",
+          body: "{}",
+          meta: {
+            status: 200,
+            headers: {
+              "set-cookie": "session=secret; Path=/; HttpOnly",
+              ...internalHeaders,
+            },
+          },
+        },
+      });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(result.headers["set-cookie"]).toEqual(
+        "session=secret; Path=/; HttpOnly",
+      );
+    });
+  });
+
   it("should take no action when cache returns unrecognized type", async () => {
     const event = createEvent({
       url: "/albums",

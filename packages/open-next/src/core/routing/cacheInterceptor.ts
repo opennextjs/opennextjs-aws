@@ -6,6 +6,7 @@ import {
   PagesManifest,
   PrerenderManifest,
 } from "config/index";
+import type { Meta } from "types/cache";
 import type {
   InternalEvent,
   InternalResult,
@@ -54,6 +55,36 @@ const VARY_HEADER =
 const NEXT_SEGMENT_PREFETCH_HEADER = "next-router-segment-prefetch";
 const NEXT_PRERENDER_HEADER = "x-nextjs-prerender";
 const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
+
+/**
+ * Internal header that can be stored in a cache entry but must not be sent to the client.
+ *
+ * It is set when a route handler calls `response.cookies` and contains the `HttpOnly` cookies.
+ * Next.js strips it in `sendResponse` when it serves a cached response.
+ */
+const MIDDLEWARE_SET_COOKIE_HEADER = "x-middleware-set-cookie";
+
+/**
+ * Returns the headers stored in a cache entry, without the internal `x-middleware-set-cookie` header.
+ *
+ * @param headers The headers stored in the cache entry meta
+ * @returns A copy of the headers without the internal header
+ */
+function getCachedResponseHeaders(
+  headers: Meta["headers"],
+): Record<string, string | string[]> {
+  const result: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    if (
+      value === undefined ||
+      key.toLowerCase() === MIDDLEWARE_SET_COOKIE_HEADER
+    ) {
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
+}
 
 async function computeCacheControl(
   path: string,
@@ -266,7 +297,7 @@ async function generateResult(
   const headers: Record<string, string | string[]> = {
     ...cacheControl,
     "content-type": type,
-    ...cachedValue.meta?.headers,
+    ...getCachedResponseHeaders(cachedValue.meta?.headers),
     vary: VARY_HEADER,
     ...additionalHeaders,
   };
@@ -532,8 +563,7 @@ export async function cacheInterceptor(
             statusCode: cachedData.value.meta?.status ?? 307,
             body: emptyReadableStream(),
             headers: {
-              ...((cachedData.value.meta?.headers as Record<string, string>) ??
-                {}),
+              ...getCachedResponseHeaders(cachedData.value.meta?.headers),
               ...cacheControl,
             },
             isBase64Encoded: false,
@@ -561,7 +591,7 @@ export async function cacheInterceptor(
           );
           const headers: Record<string, string | string[]> = {
             ...cacheControl,
-            ...cachedData.value.meta?.headers,
+            ...getCachedResponseHeaders(cachedData.value.meta?.headers),
             vary: VARY_HEADER,
           };
           // See the note in `generateResult`.

@@ -30,6 +30,7 @@ import {
   dynamicRouteMatcher,
   staticRouteMatcher,
 } from "./routing/routeMatcher";
+import { hasRouteParamPlaceholder } from "./routing/routeParamPlaceholder";
 import { constructNextUrl, normalizeLocationHeader } from "./routing/util";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
@@ -235,7 +236,7 @@ export default async function routingHandler(
 
     // Resolve against the final internal pathname after every rewrite phase.
     // These ordered matches are also the authoritative cache owner candidates.
-    const resolvedRoutes: ResolvedRoute[] = [
+    let resolvedRoutes: ResolvedRoute[] = [
       ...staticRouteMatcher(eventOrResult.rawPath),
       ...dynamicRouteMatcher(eventOrResult.rawPath),
     ];
@@ -249,8 +250,15 @@ export default async function routingHandler(
         // We need to check again once all rewrites have been applied
         staticRouteMatcher(eventOrResult.rawPath).length > 0 ||
         dynamicRouteMatcher(eventOrResult.rawPath).length > 0
-      )
+      ) ||
+      // Next.js versions before 16.4.5 treat a param whose value is its placeholder (e.g. `[slug]`) as unresolved.
+      // Next.js receives both the rawPath and the URL pathname, which is normalized (e.g. dot segments).
+      (!isExternalRewrite &&
+        [eventOrResult.rawPath, new URL(eventOrResult.url).pathname].some(
+          hasRouteParamPlaceholder,
+        ))
     ) {
+      resolvedRoutes = [];
       eventOrResult = {
         ...eventOrResult,
         rawPath: "/404",
