@@ -476,6 +476,29 @@ describe("handleMiddleware", () => {
     ]);
   });
 
+  it.each([
+    "x-middleware-override-headers",
+    "x-middleware-next",
+    "x-middleware-rewrite",
+    "x-middleware-redirect",
+    "x-middleware-refresh",
+  ])("should not expose the internal %s header", async (header) => {
+    middleware.mockResolvedValue({
+      status: 200,
+      // `x-middleware-rewrite` is parsed as a URL
+      headers: new Headers({ [header]: "http://on/path", "x-custom": "value" }),
+      body: null,
+    });
+    const event = createEvent({ headers: { host: "on" } });
+
+    const result = await handleMiddleware(event, "", middlewareLoader);
+
+    const headers =
+      "statusCode" in result ? result.headers : result.responseHeaders;
+    expect(headers).toEqual(expect.objectContaining({ "x-custom": "value" }));
+    expect(headers).not.toHaveProperty(header);
+  });
+
   describe("x-middleware-set-cookie", () => {
     it("should not expose it on a redirect response", async () => {
       const response = NextResponse.redirect("https://example.com/somewhere");
