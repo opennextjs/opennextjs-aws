@@ -14,6 +14,7 @@ import type {
   ResolvedRoute,
 } from "types/open-next";
 import type { CacheValue } from "types/overrides";
+import { decodePathParams } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
@@ -337,34 +338,6 @@ function computeStatusCode(
     return cachedStatusCode;
   }
   return rewriteStatusCode ?? cachedStatusCode ?? 200;
-}
-
-/**
- *
- * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/shared/lib/router/utils/escape-path-delimiters.ts#L2-L10
- */
-function escapePathDelimiters(
-  segment: string,
-  escapeEncoded?: boolean,
-): string {
-  return segment.replace(
-    new RegExp(`([/#?]${escapeEncoded ? "|%(2f|23|3f|5c)" : ""})`, "gi"),
-    (char: string) => encodeURIComponent(char),
-  );
-}
-
-/**
- *
- * SSG cache key needs to be decoded, but some characters needs to be properly escaped
- * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/server/lib/router-utils/decode-path-params.ts#L11-L26
- * Decoding must be atomic, as in Next.js. Partially decoding a malformed path
- * could select a different cache route than the one evaluated by middleware.
- */
-function decodePathParams(pathname: string): string {
-  return pathname
-    .split("/")
-    .map((segment) => escapePathDelimiters(decodeURIComponent(segment), true))
-    .join("/");
 }
 
 let routeCacheManifests: RouteCacheManifests | undefined;

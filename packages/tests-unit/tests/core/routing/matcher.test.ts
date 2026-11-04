@@ -1652,13 +1652,14 @@ describe("fixDataPage", () => {
 });
 
 describe("handleFallbackFalse", () => {
-  // Next writes the prerender manifest with decoded keys, while rawPath
-  // arrives percent-encoded, so a slug with a space is keyed "Finance 101"
-  // but requested as "Finance%20101".
+  // Next.js (15 and 16) keys the prerender manifest with decoded paths,
+  // keeping the path delimiters encoded (i.e. the slug `a/b` is keyed `a%2Fb`).
   const prerenderManifest = {
     routes: {
-      "/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
       "/learn/Finance/bitcoin": { initialRevalidateSeconds: false },
+      "/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
+      "/learn/Présentation": { initialRevalidateSeconds: false },
+      "/learn/a%2Fb": { initialRevalidateSeconds: false },
     },
     dynamicRoutes: {
       "/learn/[...slug]": {
@@ -1670,33 +1671,75 @@ describe("handleFallbackFalse", () => {
     preview: { previewModeId: "id" },
   } satisfies PrerenderManifest;
 
-  it("should serve a prerendered route whose path is percent-encoded", () => {
-    const event = createEvent({
-      url: "https://on/learn/Finance%20101/bitcoin",
-    });
+  afterEach(() => {
+    NextConfig.i18n = undefined;
+    NextConfig.trailingSlash = undefined;
+  });
+
+  it.each([
+    ["a path that needs no decoding", "/learn/Finance/bitcoin"],
+    ["an encoded space", "/learn/Finance%20101/bitcoin"],
+    ["an encoded non-ASCII character", "/learn/Pr%C3%A9sentation"],
+    ["an encoded ASCII character", "/learn/Fin%61nce/bitcoin"],
+    ["an encoded slash", "/learn/a%2Fb"],
+    ["a lowercase encoded slash", "/learn/a%2fb"],
+    ["fully encoded characters", "/learn/%61%2F%62"],
+  ])("should serve a prerendered route with %s", (_, path) => {
+    const event = createEvent({ url: `https://on${path}` });
 
     const response = handleFallbackFalse(event, prerenderManifest);
 
-    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin");
+    expect(response.event.rawPath).toBe(path);
     expect(response.isISR).toBe(true);
   });
 
-  it("should serve a prerendered route whose path needs no decoding", () => {
-    const event = createEvent({ url: "https://on/learn/Finance/bitcoin" });
-
-    const response = handleFallbackFalse(event, prerenderManifest);
-
-    expect(response.event.rawPath).toBe("/learn/Finance/bitcoin");
-    expect(response.isISR).toBe(true);
-  });
-
-  it("should 404 a route that is not prerendered", () => {
-    const event = createEvent({ url: "https://on/learn/Missing%20101/page" });
+  it.each([
+    ["a route that is not prerendered", "/learn/Missing%20101/page"],
+    [
+      "an encoded slash that does not split segments",
+      "/learn/Finance%2Fbitcoin",
+    ],
+    ["a decoded slash that is keyed encoded", "/learn/a/b"],
+    ["a double encoded path", "/learn/Finance%2520101/bitcoin"],
+    ["a non-normalized unicode path", "/learn/Pre%CC%81sentation"],
+    ["a malformed escape sequence", "/learn/%E0%A4%A"],
+  ])("should 404 %s", (_, path) => {
+    const event = createEvent({ url: `https://on${path}` });
 
     const response = handleFallbackFalse(event, prerenderManifest);
 
     expect(response.event.rawPath).toBe("/404");
+    expect(response.event.url).toBe("https://on/404");
     expect(response.event.headers["x-invoke-status"]).toBe("404");
     expect(response.isISR).toBe(false);
+  });
+
+  it("should serve an encoded prerendered route with a trailing slash", () => {
+    NextConfig.trailingSlash = true;
+    const event = createEvent({
+      url: "https://on/learn/Finance%20101/bitcoin/",
+    });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin/");
+    expect(response.isISR).toBe(true);
+  });
+
+  it("should serve an encoded prerendered route for the default locale", () => {
+    NextConfig.i18n = { locales: ["en", "nl"], defaultLocale: "en" };
+    const event = createEvent({
+      url: "https://on/learn/Finance%20101/bitcoin",
+    });
+
+    const response = handleFallbackFalse(event, {
+      ...prerenderManifest,
+      routes: {
+        "/en/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
+      },
+    });
+
+    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin");
+    expect(response.isISR).toBe(true);
   });
 });
