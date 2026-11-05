@@ -143,6 +143,57 @@ describe("getNextConfigHeaders", () => {
     });
   });
 
+  it("should lowercase header names", () => {
+    const event = createEvent({
+      url: "https://on/",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/",
+        regex: "^/$",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'self'" },
+        ],
+      },
+    ]);
+
+    expect(result).toEqual({
+      "content-security-policy": "default-src 'self'",
+    });
+  });
+
+  it("should keep the value of the last matching route when names only differ by case", () => {
+    const event = createEvent({
+      url: "https://on/",
+    });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/",
+        regex: "^/$",
+        headers: [{ key: "X-Foo", value: "first" }],
+      },
+      {
+        source: "/",
+        regex: "^/$",
+        headers: [{ key: "x-foo", value: "second" }],
+      },
+      {
+        source: "/",
+        regex: "^/$",
+        headers: [{ key: "x-bar", value: "first" }],
+      },
+      {
+        source: "/",
+        regex: "^/$",
+        headers: [{ key: "X-BAR", value: "second" }],
+      },
+    ]);
+
+    expect(result).toEqual({ "x-foo": "second", "x-bar": "second" });
+  });
+
   it("should return empty request headers for matching / route with empty headers", () => {
     const event = createEvent({
       url: "https://on/",

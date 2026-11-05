@@ -291,9 +291,12 @@ function compileQueryString(queryString: string, params: object): string {
  * interpolation, with condition parameters taking precedence. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L400-L414
  *
+ * Header names are lowercased. As Next.js applies them with the case-insensitive `res.setHeader()`, the last matching
+ * route wins when several set the same header, whatever its case.
+ *
  * @param event The request used to match configured headers
  * @param configHeaders The configured header routes
- * @returns The response headers produced by every matching route
+ * @returns The response headers produced by every matching route, keyed by lowercase name
  * @throws {SyntaxError} When a configured route pattern is invalid
  */
 export function getNextConfigHeaders(
@@ -337,10 +340,10 @@ export function getNextConfigHeaders(
         try {
           const key = hasParams ? compileNonPath(h.key, params) : h.key;
           const value = hasParams ? compileNonPath(h.value, params) : h.value;
-          requestHeaders[key] = value;
+          requestHeaders[key.toLowerCase()] = value;
         } catch {
           debug(`Error matching header ${h.key} with value ${h.value}`);
-          requestHeaders[h.key] = h.value;
+          requestHeaders[h.key.toLowerCase()] = h.value;
         }
       });
     }

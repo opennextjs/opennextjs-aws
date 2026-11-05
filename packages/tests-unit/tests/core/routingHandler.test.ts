@@ -259,10 +259,70 @@ describe("routingHandler", () => {
         {},
       )) as RoutingResult;
 
-      expect(
-        result.internalEvent.headers[`${CONFIG_PREFIX}X-Both`],
-      ).toBeUndefined();
+      const { headers } = result.internalEvent;
+      expect(headers[`${CONFIG_PREFIX}X-Both`]).toBeUndefined();
+      expect(headers[`${CONFIG_PREFIX}x-both`]).toBeUndefined();
+      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
     });
+
+    it("lowercases next.config header names on an event", async () => {
+      configHeaders.length = 0;
+      configHeaders.push({
+        source: "/(.*)",
+        regex: "^/.*$",
+        headers: [{ key: "X-Both", value: "next.config" }],
+      });
+
+      const result = (await routingHandler(
+        createEvent("/catalog/new/alpha/a"),
+        {},
+      )) as RoutingResult;
+
+      const { headers } = result.internalEvent;
+      expect(headers[`${CONFIG_PREFIX}X-Both`]).toBeUndefined();
+      expect(headers[`${CONFIG_PREFIX}x-both`]).toBe("next.config");
+      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
+    });
+
+    it.each([
+      [false, "next.config"],
+      [true, "middleware"],
+    ])(
+      "sets a single header on a result when the names only differ by case (middleware override: %s)",
+      async (override, expected) => {
+        vi.stubGlobal("openNextConfig", {
+          dangerous: {
+            enableCacheInterception: true,
+            middlewareHeadersOverrideNextConfigHeaders: override,
+          },
+        });
+        configHeaders.length = 0;
+        configHeaders.push({
+          source: "/(.*)",
+          regex: "^/.*$",
+          headers: [{ key: "X-Both", value: "next.config" }],
+        });
+        cacheInterceptor.mockImplementation(async () => ({
+          type: "core",
+          statusCode: 200,
+          headers: {},
+          body: new ReadableStream(),
+          isBase64Encoded: false,
+        }));
+
+        const result = (await routingHandler(
+          createEvent("/catalog/new/alpha/a"),
+          {},
+        )) as InternalResult;
+
+        expect(
+          Object.keys(result.headers).filter(
+            (key) => key.toLowerCase() === "x-both",
+          ),
+        ).toEqual(["x-both"]);
+        expect(result.headers["x-both"]).toBe(expected);
+      },
+    );
 
     it("strips next.config response headers sent by the client", async () => {
       configHeaders.length = 0;

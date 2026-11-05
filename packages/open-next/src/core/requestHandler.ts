@@ -49,8 +49,11 @@ patchAsyncStorage();
  * not. A `Content-Security-Policy` from `next.config` must not replace the one the middleware set on the request, Next
  * reads the script nonce from it.
  *
+ * Header names are compared without case, as Next.js does with `res.setHeader()`, so a `next.config` header and a
+ * middleware header that only differ by case end up as a single response header.
+ *
  * @param headers The request headers, or the headers of a result which never holds prefixed headers
- * @returns The headers to set on the response
+ * @returns The headers to set on the response, keyed by lowercase name
  */
 export function extractResponseHeaders(
   headers: Record<string, string | string[]>,
@@ -59,11 +62,11 @@ export function extractResponseHeaders(
   const nextConfigHeaders: Record<string, string | string[]> = {};
   for (const [rawKey, value] of Object.entries(headers)) {
     if (rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
-      const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
+      const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN).toLowerCase();
       middlewareHeaders[key] = value;
       delete headers[rawKey];
     } else if (rawKey.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
-      const key = rawKey.slice(NEXT_CONFIG_HEADER_PREFIX_LEN);
+      const key = rawKey.slice(NEXT_CONFIG_HEADER_PREFIX_LEN).toLowerCase();
       nextConfigHeaders[key] = value;
       delete headers[rawKey];
     }

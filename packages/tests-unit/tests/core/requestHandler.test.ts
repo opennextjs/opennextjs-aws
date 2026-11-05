@@ -522,6 +522,18 @@ describe("extractResponseHeaders", () => {
     expect(headers).toEqual({ "x-foo": "middleware" });
   });
 
+  it("merges a next.config and a middleware header whose names only differ by case", () => {
+    const headers: Record<string, string | string[]> = {
+      "x-opennext-next-config-response-X-Foo": "next.config",
+      "x-middleware-response-x-foo": "middleware",
+    };
+
+    const responseHeaders = extractResponseHeaders(headers);
+
+    expect(responseHeaders).toEqual({ "x-foo": "next.config" });
+    expect(headers).toEqual({ "x-foo": "middleware" });
+  });
+
   it("leaves headers without a prefix alone", () => {
     const headers: Record<string, string | string[]> = {
       "content-type": "text/html",
