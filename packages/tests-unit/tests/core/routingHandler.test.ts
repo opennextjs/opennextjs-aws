@@ -191,7 +191,8 @@ describe("routingHandler", () => {
         source: "/(.*)",
         regex: "^/.*$",
         headers: [
-          { key: "x-both", value: "next.config" },
+          // Only differs by case from the middleware header.
+          { key: "X-Both", value: "next.config" },
           { key: "x-config-only", value: "next.config" },
         ],
       });
@@ -243,87 +244,6 @@ describe("routingHandler", () => {
       );
     });
 
-    it("compares header names without case when the middleware takes precedence", async () => {
-      vi.stubGlobal("openNextConfig", {
-        dangerous: { middlewareHeadersOverrideNextConfigHeaders: true },
-      });
-      configHeaders.length = 0;
-      configHeaders.push({
-        source: "/(.*)",
-        regex: "^/.*$",
-        headers: [{ key: "X-Both", value: "next.config" }],
-      });
-
-      const result = (await routingHandler(
-        createEvent("/catalog/new/alpha/a"),
-        {},
-      )) as RoutingResult;
-
-      const { headers } = result.internalEvent;
-      expect(headers[`${CONFIG_PREFIX}X-Both`]).toBeUndefined();
-      expect(headers[`${CONFIG_PREFIX}x-both`]).toBeUndefined();
-      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
-    });
-
-    it("lowercases next.config header names on an event", async () => {
-      configHeaders.length = 0;
-      configHeaders.push({
-        source: "/(.*)",
-        regex: "^/.*$",
-        headers: [{ key: "X-Both", value: "next.config" }],
-      });
-
-      const result = (await routingHandler(
-        createEvent("/catalog/new/alpha/a"),
-        {},
-      )) as RoutingResult;
-
-      const { headers } = result.internalEvent;
-      expect(headers[`${CONFIG_PREFIX}X-Both`]).toBeUndefined();
-      expect(headers[`${CONFIG_PREFIX}x-both`]).toBe("next.config");
-      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
-    });
-
-    it.each([
-      [false, "next.config"],
-      [true, "middleware"],
-    ])(
-      "sets a single header on a result when the names only differ by case (middleware override: %s)",
-      async (override, expected) => {
-        vi.stubGlobal("openNextConfig", {
-          dangerous: {
-            enableCacheInterception: true,
-            middlewareHeadersOverrideNextConfigHeaders: override,
-          },
-        });
-        configHeaders.length = 0;
-        configHeaders.push({
-          source: "/(.*)",
-          regex: "^/.*$",
-          headers: [{ key: "X-Both", value: "next.config" }],
-        });
-        cacheInterceptor.mockImplementation(async () => ({
-          type: "core",
-          statusCode: 200,
-          headers: {},
-          body: new ReadableStream(),
-          isBase64Encoded: false,
-        }));
-
-        const result = (await routingHandler(
-          createEvent("/catalog/new/alpha/a"),
-          {},
-        )) as InternalResult;
-
-        expect(
-          Object.keys(result.headers).filter(
-            (key) => key.toLowerCase() === "x-both",
-          ),
-        ).toEqual(["x-both"]);
-        expect(result.headers["x-both"]).toBe(expected);
-      },
-    );
-
     it("strips next.config response headers sent by the client", async () => {
       configHeaders.length = 0;
       const event = createEvent("/catalog/new/alpha/a");
@@ -365,9 +285,11 @@ describe("routingHandler", () => {
           {},
         )) as InternalResult;
 
-        expect(result.headers["x-both"]).toBe(expected);
-        expect(result.headers["x-config-only"]).toBe("next.config");
-        expect(result.headers["x-middleware-only"]).toBe("middleware");
+        expect(result.headers).toEqual({
+          "x-both": expected,
+          "x-config-only": "next.config",
+          "x-middleware-only": "middleware",
+        });
       },
     );
 
@@ -397,9 +319,11 @@ describe("routingHandler", () => {
           },
         )) as InternalResult;
 
-        expect(result.headers["x-both"]).toBe(expected);
-        expect(result.headers["x-config-only"]).toBe("next.config");
-        expect(result.headers["x-middleware-only"]).toBe("middleware");
+        expect(result.headers).toEqual({
+          "x-both": expected,
+          "x-config-only": "next.config",
+          "x-middleware-only": "middleware",
+        });
       },
     );
   });

@@ -35,6 +35,8 @@ import routingHandler, {
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
+type HeaderRecord = InternalEvent["headers"];
+
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
 
@@ -42,25 +44,16 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 patchAsyncStorage();
 //#endOverride
 
-type HeaderRecord = InternalEvent["headers"];
-
 /**
- * Splits the headers of a routed event into the request headers and the response headers.
+ * Splits the headers of a routed event into the request and response headers.
  *
- * The routing adds the response headers to the event headers with a prefix (see `applyResponseHeaders` in
- * `routingHandler.ts`):
- * - the request headers are the event headers without the prefixed ones, plus the middleware headers
- * - the response headers are the middleware headers and the `next.config` headers
- *
- * As in Next.js `resolve-routes.ts`, middleware headers are also set on the request while `next.config` headers are
- * not. A `Content-Security-Policy` from `next.config` must not replace the one the middleware set on the request, Next
- * reads the script nonce from it.
- *
- * Header names are compared without case, as Next.js does with `res.setHeader()`, so a `next.config` header and a
- * middleware header that only differ by case end up as a single response header.
+ * The routing adds the middleware and `next.config` response headers to the event with a prefix each (see
+ * `applyResponseHeaders`). As in Next.js, both go on the response but only the middleware headers go on the request:
+ * a `Content-Security-Policy` from `next.config` must not replace the one, holding the script nonce, that the
+ * middleware set on the request.
  *
  * @param eventHeaders The headers of the routed event, not modified
- * @returns The headers to send to Next.js and the headers to set on the response, keyed by lowercase name
+ * @returns The headers to send to Next.js and the headers to set on the response
  */
 export function splitRoutingHeaders(eventHeaders: HeaderRecord): {
   requestHeaders: HeaderRecord;
@@ -69,20 +62,18 @@ export function splitRoutingHeaders(eventHeaders: HeaderRecord): {
   const requestHeaders: HeaderRecord = {};
   const middlewareHeaders: HeaderRecord = {};
   const nextConfigHeaders: HeaderRecord = {};
-  for (const [rawKey, value] of Object.entries(eventHeaders)) {
-    if (rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
-      const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN).toLowerCase();
-      middlewareHeaders[key] = value;
-    } else if (rawKey.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
-      const key = rawKey.slice(NEXT_CONFIG_HEADER_PREFIX_LEN).toLowerCase();
-      nextConfigHeaders[key] = value;
+  for (const [key, value] of Object.entries(eventHeaders)) {
+    if (key.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
+      middlewareHeaders[key.slice(MIDDLEWARE_HEADER_PREFIX_LEN)] = value;
+    } else if (key.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
+      nextConfigHeaders[key.slice(NEXT_CONFIG_HEADER_PREFIX_LEN)] = value;
     } else {
-      requestHeaders[rawKey] = value;
+      requestHeaders[key] = value;
     }
   }
   return {
     requestHeaders: { ...requestHeaders, ...middlewareHeaders },
-    // The routing drops the `next.config` headers that must not take precedence.
+    // The routing already dropped the `next.config` headers that must not take precedence.
     responseHeaders: { ...middlewareHeaders, ...nextConfigHeaders },
   };
 }
@@ -144,12 +135,13 @@ export async function openNextHandler(
       });
       //#endOverride
 
-      // A result is the response, its headers are never prefixed by the routing.
+      // The headers of a result are not prefixed, they are the response headers.
       let requestHeaders: HeaderRecord = {};
       let overwrittenResponseHeaders: HeaderRecord = {};
       if (!("type" in routingResult)) {
-        ({ requestHeaders, responseHeaders: overwrittenResponseHeaders } =
-          splitRoutingHeaders(routingResult.internalEvent.headers));
+        const split = splitRoutingHeaders(routingResult.internalEvent.headers);
+        requestHeaders = split.requestHeaders;
+        overwrittenResponseHeaders = split.responseHeaders;
         routingResult = {
           ...routingResult,
           internalEvent: {

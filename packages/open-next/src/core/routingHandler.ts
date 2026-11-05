@@ -76,11 +76,10 @@ type RoutingResponseHeaders = Record<string, string | string[] | undefined>;
 /**
  * Adds the `next.config` and middleware response headers to an event or result.
  *
- * Events keep them apart with a prefix each, they are processed by the request handler later:
- * the `next.config` headers only go on the response, the middleware headers go on the response and the request.
- * Results do not go through the request handler, their headers are the response and are not prefixed.
+ * On an event, each kind gets its own prefix so that the request handler can tell them apart (see
+ * `splitRoutingHeaders`). On a result, the headers are the response and are not prefixed.
  *
- * A header in `nextConfigHeaders` takes precedence on the response over the same header in `middlewareHeaders`.
+ * `nextConfigHeaders` take precedence over `middlewareHeaders` on the response.
  *
  * @param eventOrResult The event or result to add the headers to, its headers are mutated
  * @param nextConfigHeaders The response headers from the `next.config` `headers()`
@@ -175,12 +174,10 @@ export default async function routingHandler(
       middlewareEventOrResult.responseHeaders ?? {};
 
     if (middlewareHeadersPrioritized) {
-      const middlewareKeys = new Set(
-        Object.keys(middlewareHeaders).map((key) => key.toLowerCase()),
-      );
+      // Both are keyed by lowercase name.
       nextConfigHeaders = Object.fromEntries(
         Object.entries(nextConfigHeaders).filter(
-          ([key]) => !middlewareKeys.has(key.toLowerCase()),
+          ([key]) => !Object.hasOwn(middlewareHeaders, key),
         ),
       );
     }
@@ -309,7 +306,7 @@ export default async function routingHandler(
       }
     }
 
-    // We apply the headers from the `next.config` and the middleware response last
+    // We apply the response headers last
     applyResponseHeaders(eventOrResult, nextConfigHeaders, middlewareHeaders);
 
     debug("resolvedRoutes", resolvedRoutes);

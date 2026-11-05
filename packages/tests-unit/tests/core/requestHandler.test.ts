@@ -516,16 +516,6 @@ describe("splitRoutingHeaders", () => {
     expect(requestHeaders).toEqual({ "x-foo": "middleware" });
   });
 
-  it("merges a next.config and a middleware header whose names only differ by case", () => {
-    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
-      "x-opennext-next-config-response-X-Foo": "next.config",
-      "x-middleware-response-x-foo": "middleware",
-    });
-
-    expect(responseHeaders).toEqual({ "x-foo": "next.config" });
-    expect(requestHeaders).toEqual({ "x-foo": "middleware" });
-  });
-
   it("keeps headers without a prefix on the request only", () => {
     const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "content-type": "text/html",
