@@ -45,3 +45,32 @@ test("Middleware headers override next.config.js headers", async ({ page }) => {
   // The next.config.js headers is overwritten by the middleware
   expect(headers["e2e-headers"]).toEqual("middleware");
 });
+
+/**
+ * Tests that a next.config.js `Content-Security-Policy` does not replace the nonce policy the middleware sets on the request.
+ */
+test("next.config.js headers do not overwrite the request headers", async ({
+  page,
+  request,
+}) => {
+  const response = await request.get("/headers/nonce");
+
+  // The next.config.js policy is on the response
+  expect(response.headers()["content-security-policy"]).toEqual(
+    "frame-ancestors 'none'",
+  );
+
+  // Next found the nonce of the middleware policy on the request
+  const scripts = (await response.text()).match(/<script\b[^>]*>/g) ?? [];
+  expect(scripts.length).toBeGreaterThan(0);
+  for (const script of scripts) {
+    expect(script).toMatch(/\snonce="[^"]+"/);
+  }
+
+  await page.goto("/headers/nonce");
+  // Middleware response headers are on the request, next.config.js headers are not
+  await expect(page.getByTestId("middleware-header")).toHaveText(
+    "response-header",
+  );
+  await expect(page.getByTestId("next-config-header")).toBeEmpty();
+});

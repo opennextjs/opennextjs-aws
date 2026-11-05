@@ -102,6 +102,17 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // For: headers.test.ts, it must not replace the nonce policy the proxy sets on the request.
+      // Lowercase, as it reaches the server after an external middleware.
+      {
+        source: "/headers/nonce",
+        headers: [
+          {
+            key: "content-security-policy",
+            value: "frame-ancestors 'none'",
+          },
+        ],
+      },
     ];
   },
 };

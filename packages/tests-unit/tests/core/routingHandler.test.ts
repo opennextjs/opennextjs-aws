@@ -1,18 +1,22 @@
 import routingHandler from "@opennextjs/aws/core/routingHandler.js";
 import type {
   InternalEvent,
+  InternalResult,
   RoutingResult,
 } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
-const { handleMiddleware, cacheInterceptor } = vi.hoisted(() => ({
-  handleMiddleware: vi.fn(),
-  cacheInterceptor: vi.fn(),
-}));
+const { handleMiddleware, cacheInterceptor, configHeaders } = vi.hoisted(
+  () => ({
+    handleMiddleware: vi.fn(),
+    cacheInterceptor: vi.fn(),
+    configHeaders: [] as unknown[],
+  }),
+);
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   BuildId: "build-id",
-  ConfigHeaders: [],
+  ConfigHeaders: configHeaders,
   NextConfig: {},
   PrerenderManifest: { routes: {}, dynamicRoutes: {} },
   AppPathRoutesManifest: {
@@ -175,5 +179,136 @@ describe("routingHandler", () => {
     );
 
     expect(result).toBe(response);
+  });
+
+  describe("next.config and middleware response headers", () => {
+    const CONFIG_PREFIX = "x-opennext-next-config-response-";
+    const MIDDLEWARE_PREFIX = "x-middleware-response-";
+
+    beforeEach(() => {
+      configHeaders.length = 0;
+      configHeaders.push({
+        source: "/(.*)",
+        regex: "^/.*$",
+        headers: [
+          { key: "x-both", value: "next.config" },
+          { key: "x-config-only", value: "next.config" },
+        ],
+      });
+      handleMiddleware.mockImplementation(async (event: InternalEvent) => ({
+        ...event,
+        responseHeaders: {
+          "x-both": "middleware",
+          "x-middleware-only": "middleware",
+        },
+      }));
+    });
+
+    afterEach(() => {
+      configHeaders.length = 0;
+    });
+
+    it("keeps them apart and both values of a shared header by default", async () => {
+      const result = (await routingHandler(
+        createEvent("/catalog/new/alpha/a"),
+        {},
+      )) as RoutingResult;
+
+      const { headers } = result.internalEvent;
+      expect(headers[`${CONFIG_PREFIX}x-both`]).toBe("next.config");
+      expect(headers[`${CONFIG_PREFIX}x-config-only`]).toBe("next.config");
+      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
+      expect(headers[`${MIDDLEWARE_PREFIX}x-middleware-only`]).toBe(
+        "middleware",
+      );
+      expect(headers[`${MIDDLEWARE_PREFIX}x-config-only`]).toBeUndefined();
+    });
+
+    it("drops the next.config value of a shared header with middlewareHeadersOverrideNextConfigHeaders", async () => {
+      vi.stubGlobal("openNextConfig", {
+        dangerous: { middlewareHeadersOverrideNextConfigHeaders: true },
+      });
+
+      const result = (await routingHandler(
+        createEvent("/catalog/new/alpha/a"),
+        {},
+      )) as RoutingResult;
+
+      const { headers } = result.internalEvent;
+      expect(headers[`${CONFIG_PREFIX}x-both`]).toBeUndefined();
+      expect(headers[`${CONFIG_PREFIX}x-config-only`]).toBe("next.config");
+      expect(headers[`${MIDDLEWARE_PREFIX}x-both`]).toBe("middleware");
+      expect(headers[`${MIDDLEWARE_PREFIX}x-middleware-only`]).toBe(
+        "middleware",
+      );
+    });
+
+    it("compares header names without case when the middleware takes precedence", async () => {
+      vi.stubGlobal("openNextConfig", {
+        dangerous: { middlewareHeadersOverrideNextConfigHeaders: true },
+      });
+      configHeaders.length = 0;
+      configHeaders.push({
+        source: "/(.*)",
+        regex: "^/.*$",
+        headers: [{ key: "X-Both", value: "next.config" }],
+      });
+
+      const result = (await routingHandler(
+        createEvent("/catalog/new/alpha/a"),
+        {},
+      )) as RoutingResult;
+
+      expect(
+        result.internalEvent.headers[`${CONFIG_PREFIX}X-Both`],
+      ).toBeUndefined();
+    });
+
+    it("strips next.config response headers sent by the client", async () => {
+      configHeaders.length = 0;
+      const event = createEvent("/catalog/new/alpha/a");
+      const result = (await routingHandler(
+        {
+          ...event,
+          headers: { [`${CONFIG_PREFIX}content-security-policy`]: "spoofed" },
+        },
+        {},
+      )) as RoutingResult;
+
+      expect(
+        result.internalEvent.headers[`${CONFIG_PREFIX}content-security-policy`],
+      ).toBeUndefined();
+    });
+
+    it.each([
+      [false, "next.config"],
+      [true, "middleware"],
+    ])(
+      "applies them to a result without a prefix (middleware override: %s)",
+      async (override, expected) => {
+        vi.stubGlobal("openNextConfig", {
+          dangerous: {
+            enableCacheInterception: true,
+            middlewareHeadersOverrideNextConfigHeaders: override,
+          },
+        });
+        cacheInterceptor.mockImplementation(async () => ({
+          type: "core",
+          statusCode: 200,
+          headers: {},
+          body: new ReadableStream(),
+          isBase64Encoded: false,
+        }));
+
+        const result = (await routingHandler(
+          createEvent("/catalog/new/alpha/a"),
+          {},
+        )) as InternalResult;
+
+        expect(result.headers["x-both"]).toBe(expected);
+        expect(result.headers["x-config-only"]).toBe("next.config");
+        expect(result.headers["x-middleware-only"]).toBe("middleware");
+      },
+    );
   });
 });

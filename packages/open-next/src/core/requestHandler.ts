@@ -30,6 +30,8 @@ import routingHandler, {
   INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
+  NEXT_CONFIG_HEADER_PREFIX,
+  NEXT_CONFIG_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
 
@@ -39,6 +41,37 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 //#override patchAsyncStorage
 patchAsyncStorage();
 //#endOverride
+
+/**
+ * Moves the response headers set by the routing out of `headers` and returns them.
+ *
+ * As in Next.js `resolve-routes.ts`, middleware headers are also set on the request while `next.config` headers are
+ * not. A `Content-Security-Policy` from `next.config` must not replace the one the middleware set on the request, Next
+ * reads the script nonce from it.
+ *
+ * @param headers The request headers, or the headers of a result which never holds prefixed headers
+ * @returns The headers to set on the response
+ */
+export function extractResponseHeaders(
+  headers: Record<string, string | string[]>,
+): Record<string, string | string[]> {
+  const middlewareHeaders: Record<string, string | string[]> = {};
+  const nextConfigHeaders: Record<string, string | string[]> = {};
+  for (const [rawKey, value] of Object.entries(headers)) {
+    if (rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
+      const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
+      middlewareHeaders[key] = value;
+      delete headers[rawKey];
+    } else if (rawKey.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
+      const key = rawKey.slice(NEXT_CONFIG_HEADER_PREFIX_LEN);
+      nextConfigHeaders[key] = value;
+      delete headers[rawKey];
+    }
+  }
+  Object.assign(headers, middlewareHeaders);
+  // The routing drops the `next.config` headers that must not take precedence.
+  return { ...middlewareHeaders, ...nextConfigHeaders };
+}
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -102,21 +135,7 @@ export async function openNextHandler(
           ? routingResult.headers
           : routingResult.internalEvent.headers;
 
-      const overwrittenResponseHeaders: Record<string, string | string[]> = {};
-
-      for (const [rawKey, value] of Object.entries(headers)) {
-        if (!rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
-          continue;
-        }
-        const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
-        // We skip this header here since it is used by Next internally and we don't want it on the response headers.
-        // This header needs to be present in the request headers for processRequest, so cookies().get() from Next will work on initial render.
-        if (key !== "x-middleware-set-cookie") {
-          overwrittenResponseHeaders[key] = value;
-        }
-        headers[key] = value;
-        delete headers[rawKey];
-      }
+      const overwrittenResponseHeaders = extractResponseHeaders(headers);
 
       if (
         "isExternalRewrite" in routingResult &&

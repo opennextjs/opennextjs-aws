@@ -1,4 +1,7 @@
-import { handleNoFallbackError } from "@opennextjs/aws/core/requestHandler.js";
+import {
+  extractResponseHeaders,
+  handleNoFallbackError,
+} from "@opennextjs/aws/core/requestHandler.js";
 import type { RoutingResult } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
@@ -42,6 +45,10 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 // The routing reads manifests which are not needed by `handleNoFallbackError`.
 vi.mock("@opennextjs/aws/core/routingHandler.js", () => ({
   default: vi.fn(),
+  MIDDLEWARE_HEADER_PREFIX: "x-middleware-response-",
+  MIDDLEWARE_HEADER_PREFIX_LEN: "x-middleware-response-".length,
+  NEXT_CONFIG_HEADER_PREFIX: "x-opennext-next-config-response-",
+  NEXT_CONFIG_HEADER_PREFIX_LEN: "x-opennext-next-config-response-".length,
 }));
 
 class NoFallbackError extends Error {}
@@ -470,5 +477,57 @@ describe("handleNoFallbackError", () => {
       });
       expect(nextHandler).toHaveBeenCalledWith(req, res);
     });
+  });
+});
+
+describe("extractResponseHeaders", () => {
+  it("does not let a next.config header overwrite the request header of the same name", () => {
+    const headers: Record<string, string | string[]> = {
+      "content-security-policy": "script-src 'nonce-abc' 'strict-dynamic'",
+      "x-opennext-next-config-response-content-security-policy":
+        "frame-ancestors 'none'",
+    };
+
+    const responseHeaders = extractResponseHeaders(headers);
+
+    expect(responseHeaders).toEqual({
+      "content-security-policy": "frame-ancestors 'none'",
+    });
+    expect(headers).toEqual({
+      "content-security-policy": "script-src 'nonce-abc' 'strict-dynamic'",
+    });
+  });
+
+  it("copies a middleware response header onto the request headers", () => {
+    const headers: Record<string, string | string[]> = {
+      "x-foo": "from the client",
+      "x-middleware-response-x-foo": "from the middleware",
+    };
+
+    const responseHeaders = extractResponseHeaders(headers);
+
+    expect(responseHeaders).toEqual({ "x-foo": "from the middleware" });
+    expect(headers).toEqual({ "x-foo": "from the middleware" });
+  });
+
+  it("gives the response the next.config value and the request the middleware value when both are set", () => {
+    const headers: Record<string, string | string[]> = {
+      "x-opennext-next-config-response-x-foo": "next.config",
+      "x-middleware-response-x-foo": "middleware",
+    };
+
+    const responseHeaders = extractResponseHeaders(headers);
+
+    expect(responseHeaders).toEqual({ "x-foo": "next.config" });
+    expect(headers).toEqual({ "x-foo": "middleware" });
+  });
+
+  it("leaves headers without a prefix alone", () => {
+    const headers: Record<string, string | string[]> = {
+      "content-type": "text/html",
+    };
+
+    expect(extractResponseHeaders(headers)).toEqual({});
+    expect(headers).toEqual({ "content-type": "text/html" });
   });
 });
