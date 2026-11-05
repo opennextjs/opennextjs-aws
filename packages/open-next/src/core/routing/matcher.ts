@@ -9,7 +9,10 @@ import type {
   RouteHas,
 } from "types/next-types";
 import type { InternalEvent, InternalResult } from "types/open-next";
-import { normalizeRepeatedSlashes } from "utils/normalize-path";
+import {
+  decodePathParams,
+  normalizeRepeatedSlashes,
+} from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
@@ -692,6 +695,16 @@ export function fixDataPage(
   return internalEvent;
 }
 
+/**
+ * Rewrites the event to `/404` for paths that `fallback: false` routes do not pregenerate.
+ *
+ * A path is pregenerated when its decoded form is a key of the prerender manifest routes.
+ * The rewrite only applies when no other static or dynamic route can serve the path.
+ *
+ * @param internalEvent The incoming event
+ * @param prerenderManifest The prerender manifest
+ * @returns The (possibly rewritten) event and whether the path is pregenerated
+ */
 export function handleFallbackFalse(
   internalEvent: InternalEvent,
   prerenderManifest?: PrerenderManifest,
@@ -729,7 +742,13 @@ export function handleFallbackFalse(
     ({ route }) => !prerenderedFallbackRoutesName.includes(route),
   );
 
-  const isPregenerated = Object.keys(routes).includes(localizedPath);
+  let isPregenerated = false;
+  try {
+    // The prerender manifest keys routes by their decoded path while rawPath is percent-encoded.
+    isPregenerated = Object.hasOwn(routes, decodePathParams(localizedPath));
+  } catch {
+    // A malformed escape sequence cannot name a prerendered route.
+  }
   if (
     routeFallback &&
     !isPregenerated &&

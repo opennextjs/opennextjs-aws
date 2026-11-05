@@ -4,11 +4,15 @@ import {
   getCompiledRegExp,
   getNextConfigHeaders,
   handleBeforeFilesRewrites,
+  handleFallbackFalse,
   handleRedirects,
   handleRewrites,
 } from "@opennextjs/aws/core/routing/matcher.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
-import type { RouteHas } from "@opennextjs/aws/types/next-types.js";
+import type {
+  PrerenderManifest,
+  RouteHas,
+} from "@opennextjs/aws/types/next-types.js";
 import type { InternalEvent } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
@@ -1644,5 +1648,98 @@ describe("fixDataPage", () => {
     });
 
     NextConfig.basePath = undefined;
+  });
+});
+
+describe("handleFallbackFalse", () => {
+  // Next.js (15 and 16) keys the prerender manifest with decoded paths,
+  // keeping the path delimiters encoded (i.e. the slug `a/b` is keyed `a%2Fb`).
+  const prerenderManifest = {
+    routes: {
+      "/learn/Finance/bitcoin": { initialRevalidateSeconds: false },
+      "/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
+      "/learn/Présentation": { initialRevalidateSeconds: false },
+      "/learn/a%2Fb": { initialRevalidateSeconds: false },
+    },
+    dynamicRoutes: {
+      "/learn/[...slug]": {
+        routeRegex: "^/learn/(.+?)(?:/)?$",
+        fallback: false,
+        dataRouteRegex: "^/_next/data/BUILD_ID/learn/(.+?)\\.json$",
+      },
+    },
+    preview: { previewModeId: "id" },
+  } satisfies PrerenderManifest;
+
+  afterEach(() => {
+    NextConfig.i18n = undefined;
+    NextConfig.trailingSlash = undefined;
+  });
+
+  it.each([
+    ["a path that needs no decoding", "/learn/Finance/bitcoin"],
+    ["an encoded space", "/learn/Finance%20101/bitcoin"],
+    ["an encoded non-ASCII character", "/learn/Pr%C3%A9sentation"],
+    ["an encoded ASCII character", "/learn/Fin%61nce/bitcoin"],
+    ["an encoded slash", "/learn/a%2Fb"],
+    ["a lowercase encoded slash", "/learn/a%2fb"],
+    ["fully encoded characters", "/learn/%61%2F%62"],
+  ])("should serve a prerendered route with %s", (_, path) => {
+    const event = createEvent({ url: `https://on${path}` });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe(path);
+    expect(response.isISR).toBe(true);
+  });
+
+  it.each([
+    ["a route that is not prerendered", "/learn/Missing%20101/page"],
+    [
+      "an encoded slash that does not split segments",
+      "/learn/Finance%2Fbitcoin",
+    ],
+    ["a decoded slash that is keyed encoded", "/learn/a/b"],
+    ["a double encoded path", "/learn/Finance%2520101/bitcoin"],
+    ["a non-normalized unicode path", "/learn/Pre%CC%81sentation"],
+    ["a malformed escape sequence", "/learn/%E0%A4%A"],
+  ])("should 404 %s", (_, path) => {
+    const event = createEvent({ url: `https://on${path}` });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/404");
+    expect(response.event.url).toBe("https://on/404");
+    expect(response.event.headers["x-invoke-status"]).toBe("404");
+    expect(response.isISR).toBe(false);
+  });
+
+  it("should serve an encoded prerendered route with a trailing slash", () => {
+    NextConfig.trailingSlash = true;
+    const event = createEvent({
+      url: "https://on/learn/Finance%20101/bitcoin/",
+    });
+
+    const response = handleFallbackFalse(event, prerenderManifest);
+
+    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin/");
+    expect(response.isISR).toBe(true);
+  });
+
+  it("should serve an encoded prerendered route for the default locale", () => {
+    NextConfig.i18n = { locales: ["en", "nl"], defaultLocale: "en" };
+    const event = createEvent({
+      url: "https://on/learn/Finance%20101/bitcoin",
+    });
+
+    const response = handleFallbackFalse(event, {
+      ...prerenderManifest,
+      routes: {
+        "/en/learn/Finance 101/bitcoin": { initialRevalidateSeconds: false },
+      },
+    });
+
+    expect(response.event.rawPath).toBe("/learn/Finance%20101/bitcoin");
+    expect(response.isISR).toBe(true);
   });
 });

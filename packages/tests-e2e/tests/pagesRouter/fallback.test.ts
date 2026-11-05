@@ -96,4 +96,64 @@ test.describe("fallback", () => {
     const res = await request.get("/fallback/not-generated");
     expect(res.status()).toBe(404);
   });
+
+  // Next.js (verified on 15.5.29 and 16.4.5) keys the prerender manifest with decoded paths,
+  // keeping the path delimiters encoded (i.e. the slug `a/b` is keyed `a%2Fb`).
+  for (const { name, path, slug } of [
+    { name: "an encoded space", path: "with%20space", slug: "with space" },
+    {
+      name: "an encoded non-ASCII character",
+      path: "Pr%C3%A9sentation",
+      slug: "Présentation",
+    },
+    {
+      name: "an encoded ASCII character",
+      path: "fall%62ack",
+      slug: "fallback",
+    },
+    { name: "an encoded slash", path: "a%2Fb", slug: "a/b" },
+    { name: "a lowercase encoded slash", path: "a%2fb", slug: "a/b" },
+  ]) {
+    test(`should serve pregenerated page with ${name}`, async ({ page }) => {
+      const response = await page.goto(`/fallback/${path}/`);
+
+      expect(response?.status()).toBe(200);
+      await expect(page.locator("h1")).toHaveText("Static Fallback Page");
+      await expect(page.getByTestId("slug")).toHaveText(slug);
+
+      const buildId = await page.evaluate(
+        () =>
+          (window as unknown as { __NEXT_DATA__: { buildId: string } })
+            .__NEXT_DATA__.buildId,
+      );
+      const dataResponse = await page.request.get(
+        `/_next/data/${buildId}/en/fallback/${path}.json`,
+      );
+      expect(dataResponse.status()).toBe(200);
+      expect(await dataResponse.json()).toEqual({
+        pageProps: { message: "This is a static fallback page.", slug },
+        __N_SSG: true,
+      });
+    });
+  }
+
+  for (const { name, path } of [
+    { name: "a decoded slash", path: "/fallback/a/b/" },
+    { name: "a double encoded space", path: "/fallback/with%2520space/" },
+    {
+      name: "a non-normalized unicode character",
+      path: "/fallback/Pre%CC%81sentation/",
+    },
+    {
+      name: "an encoded space on a non-pregenerated locale",
+      path: "/nl/fallback/with%20space/",
+    },
+  ]) {
+    test(`should 404 on page not pregenerated with ${name}`, async ({
+      request,
+    }) => {
+      const res = await request.get(path);
+      expect(res.status()).toBe(404);
+    });
+  }
 });
