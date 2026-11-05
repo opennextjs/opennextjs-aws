@@ -310,5 +310,37 @@ describe("routingHandler", () => {
         expect(result.headers["x-middleware-only"]).toBe("middleware");
       },
     );
+
+    it.each([
+      [false, "next.config"],
+      [true, "middleware"],
+    ])(
+      "applies them to an asset result without a prefix (middleware override: %s)",
+      async (override, expected) => {
+        vi.stubGlobal("openNextConfig", {
+          dangerous: { middlewareHeadersOverrideNextConfigHeaders: override },
+        });
+
+        const result = (await routingHandler(
+          createEvent("/catalog/new/alpha/a"),
+          {
+            assetResolver: {
+              name: "test",
+              maybeGetAssetResult: async () => ({
+                type: "core",
+                statusCode: 200,
+                headers: {},
+                body: new ReadableStream(),
+                isBase64Encoded: false,
+              }),
+            },
+          },
+        )) as InternalResult;
+
+        expect(result.headers["x-both"]).toBe(expected);
+        expect(result.headers["x-config-only"]).toBe("next.config");
+        expect(result.headers["x-middleware-only"]).toBe("middleware");
+      },
+    );
   });
 });
