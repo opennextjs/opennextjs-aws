@@ -1,6 +1,6 @@
 import {
-  extractResponseHeaders,
   handleNoFallbackError,
+  splitRoutingHeaders,
 } from "@opennextjs/aws/core/requestHandler.js";
 import type { RoutingResult } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
@@ -480,66 +480,74 @@ describe("handleNoFallbackError", () => {
   });
 });
 
-describe("extractResponseHeaders", () => {
+describe("splitRoutingHeaders", () => {
   it("does not let a next.config header overwrite the request header of the same name", () => {
-    const headers: Record<string, string | string[]> = {
+    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "content-security-policy": "script-src 'nonce-abc' 'strict-dynamic'",
       "x-opennext-next-config-response-content-security-policy":
         "frame-ancestors 'none'",
-    };
-
-    const responseHeaders = extractResponseHeaders(headers);
+    });
 
     expect(responseHeaders).toEqual({
       "content-security-policy": "frame-ancestors 'none'",
     });
-    expect(headers).toEqual({
+    expect(requestHeaders).toEqual({
       "content-security-policy": "script-src 'nonce-abc' 'strict-dynamic'",
     });
   });
 
   it("copies a middleware response header onto the request headers", () => {
-    const headers: Record<string, string | string[]> = {
+    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "x-foo": "from the client",
       "x-middleware-response-x-foo": "from the middleware",
-    };
-
-    const responseHeaders = extractResponseHeaders(headers);
+    });
 
     expect(responseHeaders).toEqual({ "x-foo": "from the middleware" });
-    expect(headers).toEqual({ "x-foo": "from the middleware" });
+    expect(requestHeaders).toEqual({ "x-foo": "from the middleware" });
   });
 
   it("gives the response the next.config value and the request the middleware value when both are set", () => {
-    const headers: Record<string, string | string[]> = {
+    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "x-opennext-next-config-response-x-foo": "next.config",
       "x-middleware-response-x-foo": "middleware",
-    };
-
-    const responseHeaders = extractResponseHeaders(headers);
+    });
 
     expect(responseHeaders).toEqual({ "x-foo": "next.config" });
-    expect(headers).toEqual({ "x-foo": "middleware" });
+    expect(requestHeaders).toEqual({ "x-foo": "middleware" });
   });
 
   it("merges a next.config and a middleware header whose names only differ by case", () => {
-    const headers: Record<string, string | string[]> = {
+    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "x-opennext-next-config-response-X-Foo": "next.config",
       "x-middleware-response-x-foo": "middleware",
-    };
-
-    const responseHeaders = extractResponseHeaders(headers);
+    });
 
     expect(responseHeaders).toEqual({ "x-foo": "next.config" });
-    expect(headers).toEqual({ "x-foo": "middleware" });
+    expect(requestHeaders).toEqual({ "x-foo": "middleware" });
   });
 
-  it("leaves headers without a prefix alone", () => {
-    const headers: Record<string, string | string[]> = {
+  it("keeps headers without a prefix on the request only", () => {
+    const { requestHeaders, responseHeaders } = splitRoutingHeaders({
       "content-type": "text/html",
+    });
+
+    expect(responseHeaders).toEqual({});
+    expect(requestHeaders).toEqual({ "content-type": "text/html" });
+  });
+
+  it("does not modify the event headers", () => {
+    const eventHeaders: Record<string, string | string[]> = {
+      "x-foo": "from the client",
+      "x-middleware-response-x-foo": "middleware",
+      "x-opennext-next-config-response-x-bar": "next.config",
     };
 
-    expect(extractResponseHeaders(headers)).toEqual({});
-    expect(headers).toEqual({ "content-type": "text/html" });
+    splitRoutingHeaders(eventHeaders);
+
+    expect(eventHeaders).toEqual({
+      "x-foo": "from the client",
+      "x-middleware-response-x-foo": "middleware",
+      "x-opennext-next-config-response-x-bar": "next.config",
+    });
   });
 });

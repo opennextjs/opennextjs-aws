@@ -42,8 +42,15 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 patchAsyncStorage();
 //#endOverride
 
+type HeaderRecord = InternalEvent["headers"];
+
 /**
- * Moves the response headers set by the routing out of `headers` and returns them.
+ * Splits the headers of a routed event into the request headers and the response headers.
+ *
+ * The routing adds the response headers to the event headers with a prefix (see `applyResponseHeaders` in
+ * `routingHandler.ts`):
+ * - the request headers are the event headers without the prefixed ones, plus the middleware headers
+ * - the response headers are the middleware headers and the `next.config` headers
  *
  * As in Next.js `resolve-routes.ts`, middleware headers are also set on the request while `next.config` headers are
  * not. A `Content-Security-Policy` from `next.config` must not replace the one the middleware set on the request, Next
@@ -52,28 +59,32 @@ patchAsyncStorage();
  * Header names are compared without case, as Next.js does with `res.setHeader()`, so a `next.config` header and a
  * middleware header that only differ by case end up as a single response header.
  *
- * @param headers The request headers, or the headers of a result which never holds prefixed headers
- * @returns The headers to set on the response, keyed by lowercase name
+ * @param eventHeaders The headers of the routed event, not modified
+ * @returns The headers to send to Next.js and the headers to set on the response, keyed by lowercase name
  */
-export function extractResponseHeaders(
-  headers: Record<string, string | string[]>,
-): Record<string, string | string[]> {
-  const middlewareHeaders: Record<string, string | string[]> = {};
-  const nextConfigHeaders: Record<string, string | string[]> = {};
-  for (const [rawKey, value] of Object.entries(headers)) {
+export function splitRoutingHeaders(eventHeaders: HeaderRecord): {
+  requestHeaders: HeaderRecord;
+  responseHeaders: HeaderRecord;
+} {
+  const requestHeaders: HeaderRecord = {};
+  const middlewareHeaders: HeaderRecord = {};
+  const nextConfigHeaders: HeaderRecord = {};
+  for (const [rawKey, value] of Object.entries(eventHeaders)) {
     if (rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
       const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN).toLowerCase();
       middlewareHeaders[key] = value;
-      delete headers[rawKey];
     } else if (rawKey.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
       const key = rawKey.slice(NEXT_CONFIG_HEADER_PREFIX_LEN).toLowerCase();
       nextConfigHeaders[key] = value;
-      delete headers[rawKey];
+    } else {
+      requestHeaders[rawKey] = value;
     }
   }
-  Object.assign(headers, middlewareHeaders);
-  // The routing drops the `next.config` headers that must not take precedence.
-  return { ...middlewareHeaders, ...nextConfigHeaders };
+  return {
+    requestHeaders: { ...requestHeaders, ...middlewareHeaders },
+    // The routing drops the `next.config` headers that must not take precedence.
+    responseHeaders: { ...middlewareHeaders, ...nextConfigHeaders },
+  };
 }
 
 export async function openNextHandler(
@@ -133,12 +144,20 @@ export async function openNextHandler(
       });
       //#endOverride
 
-      const headers =
-        "type" in routingResult
-          ? routingResult.headers
-          : routingResult.internalEvent.headers;
-
-      const overwrittenResponseHeaders = extractResponseHeaders(headers);
+      // A result is the response, its headers are never prefixed by the routing.
+      let requestHeaders: HeaderRecord = {};
+      let overwrittenResponseHeaders: HeaderRecord = {};
+      if (!("type" in routingResult)) {
+        ({ requestHeaders, responseHeaders: overwrittenResponseHeaders } =
+          splitRoutingHeaders(routingResult.internalEvent.headers));
+        routingResult = {
+          ...routingResult,
+          internalEvent: {
+            ...routingResult.internalEvent,
+            headers: requestHeaders,
+          },
+        };
+      }
 
       if (
         "isExternalRewrite" in routingResult &&
@@ -210,7 +229,7 @@ export async function openNextHandler(
         // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
         // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
         headers: {
-          ...headers,
+          ...requestHeaders,
           //#override appendPrefetch
           purpose: "prefetch",
           //#endOverride
