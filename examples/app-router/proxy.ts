@@ -74,6 +74,14 @@ export default async function proxy(request: NextRequest) {
     "search-params",
     `mw/${request.nextUrl.searchParams.get("searchParams") || ""}`,
   );
+  // Next reads the script nonce from the request's `content-security-policy` header.
+  // For: headers.test.ts
+  if (path === "/headers/nonce") {
+    requestHeaders.set(
+      "content-security-policy",
+      `script-src 'nonce-${btoa(crypto.randomUUID())}' 'strict-dynamic'`,
+    );
+  }
   const responseHeaders = new Headers();
   // Response headers should show up in the client's response headers
   responseHeaders.set("response-header", "response-header");

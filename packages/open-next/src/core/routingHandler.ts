@@ -36,6 +36,8 @@ import { constructNextUrl, normalizeLocationHeader } from "./routing/util";
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
+export const NEXT_CONFIG_HEADER_PREFIX = `${INTERNAL_HEADER_PREFIX}next-config-response-`;
+export const NEXT_CONFIG_HEADER_PREFIX_LEN = NEXT_CONFIG_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_INITIAL_URL = `${INTERNAL_HEADER_PREFIX}initial-url`;
 export const INTERNAL_HEADER_LOCALE = `${INTERNAL_HEADER_PREFIX}locale`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
@@ -69,26 +71,38 @@ const NEXT_INTERNAL_HEADERS = [
   "x-next-resume-state-length",
 ];
 
+type RoutingResponseHeaders = Record<string, string | string[] | undefined>;
+
 /**
- * Adds the middleware headers to an event or result.
+ * Adds the `next.config` and middleware response headers to an event or result.
  *
- * @param eventOrResult
- * @param middlewareHeaders
+ * On an event, each kind gets its own prefix so that the request handler can tell them apart (see
+ * `splitRoutingHeaders`). On a result, the headers are the response and are not prefixed.
+ *
+ * `nextConfigHeaders` take precedence over `middlewareHeaders` on the response.
+ *
+ * @param eventOrResult The event or result to add the headers to, its headers are mutated
+ * @param nextConfigHeaders The response headers from the `next.config` `headers()`
+ * @param middlewareHeaders The response headers set by the middleware
  */
-function applyMiddlewareHeaders(
+function applyResponseHeaders(
   eventOrResult: InternalEvent | InternalResult,
-  middlewareHeaders: Record<string, string | string[] | undefined>,
+  nextConfigHeaders: RoutingResponseHeaders,
+  middlewareHeaders: RoutingResponseHeaders,
 ) {
-  // Use the `MIDDLEWARE_HEADER_PREFIX` prefix for events, they will be processed by the request handler later.
-  // Results do not go through the request handler and should not be prefixed.
   const isResult = isInternalResult(eventOrResult);
   const headers = eventOrResult.headers;
-  const keyPrefix = isResult ? "" : MIDDLEWARE_HEADER_PREFIX;
-  Object.entries(middlewareHeaders).forEach(([key, value]) => {
-    if (value) {
-      headers[keyPrefix + key] = Array.isArray(value) ? value.join(",") : value;
+  const addHeaders = (source: RoutingResponseHeaders, keyPrefix: string) => {
+    for (const [key, value] of Object.entries(source)) {
+      if (value) {
+        headers[keyPrefix + key] = Array.isArray(value)
+          ? value.join(",")
+          : value;
+      }
     }
-  });
+  };
+  addHeaders(middlewareHeaders, isResult ? "" : MIDDLEWARE_HEADER_PREFIX);
+  addHeaders(nextConfigHeaders, isResult ? "" : NEXT_CONFIG_HEADER_PREFIX);
 }
 
 export default async function routingHandler(
@@ -119,9 +133,10 @@ export default async function routingHandler(
       }
     }
 
-    // Headers from the Next config and middleware (the later are applied further down).
-    let headers: Record<string, string | string[] | undefined> =
-      getNextConfigHeaders(event, ConfigHeaders);
+    let nextConfigHeaders: RoutingResponseHeaders = getNextConfigHeaders(
+      event,
+      ConfigHeaders,
+    );
 
     let eventOrResult = fixDataPage(event, BuildId);
 
@@ -155,16 +170,16 @@ export default async function routingHandler(
       globalThis.openNextConfig.dangerous
         ?.middlewareHeadersOverrideNextConfigHeaders ?? false;
 
+    const middlewareHeaders: RoutingResponseHeaders =
+      middlewareEventOrResult.responseHeaders ?? {};
+
     if (middlewareHeadersPrioritized) {
-      headers = {
-        ...headers,
-        ...middlewareEventOrResult.responseHeaders,
-      };
-    } else {
-      headers = {
-        ...middlewareEventOrResult.responseHeaders,
-        ...headers,
-      };
+      // Both are keyed by lowercase name.
+      nextConfigHeaders = Object.fromEntries(
+        Object.entries(nextConfigHeaders).filter(
+          ([key]) => !Object.hasOwn(middlewareHeaders, key),
+        ),
+      );
     }
 
     let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
@@ -186,7 +201,11 @@ export default async function routingHandler(
         const assetResult =
           await assetResolver?.maybeGetAssetResult?.(eventOrResult);
         if (assetResult) {
-          applyMiddlewareHeaders(assetResult, headers);
+          applyResponseHeaders(
+            assetResult,
+            nextConfigHeaders,
+            middlewareHeaders,
+          );
           return assetResult;
         }
       }
@@ -278,13 +297,17 @@ export default async function routingHandler(
       debug("Cache interception enabled");
       eventOrResult = await cacheInterceptor(eventOrResult, resolvedRoutes);
       if (isInternalResult(eventOrResult)) {
-        applyMiddlewareHeaders(eventOrResult, headers);
+        applyResponseHeaders(
+          eventOrResult,
+          nextConfigHeaders,
+          middlewareHeaders,
+        );
         return eventOrResult;
       }
     }
 
-    // We apply the headers from the middleware response last
-    applyMiddlewareHeaders(eventOrResult, headers);
+    // We apply the response headers last
+    applyResponseHeaders(eventOrResult, nextConfigHeaders, middlewareHeaders);
 
     debug("resolvedRoutes", resolvedRoutes);
 
