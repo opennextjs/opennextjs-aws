@@ -82,9 +82,9 @@ type RoutingResponseHeaders = Record<string, string | string[] | undefined>;
  *
  * A header in `nextConfigHeaders` takes precedence on the response over the same header in `middlewareHeaders`.
  *
- * @param eventOrResult
- * @param nextConfigHeaders
- * @param middlewareHeaders
+ * @param eventOrResult The event or result to add the headers to, its headers are mutated
+ * @param nextConfigHeaders The response headers from the `next.config` `headers()`
+ * @param middlewareHeaders The response headers set by the middleware
  */
 function applyResponseHeaders(
   eventOrResult: InternalEvent | InternalResult,
