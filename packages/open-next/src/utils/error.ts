@@ -3,6 +3,7 @@ export interface BaseOpenNextError {
   readonly canIgnore: boolean;
   // 0 - debug, 1 - warn, 2 - error
   readonly logLevel: 0 | 1 | 2;
+  readonly statusCode?: number;
 }
 
 // This is an error that can be totally ignored
@@ -11,9 +12,12 @@ export class IgnorableError extends Error implements BaseOpenNextError {
   readonly __openNextInternal = true;
   readonly canIgnore = true;
   readonly logLevel = 0;
-  constructor(message: string) {
+  readonly statusCode: number;
+
+  constructor(message: string, statusCode = 400) {
     super(message);
     this.name = "IgnorableError";
+    this.statusCode = statusCode;
   }
 }
 
@@ -23,9 +27,12 @@ export class RecoverableError extends Error implements BaseOpenNextError {
   readonly __openNextInternal = true;
   readonly canIgnore = true;
   readonly logLevel = 1;
-  constructor(message: string) {
+  readonly statusCode: number;
+
+  constructor(message: string, statusCode = 400) {
     super(message);
     this.name = "RecoverableError";
+    this.statusCode = statusCode;
   }
 }
 
@@ -34,9 +41,12 @@ export class FatalError extends Error implements BaseOpenNextError {
   readonly __openNextInternal = true;
   readonly canIgnore = false;
   readonly logLevel = 2;
-  constructor(message: string) {
+  readonly statusCode: number;
+
+  constructor(message: string, statusCode = 500) {
     super(message);
     this.name = "FatalError";
+    this.statusCode = statusCode;
   }
 }
 
