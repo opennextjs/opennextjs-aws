@@ -165,6 +165,7 @@ export function createRevalidate(
           {
             ...store,
             lastModified: undefined,
+            entryLastModified: undefined,
             writtenTags: new Set<string>(),
             requestCache: new RequestCache(),
           },

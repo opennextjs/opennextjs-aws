@@ -614,6 +614,7 @@ describe("CacheHandler", () => {
           expect(result).not.toBeNull();
           expect(result?.lastModified).toEqual(1);
           expect(store.lastModified).toEqual(1);
+          expect(store.entryLastModified).toEqual(cachedLastModified);
         });
 
         it("Should set lastModified to 1 when tag is stale before 16.3", async () => {
@@ -640,6 +641,7 @@ describe("CacheHandler", () => {
         it("Should return a lastModified just past the revalidate window when tag is stale from 16.3", async () => {
           globalThis.nextVersion = "16.3.0";
           tagCache.isStale.mockResolvedValueOnce(true);
+          const cachedLastModified = Date.now();
           const store: Record<string, any> = {
             pendingPromiseRunner: {
               withResolvers: vi.fn().mockReturnValue({ resolve: vi.fn() }),
@@ -650,7 +652,7 @@ describe("CacheHandler", () => {
           (globalThis.__openNextAls.getStore as Mock).mockReturnValue(store);
           incrementalCache.get.mockResolvedValueOnce({
             value: { type: "route", body: "{}", revalidate: 3600 },
-            lastModified: Date.now(),
+            lastModified: cachedLastModified,
           });
 
           const now = Date.now();
@@ -664,6 +666,8 @@ describe("CacheHandler", () => {
           expect(result?.lastModified).toBeLessThan(now - 3599 * 1000);
           // The store keeps the sentinel so that the revalidation queue keeps deduplicating.
           expect(store.lastModified).toEqual(1);
+          // The queue gets the time of the entry, not the one reported to Next.
+          expect(store.entryLastModified).toEqual(cachedLastModified);
         });
 
         it("Should set lastModified to 1 from 16.3 when the entry has no revalidate", async () => {
@@ -706,6 +710,7 @@ describe("CacheHandler", () => {
           await cache.get("key", { kindHint: "app" });
 
           expect(store.lastModified).toEqual(cachedLastModified);
+          expect(store.entryLastModified).toEqual(cachedLastModified);
         });
 
         it("Should not call isStale when shouldBypassTagCache is true", async () => {

@@ -64,6 +64,12 @@ interface OpenNextRequestContext {
   mergeHeadersPriority?: "middleware" | "handler";
   // Last modified time of the page (used in main functions, only available for ISR/SSG).
   lastModified?: number;
+  /**
+   * Last modified time of the cache entry, also when it is stale by tag (`lastModified` is then `1`).
+   *
+   * Sent to the revalidation queue in `MessageBody.lastModified`.
+   */
+  entryLastModified?: number;
   waitUntil?: WaitUntil;
   /** We use this to deduplicate write of the tags*/
   writtenTags: Set<string>;

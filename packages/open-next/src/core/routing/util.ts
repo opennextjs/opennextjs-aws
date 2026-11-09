@@ -368,15 +368,22 @@ export async function revalidateIfRequired(
       const hash = (str: string) =>
         crypto.createHash("md5").update(str).digest("hex");
 
-      const lastModified =
-        globalThis.__openNextAls.getStore()?.lastModified ?? 0;
+      const store = globalThis.__openNextAls.getStore();
+      // `1` when the entry is stale by tag, so that the deduplication id is the same for every copy of the entry
+      const lastModified = store?.lastModified ?? 0;
 
       // For some weird cases, lastModified is not set, haven't been able to figure out yet why
       // For those cases we add the etag to the deduplication id, it might help
       const eTag = `${headers.etag ?? headers.ETag ?? ""}`;
 
       await globalThis.queue.send({
-        MessageBody: { host, url: revalidateUrl, eTag, lastModified },
+        MessageBody: {
+          host,
+          url: revalidateUrl,
+          eTag,
+          // The time of the entry, so that the queue can skip it when it was revalidated since
+          lastModified: store?.entryLastModified ?? lastModified,
+        },
         MessageDeduplicationId: hash(`${rawPath}-${lastModified}-${eTag}`),
         MessageGroupId: generateMessageGroupId(rawPath),
       });
