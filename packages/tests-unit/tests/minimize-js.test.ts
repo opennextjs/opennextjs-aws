@@ -41,4 +41,17 @@ describe("minifyAll", () => {
 
     expect(log).not.toHaveBeenCalled();
   });
+
+  test("does not report failed files from a previous call", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const file = path.join(dir, "index.js");
+    await fs.writeFile(file, "function (");
+    await minifyAll(dir, {});
+    expect(log).toHaveBeenCalledWith(`\t${file}`);
+
+    log.mockClear();
+    await fs.writeFile(file, "const a = 1;");
+    await minifyAll(dir, {});
+    expect(log).not.toHaveBeenCalled();
+  });
 });

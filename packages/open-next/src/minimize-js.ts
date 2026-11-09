@@ -9,10 +9,6 @@ import path from "node:path";
 import { minify } from "@node-minify/core";
 import { terser } from "@node-minify/terser";
 
-const failed_files = [];
-let total_files = 0;
-const options = {};
-
 const promiseSeries = async (tasks, initial) => {
   if (!Array.isArray(tasks)) {
     return Promise.reject(
@@ -25,8 +21,7 @@ const promiseSeries = async (tasks, initial) => {
   }, Promise.resolve(initial));
 };
 
-const minifyJS = async (file) => {
-  total_files++;
+const minifyJS = async (file, ctx) => {
   try {
     await minify({
       compressor: terser,
@@ -35,21 +30,19 @@ const minifyJS = async (file) => {
       // node-minify 10 throws when the output is empty (i.e. empty or comment-only files)
       allowEmptyOutput: true,
       options: {
-        module: options.module,
-        mangle: options.mangle,
+        module: ctx.options.module,
+        mangle: ctx.options.mangle,
         compress: { reduce_vars: false },
       },
     });
   } catch (e) {
-    failed_files.push(file);
+    ctx.failed_files.push(file);
   }
-  //process.stdout.write(".");
 };
 
-const minifyJSON = async (file) => {
+const minifyJSON = async (file, options) => {
   try {
     if (options.compress_json || options.packagejson) {
-      total_files++;
       const is_package_json = file.indexOf("package.json") > -1;
       const data = await fs.readFile(file, "utf8");
       const json = JSON.parse(data);
@@ -67,10 +60,9 @@ const minifyJSON = async (file) => {
       await fs.writeFile(file, JSON.stringify(new_json));
     }
   } catch (e) {}
-  //process.stdout.write(".");
 };
 
-const walk = async (currentDirPath) => {
+const walk = async (currentDirPath, ctx) => {
   const js_files = [];
   const json_files = [];
   const dirs = [];
@@ -81,26 +73,34 @@ const walk = async (currentDirPath) => {
     const is_bin = /\.bin$/;
     if (stat.isFile()) {
       if (filePath.substr(-5) === ".json") json_files.push(filePath);
-      else if (filePath.substr(-3) === ".js" || options.all_js)
+      else if (filePath.substr(-3) === ".js" || ctx.options.all_js)
         js_files.push(filePath);
     } else if (stat.isDirectory() && !is_bin.test(filePath)) {
       dirs.push(filePath);
     }
   }
-  const js_promise = Promise.all(js_files.map((f) => minifyJS(f)));
-  const json_promise = Promise.all(json_files.map((f) => minifyJSON(f)));
+  const js_promise = Promise.all(js_files.map((f) => minifyJS(f, ctx)));
+  const json_promise = Promise.all(
+    json_files.map((f) => minifyJSON(f, ctx.options)),
+  );
   await Promise.all([js_promise, json_promise]);
-  await promiseSeries(dirs.map((dir) => () => walk(dir)));
+  await promiseSeries(dirs.map((dir) => () => walk(dir, ctx)));
 };
 
+/**
+ * Minifies the JS (and optionally JSON) files of a directory in place.
+ *
+ * Calls can run concurrently. Failed files are logged and do not throw.
+ *
+ * @param dir Directory to walk recursively.
+ * @param opts Minification options.
+ * @return A promise that resolves once all the files have been processed.
+ */
 export async function minifyAll(dir, opts) {
-  Object.assign(options, opts || {});
-  //console.log("minify-all-js options:\n", JSON.stringify(options, null, 2));
-  await walk(dir);
-  //process.stdout.write(".\n");
-  //console.log("Total found files: " + total_files);
-  if (failed_files.length) {
+  const ctx = { options: { ...opts }, failed_files: [] };
+  await walk(dir, ctx);
+  if (ctx.failed_files.length) {
     console.log("\n\nFailed to minify files:");
-    failed_files.forEach((f) => console.log(`\t${f}`));
+    ctx.failed_files.forEach((f) => console.log(`\t${f}`));
   }
 }
