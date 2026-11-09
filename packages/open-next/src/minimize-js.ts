@@ -28,12 +28,12 @@ const promiseSeries = async (tasks, initial) => {
 const minifyJS = async (file) => {
   total_files++;
   try {
-    // node-minify 10 rejects empty input; an empty file has nothing to minify.
-    if ((await fs.stat(file)).size === 0) return;
     await minify({
       compressor: terser,
       input: file,
       output: file,
+      // node-minify 10 throws when the output is empty (i.e. empty or comment-only files)
+      allowEmptyOutput: true,
       options: {
         module: options.module,
         mangle: options.mangle,
