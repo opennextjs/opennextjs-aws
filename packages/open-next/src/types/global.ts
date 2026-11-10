@@ -62,8 +62,19 @@ interface OpenNextRequestContext {
   pendingPromiseRunner: DetachedPromiseRunner;
   isISRRevalidation?: boolean;
   mergeHeadersPriority?: "middleware" | "handler";
-  // Last modified time of the page (used in main functions, only available for ISR/SSG).
+  /**
+   * Last modified time of the page (used in main functions, only available for ISR/SSG).
+   *
+   * `1` when the entry is stale by tag, so that the revalidation queue deduplicates every stale
+   * request for the same path. See `entryLastModified` for the time of the entry.
+   */
   lastModified?: number;
+  /**
+   * Last modified time of the cache entry, also when it is stale by tag (`lastModified` is then `1`).
+   *
+   * Sent to the revalidation queue in `MessageBody.lastModified`.
+   */
+  entryLastModified?: number;
   waitUntil?: WaitUntil;
   /** We use this to deduplicate write of the tags*/
   writtenTags: Set<string>;

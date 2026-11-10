@@ -831,6 +831,30 @@ describe("revalidateIfRequired", () => {
     });
   });
 
+  it("should send the time of an entry stale by tag and dedupe on the sentinel", async () => {
+    const headers: Record<string, string> = {
+      "x-nextjs-cache": "STALE",
+      etag: "etag",
+    };
+    sendMock.mockClear();
+    globalThis.__openNextAls.getStore.mockReturnValue({
+      lastModified: 1,
+      entryLastModified: 1000,
+    });
+    await revalidateIfRequired("localhost", "/path", headers);
+
+    globalThis.__openNextAls.getStore.mockReturnValue({
+      lastModified: 1,
+      entryLastModified: 2000,
+    });
+    await revalidateIfRequired("localhost", "/path", headers);
+
+    const [first, second] = sendMock.mock.calls.map(([msg]) => msg);
+    expect(first.MessageBody.lastModified).toBe(1000);
+    expect(second.MessageBody.lastModified).toBe(2000);
+    expect(first.MessageDeduplicationId).toBe(second.MessageDeduplicationId);
+  });
+
   it("should not throw when send fails", async () => {
     const headers: Record<string, string> = {
       "x-nextjs-cache": "STALE",

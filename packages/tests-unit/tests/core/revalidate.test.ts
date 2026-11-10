@@ -291,13 +291,17 @@ describe("revalidate", () => {
       const outerStore = {
         host: "example.com",
         lastModified: 1,
+        entryLastModified: 1000,
         requestId: "id",
         writtenTags: new Set(["tag"]),
       };
       let innerStore: any;
       const inProcess = vi.fn(async () => {
         innerStore = globalThis.__openNextAls.getStore();
+        expect(innerStore.lastModified).toBeUndefined();
+        expect(innerStore.entryLastModified).toBeUndefined();
         innerStore.lastModified = 2;
+        innerStore.entryLastModified = 2;
       });
 
       await runInContext(outerStore, () => createRevalidate(inProcess)(args));
@@ -306,6 +310,7 @@ describe("revalidate", () => {
       expect(innerStore.requestId).toBe("id");
       expect(innerStore.writtenTags.size).toBe(0);
       expect(outerStore.lastModified).toBe(1);
+      expect(outerStore.entryLastModified).toBe(1000);
     });
 
     it("should not invalidate the CDN when the revalidation fails", async () => {

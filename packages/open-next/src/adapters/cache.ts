@@ -237,8 +237,9 @@ export default class Cache {
       const store = globalThis.__openNextAls.getStore();
       if (store) {
         // The sentinel is kept as is in the store so that the revalidation queue keeps
-        // deduplicating every stale request for the same path.
+        // deduplicating every stale request for the same path. The queue gets the real time.
         store.lastModified = _isStale ? 1 : _lastModified;
+        store.entryLastModified = _lastModified;
       }
       if (_isStale) {
         _lastModified = getStaleLastModified(cacheData.revalidate);
