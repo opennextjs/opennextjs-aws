@@ -26,7 +26,25 @@ export interface QueueMessage {
   MessageGroupId: string;
 }
 
+/**
+ * Triggers the revalidation of stale routes.
+ */
 export interface Queue {
+  /**
+   * Sends the revalidation request of a stale route.
+   *
+   * When the route is rendered by the Next server, it is called once the response is sent (in
+   * `waitUntil` when the wrapper provides one).
+   * With cache interception, it is awaited before the `STALE` response is returned.
+   *
+   * The returned promise should resolve once the message is accepted (or handed to `waitUntil`),
+   * not once the route is revalidated, so that the response is not delayed.
+   *
+   * @param message The route to revalidate.
+   * @returns A promise that resolves once the message is accepted.
+   * @throws When the message can not be sent. The error is logged, and with cache interception the
+   *   request falls back to the Next server.
+   */
   send(message: QueueMessage): Promise<void>;
   name: string;
 }
