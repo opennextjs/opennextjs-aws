@@ -100,7 +100,8 @@ async function canStream(opts: FunctionOptions) {
   if (typeof opts.override.wrapper === "string") {
     return (
       opts.override.wrapper === "aws-lambda-streaming" ||
-      opts.override.wrapper === "aws-apigw-streaming"
+      opts.override.wrapper === "aws-apigw-streaming" ||
+      opts.override.wrapper === "aws-web-function"
     );
   }
   const wrapper = await opts.override.wrapper();
