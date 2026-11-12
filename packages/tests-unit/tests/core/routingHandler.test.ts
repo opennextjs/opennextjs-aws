@@ -163,6 +163,34 @@ describe("routingHandler", () => {
     );
   });
 
+  it.each([
+    "x-middleware-rewrite",
+    "x-middleware-redirect",
+    "x-middleware-set-cookie",
+    "x-middleware-skip",
+    "x-middleware-override-headers",
+    "x-middleware-next",
+    "x-now-route-matches",
+    "x-matched-path",
+    "x-nextjs-data",
+    "x-next-resume-state-length",
+    "next-resume",
+  ])("strips the internal %s header from the request", async (header) => {
+    const event = createEvent("/catalog/new/alpha/a");
+    event.headers = { [header]: "1", "x-custom": "value" };
+
+    const result = (await routingHandler(event, {})) as RoutingResult;
+
+    // The header must be stripped before the middleware runs
+    expect(handleMiddleware.mock.calls[0][0].headers).not.toHaveProperty(
+      header,
+    );
+    expect(result.internalEvent.headers).not.toHaveProperty(header);
+    expect(result.internalEvent.headers).toEqual(
+      expect.objectContaining({ "x-custom": "value" }),
+    );
+  });
+
   it("does not affect middleware responses", async () => {
     const response = {
       type: "core",
