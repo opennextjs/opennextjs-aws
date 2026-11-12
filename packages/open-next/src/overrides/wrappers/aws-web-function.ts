@@ -35,7 +35,7 @@ function resolveBindAddress(): { host?: string; port: number } {
  * Wrapper for AWS Lambda Web Functions.
  *
  * A Web Function runs a long-lived HTTP server that handles concurrent requests, so this is the `node` wrapper
- * (pair it with the `node` converter) with two differences:
+ * (pair it with the `node` converter), including its `/__health` route, with two differences:
  * - It binds the address Lambda provides in `AWS_LAMBDA_HTTP_ENDPOINT`.
  * - It provides `waitUntil`, so work deferred by the handler (e.g. sending a revalidation to SQS) is tracked and
  *   awaited instead of being dropped.
@@ -45,6 +45,14 @@ const wrapper: WrapperHandler = async (handler, converter) => {
 
   const server = createServer(async (req, res) => {
     const internalEvent = await converter.convertFrom(req);
+
+    if (internalEvent.rawPath === "/__health") {
+      res.writeHead(200, {
+        "Content-Type": "text/plain",
+      });
+      res.end("OK");
+      return;
+    }
 
     const abortController = new AbortController();
 

@@ -113,8 +113,26 @@ describe("wrappers/aws-web-function", () => {
     function createResponse() {
       return Object.assign(new EventEmitter(), {
         setHeader: vi.fn(),
+        writeHead: vi.fn(),
+        end: vi.fn(),
       });
     }
+
+    it("answers /__health without calling the handler", async () => {
+      const listener = await startWrapper();
+      const res = createResponse();
+
+      await listener(
+        { url: "/__health", method: "GET" } as never,
+        res as never,
+      );
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, {
+        "Content-Type": "text/plain",
+      });
+      expect(res.end).toHaveBeenCalledWith("OK");
+      expect(handler).not.toHaveBeenCalled();
+    });
 
     it("awaits work registered with waitUntil", async () => {
       let deferredWorkDone = false;
