@@ -69,6 +69,7 @@ const NEXT_INTERNAL_HEADERS = [
   "x-matched-path",
   "x-nextjs-data",
   "x-next-resume-state-length",
+  "next-resume",
 ];
 
 type RoutingResponseHeaders = Record<string, string | string[] | undefined>;
