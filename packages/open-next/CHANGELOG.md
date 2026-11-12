@@ -1,5 +1,37 @@
 # open-next
 
+## 4.1.16
+
+### Patch Changes
+
+- [#1233](https://github.com/opennextjs/opennextjs-aws/pull/1233) [`50e1b39`](https://github.com/opennextjs/opennextjs-aws/commit/50e1b39dc1fffbe3f1f553754e7da956086e96d9) Thanks [@laiskajoonas](https://github.com/laiskajoonas)! - fix: match `fallback: false` routes against the decoded pathname
+
+  A prerendered page whose path contains a percent-encoded character (e.g. a space or a non-ASCII character) used to return a 404.
+
+- [#1344](https://github.com/opennextjs/opennextjs-aws/pull/1344) [`88357ab`](https://github.com/opennextjs/opennextjs-aws/commit/88357ab903cd467babf0b180b1bb597ac4e23b0e) Thanks [@vicb](https://github.com/vicb)! - fix: do not expose more Next.js internal headers on the middleware response
+
+  Like Next.js, the internal `x-middleware-redirect` and `x-middleware-refresh` headers are now dropped from the middleware response.
+
+- [#1346](https://github.com/opennextjs/opennextjs-aws/pull/1346) [`af81492`](https://github.com/opennextjs/opennextjs-aws/commit/af81492dcd9f39d53e03f35445cb26f3c42e8e61) Thanks [@vicb](https://github.com/vicb)! - fix: send the time of entries made stale by a tag to the revalidation queue
+
+  For pages made stale by `revalidateTag`, the revalidation queue message had `lastModified: 1` instead of the time of the cache entry. It now has the time of the entry, so queues can skip messages for entries that were revalidated since. Deduplication is unchanged.
+
+- [#1339](https://github.com/opennextjs/opennextjs-aws/pull/1339) [`2bddde9`](https://github.com/opennextjs/opennextjs-aws/commit/2bddde930abc3051a3df3c0f3dd0c090d0520009) Thanks [@DarionHernandez](https://github.com/DarionHernandez)! - fix: do not copy `next.config` headers onto the request headers
+
+  Like Next.js, `next.config` `headers()` now only go on the response, while the middleware response headers go on both the response and the request. A `Content-Security-Policy` in `next.config` no longer replaces the one the middleware set on the request, so Next.js finds the nonce and adds it to its scripts.
+
+  `next.config` header names are now lowercased, so a `next.config` header and a middleware header that only differ by case (e.g. `X-Foo` and `x-foo`) end up as a single response header.
+
+  Behavior change: `headers().get()` no longer returns a header that only `next.config` `headers()` sets, and external rewrites no longer forward it to the upstream.
+
+- [#1351](https://github.com/opennextjs/opennextjs-aws/pull/1351) [`dc84488`](https://github.com/opennextjs/opennextjs-aws/commit/dc84488c3d9560b27b41dd91d6fae14c7b170e61) Thanks [@vicb](https://github.com/vicb)! - fix: strip the internal `next-resume` header from incoming requests
+
+  The internal `next-resume` header is now stripped from incoming requests, matching Next.js.
+
+- [#1347](https://github.com/opennextjs/opennextjs-aws/pull/1347) [`6fee779`](https://github.com/opennextjs/opennextjs-aws/commit/6fee7791bc8d7b4cfd595739682e8cd80b62e3ed) Thanks [@kremnyi](https://github.com/kremnyi)! - chore: update `@node-minify/core` and `@node-minify/terser` to 10.5
+
+  Version 9 of `@node-minify/core` pins `glob@10.3.3`, which `npm audit` reports as GHSA-5j98-mcp5-4vw2. Version 10.5 does not depend on `glob`. Files that minify to an empty output (i.e. empty or comment-only files) are no longer reported as failed, because version 10 rejects empty output by default.
+
 ## 4.1.15
 
 ### Patch Changes
