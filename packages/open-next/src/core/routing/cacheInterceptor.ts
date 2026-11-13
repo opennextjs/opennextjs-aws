@@ -44,8 +44,13 @@ const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
 
 /**
- * Determines the effective revalidate duration for a given path/value combination,
- * consulting the prerender manifest when `revalidate` is not explicitly set.
+ * Determines the effective revalidate duration for a given path/value combination.
+ *
+ * The prerender manifest is consulted when `revalidate` is not explicitly set.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @returns The revalidate duration in seconds, `CACHE_ONE_YEAR` for SSG
  */
 function computeFinalRevalidate(
   path: string,
@@ -68,8 +73,14 @@ function computeFinalRevalidate(
 }
 
 /**
- * Returns whether a cache entry is stale purely due to time (TTL expiry),
- * independent of any tag-based revalidation.
+ * Returns whether a cache entry is stale purely due to time (TTL expiry).
+ *
+ * This is independent of any tag-based revalidation.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @returns Whether the entry is stale from time
  */
 function computeIsStaleFromTime(
   path: string,
@@ -519,6 +530,11 @@ export async function cacheInterceptor(
         return event;
       }
       const tags = getTagsFromValue(cachedData.value);
+      const isStaleFromTime = computeIsStaleFromTime(
+        localizedPath,
+        cachedData.value.revalidate,
+        cachedData.lastModified,
+      );
       // We need to check the tag cache now
       if (
         cachedData.value?.type === "app" ||
@@ -529,11 +545,6 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
-          const isStaleFromTime = computeIsStaleFromTime(
-            localizedPath,
-            cachedData.value.revalidate,
-            cachedData.lastModified,
-          );
           await globalThis.incrementalCache.getTagCacheResult?.({
             key: cacheKey,
             hasBeenRevalidated: true,
@@ -548,12 +559,6 @@ export async function cacheInterceptor(
       const _isStale = cachedData.shouldBypassTagCache
         ? false
         : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
-
-      const isStaleFromTime = computeIsStaleFromTime(
-        localizedPath,
-        cachedData.value.revalidate,
-        cachedData.lastModified,
-      );
 
       await globalThis.incrementalCache.getTagCacheResult?.({
         key: cacheKey,
