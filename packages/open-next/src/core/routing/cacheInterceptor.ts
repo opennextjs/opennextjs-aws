@@ -21,6 +21,7 @@ import { isBinaryContentType } from "utils/binary";
 import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
 import {
   CACHE_CONTROL_HEADER,
+  CACHE_TAGS_HEADER,
   NO_STORE_CACHE_CONTROL,
   OPEN_NEXT_CACHE_HEADER,
   PRERENDER_REVALIDATE_HEADER,
@@ -107,19 +108,24 @@ const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
 const MIDDLEWARE_SET_COOKIE_HEADER = "x-middleware-set-cookie";
 
 /**
- * Returns the headers stored in a cache entry, without the internal `x-middleware-set-cookie` header.
+ * Returns the headers stored in a cache entry, without the internal headers.
+ *
+ * The internal headers are `x-middleware-set-cookie` and `x-next-cache-tags`.
+ * The cache entry is not mutated as it could be shared (i.e. by an in-memory cache).
  *
  * @param headers The headers stored in the cache entry meta
- * @returns A copy of the headers without the internal header
+ * @returns A copy of the headers without the internal headers
  */
 function getCachedResponseHeaders(
   headers: Meta["headers"],
 ): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {};
   for (const [key, value] of Object.entries(headers ?? {})) {
+    const lowerKey = key.toLowerCase();
     if (
       value === undefined ||
-      key.toLowerCase() === MIDDLEWARE_SET_COOKIE_HEADER
+      lowerKey === MIDDLEWARE_SET_COOKIE_HEADER ||
+      lowerKey === CACHE_TAGS_HEADER
     ) {
       continue;
     }

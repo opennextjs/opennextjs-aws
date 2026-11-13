@@ -511,7 +511,6 @@ describe("cacheInterceptor", () => {
 
   describe("internal headers stored in the cache entry", () => {
     const internalHeaders = {
-      // Removed by `getTagsFromValue` when reading the tags of the entry
       "x-next-cache-tags": "_N_T_/layout,_N_T_/albums",
       "x-middleware-set-cookie": "session=secret; Path=/; HttpOnly",
     };
@@ -570,6 +569,20 @@ describe("cacheInterceptor", () => {
       );
       expect(result.headers).not.toHaveProperty("x-next-cache-tags");
       expect(result.headers).not.toHaveProperty("x-middleware-set-cookie");
+    });
+
+    // The entry could be shared, i.e. by an in-memory incremental cache
+    it("should not remove them from the cache entry", async () => {
+      const value = {
+        type: "app",
+        html: "Hello, world!",
+        meta: { headers: { ...internalHeaders } },
+      };
+      incrementalCache.get.mockResolvedValueOnce({ value });
+
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(value.meta.headers).toEqual(internalHeaders);
     });
 
     it("should keep the set-cookie header of a route entry", async () => {
