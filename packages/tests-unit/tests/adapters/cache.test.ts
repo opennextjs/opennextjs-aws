@@ -822,18 +822,47 @@ describe("CacheHandler", () => {
           });
         });
 
-        it("Should not throw when getTagCacheResult is not defined", async () => {
+        it("Should call getTagCacheResult without checking the tag cache when shouldBypassTagCache is true", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+            shouldBypassTagCache: true,
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(tagCache.getLastModified).not.toHaveBeenCalled();
+          expect(tagCache.isStale).not.toHaveBeenCalled();
+          expect(incrementalCache.getTagCacheResult).toHaveBeenCalledOnce();
+          expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should not call getTagCacheResult on a cache miss", async () => {
+          incrementalCache.get.mockResolvedValueOnce(null);
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result).toBeNull();
+          expect(incrementalCache.getTagCacheResult).not.toHaveBeenCalled();
+        });
+
+        it("Should return the entry when getTagCacheResult is not defined", async () => {
           const prevIncrementalCache = globalThis.incrementalCache;
           globalThis.incrementalCache = {
             ...prevIncrementalCache,
             getTagCacheResult: undefined,
           };
+          try {
+            const result = await cache.get("key", { kindHint: "app" });
 
-          await expect(
-            cache.get("key", { kindHint: "app" }),
-          ).resolves.not.toThrow();
-
-          globalThis.incrementalCache = prevIncrementalCache;
+            expect(result).not.toBeNull();
+          } finally {
+            globalThis.incrementalCache = prevIncrementalCache;
+          }
         });
       });
 
