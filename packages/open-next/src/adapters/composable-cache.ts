@@ -90,7 +90,7 @@ export default {
             : await isStale(storageKey, result.value.tags, result.lastModified);
 
         await globalThis.incrementalCache.getTagCacheResult?.({
-          key: cacheKey,
+          key: storageKey,
           hasBeenRevalidated: _hasBeenRevalidated,
           isStaleFromTag: isCacheStale,
         });
@@ -118,7 +118,7 @@ export default {
             : await isStale(storageKey, result.value.tags, result.lastModified);
 
         await globalThis.incrementalCache.getTagCacheResult?.({
-          key: cacheKey,
+          key: storageKey,
           hasBeenRevalidated: _hasBeenRevalidated,
           isStaleFromTag: isCacheStale,
         });

@@ -277,7 +277,7 @@ describe("Composable cache handler", () => {
         await ComposableCache.get("test-key");
 
         expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
-          key: "test-key",
+          key: storageKey("test-key"),
           hasBeenRevalidated: false,
           isStaleFromTag: false,
         });
@@ -290,7 +290,7 @@ describe("Composable cache handler", () => {
         await ComposableCache.get("test-key");
 
         expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
-          key: "test-key",
+          key: storageKey("test-key"),
           hasBeenRevalidated: true,
           isStaleFromTag: false,
         });
@@ -304,7 +304,7 @@ describe("Composable cache handler", () => {
         await ComposableCache.get("test-key");
 
         expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
-          key: "test-key",
+          key: storageKey("test-key"),
           hasBeenRevalidated: false,
           isStaleFromTag: true,
         });
@@ -318,7 +318,7 @@ describe("Composable cache handler", () => {
         await ComposableCache.get("test-key");
 
         expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
-          key: "test-key",
+          key: storageKey("test-key"),
           hasBeenRevalidated: false,
           isStaleFromTag: false,
         });
@@ -331,7 +331,7 @@ describe("Composable cache handler", () => {
         await ComposableCache.get("test-key");
 
         expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
-          key: "test-key",
+          key: storageKey("test-key"),
           hasBeenRevalidated: true,
           isStaleFromTag: false,
         });
