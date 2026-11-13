@@ -50,7 +50,7 @@ interface IncrementalCachedAppPageValue {
   // this needs to be a string since the cache expects to store
   // the string value
   html: string;
-  rscData: Buffer;
+  rscData: Buffer | undefined;
   headers?: Record<string, undefined | string | string[]>;
   postponed?: string;
   status?: number;
@@ -75,11 +75,24 @@ export interface CacheHandlerContext {
   _requestHeaders: never;
   fetchCacheKeyPrefix?: string;
 }
+
+/**
+ * The lifetime of a cache entry, as Next.js passes it to `set()` in `ctx.cacheControl`.
+ */
+export interface CacheControl {
+  revalidate: number | false;
+  expire?: number;
+}
+
 export interface CacheHandlerValue {
   lastModified?: number;
   age?: number;
   cacheState?: string;
   value: IncrementalCacheValue | null;
+  /**
+   * The lifetime of the entry, only read by Next.js 16.4+.
+   */
+  cacheControl?: CacheControl;
 }
 
 export type Extension = "cache" | "fetch" | "composable";
@@ -119,10 +132,7 @@ interface SetIncrementalFetchCacheContext {
 
 interface SetIncrementalResponseCacheContext {
   fetchCache?: false;
-  cacheControl?: {
-    revalidate: number | false;
-    expire?: number;
-  };
+  cacheControl?: CacheControl;
 
   /**
    * True if the route is enabled for PPR.

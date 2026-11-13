@@ -1,15 +1,23 @@
 import type {
+  CacheControl,
   CacheHandlerValue,
   IncrementalCacheContext,
   IncrementalCacheValue,
 } from "types/cache";
+import type { CacheValue } from "types/overrides";
 import {
+  getStaleLastModified,
   getTagsFromValue,
   hasBeenRevalidated,
   isStale,
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
+import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders";
+import {
+  getPathFromRouteCacheKey,
+  useRouteCacheKeys,
+} from "../utils/routeCacheKey";
 import { compareSemver } from "../utils/semver";
 import { debug, error, warn } from "./logger";
 
@@ -36,6 +44,93 @@ function isFetchCache(
   }
   return false;
 }
+
+/**
+ * Returns the lifetime to report to Next.js for a cache entry.
+ *
+ * Next.js takes it from a per-route record that only the instance which rendered the page
+ * has filled, with the prerender manifest as a fallback. A page rendered on demand by a
+ * dynamic route is in neither, and Next.js then falls back to `revalidate: 1`. The
+ * lifetime stored with the entry fills that gap.
+ *
+ * A stale entry is signalled by offsetting `lastModified` by `revalidate` (see
+ * `getStaleLastModified`), which needs a numeric `revalidate`. Without one, Next.js would use
+ * its own lifetime: `revalidate: false` serves the entry as a hit, and the `expire` of the
+ * prerender manifest turns it into a blocking revalidation. `{ revalidate: 1 }` is reported
+ * instead, Next.js records the actual lifetime again when the entry is re-rendered.
+ *
+ * @param value The cache entry
+ * @param isEntryStale Whether the tag cache reported the entry as stale
+ * @returns The lifetime to report, or `undefined` to leave it to Next.js
+ */
+function getCacheControl(
+  { revalidate, expire }: CacheValue<"cache">,
+  isEntryStale: boolean,
+): CacheControl | undefined {
+  if (isEntryStale && typeof revalidate !== "number") {
+    return { revalidate: 1 };
+  }
+  // A build time entry has no stored lifetime, the prerender manifest has it.
+  if (revalidate === undefined) {
+    return undefined;
+  }
+  return { revalidate, expire };
+}
+
+// `null` until the module is loaded, `undefined` when it can not be loaded.
+let sharedCacheControls: Map<string, CacheControl> | undefined | null = null;
+
+/**
+ * Returns the map Next.js keeps the lifetime of routes in.
+ *
+ * The module is loaded lazily, and only once: a static import would pull `next` into the
+ * external middleware bundle. `next` is external to the compiled cache handler, so this is
+ * the map the server reads.
+ *
+ * @returns The map, or `undefined` when the module can not be loaded
+ */
+async function getSharedCacheControls() {
+  if (sharedCacheControls === null) {
+    try {
+      const { SharedCacheControls } = await import(
+        "next/dist/server/lib/incremental-cache/shared-cache-controls.external.js"
+      );
+      // `cacheControls` is only private to TypeScript.
+      sharedCacheControls = (
+        SharedCacheControls as unknown as {
+          cacheControls: Map<string, CacheControl>;
+        }
+      ).cacheControls;
+    } catch (e) {
+      debug("Failed to load the Next.js cache controls", e);
+      sharedCacheControls = undefined;
+    }
+  }
+  return sharedCacheControls;
+}
+
+/**
+ * Records the lifetime of a cache entry where Next.js < 16.4 reads it.
+ *
+ * Next.js 16.4+ reads the `cacheControl` returned by `get()` instead. The map is keyed by
+ * route cache key, which is the key passed to the cache handler. Versions without route
+ * cache keys are skipped. Like 16.4, the lifetime of the entry overwrites the recorded one.
+ *
+ * @param key The key of the cache entry
+ * @param cacheControl The lifetime to record
+ */
+async function recordCacheControl(key: string, cacheControl?: CacheControl) {
+  const nextVersion = globalThis.nextVersion;
+  if (
+    !cacheControl ||
+    compareSemver(nextVersion, ">=", "16.4.0") ||
+    !useRouteCacheKeys(nextVersion)
+  ) {
+    return;
+  }
+  (await getSharedCacheControls())?.set(key, cacheControl);
+}
+
 // We need to use globalThis client here as this class can be defined at load time in next 12 but client is not available at load time
 export default class Cache {
   public async get(
@@ -167,13 +262,22 @@ export default class Cache {
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {
+        // The sentinel is kept as is in the store so that the revalidation queue keeps
+        // deduplicating every stale request for the same path. The queue gets the real time.
         store.lastModified = _isStale ? 1 : _lastModified;
-        _lastModified = store.lastModified;
+        store.entryLastModified = _lastModified;
       }
+      if (_isStale) {
+        _lastModified = getStaleLastModified(cacheData.revalidate);
+      }
+
+      const _cacheControl = getCacheControl(cacheData, _isStale);
+      await recordCacheControl(key, _cacheControl);
 
       if (cacheData?.type === "route") {
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "APP_ROUTE"
@@ -190,6 +294,16 @@ export default class Cache {
         } as CacheHandlerValue;
       }
       if (cacheData?.type === "page" || cacheData?.type === "app") {
+        // Without the html there is no valid value to return, so we report a miss and let
+        // the server render the page. Next.js behaves the same way, its file system cache
+        // reads the `.html` file first and turns a read failure into a miss.
+        //
+        // The check is on `undefined` and not on falsiness because an empty string is a
+        // valid value: a PPR route with an empty static shell has an empty `.html` file.
+        if (cacheData.html === undefined) {
+          warn("No html in the cache entry", key);
+          return null;
+        }
         if (
           compareSemver(globalThis.nextVersion, ">=", "15.0.0") &&
           cacheData?.type === "app"
@@ -204,10 +318,18 @@ export default class Cache {
           }
           return {
             lastModified: _lastModified,
+            cacheControl: _cacheControl,
             value: {
               kind: "APP_PAGE",
               html: cacheData.html,
-              rscData: Buffer.from(cacheData.rsc),
+              // `rsc` is absent when the build collected neither a `.rsc` nor a
+              // `.prefetch.rsc` file, see `CachedFile`. An undefined value is expected: the
+              // Next.js file system cache also leaves `rscData` undefined for fallback
+              // shells, and on 16.2+ for postponed PPR routes.
+              rscData:
+                cacheData.rsc === undefined
+                  ? undefined
+                  : Buffer.from(cacheData.rsc),
               status: meta?.status,
               headers: meta?.headers,
               postponed: meta?.postponed,
@@ -215,15 +337,23 @@ export default class Cache {
             },
           } as CacheHandlerValue;
         }
+        const pageData =
+          cacheData.type === "page" ? cacheData.json : cacheData.rsc;
+        // Only reachable for an app page on Next.js < 15, where an absent `rsc` leaves us
+        // without any page data to return.
+        if (pageData === undefined) {
+          warn("No page data in the cache entry", key);
+          return null;
+        }
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: compareSemver(globalThis.nextVersion, ">=", "15.0.0")
               ? "PAGES"
               : "PAGE",
             html: cacheData.html,
-            pageData:
-              cacheData.type === "page" ? cacheData.json : cacheData.rsc,
+            pageData,
             status: meta?.status,
             headers: meta?.headers,
           },
@@ -232,6 +362,7 @@ export default class Cache {
       if (cacheData?.type === "redirect") {
         return {
           lastModified: _lastModified,
+          cacheControl: _cacheControl,
           value: {
             kind: "REDIRECT",
             props: cacheData.props,
@@ -255,16 +386,30 @@ export default class Cache {
     if (globalThis.openNextConfig.dangerous?.disableIncrementalCache) {
       return;
     }
-    // This one might not even be necessary anymore
-    // Better be safe than sorry
-    const detachedPromise = globalThis.__openNextAls
-      .getStore()
-      ?.pendingPromiseRunner.withResolvers<void>();
+    const store = globalThis.__openNextAls.getStore();
+    const writePromise = this.writeCache(key, data, ctx);
+
+    // Next.js ignores some cache handler results and does not reliably retain
+    // FETCH writes created during a Server Action Flight render. Register every
+    // write with the request runner before preserving FETCH's awaited behavior.
+    if (store !== undefined) {
+      store.pendingPromiseRunner.add(writePromise);
+    }
+    if (data?.kind === "FETCH" || store === undefined) {
+      await writePromise;
+    }
+  }
+
+  private async writeCache(
+    key: string,
+    data?: IncrementalCacheValue,
+    ctx?: IncrementalCacheContext,
+  ): Promise<void> {
     try {
       if (data === null || data === undefined) {
         await globalThis.incrementalCache.delete(key);
       } else {
-        const revalidate = this.extractRevalidateForSet(ctx);
+        const cacheControl = this.extractCacheControlForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
@@ -282,7 +427,7 @@ export default class Cache {
                   status,
                   headers,
                 },
-                revalidate,
+                ...cacheControl,
               },
               "cache",
             );
@@ -303,7 +448,7 @@ export default class Cache {
                     status,
                     headers,
                   },
-                  revalidate,
+                  ...cacheControl,
                 },
                 "cache",
               );
@@ -314,7 +459,7 @@ export default class Cache {
                   type: "page",
                   html,
                   json: pageData,
-                  revalidate,
+                  ...cacheControl,
                 },
                 "cache",
               );
@@ -338,13 +483,13 @@ export default class Cache {
               {
                 type: "app",
                 html,
-                rsc: rscData.toString("utf8"),
+                rsc: rscData?.toString("utf8"),
                 meta: {
                   status,
                   headers,
                   postponed,
                 },
-                revalidate,
+                ...cacheControl,
                 segmentData: segmentData ? segmentToWrite : undefined,
               },
               "cache",
@@ -360,7 +505,7 @@ export default class Cache {
               {
                 type: "redirect",
                 props: data.props,
-                revalidate,
+                ...cacheControl,
               },
               "cache",
             );
@@ -375,12 +520,20 @@ export default class Cache {
       debug("Finished setting cache");
     } catch (e) {
       error("Failed to set cache", e);
-    } finally {
-      // We need to resolve the promise even if there was an error
-      detachedPromise?.resolve();
     }
   }
 
+  /**
+   * Revalidates cache entries associated with one or more tags.
+   *
+   * The tag cache is updated before the CDN is invalidated. CDN handlers that
+   * support tag invalidation receive the original tags; other handlers retain
+   * the existing path-based invalidation behavior.
+   *
+   * @param tags Tags whose cache entries should be revalidated.
+   * @param durations Optional stale and expiry durations.
+   * @returns A promise that resolves when revalidation is complete.
+   */
   public async revalidateTag(
     tags: string | string[],
     durations?: { expire?: number },
@@ -395,9 +548,9 @@ export default class Cache {
     }
 
     try {
-      if (globalThis.tagCache.mode === "nextMode") {
-        const paths = (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+      const cdnInvalidationHandler = globalThis.cdnInvalidationHandler;
 
+      if (globalThis.tagCache.mode === "nextMode") {
         const now = Date.now();
         const tagsToWrite = _tags.map((tag) => {
           if (durations) {
@@ -419,22 +572,27 @@ export default class Cache {
         });
 
         await writeTags(tagsToWrite);
-        if (paths.length > 0) {
-          // TODO: we should introduce a new method in cdnInvalidationHandler to invalidate paths by tags for cdn that supports it
-          // It also means that we'll need to provide the tags used in every request to the wrapper or converter.
-          await globalThis.cdnInvalidationHandler.invalidatePaths(
-            paths.map((path) => ({
-              initialPath: path,
-              rawPath: path,
-              resolvedRoutes: [
-                {
-                  route: path,
-                  // TODO: ideally here we should check if it's an app router page or route
-                  type: "app",
-                },
-              ],
-            })),
-          );
+        if (cdnInvalidationHandler.invalidateTags) {
+          await cdnInvalidationHandler.invalidateTags(_tags);
+        } else {
+          const paths =
+            (await globalThis.tagCache.getPathsByTags?.(_tags)) ?? [];
+          if (paths.length > 0) {
+            // Fixed Next.js releases store route-scoped cache keys in the tag cache.
+            await cdnInvalidationHandler.invalidatePaths(
+              paths.map(getPathFromRouteCacheKey).map((path) => ({
+                initialPath: path,
+                rawPath: path,
+                resolvedRoutes: [
+                  {
+                    route: path,
+                    // TODO: ideally here we should check if it's an app router page or route
+                    type: "app",
+                  },
+                ],
+              })),
+            );
+          }
         }
         return;
       }
@@ -503,6 +661,10 @@ export default class Cache {
         // Update all keys with the given tag with revalidatedAt set to now
         await writeTags(toInsert);
 
+        if (cdnInvalidationHandler.invalidateTags) {
+          continue;
+        }
+
         // We can now invalidate all paths in the CDN
         // This only applies to `revalidateTag`, not to `res.revalidate()`
         const uniquePaths = Array.from(
@@ -510,11 +672,12 @@ export default class Cache {
             toInsert
               // We need to filter fetch cache key as they are not in the CDN
               .filter((t) => t.tag.startsWith(SOFT_TAG_PREFIX))
-              .map((t) => `/${t.path}`),
+              // Fixed Next.js releases store route-scoped cache keys in the tag cache.
+              .map((t) => getPathFromRouteCacheKey(`/${t.path}`)),
           ),
         );
         if (uniquePaths.length > 0) {
-          await globalThis.cdnInvalidationHandler.invalidatePaths(
+          await cdnInvalidationHandler.invalidatePaths(
             uniquePaths.map((path) => ({
               initialPath: path,
               rawPath: path,
@@ -528,6 +691,9 @@ export default class Cache {
             })),
           );
         }
+      }
+      if (cdnInvalidationHandler.invalidateTags) {
+        await cdnInvalidationHandler.invalidateTags(_tags);
       }
     } catch (e) {
       error("Failed to revalidate tag", e);
@@ -551,12 +717,20 @@ export default class Cache {
     }
     // Write derivedTags to the tag cache
     // If we use an in house version of getDerivedTags in build we should use it here instead of next's one
+    // `x-next-cache-tags` is always a comma separated string: Next.js sets it from
+    // `metadata.fetchTags`, which is a string. The header type allows an array because it
+    // is shared with headers that can legitimately repeat, so we narrow on `typeof` here.
+    // Next.js guards the same way when it reads the header back.
+    const pageCacheTags =
+      data?.kind === "PAGE" || data?.kind === "APP_PAGE"
+        ? data.headers?.[CACHE_TAGS_HEADER]
+        : undefined;
     const derivedTags: string[] =
       data?.kind === "FETCH"
         ? //@ts-expect-error - On older versions of next, ctx was a number, but for these cases we use data?.data?.tags
           (ctx?.tags ?? data?.data?.tags ?? []) // before version 14 next.js used data?.data?.tags so we keep it for backward compatibility
-        : data?.kind === "PAGE"
-          ? (data.headers?.["x-next-cache-tags"]?.split(",") ?? [])
+        : typeof pageCacheTags === "string"
+          ? pageCacheTags.split(",")
           : [];
     debug("derivedTags", derivedTags);
 
@@ -577,21 +751,30 @@ export default class Cache {
     }
   }
 
-  private extractRevalidateForSet(
+  /**
+   * Returns the lifetime Next.js passed to `set()`.
+   *
+   * It is stored with the entry so that `get()` can report it. Only the newest context
+   * shape carries an `expire`.
+   *
+   * @param ctx The context passed to `set()`
+   * @returns The lifetime, empty when there is none
+   */
+  private extractCacheControlForSet(
     ctx?: IncrementalCacheContext,
-  ): number | false | undefined {
+  ): Partial<CacheControl> {
     if (ctx === undefined) {
-      return undefined;
+      return {};
     }
     if (typeof ctx === "number" || ctx === false) {
-      return ctx;
+      return { revalidate: ctx };
     }
     if ("revalidate" in ctx) {
-      return ctx.revalidate;
+      return { revalidate: ctx.revalidate };
     }
     if ("cacheControl" in ctx) {
-      return ctx.cacheControl?.revalidate;
+      return { ...ctx.cacheControl };
     }
-    return undefined;
+    return {};
   }
 }

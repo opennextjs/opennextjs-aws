@@ -1,19 +1,32 @@
-import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { createPatch } from "diff";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import {
+  type NextPackage,
+  getInstalledNextPackages as getNextPackages,
+} from "@opennextjs/aws/build/patch/testUtils.js";
+
+export {
+  computePatchDiff,
+  getNextFilesToPatch,
+} from "@opennextjs/aws/build/patch/testUtils.js";
+
+const examplesDir = fileURLToPath(
+  new URL("../../../../../../examples", import.meta.url),
+);
 
 /**
- * Compute the diff resulting of applying the `rule` to `src`.
+ * Get the Next.js packages installed in the examples.
  *
- * @param filename Filename used in the patch output
- * @param src Content of the source code
- * @param rule ASTgrep rule
- * @returns diff in unified diff format
+ * The e2e workflow installs the latest version of Next in these examples.
+ *
+ * @param examples Name of the examples
+ * @returns the path and version of the Next.js packages, deduplicated by version
  */
-export function computePatchDiff(
-  filename: string,
-  src: string,
-  rule: string,
-): string {
-  const dst = patchCode(src, rule);
-  return createPatch(filename, src, dst);
+export function getInstalledNextPackages(
+  examples = ["app-router", "pages-router", "app-pages-router"],
+): NextPackage[] {
+  return getNextPackages(
+    examples.map((example) => path.join(examplesDir, example)),
+  );
 }

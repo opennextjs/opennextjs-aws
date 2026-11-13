@@ -45,6 +45,47 @@ describe("proxyExternalRequest/fetch", () => {
     expect(headersPassedToFetch).not.toContain("CF-CONNECTING-IP");
     expect(headersPassedToFetch).toContain("header-4");
   });
+  it("the proxy should not relay the x-forwarded-host sent by the client", async () => {
+    const fetchMock = vi.fn<typeof global.fetch>(async () => new Response());
+    globalThis.fetch = fetchMock;
+
+    await fetchProxy.proxy({
+      url: "https://upstream.example/path",
+      method: "GET",
+      headers: {
+        host: "shop.example",
+        "X-Forwarded-Host": "evil.example",
+        "x-forwarded-host": "evil.example",
+      },
+    } as any);
+
+    const headers = fetchMock.mock.calls[0][1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(headers["x-forwarded-host"]).toBe("shop.example");
+    expect(headers["X-Forwarded-Host"]).toBeUndefined();
+  });
+
+  it("the proxy should drop the x-forwarded-host when there is no host", async () => {
+    const fetchMock = vi.fn<typeof global.fetch>(async () => new Response());
+    globalThis.fetch = fetchMock;
+
+    await fetchProxy.proxy({
+      url: "https://upstream.example/path",
+      method: "GET",
+      headers: {
+        "X-Forwarded-Host": "evil.example",
+        "x-forwarded-host": "evil.example",
+        accept: "text/html",
+      },
+    } as any);
+
+    expect(fetchMock.mock.calls[0][1]?.headers).toEqual({
+      accept: "text/html",
+    });
+  });
+
   it("the proxy should save multiple set-cookie response headers as an array", async () => {
     const responseHeaders = new Headers();
     responseHeaders.append("set-cookie", "foo=value1");

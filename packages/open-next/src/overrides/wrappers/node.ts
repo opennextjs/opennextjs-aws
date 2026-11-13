@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 
+import { writeResponseHead } from "http/framing";
 import type { Wrapper, WrapperHandler } from "types/overrides";
 
 import type { StreamCreator } from "types/open-next";
@@ -14,9 +15,12 @@ const wrapper: WrapperHandler = async (handler, converter) => {
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
-        res.writeHead(prelude.statusCode, prelude.headers);
-        res.flushHeaders();
-        return res;
+        return writeResponseHead(
+          res,
+          req.method,
+          prelude.statusCode,
+          prelude.headers,
+        );
       },
       abortSignal: abortController.signal,
     };

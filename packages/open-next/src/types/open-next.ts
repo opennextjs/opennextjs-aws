@@ -299,7 +299,10 @@ export interface InstallOptions {
   packages: string[];
   /** @default undefined */
   arch?: "x64" | "arm64";
-  /** @default undefined */
+  /**
+   * @default undefined
+   * @deprecated npm no longer supports the `--target` flag, so this option is ignored.
+   */
   nodeVersion?: string;
   /** @default undefined */
   libc?: "glibc" | "musl";

@@ -67,6 +67,48 @@ fix:
 `;
 
 /**
+ * Exposes `NextNodeServer#revalidate` to `res.revalidate()` of the Pages Router API routes.
+ *
+ * Starting with Next 15.4, `res.revalidate()` uses the `revalidate` function of the router server
+ * context (`globalThis[Symbol.for("@next/router-server-methods")]`) to revalidate in-process.
+ * The context is populated by the router server which is not used by OpenNext.
+ * Without it, `res.revalidate()` throws
+ * `Invariant: missing internal router-server-methods this is an internal bug`.
+ *
+ * `NextNodeServer#handleCatchallRenderRequest` creates the context for environments without
+ * router server, this rule adds `revalidate` to it:
+ *
+ * ```js
+ * routerServerGlobal[RouterServerContextSymbol][relativeProjectDir] = {
+ *   render404: this.render404.bind(this),
+ *   // added by the rule
+ *   revalidate: this.revalidate.bind(this),
+ * };
+ * ```
+ *
+ * OpenNext wraps `NextNodeServer#revalidate` at runtime, see `core/revalidate.ts`.
+ *
+ * https://github.com/vercel/next.js/blob/4e6c27b/packages/next/src/server/api-utils/node/api-resolver.ts
+ */
+export const exposeRevalidateRule = `
+rule:
+  pattern:
+    context: "({ render404: this.render404.bind(this) })"
+    selector: pair
+  inside:
+    kind: object
+    not:
+      has:
+        kind: pair
+        has:
+          field: key
+          regex: ^revalidate$
+fix: |-
+  render404: this.render404.bind(this),
+  revalidate: this.revalidate.bind(this)
+`;
+
+/**
  * Swaps the body for a throwing implementation
  *
  * @param methodName The name of the method
@@ -149,6 +191,13 @@ export const patchNextServer: CodePatcher = {
       pathFilter,
       contentFilter: /getInternalWaitUntil/,
       patchCode: createPatchCode(provideInternalWaitUntil),
+    },
+    // Expose `NextNodeServer#revalidate` to `res.revalidate()`
+    {
+      versions: ">=15.4.0",
+      pathFilter,
+      contentFilter: /render404: this\.render404\.bind\(this\)/,
+      patchCode: createPatchCode(exposeRevalidateRule),
     },
     ...babelPatches,
   ],

@@ -4,6 +4,7 @@ import type {
   InternalResult,
   MiddlewareResult,
 } from "types/open-next";
+import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
 
 import type { OpenNextHandlerOptions } from "types/overrides";
@@ -64,7 +65,7 @@ const defaultHandler = async (
   // We run everything in the async local storage context so that it is available in the external middleware
   return runWithOpenNextRequestContext(
     {
-      isISRRevalidation: internalEvent.headers["x-isr"] === "1",
+      isISRRevalidation: internalEvent.headers[ISR_HEADER] === "1",
       waitUntil: options?.waitUntil,
       requestId,
     },

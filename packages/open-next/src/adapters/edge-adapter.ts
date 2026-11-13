@@ -1,5 +1,6 @@
 import type { ReadableStream } from "node:stream/web";
 
+import { convertEdgeResponseHeaders } from "http/util";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import { runWithOpenNextRequestContext } from "utils/promise";
 import { emptyReadableStream } from "utils/stream";
@@ -44,16 +45,7 @@ const defaultHandler = async (
           internalEvent.body,
         ),
       });
-      const responseHeaders: Record<string, string | string[]> = {};
-      response.headers.forEach((value, key) => {
-        if (key.toLowerCase() === "set-cookie") {
-          responseHeaders[key] = responseHeaders[key]
-            ? [...responseHeaders[key], value]
-            : [value];
-        } else {
-          responseHeaders[key] = value;
-        }
-      });
+      const responseHeaders = convertEdgeResponseHeaders(response.headers);
 
       const body =
         (response.body as ReadableStream<Uint8Array>) ?? emptyReadableStream();

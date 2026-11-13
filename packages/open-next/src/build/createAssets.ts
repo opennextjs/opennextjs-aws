@@ -1,11 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { loadConfig } from "config/util.js";
+import { getOpenNextBuildId, loadConfig } from "config/util.js";
 import { safeParseJsonFile } from "utils/safe-json-parse.js";
 import logger from "../logger.js";
 import type { TagCacheMetaFile } from "../types/cache.js";
 import { isBinaryContentType } from "../utils/binary.js";
+import { CACHE_TAGS_HEADER } from "../utils/cacheHeaders.js";
+import { useRouteCacheKeys } from "../utils/routeCacheKey.js";
 import * as buildHelper from "./helper.js";
 
 /**
@@ -79,6 +81,9 @@ export function createStaticAssets(
 /**
  * Create the cache assets.
  *
+ * The cache entries, the fetch cache entries and the tag cache seed are prefixed with the Open Next build id
+ * so that they match the keys used at runtime.
+ *
  * @param options Build options.
  * @returns Whether the tag cache is used, and the meta files collected.
  */
@@ -87,9 +92,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
 
   const { appBuildOutputPath, outputDir } = options;
   const packagePath = buildHelper.getPackagePath(options);
-  const buildId = buildHelper.getBuildId(options);
   const nextConfig = loadConfig(path.join(appBuildOutputPath, ".next"));
-  const openNextBuildId = nextConfig.deploymentId ?? buildId;
+  // Must match `process.env.OPEN_NEXT_BUILD_ID` used at runtime to read the cache entries and the tags
+  const openNextBuildId = getOpenNextBuildId(
+    nextConfig,
+    buildHelper.getBuildId(options),
+  );
 
   let useTagCache = false;
 
@@ -118,9 +126,10 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     (relativePath.endsWith(".html") && htmlPages.has(relativePath));
 
   // Merge cache files into a single file
-  const cacheFilesPath: Record<
+  const cacheArtifacts: Record<
     string,
     {
+      legacyKey: string;
       meta?: string;
       html?: string;
       json?: string;
@@ -142,18 +151,30 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
           case ".json":
           case ".body":
           case ".rsc": {
-            const newFilePath = path
-              .join(outputCachePath, relativePath)
-              .substring(
-                0,
-                path.join(outputCachePath, relativePath).length - ext.length,
-              )
+            // Stripping `.prefetch` maps both `<page>.rsc` and `<page>.prefetch.rsc` onto
+            // the same cache entry, so the `rsc` field can hold either payload. When both
+            // files exist the first one traversed wins, as the spread below keeps the value
+            // already recorded for that extension.
+            //
+            // Next 16.1 removed `.prefetch.rsc`, so the strip is a no-op on Next 16 where
+            // the `rsc` field always holds a full payload.
+            const legacyKey = relativePath
+              .slice(0, -ext.length)
               .replace(/\.prefetch$/, "")
-              .concat(".cache");
-
-            cacheFilesPath[newFilePath] = {
-              [ext.slice(1)]: absolutePath,
-              ...cacheFilesPath[newFilePath],
+              .split(path.sep)
+              .join(path.posix.sep);
+            const artifactId = `${sourceDir}:${legacyKey}`;
+            const existingArtifact = cacheArtifacts[artifactId];
+            const fileType = ext.slice(1) as
+              | "meta"
+              | "html"
+              | "json"
+              | "rsc"
+              | "body";
+            cacheArtifacts[artifactId] = {
+              ...existingArtifact,
+              legacyKey,
+              [fileType]: existingArtifact?.[fileType] ?? absolutePath,
             };
             break;
           }
@@ -167,11 +188,23 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     );
   });
 
+  const metaFiles: TagCacheMetaFile[] = [];
+
   // Generate cache file
-  Object.entries(cacheFilesPath).forEach(([cacheFilePath, files]) => {
+  Object.values(cacheArtifacts).forEach(({ legacyKey, ...files }) => {
     const cacheFileMeta = files.meta
-      ? safeParseJsonFile(fs.readFileSync(files.meta, "utf8"), cacheFilePath)
+      ? safeParseJsonFile(fs.readFileSync(files.meta, "utf8"), files.meta)
       : undefined;
+    const cacheKey =
+      useRouteCacheKeys(options.nextVersion) && cacheFileMeta?.routeCache?.key
+        ? cacheFileMeta.routeCache.key.replace(/^[/\\]+/, "")
+        : legacyKey;
+    const outputRoot = path.resolve(outputCachePath);
+    const cacheFilePath = path.resolve(outputRoot, `${cacheKey}.cache`);
+    if (!cacheFilePath.startsWith(`${outputRoot}${path.sep}`)) {
+      logger.warn(`Cache key resolves outside the cache output: ${cacheKey}`);
+      return;
+    }
     const cacheJson = files.json
       ? safeParseJsonFile(fs.readFileSync(files.json, "utf8"), cacheFilePath)
       : undefined;
@@ -217,10 +250,22 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     // Ensure directory exists before writing
     fs.mkdirSync(path.dirname(cacheFilePath), { recursive: true });
     fs.writeFileSync(cacheFilePath, JSON.stringify(cacheFileContent));
-  });
 
-  // We need to traverse the cache to find every .meta file
-  const metaFiles: TagCacheMetaFile[] = [];
+    if (
+      !options.config.dangerous?.disableTagCache &&
+      cacheFileMeta?.headers?.[CACHE_TAGS_HEADER]
+    ) {
+      cacheFileMeta.headers[CACHE_TAGS_HEADER]
+        .split(",")
+        .forEach((tag: string) => {
+          metaFiles.push({
+            tag: { S: path.posix.join(openNextBuildId, tag.trim()) },
+            path: { S: path.posix.join(openNextBuildId, cacheKey) },
+            revalidatedAt: { N: "1" },
+          });
+        });
+    }
+  });
 
   // Copy fetch-cache to cache folder
   const fetchCachePath = path.join(
@@ -228,7 +273,12 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
     ".next/cache/fetch-cache",
   );
   if (fs.existsSync(fetchCachePath)) {
-    const fetchOutputPath = path.join(outputDir, "cache", "__fetch", buildId);
+    const fetchOutputPath = path.join(
+      outputDir,
+      "cache",
+      "__fetch",
+      openNextBuildId,
+    );
     fs.mkdirSync(fetchOutputPath, { recursive: true });
     fs.cpSync(fetchCachePath, fetchOutputPath, { recursive: true });
 
@@ -240,9 +290,9 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
         const fileData = safeParseJsonFile(fileContent, absolutePath);
         fileData?.tags?.forEach((tag: string) => {
           metaFiles.push({
-            tag: { S: path.posix.join(buildId, tag) },
+            tag: { S: path.posix.join(openNextBuildId, tag) },
             path: {
-              S: path.posix.join(buildId, relativePath),
+              S: path.posix.join(openNextBuildId, relativePath),
             },
             revalidatedAt: { N: "1" },
           });
@@ -252,38 +302,6 @@ export function createCacheAssets(options: buildHelper.BuildOptions) {
   }
 
   if (!options.config.dangerous?.disableTagCache) {
-    // Compute dynamodb cache data
-    // Traverse files inside cache to find all meta files and cache tags associated with them
-    sourceDirs.forEach((sourceDir) => {
-      buildHelper.traverseFiles(
-        sourceDir,
-        ({ absolutePath, relativePath }) =>
-          absolutePath.endsWith(".meta") && !isFileSkipped(relativePath),
-        ({ absolutePath, relativePath }) => {
-          const fileContent = fs.readFileSync(absolutePath, "utf8");
-          const fileData = safeParseJsonFile(fileContent, absolutePath);
-          if (fileData?.headers?.["x-next-cache-tags"]) {
-            fileData.headers["x-next-cache-tags"]
-              .split(",")
-              .forEach((tag: string) => {
-                // TODO: We should split the tag using getDerivedTags from next.js or maybe use an in house implementation
-                metaFiles.push({
-                  tag: { S: path.posix.join(buildId, tag.trim()) },
-                  path: {
-                    S: path.posix.join(
-                      buildId,
-                      relativePath.replace(".meta", ""),
-                    ),
-                  },
-                  // We don't care about the revalidation time here, we just need to make sure it's there
-                  revalidatedAt: { N: "1" },
-                });
-              });
-          }
-        },
-      );
-    });
-
     if (metaFiles.length > 0) {
       useTagCache = true;
       const providerPath = path.join(outputDir, "dynamodb-provider");

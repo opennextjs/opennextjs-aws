@@ -280,6 +280,7 @@ async function generateBundle(
           ? ["experimentalIncrementalCacheHandler"]
           : ["stableIncrementalCache"]),
         ...(isAfter152 ? [] : ["composableCache"]),
+        ...(isAfter152 ? [] : ["topLevelComposableCache"]),
       ],
     }),
 

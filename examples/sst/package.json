@@ -6,7 +6,7 @@
   "scripts": {},
   "devDependencies": {
     "aws-cdk-lib": "2.161.1",
-    "constructs": "10.3.0",
+    "constructs": "10.8.1",
     "sst": "^2.43.6"
   }
 }

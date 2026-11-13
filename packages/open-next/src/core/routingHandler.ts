@@ -14,11 +14,13 @@ import type {
 
 import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
+import { NO_STORE_CACHE_CONTROL } from "../utils/cacheHeaders";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {
   fixDataPage,
   getNextConfigHeaders,
+  handleBeforeFilesRewrites,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
@@ -28,11 +30,14 @@ import {
   dynamicRouteMatcher,
   staticRouteMatcher,
 } from "./routing/routeMatcher";
+import { hasRouteParamPlaceholder } from "./routing/routeParamPlaceholder";
 import { constructNextUrl, normalizeLocationHeader } from "./routing/util";
 
 export const MIDDLEWARE_HEADER_PREFIX = "x-middleware-response-";
 export const MIDDLEWARE_HEADER_PREFIX_LEN = MIDDLEWARE_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_PREFIX = "x-opennext-";
+export const NEXT_CONFIG_HEADER_PREFIX = `${INTERNAL_HEADER_PREFIX}next-config-response-`;
+export const NEXT_CONFIG_HEADER_PREFIX_LEN = NEXT_CONFIG_HEADER_PREFIX.length;
 export const INTERNAL_HEADER_INITIAL_URL = `${INTERNAL_HEADER_PREFIX}initial-url`;
 export const INTERNAL_HEADER_LOCALE = `${INTERNAL_HEADER_PREFIX}locale`;
 export const INTERNAL_HEADER_RESOLVED_ROUTES = `${INTERNAL_HEADER_PREFIX}resolved-routes`;
@@ -64,28 +69,41 @@ const NEXT_INTERNAL_HEADERS = [
   "x-matched-path",
   "x-nextjs-data",
   "x-next-resume-state-length",
+  "next-resume",
 ];
 
+type RoutingResponseHeaders = Record<string, string | string[] | undefined>;
+
 /**
- * Adds the middleware headers to an event or result.
+ * Adds the `next.config` and middleware response headers to an event or result.
  *
- * @param eventOrResult
- * @param middlewareHeaders
+ * On an event, each kind gets its own prefix so that the request handler can tell them apart (see
+ * `splitRoutingHeaders`). On a result, the headers are the response and are not prefixed.
+ *
+ * `nextConfigHeaders` take precedence over `middlewareHeaders` on the response.
+ *
+ * @param eventOrResult The event or result to add the headers to, its headers are mutated
+ * @param nextConfigHeaders The response headers from the `next.config` `headers()`
+ * @param middlewareHeaders The response headers set by the middleware
  */
-function applyMiddlewareHeaders(
+function applyResponseHeaders(
   eventOrResult: InternalEvent | InternalResult,
-  middlewareHeaders: Record<string, string | string[] | undefined>,
+  nextConfigHeaders: RoutingResponseHeaders,
+  middlewareHeaders: RoutingResponseHeaders,
 ) {
-  // Use the `MIDDLEWARE_HEADER_PREFIX` prefix for events, they will be processed by the request handler later.
-  // Results do not go through the request handler and should not be prefixed.
   const isResult = isInternalResult(eventOrResult);
   const headers = eventOrResult.headers;
-  const keyPrefix = isResult ? "" : MIDDLEWARE_HEADER_PREFIX;
-  Object.entries(middlewareHeaders).forEach(([key, value]) => {
-    if (value) {
-      headers[keyPrefix + key] = Array.isArray(value) ? value.join(",") : value;
+  const addHeaders = (source: RoutingResponseHeaders, keyPrefix: string) => {
+    for (const [key, value] of Object.entries(source)) {
+      if (value) {
+        headers[keyPrefix + key] = Array.isArray(value)
+          ? value.join(",")
+          : value;
+      }
     }
-  });
+  };
+  addHeaders(middlewareHeaders, isResult ? "" : MIDDLEWARE_HEADER_PREFIX);
+  addHeaders(nextConfigHeaders, isResult ? "" : NEXT_CONFIG_HEADER_PREFIX);
 }
 
 export default async function routingHandler(
@@ -116,9 +134,10 @@ export default async function routingHandler(
       }
     }
 
-    // Headers from the Next config and middleware (the later are applied further down).
-    let headers: Record<string, string | string[] | undefined> =
-      getNextConfigHeaders(event, ConfigHeaders);
+    let nextConfigHeaders: RoutingResponseHeaders = getNextConfigHeaders(
+      event,
+      ConfigHeaders,
+    );
 
     let eventOrResult = fixDataPage(event, BuildId);
 
@@ -152,16 +171,16 @@ export default async function routingHandler(
       globalThis.openNextConfig.dangerous
         ?.middlewareHeadersOverrideNextConfigHeaders ?? false;
 
+    const middlewareHeaders: RoutingResponseHeaders =
+      middlewareEventOrResult.responseHeaders ?? {};
+
     if (middlewareHeadersPrioritized) {
-      headers = {
-        ...headers,
-        ...middlewareEventOrResult.responseHeaders,
-      };
-    } else {
-      headers = {
-        ...middlewareEventOrResult.responseHeaders,
-        ...headers,
-      };
+      // Both are keyed by lowercase name.
+      nextConfigHeaders = Object.fromEntries(
+        Object.entries(nextConfigHeaders).filter(
+          ([key]) => !Object.hasOwn(middlewareHeaders, key),
+        ),
+      );
     }
 
     let isExternalRewrite = middlewareEventOrResult.isExternalRewrite ?? false;
@@ -169,7 +188,7 @@ export default async function routingHandler(
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
-      const beforeRewrite = handleRewrites(
+      const beforeRewrite = handleBeforeFilesRewrites(
         eventOrResult,
         RoutesManifest.rewrites.beforeFiles,
       );
@@ -183,7 +202,11 @@ export default async function routingHandler(
         const assetResult =
           await assetResolver?.maybeGetAssetResult?.(eventOrResult);
         if (assetResult) {
-          applyMiddlewareHeaders(assetResult, headers);
+          applyResponseHeaders(
+            assetResult,
+            nextConfigHeaders,
+            middlewareHeaders,
+          );
           return assetResult;
         }
       }
@@ -231,6 +254,13 @@ export default async function routingHandler(
     const isRouteFoundBeforeAllRewrites =
       isStaticRoute || isDynamicRoute || isExternalRewrite;
 
+    // Resolve against the final internal pathname after every rewrite phase.
+    // These ordered matches are also the authoritative cache owner candidates.
+    let resolvedRoutes: ResolvedRoute[] = [
+      ...staticRouteMatcher(eventOrResult.rawPath),
+      ...dynamicRouteMatcher(eventOrResult.rawPath),
+    ];
+
     // If we still haven't found a route, we show the 404 page
     // We need to ensure that rewrites are applied before showing the 404 page
     if (
@@ -240,39 +270,45 @@ export default async function routingHandler(
         // We need to check again once all rewrites have been applied
         staticRouteMatcher(eventOrResult.rawPath).length > 0 ||
         dynamicRouteMatcher(eventOrResult.rawPath).length > 0
-      )
+      ) ||
+      // Next.js versions before 16.4.5 treat a param whose value is its placeholder (e.g. `[slug]`) as unresolved.
+      // Next.js receives both the rawPath and the URL pathname, which is normalized (e.g. dot segments).
+      (!isExternalRewrite &&
+        [eventOrResult.rawPath, new URL(eventOrResult.url).pathname].some(
+          hasRouteParamPlaceholder,
+        ))
     ) {
+      resolvedRoutes = [];
       eventOrResult = {
         ...eventOrResult,
         rawPath: "/404",
         url: constructNextUrl(eventOrResult.url, "/404"),
         headers: {
           ...eventOrResult.headers,
-          "x-middleware-response-cache-control":
-            "private, no-cache, no-store, max-age=0, must-revalidate",
+          "x-middleware-response-cache-control": NO_STORE_CACHE_CONTROL,
         },
       };
     }
 
     if (
       globalThis.openNextConfig.dangerous?.enableCacheInterception &&
+      !isExternalRewrite &&
       !isInternalResult(eventOrResult)
     ) {
       debug("Cache interception enabled");
-      eventOrResult = await cacheInterceptor(eventOrResult);
+      eventOrResult = await cacheInterceptor(eventOrResult, resolvedRoutes);
       if (isInternalResult(eventOrResult)) {
-        applyMiddlewareHeaders(eventOrResult, headers);
+        applyResponseHeaders(
+          eventOrResult,
+          nextConfigHeaders,
+          middlewareHeaders,
+        );
         return eventOrResult;
       }
     }
 
-    // We apply the headers from the middleware response last
-    applyMiddlewareHeaders(eventOrResult, headers);
-
-    const resolvedRoutes: ResolvedRoute[] = [
-      ...foundStaticRoute,
-      ...foundDynamicRoute,
-    ];
+    // We apply the response headers last
+    applyResponseHeaders(eventOrResult, nextConfigHeaders, middlewareHeaders);
 
     debug("resolvedRoutes", resolvedRoutes);
 

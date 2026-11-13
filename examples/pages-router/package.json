@@ -19,12 +19,13 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@opennextjs/aws": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "tailwindcss": "catalog:",
-    "postcss": "catalog:",
     "autoprefixer": "catalog:",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:"
   }
 }

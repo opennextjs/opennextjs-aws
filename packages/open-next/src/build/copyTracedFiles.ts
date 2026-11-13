@@ -243,6 +243,20 @@ File ${serverPath} does not exist
       path.join(dotNextDir, INSTRUMENTATION_TRACE_FILE),
       path.join(standaloneNextDir, INSTRUMENTATION_TRACE_FILE),
     );
+    // Next 16's standalone output no longer includes `server/instrumentation.js`
+    // in the standalone dir, but `computeCopyFilesForPage` asserts it exists
+    // there. Copy it from the build dir (mirroring the .nft.json copy above) so
+    // the assertion passes and the instrumentation file ships in the bundle.
+    const instrumentationServerFile = path.join("server", "instrumentation.js");
+    if (
+      existsSync(path.join(dotNextDir, instrumentationServerFile)) &&
+      !existsSync(path.join(standaloneNextDir, instrumentationServerFile))
+    ) {
+      copyFileAndMakeOwnerWritable(
+        path.join(dotNextDir, instrumentationServerFile),
+        path.join(standaloneNextDir, instrumentationServerFile),
+      );
+    }
     computeCopyFilesForPage("instrumentation");
     logger.debug("Adding instrumentation trace files");
   }
@@ -433,12 +447,12 @@ File ${serverPath} does not exist
 
   // Copy .next/static/css from standalone to output dir
   // needed for optimizeCss feature to work
-  if (config.experimental.optimizeCss) {
-    cpSync(
-      path.join(standaloneNextDir, "static", "css"),
-      path.join(outputNextDir, "static", "css"),
-      { recursive: true },
-    );
+  // The directory is not emitted when all the css is inlined
+  const standaloneCssDir = path.join(standaloneNextDir, "static", "css");
+  if (config.experimental.optimizeCss && existsSync(standaloneCssDir)) {
+    cpSync(standaloneCssDir, path.join(outputNextDir, "static", "css"), {
+      recursive: true,
+    });
   }
 
   logger.debug("copyTracedFiles:", Date.now() - tsStart, "ms");

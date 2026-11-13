@@ -1,5 +1,8 @@
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { rule } from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
+import {
+  patchBackgroundRevalidation,
+  rule,
+} from "@opennextjs/aws/build/patch/patches/patchBackgroundRevalidation.js";
 import { describe, it } from "vitest";
 
 const codeToPatch = `if (cachedResponse && !isOnDemandRevalidate) {
@@ -18,6 +21,22 @@ const codeToPatch = `if (cachedResponse && !isOnDemandRevalidate) {
                         return null;
                     }
                 }`;
+
+// Next 16 renamed the local from `cachedResponse` to
+// `previousIncrementalCacheEntry` and added the `isStale !== -1` guard.
+const codeToPatchNext16 = `if (previousIncrementalCacheEntry && !context.isOnDemandRevalidate && previousIncrementalCacheEntry.isStale !== -1) {
+                    resolve(previousIncrementalCacheEntry);
+                    resolved = true;
+                    if (!previousIncrementalCacheEntry.isStale || context.isPrefetch) {
+                        // The cached value is still valid, so we don't need to update it yet.
+                        return previousIncrementalCacheEntry;
+                    }
+                }`;
+
+// Minified copy of the Next 16 code, as found in
+// `next/dist/compiled/next-server/*.runtime.prod.js`.
+const codeToPatchMinified =
+  "if((a=await r.incrementalCache.get(e,{isFallback:r.isFallback}))&&!r.isOnDemandRevalidate&&-1!==a.isStale&&(n(a),i=!0,!a.isStale||r.isPrefetch))return a;let s=await this.revalidate(e,r.incrementalCache,t,a,i);";
 
 describe("patchBackgroundRevalidation", () => {
   it("Should patch code", () => {
@@ -39,5 +58,71 @@ describe("patchBackgroundRevalidation", () => {
                         return null;
                     }
                 }"`);
+  });
+
+  it("Should patch code on Next 16", () => {
+    expect(
+      patchCode(codeToPatchNext16, rule),
+    ).toMatchInlineSnapshot(`"if (previousIncrementalCacheEntry && !context.isOnDemandRevalidate && previousIncrementalCacheEntry.isStale !== -1) {
+                    resolve(previousIncrementalCacheEntry);
+                    resolved = true;
+                    if (true) {
+                        // The cached value is still valid, so we don't need to update it yet.
+                        return previousIncrementalCacheEntry;
+                    }
+                }"`);
+  });
+
+  it("Should not match the outer `isStale !== -1` guard", () => {
+    // The guard must survive: it is what makes Next fall through to a blocking
+    // revalidation for entries that are past their `expire`.
+    expect(patchCode(codeToPatchNext16, rule)).toContain(
+      "previousIncrementalCacheEntry.isStale !== -1",
+    );
+  });
+
+  it("Should patch the minified code of the compiled runtimes", () => {
+    expect(patchCode(codeToPatchMinified, rule)).toMatchInlineSnapshot(
+      `"if((a=await r.incrementalCache.get(e,{isFallback:r.isFallback}))&&!r.isOnDemandRevalidate&&-1!==a.isStale&&(n(a),i=!0,true))return a;let s=await this.revalidate(e,r.incrementalCache,t,a,i);"`,
+    );
+  });
+
+  it("Should accept dollar signs in minified context identifiers", () => {
+    const code = codeToPatchMinified.replaceAll("r.", "$.");
+    const patch = patchBackgroundRevalidation.patches[0];
+    expect(code).toMatch(patch.contentFilter!);
+    expect(patchCode(code, rule)).not.toContain("!a.isStale||$.isPrefetch");
+  });
+
+  it.each([
+    // Not the stale check
+    "if(a&&!r.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale&&r.isPrefetch))return a;",
+    "if(a&&!r.isOnDemandRevalidate&&(n(a),i=!0,a.isStale||r.isPrefetch))return a;",
+    "if(a&&!r.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale||r.isPrefetch||r.isFallback))return a;",
+    // Not guarded by the on-demand revalidation check
+    "if(a&&(n(a),i=!0,!a.isStale||r.isPrefetch))return a;",
+    // Guarded by an unrelated context object
+    "if(a&&!other.isOnDemandRevalidate&&(n(a),i=!0,!a.isStale||r.isPrefetch))return a;",
+    "let t=!a.isStale||r.isPrefetch;if(!r.isOnDemandRevalidate)return t;",
+  ])("Should not patch unrelated code: %s", (code) => {
+    expect(patchCode(code, rule)).toBe(code);
+  });
+
+  it("Should only apply to the response cache and the compiled runtimes", () => {
+    const { pathFilter } = patchBackgroundRevalidation.patches[0];
+    expect(
+      "next/dist/server/response-cache/index.js".match(pathFilter),
+    ).toBeTruthy();
+    expect(
+      "next/dist/compiled/next-server/app-page.runtime.prod.js".match(
+        pathFilter,
+      ),
+    ).toBeTruthy();
+    expect(
+      "next/dist/compiled/next-server/app-page-turbo.runtime.prod.js".match(
+        pathFilter,
+      ),
+    ).toBeTruthy();
+    expect("next/dist/server/next-server.js".match(pathFilter)).toBeFalsy();
   });
 });

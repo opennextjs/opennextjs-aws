@@ -1,16 +1,39 @@
+import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname; //new URL(request.url).pathname;
 
   const host = request.headers.get("host");
   const protocol = host?.startsWith("localhost") ? "http" : "https";
   if (path === "/redirect") {
     const u = new URL("/redirect-destination", `${protocol}://${host}`);
-    return NextResponse.redirect(u, {
-      headers: { "set-cookie": "test=success" },
+    // Next folds the cookies set through `cookies()` into a single comma-joined
+    // `set-cookie` header, they have to be split back.
+    // For: middleware.cookies.test.ts
+    const cookieStore = await cookies();
+    cookieStore.set("test", "success");
+    // `Expires` contains a comma, it must not be mistaken for a cookie separator.
+    cookieStore.set("test2", "success2", {
+      expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
+    return NextResponse.redirect(u);
+  }
+  // `response.cookies` also copies the cookies in the internal `x-middleware-set-cookie` header
+  // which must not be exposed to the client.
+  // Note: `cookies()` must not be used here as Next would then override the `set-cookie` header.
+  // For: middleware.cookies.test.ts
+  if (path === "/redirect-http-only-cookie") {
+    const u = new URL("/redirect-destination", `${protocol}://${host}`);
+    const response = NextResponse.redirect(u);
+    response.cookies.set("http-only", "secret", { httpOnly: true });
+    return response;
+  }
+  if (path === "/api/middleware-http-only-cookie") {
+    const response = NextResponse.json({ hello: "middleware" });
+    response.cookies.set("http-only", "secret", { httpOnly: true });
+    return response;
   }
   if (path === "/rewrite") {
     const u = new URL("/rewrite-destination", `${protocol}://${host}`);
@@ -23,6 +46,11 @@ export default function proxy(request: NextRequest) {
         "content-type": "application/json",
       },
     });
+  }
+  // An exact pathname check must not be bypassed with a trailing slash.
+  // For: trailing.test.ts
+  if (path === "/api/protected") {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (path === "/rewrite-external") {
     const u = new URL("https://opennext.js.org/share.png");
@@ -46,6 +74,14 @@ export default function proxy(request: NextRequest) {
     "search-params",
     `mw/${request.nextUrl.searchParams.get("searchParams") || ""}`,
   );
+  // Next reads the script nonce from the request's `content-security-policy` header.
+  // For: headers.test.ts
+  if (path === "/headers/nonce") {
+    requestHeaders.set(
+      "content-security-policy",
+      `script-src 'nonce-${btoa(crypto.randomUUID())}' 'strict-dynamic'`,
+    );
+  }
   const responseHeaders = new Headers();
   // Response headers should show up in the client's response headers
   responseHeaders.set("response-header", "response-header");
@@ -66,10 +102,13 @@ export default function proxy(request: NextRequest) {
   }
 
   // It is so that cloudfront doesn't cache the response
+  // For /albums: segmentPrefetch.test.ts sends the same URL with different
+  // `next-router-segment-prefetch` headers and no `_rsc` cache buster.
   if (
     path.startsWith("/revalidate-tag") ||
     path.startsWith("/revalidate-path") ||
-    path.startsWith("/api/after/ssg")
+    path.startsWith("/api/after/ssg") ||
+    path === "/albums"
   ) {
     responseHeaders.set(
       "cache-control",

@@ -10,6 +10,9 @@ on:
     paths:
       - packages/open-next/**
 
+permissions:
+  contents: read
+
 jobs:
   release:
     name: Pre-release

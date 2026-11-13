@@ -41,21 +41,29 @@ export async function optimizeImage(
    *
    * https://github.com/vercel/next.js/blob/bfe2ab4/packages/next/src/server/image-optimizer.ts#L711
    */
+  // Next 16 rejects upstream hosts resolving to private IPs unless the user
+  // opts out with `images.dangerouslyAllowLocalIP` — forward their setting
+  // instead of always disabling the opt-out.
+  const dangerouslyAllowLocalIP = Boolean(
+    nextConfig.images?.dangerouslyAllowLocalIP,
+  );
+
   const callFetchExternalImage = () => {
     const version = globalThis.nextVersion;
 
-    // v16.1.5+
     if (compareSemver(version, ">=", "16.1.5")) {
-      return fetchExternalImage(href, false, maximumResponseBody);
+      return fetchExternalImage(
+        href,
+        dangerouslyAllowLocalIP,
+        maximumResponseBody,
+      );
     }
 
-    // v16.0.0–v16.1.4
     if (compareSemver(version, ">=", "16")) {
       // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
-      return fetchExternalImage(href, false);
+      return fetchExternalImage(href, dangerouslyAllowLocalIP);
     }
 
-    // v15.5.10–v15.x
     if (compareSemver(version, ">=", "15.5.10")) {
       // @ts-expect-error - fetchExternalImage signature varies across Next.js versions
       return fetchExternalImage(href, maximumResponseBody);

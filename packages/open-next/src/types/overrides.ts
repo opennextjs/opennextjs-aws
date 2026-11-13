@@ -26,7 +26,25 @@ export interface QueueMessage {
   MessageGroupId: string;
 }
 
+/**
+ * Triggers the revalidation of stale routes.
+ */
 export interface Queue {
+  /**
+   * Sends the revalidation request of a stale route.
+   *
+   * When the route is rendered by the Next server, it is called once the response is sent (in
+   * `waitUntil` when the wrapper provides one).
+   * With cache interception, it is awaited before the `STALE` response is returned.
+   *
+   * The returned promise should resolve once the message is accepted (or handed to `waitUntil`),
+   * not once the route is revalidated, so that the response is not delayed.
+   *
+   * @param message The route to revalidate.
+   * @returns A promise that resolves once the message is accepted.
+   * @throws When the message can not be sent. The error is logged, and with cache interception the
+   *   request falls back to the Next server.
+   */
   send(message: QueueMessage): Promise<void>;
   name: string;
 }
@@ -58,14 +76,36 @@ export type CachedFile =
     }
   | {
       type: "page";
-      html: string;
+      /** Absent when the build did not collect an `.html` file for this entry. */
+      html?: string;
       json: Object;
       meta?: Meta;
     }
   | {
       type: "app";
-      html: string;
-      rsc: string;
+      /**
+       * The prerendered HTML.
+       *
+       * Absent when the build did not collect an `.html` file for this entry. Note that
+       * Next.js writes the `.html` unconditionally when it prerenders an app page, so this
+       * is only expected to be absent for a malformed build output. A PPR route with an
+       * empty static shell is *not* one of those cases: the file is written, empty.
+       */
+      html?: string;
+      /**
+       * The RSC payload.
+       *
+       * Both `<page>.rsc` and `<page>.prefetch.rsc` are stored here, see `createAssets`.
+       *
+       * Absent when the build emitted neither file, which depends on the Next.js version:
+       * - `15.x`: only for fallback shells. A PPR route emits a `.prefetch.rsc` in place of
+       *   its `.rsc`, so the field is set but holds the *prefetch* payload, which this type
+       *   can not distinguish from a full one.
+       * - `>= 16.2`: `.prefetch.rsc` no longer exists and a PPR route only emits a `.rsc`
+       *   when it is fully static, so the field is absent for postponed PPR routes and for
+       *   fallback shells, and holds a full payload otherwise.
+       */
+      rsc?: string;
       meta?: Meta;
       segmentData?: Record<string, string>;
     }
@@ -113,6 +153,11 @@ export type CacheValue<CacheType extends CacheEntryType> =
      * This is available for page cache entry, but only at runtime.
      */
     revalidate?: number | false;
+    /**
+     * This is available for page cache entry, but only at runtime.
+     * The cache interceptor does not use it.
+     */
+    expire?: number;
   };
 
 export type IncrementalCache = {
@@ -315,12 +360,54 @@ export type ProxyExternalRequest = BaseOverride & {
   proxy: (event: InternalEvent) => Promise<InternalResult>;
 };
 
+/**
+ * Describes a path whose CDN entries must be invalidated.
+ *
+ * Includes the path before and after routing as well as the routes that matched
+ * while resolving the request.
+ */
 type CDNPath = {
+  /** The original request pathname before route resolution. */
   initialPath: string;
+  /** The effective request pathname after route resolution. */
   rawPath: string;
+  /** The routes that matched while resolving the request. */
   resolvedRoutes: ResolvedRoute[];
 };
 
+/**
+ * Invalidates CDN entries after on-demand revalidation.
+ *
+ * Implementations must support path invalidation and may additionally support
+ * native cache-tag invalidation.
+ */
 export type CDNInvalidationHandler = BaseOverride & {
+  /**
+   * Invalidates CDN entries associated with resolved paths.
+   *
+   * @param paths Paths and routing metadata for the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
   invalidatePaths: (paths: CDNPath[]) => Promise<void>;
+  /**
+   * Invalidates CDN entries associated with cache tags.
+   *
+   * Called once per `revalidateTag` call, after the tag cache has been updated,
+   * with the tags passed to Next.js as is: hard tags from `revalidateTag()` and
+   * soft tags (prefixed with `_N_T_/`) from `revalidatePath()`. Tags are not
+   * expanded, i.e. the hard tags of the paths matching a soft tag are not added.
+   *
+   * When provided, `invalidatePaths` is no longer called for tag revalidation.
+   * It is still used for `res.revalidate()` in the Pages Router.
+   * When omitted, OpenNext resolves the tags to paths and calls `invalidatePaths`.
+   *
+   * The CDN integration must associate cached entries with the same tags, both
+   * hard and soft, for invalidation to have an effect. For response-based CDN
+   * caches, the wrapper or converter must propagate the request's cache tags to
+   * the provider's response metadata.
+   *
+   * @param tags Cache tags associated with the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
+  invalidateTags?: (tags: string[]) => Promise<void>;
 };
