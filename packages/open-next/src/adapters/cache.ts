@@ -343,6 +343,24 @@ export default class Cache {
           },
         } as CacheHandlerValue;
       }
+      if (cacheData?.type === "notFound") {
+        // A stale not found is reported as a miss, so that Next.js re-runs `getStaticProps`
+        // before responding. Served stale, the 404 page would replace the `STALE` cache status
+        // with its own and the revalidation would never be triggered. This is the staleness
+        // check of Next.js, against the same `lastModified` and lifetime it is given.
+        if (
+          typeof _cacheControl?.revalidate === "number" &&
+          _lastModified + _cacheControl.revalidate * 1000 < Date.now()
+        ) {
+          return null;
+        }
+        // Next.js serves an entry with a `null` value as a cached not found.
+        return {
+          lastModified: _lastModified,
+          cacheControl: _cacheControl,
+          value: null,
+        };
+      }
       warn("Unknown cache type", cacheData);
       return null;
     } catch (e) {
@@ -380,10 +398,16 @@ export default class Cache {
     ctx?: IncrementalCacheContext,
   ): Promise<void> {
     try {
+      const cacheControl = this.extractCacheControlForSet(ctx);
       if (data === null || data === undefined) {
-        await globalThis.incrementalCache.delete(key);
+        // Next.js sets a `null` value for a page whose `getStaticProps` returned
+        // `notFound: true`, and keeps it as a cached not found.
+        await globalThis.incrementalCache.set(
+          key,
+          { type: "notFound", ...cacheControl },
+          "cache",
+        );
       } else {
-        const cacheControl = this.extractCacheControlForSet(ctx);
         switch (data.kind) {
           case "ROUTE":
           case "APP_ROUTE": {
