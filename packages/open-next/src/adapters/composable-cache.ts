@@ -40,6 +40,8 @@ export default {
    * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
    * see `getComposableCacheStorageKey`.
    *
+   * When the tag cache is checked, the result is reported to `incrementalCache.getTagCacheResult`.
+   *
    * @param cacheKey The cache key provided by Next.js
    * @returns The cache entry, or `undefined` on a miss or when the entry has been revalidated.
    * Errors are caught and reported as a miss.
@@ -70,61 +72,46 @@ export default {
       debug("composable cache result", result);
 
       let revalidate = result.value.revalidate;
+      // Whether the tags associated with this entry have been revalidated.
+      // `undefined` when the tag cache is not checked.
+      let hasBeenRevalidated: boolean | undefined;
       if (
         globalThis.tagCache.mode === "nextMode" &&
         result.value.tags.length > 0
       ) {
-        // We need to check if the tags associated with this entry has been revalidated
-        const _hasBeenRevalidated = result.shouldBypassTagCache
+        hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : await globalThis.tagCache.hasBeenRevalidated(
               result.value.tags,
               result.lastModified,
             );
-
-        // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = _hasBeenRevalidated
-          ? false
-          : result.shouldBypassTagCache
-            ? false
-            : await isStale(storageKey, result.value.tags, result.lastModified);
-
-        await globalThis.incrementalCache.getTagCacheResult?.({
-          key: storageKey,
-          hasBeenRevalidated: _hasBeenRevalidated,
-          isStaleFromTag: isCacheStale,
-        });
-
-        if (_hasBeenRevalidated) return undefined;
-        if (isCacheStale) {
-          revalidate = -1;
-        }
       } else if (
         globalThis.tagCache.mode === "original" ||
         globalThis.tagCache.mode === undefined
       ) {
-        const _hasBeenRevalidated = result.shouldBypassTagCache
+        hasBeenRevalidated = result.shouldBypassTagCache
           ? false
           : (await globalThis.tagCache.getLastModified(
               storageKey,
               result.lastModified,
             )) === -1;
+      }
 
+      if (hasBeenRevalidated !== undefined) {
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = _hasBeenRevalidated
-          ? false
-          : result.shouldBypassTagCache
+        const isStaleFromTag =
+          hasBeenRevalidated || result.shouldBypassTagCache
             ? false
             : await isStale(storageKey, result.value.tags, result.lastModified);
 
         await globalThis.incrementalCache.getTagCacheResult?.({
           key: storageKey,
-          hasBeenRevalidated: _hasBeenRevalidated,
-          isStaleFromTag: isCacheStale,
+          hasBeenRevalidated,
+          isStaleFromTag,
         });
 
-        if (_hasBeenRevalidated) return undefined;
-        if (isCacheStale) {
+        if (hasBeenRevalidated) return undefined;
+        if (isStaleFromTag) {
           revalidate = -1;
         }
       }
