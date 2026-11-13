@@ -292,6 +292,30 @@ describe("CacheHandler", () => {
           });
         });
 
+        it("Should call getTagCacheResult with hasBeenRevalidated: true when the soft tag path has been revalidated", async () => {
+          // The entry key is not revalidated...
+          tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+          // ...but the path from the soft tags is
+          tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+          const result = await cache.get("key", {
+            kind: "FETCH",
+            softTags: [`${SOFT_TAG_PREFIX}path`],
+          });
+
+          expect(result).toBeNull();
+          expect(tagCache.getLastModified).toHaveBeenLastCalledWith(
+            "path",
+            expect.any(Number),
+          );
+          expect(incrementalCache.getTagCacheResult).toHaveBeenCalledOnce();
+          expect(incrementalCache.getTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+          });
+        });
+
         it("Should call getTagCacheResult with isStaleFromTag: true when fetch cache tag is stale (next16)", async () => {
           globalThis.nextVersion = "16.0.0";
           tagCache.mode = "nextMode";

@@ -199,6 +199,11 @@ export default class Cache {
               );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
+            await globalThis.incrementalCache.getTagCacheResult?.({
+              key,
+              hasBeenRevalidated: true,
+              isStaleFromTag: false,
+            });
             return null;
           }
         }
