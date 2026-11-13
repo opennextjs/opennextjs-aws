@@ -173,9 +173,15 @@ export type IncrementalCache = {
   delete(key: string): Promise<void>;
   name: string;
   /**
-   * Optional observer hook called after the tag cache has been consulted.
-   * Receives the combined tag-cache verdict for the given cache key.
+   * Optional observer hook reporting the tag cache verdict for an entry.
+   *
+   * It is called for every entry returned by `get`, after the tag cache has been consulted
+   * (both flags are `false` when the tag cache is bypassed). It is not called on a miss.
+   * `key` is the key that was passed to `get`.
    * `isStaleFromTime` is only provided by the cache interceptor.
+   *
+   * The hook is awaited on the request path: long running work should be deferred
+   * (i.e. with `waitUntil`) and errors are treated as a cache miss.
    */
   getTagCacheResult?: (params: {
     key: string;
