@@ -157,9 +157,8 @@ async function computeCacheControl(
           eTag: etag,
           lastModified: lastModified ?? Date.now(),
         },
-        MessageDeduplicationId: hash(
-          `${revalidationKey}-${lastModified}-${etag}`,
-        ),
+        // The body differs per request type and per segment, so it must not be part of the id.
+        MessageDeduplicationId: hash(`${revalidationKey}-${lastModified}`),
         MessageGroupId: generateMessageGroupId(revalidationKey),
       });
     }
