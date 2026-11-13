@@ -2,6 +2,7 @@ import fs from "node:fs";
 import {
   compareSemver,
   findNextConfig,
+  findTracingRoot,
   getBundlerRuntime,
   isNextVersionSupported,
 } from "@opennextjs/aws/build/helper.js";
@@ -210,6 +211,40 @@ describe("findNextConfig", () => {
       path: "/test/app/next.config.ts",
       isTypescript: true,
     });
+  });
+});
+
+describe("findTracingRoot", () => {
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReset();
+    vi.mocked(fs.realpathSync).mockReset();
+  });
+
+  test("keeps the lockfile root when node_modules is inside it", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/repo/node_modules/next",
+    );
+    vi.mocked(fs.realpathSync).mockImplementation((p) => p as string);
+
+    expect(findTracingRoot("/repo/apps/web", "/repo")).toBe("/repo");
+  });
+
+  test("widens the root to a node_modules symlinked from another checkout", () => {
+    const app = "/repo/.worktrees/child";
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === `${app}/node_modules/next`,
+    );
+    vi.mocked(fs.realpathSync).mockImplementation((p) =>
+      p === `${app}/node_modules` ? "/repo/node_modules" : (p as string),
+    );
+
+    expect(findTracingRoot(app, app)).toBe("/repo");
+  });
+
+  test("keeps the root when next is not installed", () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    expect(findTracingRoot("/repo/app", "/repo")).toBe("/repo");
   });
 });
 
