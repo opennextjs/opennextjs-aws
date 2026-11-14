@@ -16,6 +16,9 @@ const compatibilityMatrix: Record<IncludedWrapper, IncludedConverter[]> = {
     "sqs-revalidate",
   ],
   "aws-lambda-compressed": ["aws-apigw-v2"],
+  // The `aws-apigw-v2` converter reads the payload format 2.0 event, which is also what
+  // Lambda function URLs send. Streaming only works through a function URL (RESPONSE_STREAM),
+  // not through an API Gateway HTTP API (v2).
   "aws-lambda-streaming": ["aws-apigw-v2"],
   "aws-apigw-streaming": ["aws-apigw-v1", "aws-apigw-v2"],
   cloudflare: ["edge"],
@@ -52,6 +55,11 @@ function validateFunctionOptions(fnOptions: FunctionOptions) {
   if (converter === "aws-cloudfront" && fnOptions.placement !== "global") {
     logger.warn(
       "You've specified aws-cloudfront converter without global placement. This may not generate the correct output",
+    );
+  }
+  if (wrapper === "aws-lambda-streaming" && converter === "aws-apigw-v2") {
+    logger.warn(
+      "The aws-lambda-streaming wrapper only supports response streaming through a Lambda function URL (invoke mode RESPONSE_STREAM). It does not work behind an API Gateway HTTP API (v2), which returns a 500 error. To stream through API Gateway, use a REST API (v1) with the aws-apigw-streaming wrapper.",
     );
   }
   const isCustomWrapper = typeof fnOptions.override?.wrapper === "function";
