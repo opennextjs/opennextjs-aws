@@ -154,6 +154,7 @@ export interface RedirectDefinition extends RewriteDefinition {
 
 export interface RoutesManifest {
   basePath?: string;
+  caseSensitive?: boolean;
   dynamicRoutes: RouteDefinition[];
   staticRoutes: RouteDefinition[];
   dataRoutes: DataRouteDefinition[];

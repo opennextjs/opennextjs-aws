@@ -1,4 +1,7 @@
-import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
+import {
+  NextConfig,
+  RoutesManifest,
+} from "@opennextjs/aws/adapters/config/index.js";
 import {
   fixDataPage,
   getCompiledRegExp,
@@ -832,6 +835,86 @@ describe("handleRedirects", () => {
 
     expect(result.statusCode).toEqual(308);
     expect(result.headers.Location).toEqual("https://on/?ref=promo");
+  });
+});
+
+describe("case-insensitive route matching", () => {
+  afterEach(() => {
+    RoutesManifest.caseSensitive = false;
+  });
+
+  const redirects = [
+    {
+      source: "/mypartner",
+      destination: "/learn/partners/mypartner",
+      regex: "^/mypartner(?:/)?$",
+      statusCode: 308,
+    },
+  ];
+
+  it("should match redirects regardless of casing by default", () => {
+    const event = createEvent({ url: "https://on/MyPartner" });
+
+    const result = handleRedirects(event, redirects);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual(
+      "https://on/learn/partners/mypartner",
+    );
+  });
+
+  it("should not match redirects with different casing when case sensitive", () => {
+    RoutesManifest.caseSensitive = true;
+    const event = createEvent({ url: "https://on/MyPartner" });
+
+    const result = handleRedirects(event, redirects);
+
+    expect(result).toBeUndefined();
+  });
+
+  it("should match rewrites regardless of casing by default", () => {
+    const event = createEvent({ url: "https://on/MyPartner" });
+    const rewrites = [
+      {
+        source: "/mypartner",
+        destination: "/learn/partners/mypartner",
+        regex: "^/mypartner(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.rawPath).toEqual("/learn/partners/mypartner");
+  });
+
+  it("should not match rewrites with different casing when case sensitive", () => {
+    RoutesManifest.caseSensitive = true;
+    const event = createEvent({ url: "https://on/MyPartner" });
+    const rewrites = [
+      {
+        source: "/mypartner",
+        destination: "/learn/partners/mypartner",
+        regex: "^/mypartner(?:/)?$",
+      },
+    ];
+
+    const result = handleRewrites(event, rewrites);
+
+    expect(result.internalEvent.rawPath).toEqual("/MyPartner");
+  });
+
+  it("should match config headers regardless of casing by default", () => {
+    const event = createEvent({ url: "https://on/MyPartner" });
+
+    const result = getNextConfigHeaders(event, [
+      {
+        source: "/mypartner",
+        regex: "^/mypartner(?:/)?$",
+        headers: [{ key: "foo", value: "bar" }],
+      },
+    ]);
+
+    expect(result).toEqual({ foo: "bar" });
   });
 });
 
