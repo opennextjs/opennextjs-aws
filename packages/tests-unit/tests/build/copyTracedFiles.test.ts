@@ -88,6 +88,39 @@ describe("copyTracedFiles", () => {
 
     expect(existsSync(path.join(outputDir, ".next/static/css"))).toBe(false);
   });
+
+  it("should warn without throwing when a traced file cannot be copied", async () => {
+    const dotNextDir = path.join(buildOutputPath, ".next");
+    mkdirSync(path.join(dotNextDir, "server/app"), { recursive: true });
+    mkdirSync(path.join(standaloneNextDir, "server/app"), { recursive: true });
+    writeFileSync(path.join(standaloneNextDir, "server/app/page.js"), "");
+    writeFileSync(
+      path.join(dotNextDir, "server/app/page.js.nft.json"),
+      JSON.stringify({ files: ["page.js", "missing.js"] }),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    try {
+      const result = await copyTracedFiles({
+        buildOutputPath,
+        packagePath: "",
+        outputDir,
+        routes: ["app/page"],
+        bundledNextServer: false,
+        skipServerFiles: true,
+      });
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[1])).toContain(
+        "1 traced file(s) could not be copied",
+      );
+      expect(result.tracedFiles.some((f) => f.endsWith("missing.js"))).toBe(
+        false,
+      );
+    } finally {
+      warn.mockRestore();
+    }
+  });
 });
 
 describe("isExcluded", () => {
