@@ -267,6 +267,20 @@ File ${serverPath} does not exist
       path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
       path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
     );
+    // Next 16 emits `server/middleware.js` (a stub when the app has no
+    // middleware) in the build dir but not in the standalone dir, while
+    // `computeCopyFilesForPage` asserts it exists there. Copy it over, like
+    // for instrumentation above.
+    const middlewareServerFile = path.join("server", "middleware.js");
+    if (
+      existsSync(path.join(dotNextDir, middlewareServerFile)) &&
+      !existsSync(path.join(standaloneNextDir, middlewareServerFile))
+    ) {
+      copyFileAndMakeOwnerWritable(
+        path.join(dotNextDir, middlewareServerFile),
+        path.join(standaloneNextDir, middlewareServerFile),
+      );
+    }
     computeCopyFilesForPage("middleware");
     logger.debug("Adding node middleware trace files");
   }

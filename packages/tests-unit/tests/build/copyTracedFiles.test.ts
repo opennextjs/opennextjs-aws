@@ -88,6 +88,25 @@ describe("copyTracedFiles", () => {
 
     expect(existsSync(path.join(outputDir, ".next/static/css"))).toBe(false);
   });
+
+  it("should not throw when server/middleware.js is only in the build dir", async () => {
+    const buildServerDir = path.join(buildOutputPath, ".next/server");
+    mkdirSync(buildServerDir, { recursive: true });
+    writeFileSync(path.join(buildServerDir, "middleware.js"), "// stub");
+    writeFileSync(
+      path.join(buildServerDir, "middleware.js.nft.json"),
+      JSON.stringify({ version: 1, files: [] }),
+    );
+
+    await expect(copy()).resolves.toBeDefined();
+
+    expect(
+      readFileSync(
+        path.join(standaloneNextDir, "server/middleware.js"),
+        "utf8",
+      ),
+    ).toBe("// stub");
+  });
 });
 
 describe("isExcluded", () => {
