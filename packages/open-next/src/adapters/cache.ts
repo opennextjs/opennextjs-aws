@@ -171,7 +171,7 @@ export default class Cache {
         : await hasBeenRevalidated(key, _tags, cachedEntry);
 
       if (_hasBeenRevalidated) {
-        await globalThis.incrementalCache.getTagCacheResult?.({
+        await globalThis.incrementalCache.onTagCacheResult?.({
           key,
           hasBeenRevalidated: true,
           isStaleFromTag: false,
@@ -199,7 +199,7 @@ export default class Cache {
               );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
-            await globalThis.incrementalCache.getTagCacheResult?.({
+            await globalThis.incrementalCache.onTagCacheResult?.({
               key,
               hasBeenRevalidated: true,
               isStaleFromTag: false,
@@ -213,7 +213,7 @@ export default class Cache {
         ? false
         : await isStale(key, _tags, _lastModified);
 
-      await globalThis.incrementalCache.getTagCacheResult?.({
+      await globalThis.incrementalCache.onTagCacheResult?.({
         key,
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,
@@ -247,7 +247,7 @@ export default class Cache {
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
       if (_hasBeenRevalidated) {
-        await globalThis.incrementalCache.getTagCacheResult?.({
+        await globalThis.incrementalCache.onTagCacheResult?.({
           key,
           hasBeenRevalidated: true,
           isStaleFromTag: false,
@@ -259,7 +259,7 @@ export default class Cache {
         ? false
         : await isStale(key, tags, _lastModified);
 
-      await globalThis.incrementalCache.getTagCacheResult?.({
+      await globalThis.incrementalCache.onTagCacheResult?.({
         key,
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,

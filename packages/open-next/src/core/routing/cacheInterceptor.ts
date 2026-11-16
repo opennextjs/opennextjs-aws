@@ -545,7 +545,7 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
-          await globalThis.incrementalCache.getTagCacheResult?.({
+          await globalThis.incrementalCache.onTagCacheResult?.({
             key: cacheKey,
             hasBeenRevalidated: true,
             isStaleFromTag: false,
@@ -560,7 +560,7 @@ export async function cacheInterceptor(
         ? false
         : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
 
-      await globalThis.incrementalCache.getTagCacheResult?.({
+      await globalThis.incrementalCache.onTagCacheResult?.({
         key: cacheKey,
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,

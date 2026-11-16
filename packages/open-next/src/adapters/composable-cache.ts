@@ -40,7 +40,7 @@ export default {
    * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
    * see `getComposableCacheStorageKey`.
    *
-   * The tag cache verdict is reported to `incrementalCache.getTagCacheResult` for every entry read
+   * The tag cache verdict is reported to `incrementalCache.onTagCacheResult` for every entry read
    * from the incremental cache.
    *
    * @param cacheKey The cache key provided by Next.js
@@ -96,7 +96,7 @@ export default {
           (await isStale(storageKey, result.value.tags, result.lastModified));
       }
 
-      await globalThis.incrementalCache.getTagCacheResult?.({
+      await globalThis.incrementalCache.onTagCacheResult?.({
         key: storageKey,
         hasBeenRevalidated,
         isStaleFromTag,

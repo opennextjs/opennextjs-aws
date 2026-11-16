@@ -173,17 +173,21 @@ export type IncrementalCache = {
   delete(key: string): Promise<void>;
   name: string;
   /**
-   * Optional observer hook reporting the tag cache verdict for an entry.
+   * Optional hook notified of the tag cache verdict for an entry.
    *
-   * It is called for every entry returned by `get`, after the tag cache has been consulted
-   * (both flags are `false` when the tag cache is bypassed). It is not called on a miss.
-   * `key` is the key that was passed to `get`.
-   * `isStaleFromTime` is only provided by the cache interceptor.
+   * It is called for every entry returned by `get`, once OpenNext has decided whether the entry
+   * can be used. It is not called on a miss.
+   *
+   * - `key` is the key that was passed to `get`.
+   * - `hasBeenRevalidated` and `isStaleFromTag` are `false` when the tag cache is not checked
+   *   (i.e. `shouldBypassTagCache`, disabled tag cache, or entries that are not checked against it).
+   * - `isStaleFromTime` is only provided by the cache interceptor.
    *
    * The hook is awaited on the request path: long running work should be deferred
-   * (i.e. with `waitUntil`) and errors are treated as a cache miss.
+   * (i.e. with `waitUntil`). An error thrown by the hook makes the entry unusable for the request
+   * (treated as a miss).
    */
-  getTagCacheResult?: (params: {
+  onTagCacheResult?: (params: {
     key: string;
     hasBeenRevalidated: boolean;
     isStaleFromTag: boolean;
