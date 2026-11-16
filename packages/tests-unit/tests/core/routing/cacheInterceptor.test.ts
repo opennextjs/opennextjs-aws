@@ -1623,12 +1623,12 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: "/albums",
-          isStaleFromTag: true,
-        }),
-      );
+      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+        key: "/albums",
+        hasBeenRevalidated: false,
+        isStaleFromTag: true,
+        isStaleFromTime: false,
+      });
     });
 
     it("should call onTagCacheResult with hasBeenRevalidated: true when app cache has been revalidated", async () => {
@@ -1643,13 +1643,13 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: "/albums",
-          hasBeenRevalidated: true,
-          isStaleFromTag: false,
-        }),
-      );
+      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+        key: "/albums",
+        hasBeenRevalidated: true,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
     });
 
     it("should use the prerender manifest revalidate for isStaleFromTime", async () => {

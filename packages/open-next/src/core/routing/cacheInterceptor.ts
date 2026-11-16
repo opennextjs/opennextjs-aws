@@ -61,20 +61,14 @@ function computeFinalRevalidate(
   path: string,
   revalidate?: number | false,
 ): number {
-  let finalRevalidate = CACHE_ONE_YEAR;
-  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
-    (p) => p[0] === path,
-  )?.[1];
-  if (revalidate === undefined && existingRoute) {
-    finalRevalidate =
-      existingRoute.initialRevalidateSeconds === false
-        ? CACHE_ONE_YEAR
-        : existingRoute.initialRevalidateSeconds;
-    // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (revalidate !== undefined) {
-    finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
-  }
-  return finalRevalidate;
+  const routes = PrerenderManifest?.routes ?? {};
+  const effectiveRevalidate =
+    revalidate === undefined && Object.hasOwn(routes, path)
+      ? routes[path].initialRevalidateSeconds
+      : revalidate;
+  return effectiveRevalidate === undefined || effectiveRevalidate === false
+    ? CACHE_ONE_YEAR
+    : effectiveRevalidate;
 }
 
 /**
@@ -93,11 +87,10 @@ function computeIsStaleFromTime(
   lastModified: number | undefined,
 ): boolean {
   const finalRevalidate = computeFinalRevalidate(path, revalidate);
-  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
-  if (isSSG) return false;
+  // SSG entries never expire, see `computeCacheControl`
+  if (finalRevalidate === CACHE_ONE_YEAR) return false;
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
-  const remainingTtl = Math.max(finalRevalidate - age, 1);
-  return remainingTtl === 1;
+  return finalRevalidate - age <= 1;
 }
 
 /*
