@@ -18,7 +18,12 @@ import { decodePathParams } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
-import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
+import {
+  getTagsFromValue,
+  hasBeenRevalidated,
+  isStale,
+  reportTagCacheResult,
+} from "utils/cache";
 import {
   CACHE_CONTROL_HEADER,
   CACHE_TAGS_HEADER,
@@ -545,7 +550,7 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
-          await globalThis.incrementalCache.onTagCacheResult?.({
+          await reportTagCacheResult({
             key: cacheKey,
             hasBeenRevalidated: true,
             isStaleFromTag: false,
@@ -560,7 +565,7 @@ export async function cacheInterceptor(
         ? false
         : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
 
-      await globalThis.incrementalCache.onTagCacheResult?.({
+      await reportTagCacheResult({
         key: cacheKey,
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,

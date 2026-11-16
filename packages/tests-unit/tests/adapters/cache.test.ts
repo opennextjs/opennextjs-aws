@@ -342,6 +342,17 @@ describe("CacheHandler", () => {
             isStaleFromTag: true,
           });
         });
+
+        it("Should return the entry when onTagCacheResult throws", async () => {
+          incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+            new Error("hook error"),
+          );
+
+          const result = await cache.get("key", { fetchCache: true });
+
+          expect(result).not.toBeNull();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+        });
       });
     });
 
@@ -887,6 +898,17 @@ describe("CacheHandler", () => {
           } finally {
             globalThis.incrementalCache = prevIncrementalCache;
           }
+        });
+
+        it("Should return the entry when onTagCacheResult throws", async () => {
+          incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+            new Error("hook error"),
+          );
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result).not.toBeNull();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
         });
       });
 

@@ -5,9 +5,10 @@ import type {
   CacheValue,
   NextModeTagCacheWriteInput,
   OriginalTagCacheWriteInput,
+  TagCacheResult,
   WithLastModified,
 } from "types/overrides";
-import { debug } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { CACHE_TAGS_HEADER } from "./cacheHeaders";
 import { compareSemver } from "./semver";
 
@@ -126,6 +127,24 @@ export async function hasBeenRevalidated(
     lastModified,
   );
   return _lastModified === -1;
+}
+
+/**
+ * Notifies the incremental cache of the tag cache verdict for an entry.
+ *
+ * Calls `incrementalCache.onTagCacheResult` when it is defined.
+ * Errors thrown by the hook are logged and ignored so that they do not affect how the entry is used.
+ *
+ * @param result The tag cache verdict for the entry
+ */
+export async function reportTagCacheResult(
+  result: TagCacheResult,
+): Promise<void> {
+  try {
+    await globalThis.incrementalCache.onTagCacheResult?.(result);
+  } catch (e) {
+    error("Failed to report the tag cache result", e);
+  }
 }
 
 export function getTagsFromValue(value?: CacheValue<"cache">) {

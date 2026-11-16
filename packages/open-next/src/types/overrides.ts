@@ -184,15 +184,20 @@ export type IncrementalCache = {
    * - `isStaleFromTime` is only provided by the cache interceptor.
    *
    * The hook is awaited on the request path: long running work should be deferred
-   * (i.e. with `waitUntil`). An error thrown by the hook makes the entry unusable for the request
-   * (treated as a miss).
+   * (i.e. with `waitUntil`). Errors thrown by the hook are logged and ignored, they do not
+   * change how the entry is used.
    */
-  onTagCacheResult?: (params: {
-    key: string;
-    hasBeenRevalidated: boolean;
-    isStaleFromTag: boolean;
-    isStaleFromTime?: boolean;
-  }) => Promise<void>;
+  onTagCacheResult?: (result: TagCacheResult) => Promise<void>;
+};
+
+/**
+ * The tag cache verdict for an entry, see `IncrementalCache.onTagCacheResult`.
+ */
+export type TagCacheResult = {
+  key: string;
+  hasBeenRevalidated: boolean;
+  isStaleFromTag: boolean;
+  isStaleFromTime?: boolean;
 };
 
 // Tag cache

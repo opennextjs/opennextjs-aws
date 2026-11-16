@@ -1,6 +1,11 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheValue, OriginalTagCache } from "types/overrides";
-import { getComposableCacheStorageKey, isStale, writeTags } from "utils/cache";
+import {
+  getComposableCacheStorageKey,
+  isStale,
+  reportTagCacheResult,
+  writeTags,
+} from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
@@ -96,7 +101,7 @@ export default {
           (await isStale(storageKey, result.value.tags, result.lastModified));
       }
 
-      await globalThis.incrementalCache.onTagCacheResult?.({
+      await reportTagCacheResult({
         key: storageKey,
         hasBeenRevalidated,
         isStaleFromTag,

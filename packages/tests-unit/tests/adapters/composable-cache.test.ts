@@ -430,6 +430,17 @@ describe("Composable cache handler", () => {
           incrementalCache.onTagCacheResult = onTagCacheResult;
         }
       });
+
+      it("should return the entry when onTagCacheResult throws", async () => {
+        incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+          new Error("hook error"),
+        );
+
+        const result = await ComposableCache.get("test-key");
+
+        expect(result).toBeDefined();
+        expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+      });
     });
 
     it("should return pending write promise if available", async () => {

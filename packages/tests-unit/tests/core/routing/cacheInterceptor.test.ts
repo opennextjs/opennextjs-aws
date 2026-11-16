@@ -1721,10 +1721,28 @@ describe("cacheInterceptor", () => {
 
         const result = await cacheInterceptor(event);
 
-        expect(result.type).toBe("core");
+        expect(result.headers["x-opennext-cache"]).toBe("HIT");
       } finally {
         incrementalCache.onTagCacheResult = onTagCacheResult;
       }
+    });
+
+    it("should serve the entry when onTagCacheResult throws", async () => {
+      incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+        new Error("hook error"),
+      );
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
     });
 
     it("should not call onTagCacheResult when request is bypassed by next-action header", async () => {
