@@ -220,6 +220,40 @@ describe("wrappers/node", () => {
     expect(responses[0].body).toBe("hello");
   });
 
+  it("answers 500 when the handler throws, and keeps serving", async () => {
+    const uncaught: unknown[] = [];
+    const onUncaught = (e: unknown) => uncaught.push(e);
+    process.prependListener("uncaughtException", onUncaught);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    handler.mockImplementation(async (event: { rawPath: string }) => {
+      if (event.rawPath === "/boom") {
+        throw new Error("boom");
+      }
+    });
+
+    try {
+      const raw = await sendRawRequests(
+        port,
+        "GET /boom HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+      );
+      const responses = parseRawResponses(raw);
+      const next = await sendRawRequests(
+        port,
+        "GET /__health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+      );
+
+      expect(responses).toHaveLength(1);
+      expect(responses[0].statusLine).toBe(
+        "HTTP/1.1 500 Internal Server Error",
+      );
+      expect(responses[0].body).toBe("Internal Server Error");
+      expect(parseRawResponses(next)).toHaveLength(1);
+      expect(uncaught).toEqual([]);
+    } finally {
+      process.off("uncaughtException", onUncaught);
+    }
+  });
+
   it("throws to the handler on an invalid header with a content-length", async () => {
     const uncaught: unknown[] = [];
     const onUncaught = (e: unknown) => uncaught.push(e);
