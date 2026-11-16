@@ -338,6 +338,35 @@ describe("cacheInterceptor", () => {
     );
   });
 
+  it("should use one deduplication id for a stale entry whatever the request asks for", async () => {
+    const entry = {
+      value: {
+        type: "app",
+        html: "Index page",
+        rsc: "RSC content",
+        segmentData: { "/_tree": "Tree content", "/__PAGE__": "Page content" },
+      },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    };
+    const requests = [
+      {},
+      { rsc: "1" },
+      { rsc: "1", "next-router-segment-prefetch": "/_tree" },
+      { rsc: "1", "next-router-segment-prefetch": "/__PAGE__" },
+    ];
+
+    for (const headers of requests) {
+      incrementalCache.get.mockResolvedValueOnce(entry);
+      await cacheInterceptor(createEvent({ url: "/", headers }));
+    }
+
+    const ids = queue.send.mock.calls.map(
+      ([msg]) => msg.MessageDeduplicationId,
+    );
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(1);
+  });
+
   it("should not duplicate the root slash during revalidation", async () => {
     NextConfig.trailingSlash = true;
     NextConfig.basePath = "/base";
