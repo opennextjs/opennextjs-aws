@@ -45,8 +45,8 @@ export default {
    * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
    * see `getComposableCacheStorageKey`.
    *
-   * The tag cache verdict is reported to `incrementalCache.onTagCacheResult` for every entry read
-   * from the incremental cache.
+   * The tag cache verdict for an entry read from the incremental cache is reported to
+   * `incrementalCache.onTagCacheResult`.
    *
    * @param cacheKey The cache key provided by Next.js
    * @returns The cache entry, or `undefined` on a miss or when the entry has been revalidated.

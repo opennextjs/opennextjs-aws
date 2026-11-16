@@ -175,13 +175,21 @@ export type IncrementalCache = {
   /**
    * Optional hook notified of the tag cache verdict for an entry.
    *
-   * It is called for every entry returned by `get`, once OpenNext has decided whether the entry
+   * It is called after a `get` that returns an entry, once OpenNext has decided whether the entry
    * can be used. It is not called on a miss.
    *
+   * - It is called at most once per `get`. A `get` may not be followed by a call, i.e. when checking
+   *   the tag cache fails (the entry is then treated as a miss).
+   * - A request may call `get`, and then the hook, several times for the same key, i.e. when the
+   *   cache interceptor can not serve an entry and the request falls back to the server.
+   *   Implementations should be idempotent.
+   *
+   * Parameters:
    * - `key` is the key that was passed to `get`.
    * - `hasBeenRevalidated` and `isStaleFromTag` are `false` when the tag cache is not checked
    *   (i.e. `shouldBypassTagCache`, disabled tag cache, or entries that are not checked against it).
-   * - `isStaleFromTime` is only provided by the cache interceptor.
+   * - `isStaleFromTime` is only provided by the cache interceptor. `undefined` means that it is not
+   *   known, not that the entry is fresh.
    *
    * The hook is awaited on the request path: long running work should be deferred
    * (i.e. with `waitUntil`). Errors thrown by the hook are logged and ignored, they do not
@@ -194,9 +202,13 @@ export type IncrementalCache = {
  * The tag cache verdict for an entry, see `IncrementalCache.onTagCacheResult`.
  */
 export type TagCacheResult = {
+  /** The key that was passed to `IncrementalCache.get` */
   key: string;
+  /** Whether the entry has been revalidated (on demand) and must not be used */
   hasBeenRevalidated: boolean;
+  /** Whether a tag of the entry is stale: the entry can be used but must be revalidated */
   isStaleFromTag: boolean;
+  /** Whether the `revalidate` time of the entry has elapsed, `undefined` when not known */
   isStaleFromTime?: boolean;
 };
 
