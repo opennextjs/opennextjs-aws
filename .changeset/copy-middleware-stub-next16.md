@@ -2,6 +2,6 @@
 "@opennextjs/aws": patch
 ---
 
-fix: copy `server/middleware.js` into the standalone dir on Next 16
+fix: skip the middleware trace files when the app has no middleware
 
-Next 16 emits `server/middleware.js` (a stub when the app has no middleware) in the build dir but not in the standalone output, which made `copyTracedFiles` throw. Like for `server/instrumentation.js`, the file is now copied before it is asserted to exist.
+Next 16 (Turbopack) emits `server/middleware.js.nft.json` and a `server/middleware.js` stub even when the app has no middleware, but the stub is not part of the standalone output, which made `copyTracedFiles` throw. The middleware branch is now skipped when neither the middleware manifest nor the functions config manifest registers a middleware.

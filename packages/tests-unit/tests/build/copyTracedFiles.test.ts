@@ -89,23 +89,41 @@ describe("copyTracedFiles", () => {
     expect(existsSync(path.join(outputDir, ".next/static/css"))).toBe(false);
   });
 
-  it("should not throw when server/middleware.js is only in the build dir", async () => {
-    const buildServerDir = path.join(buildOutputPath, ".next/server");
-    mkdirSync(buildServerDir, { recursive: true });
-    writeFileSync(path.join(buildServerDir, "middleware.js"), "// stub");
-    writeFileSync(
-      path.join(buildServerDir, "middleware.js.nft.json"),
-      JSON.stringify({ version: 1, files: [] }),
-    );
+  describe("middleware trace file", () => {
+    beforeEach(() => {
+      const buildServerDir = path.join(buildOutputPath, ".next/server");
+      mkdirSync(buildServerDir, { recursive: true });
+      // Next 16 (Turbopack) emits these even when the app has no middleware
+      writeFileSync(path.join(buildServerDir, "middleware.js"), "// stub");
+      writeFileSync(
+        path.join(buildServerDir, "middleware.js.nft.json"),
+        JSON.stringify({ version: 1, files: [] }),
+      );
+    });
 
-    await expect(copy()).resolves.toBeDefined();
+    it("should skip the middleware when none is registered", async () => {
+      writeFileSync(
+        path.join(standaloneNextDir, "server/middleware-manifest.json"),
+        JSON.stringify({ version: 3, middleware: {}, functions: {} }),
+      );
 
-    expect(
-      readFileSync(
-        path.join(standaloneNextDir, "server/middleware.js"),
-        "utf8",
-      ),
-    ).toBe("// stub");
+      await expect(copy()).resolves.toBeDefined();
+
+      expect(
+        existsSync(path.join(standaloneNextDir, "server/middleware.js")),
+      ).toBe(false);
+    });
+
+    it("should still require the middleware file when one is registered", async () => {
+      writeFileSync(
+        path.join(standaloneNextDir, "server/middleware-manifest.json"),
+        JSON.stringify({ version: 3, middleware: { "/": {} }, functions: {} }),
+      );
+
+      await expect(copy()).rejects.toThrow(
+        "server/middleware.js does not exist",
+      );
+    });
   });
 });
 

@@ -91,6 +91,28 @@ function copyPatchFile(outputDir: string) {
   copyFileAndMakeOwnerWritable(patchFile, outputPatchFile);
 }
 
+/**
+ * Whether the app registers a middleware (edge middleware or Node.js middleware).
+ * Next 16 emits a middleware trace file even when there is none.
+ */
+function hasMiddleware(nextDir: string): boolean {
+  const readJson = (file: string) => {
+    try {
+      return JSON.parse(
+        readFileSync(path.join(nextDir, "server", file), "utf8"),
+      );
+    } catch {
+      return undefined;
+    }
+  };
+  const middlewareManifest = readJson("middleware-manifest.json");
+  const functionsConfigManifest = readJson("functions-config-manifest.json");
+  return (
+    Object.keys(middlewareManifest?.middleware ?? {}).length > 0 ||
+    Boolean(functionsConfigManifest?.functions?.["/_middleware"])
+  );
+}
+
 interface CopyTracedFilesOptions {
   buildOutputPath: string;
   packagePath: string;
@@ -261,26 +283,19 @@ File ${serverPath} does not exist
     logger.debug("Adding instrumentation trace files");
   }
 
-  if (existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE))) {
+  // Next 16 (Turbopack) emits `server/middleware.js.nft.json` and a 221 bytes
+  // `server/middleware.js` stub even when the app has no middleware. The stub is
+  // not self-contained (it requires chunks that are not in the standalone dir),
+  // so there is nothing to deploy and the branch must be skipped.
+  if (
+    existsSync(path.join(dotNextDir, MIDDLEWARE_TRACE_FILE)) &&
+    hasMiddleware(standaloneNextDir)
+  ) {
     // We still need to copy the nft.json file so that computeCopyFilesForPage doesn't throw
     copyFileAndMakeOwnerWritable(
       path.join(dotNextDir, MIDDLEWARE_TRACE_FILE),
       path.join(standaloneNextDir, MIDDLEWARE_TRACE_FILE),
     );
-    // Next 16 emits `server/middleware.js` (a stub when the app has no
-    // middleware) in the build dir but not in the standalone dir, while
-    // `computeCopyFilesForPage` asserts it exists there. Copy it over, like
-    // for instrumentation above.
-    const middlewareServerFile = path.join("server", "middleware.js");
-    if (
-      existsSync(path.join(dotNextDir, middlewareServerFile)) &&
-      !existsSync(path.join(standaloneNextDir, middlewareServerFile))
-    ) {
-      copyFileAndMakeOwnerWritable(
-        path.join(dotNextDir, middlewareServerFile),
-        path.join(standaloneNextDir, middlewareServerFile),
-      );
-    }
     computeCopyFilesForPage("middleware");
     logger.debug("Adding node middleware trace files");
   }
