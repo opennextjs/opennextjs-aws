@@ -34,6 +34,7 @@ describe("CacheHandler", () => {
     }),
     set: vi.fn(),
     delete: vi.fn(),
+    onTagCacheResult: vi.fn().mockResolvedValue(undefined),
   };
   globalThis.incrementalCache = incrementalCache;
 
@@ -265,6 +266,92 @@ describe("CacheHandler", () => {
           await cache.get("key", { kind: "FETCH", tags: ["tag1"] });
 
           expect(tagCache.isStale).not.toHaveBeenCalled();
+        });
+      });
+
+      describe("onTagCacheResult", () => {
+        it("Should call onTagCacheResult with hasBeenRevalidated: false and isStaleFromTag: false on cache hit", async () => {
+          await cache.get("key", { fetchCache: true });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should call onTagCacheResult with hasBeenRevalidated: true when fetch cache is expired", async () => {
+          tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+          await cache.get("key", { fetchCache: true });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should call onTagCacheResult with hasBeenRevalidated: true when the soft tag path has been revalidated", async () => {
+          // The entry key is not revalidated...
+          tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+          // ...but the path from the soft tags is
+          tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+          const result = await cache.get("key", {
+            kind: "FETCH",
+            softTags: [`${SOFT_TAG_PREFIX}path`],
+          });
+
+          expect(result).toBeNull();
+          expect(tagCache.getLastModified).toHaveBeenLastCalledWith(
+            "path",
+            expect.any(Number),
+          );
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should call onTagCacheResult with isStaleFromTag: true when fetch cache tag is stale (next16)", async () => {
+          globalThis.nextVersion = "16.0.0";
+          tagCache.mode = "nextMode";
+          tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+          tagCache.isStale.mockResolvedValueOnce(true);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: {
+              kind: "FETCH",
+              data: {
+                headers: {},
+                body: "{}",
+                url: "https://example.com",
+                status: 200,
+              },
+            },
+            lastModified: Date.now(),
+          });
+
+          await cache.get("key", { kind: "FETCH", tags: ["tag1"] });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: true,
+          });
+        });
+
+        it("Should return the entry when onTagCacheResult throws", async () => {
+          incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+            new Error("hook error"),
+          );
+
+          const result = await cache.get("key", { fetchCache: true });
+
+          expect(result).not.toBeNull();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
         });
       });
     });
@@ -723,6 +810,105 @@ describe("CacheHandler", () => {
           await cache.get("key", { kindHint: "app" });
 
           expect(tagCache.isStale).not.toHaveBeenCalled();
+        });
+      });
+
+      describe("onTagCacheResult", () => {
+        it("Should call onTagCacheResult with hasBeenRevalidated: false and isStaleFromTag: false on cache hit", async () => {
+          await cache.get("key", { kindHint: "app" });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should call onTagCacheResult with hasBeenRevalidated: true when cache is expired", async () => {
+          tagCache.getLastModified.mockResolvedValueOnce(-1);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should call onTagCacheResult with isStaleFromTag: true when cache tag is stale (next16)", async () => {
+          globalThis.nextVersion = "16.0.0";
+          tagCache.isStale.mockResolvedValueOnce(true);
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: true,
+          });
+        });
+
+        it("Should call onTagCacheResult without checking the tag cache when shouldBypassTagCache is true", async () => {
+          incrementalCache.get.mockResolvedValueOnce({
+            value: { type: "route", body: "{}" },
+            lastModified: Date.now(),
+            shouldBypassTagCache: true,
+          });
+
+          await cache.get("key", { kindHint: "app" });
+
+          expect(tagCache.getLastModified).not.toHaveBeenCalled();
+          expect(tagCache.isStale).not.toHaveBeenCalled();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
+            key: "key",
+            hasBeenRevalidated: false,
+            isStaleFromTag: false,
+          });
+        });
+
+        it("Should not call onTagCacheResult on a cache miss", async () => {
+          incrementalCache.get.mockResolvedValueOnce(null);
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result).toBeNull();
+          expect(incrementalCache.onTagCacheResult).not.toHaveBeenCalled();
+        });
+
+        it("Should return the entry when onTagCacheResult is not defined", async () => {
+          const prevIncrementalCache = globalThis.incrementalCache;
+          globalThis.incrementalCache = {
+            ...prevIncrementalCache,
+            onTagCacheResult: undefined,
+          };
+          try {
+            const result = await cache.get("key", { kindHint: "app" });
+
+            expect(result).not.toBeNull();
+          } finally {
+            globalThis.incrementalCache = prevIncrementalCache;
+          }
+        });
+
+        it("Should return the entry when onTagCacheResult throws", async () => {
+          incrementalCache.onTagCacheResult.mockRejectedValueOnce(
+            new Error("hook error"),
+          );
+
+          const result = await cache.get("key", { kindHint: "app" });
+
+          expect(result).not.toBeNull();
+          expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
         });
       });
 

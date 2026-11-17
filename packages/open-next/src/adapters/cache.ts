@@ -10,6 +10,7 @@ import {
   getTagsFromValue,
   hasBeenRevalidated,
   isStale,
+  reportTagCacheResult,
   writeTags,
 } from "utils/cache";
 import { isBinaryContentType } from "../utils/binary";
@@ -170,7 +171,14 @@ export default class Cache {
         ? false
         : await hasBeenRevalidated(key, _tags, cachedEntry);
 
-      if (_hasBeenRevalidated) return null;
+      if (_hasBeenRevalidated) {
+        await reportTagCacheResult({
+          key,
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+        return null;
+      }
 
       // For cases where we don't have tags, we need to ensure that the soft tags are not being revalidated
       // We only need to check for the path as it should already contain all the tags
@@ -192,6 +200,11 @@ export default class Cache {
               );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
+            await reportTagCacheResult({
+              key,
+              hasBeenRevalidated: true,
+              isStaleFromTag: false,
+            });
             return null;
           }
         }
@@ -200,6 +213,12 @@ export default class Cache {
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
         : await isStale(key, _tags, _lastModified);
+
+      await reportTagCacheResult({
+        key,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+      });
 
       return {
         lastModified: _isStale ? 1 : _lastModified,
@@ -228,11 +247,24 @@ export default class Cache {
       const _hasBeenRevalidated = cachedEntry.shouldBypassTagCache
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
-      if (_hasBeenRevalidated) return null;
+      if (_hasBeenRevalidated) {
+        await reportTagCacheResult({
+          key,
+          hasBeenRevalidated: true,
+          isStaleFromTag: false,
+        });
+        return null;
+      }
 
       const _isStale = cachedEntry.shouldBypassTagCache
         ? false
         : await isStale(key, tags, _lastModified);
+
+      await reportTagCacheResult({
+        key,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+      });
 
       const store = globalThis.__openNextAls.getStore();
       if (store) {

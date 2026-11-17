@@ -18,9 +18,15 @@ import { decodePathParams } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
-import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
+import {
+  getTagsFromValue,
+  hasBeenRevalidated,
+  isStale,
+  reportTagCacheResult,
+} from "utils/cache";
 import {
   CACHE_CONTROL_HEADER,
+  CACHE_TAGS_HEADER,
   NO_STORE_CACHE_CONTROL,
   OPEN_NEXT_CACHE_HEADER,
   PRERENDER_REVALIDATE_HEADER,
@@ -41,6 +47,51 @@ import { dynamicRouteMatcher } from "./routeMatcher";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
+
+/**
+ * Determines the effective revalidate duration for a given path/value combination.
+ *
+ * The prerender manifest is consulted when `revalidate` is not explicitly set.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @returns The revalidate duration in seconds, `CACHE_ONE_YEAR` for SSG
+ */
+function computeFinalRevalidate(
+  path: string,
+  revalidate?: number | false,
+): number {
+  const routes = PrerenderManifest?.routes ?? {};
+  const effectiveRevalidate =
+    revalidate === undefined && Object.hasOwn(routes, path)
+      ? routes[path].initialRevalidateSeconds
+      : revalidate;
+  return effectiveRevalidate === undefined || effectiveRevalidate === false
+    ? CACHE_ONE_YEAR
+    : effectiveRevalidate;
+}
+
+/**
+ * Returns whether a cache entry is stale purely due to time (TTL expiry).
+ *
+ * This is independent of any tag-based revalidation.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @returns Whether the entry is stale from time
+ */
+function computeIsStaleFromTime(
+  path: string,
+  revalidate: number | false | undefined,
+  lastModified: number | undefined,
+): boolean {
+  const finalRevalidate = computeFinalRevalidate(path, revalidate);
+  // SSG entries never expire, see `computeCacheControl`
+  if (finalRevalidate === CACHE_ONE_YEAR) return false;
+  const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
+  return finalRevalidate - age <= 1;
+}
 
 /*
  * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
@@ -66,19 +117,24 @@ const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
 const MIDDLEWARE_SET_COOKIE_HEADER = "x-middleware-set-cookie";
 
 /**
- * Returns the headers stored in a cache entry, without the internal `x-middleware-set-cookie` header.
+ * Returns the headers stored in a cache entry, without the internal headers.
+ *
+ * The internal headers are `x-middleware-set-cookie` and `x-next-cache-tags`.
+ * The cache entry is not mutated as it could be shared (i.e. by an in-memory cache).
  *
  * @param headers The headers stored in the cache entry meta
- * @returns A copy of the headers without the internal header
+ * @returns A copy of the headers without the internal headers
  */
 function getCachedResponseHeaders(
   headers: Meta["headers"],
 ): Record<string, string | string[]> {
   const result: Record<string, string | string[]> = {};
   for (const [key, value] of Object.entries(headers ?? {})) {
+    const lowerKey = key.toLowerCase();
     if (
       value === undefined ||
-      key.toLowerCase() === MIDDLEWARE_SET_COOKIE_HEADER
+      lowerKey === MIDDLEWARE_SET_COOKIE_HEADER ||
+      lowerKey === CACHE_TAGS_HEADER
     ) {
       continue;
     }
@@ -97,20 +153,7 @@ async function computeCacheControl(
   revalidationPath = path,
   revalidationKey = path,
 ) {
-  let finalRevalidate = CACHE_ONE_YEAR;
-
-  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
-    (p) => p[0] === path,
-  )?.[1];
-  if (revalidate === undefined && existingRoute) {
-    finalRevalidate =
-      existingRoute.initialRevalidateSeconds === false
-        ? CACHE_ONE_YEAR
-        : existingRoute.initialRevalidateSeconds;
-    // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (revalidate !== undefined) {
-    finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
-  }
+  const finalRevalidate = computeFinalRevalidate(path, revalidate);
   // calculate age
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
   const hash = (str: string) => createHash("md5").update(str).digest("hex");
@@ -484,6 +527,11 @@ export async function cacheInterceptor(
         return event;
       }
       const tags = getTagsFromValue(cachedData.value);
+      const isStaleFromTime = computeIsStaleFromTime(
+        localizedPath,
+        cachedData.value.revalidate,
+        cachedData.lastModified,
+      );
       // We need to check the tag cache now
       if (
         cachedData.value?.type === "app" ||
@@ -494,6 +542,12 @@ export async function cacheInterceptor(
           : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
         if (_hasBeenRevalidated) {
+          await reportTagCacheResult({
+            key: cacheKey,
+            hasBeenRevalidated: true,
+            isStaleFromTag: false,
+            isStaleFromTime,
+          });
           return event;
         }
       }
@@ -502,6 +556,13 @@ export async function cacheInterceptor(
       const _isStale = cachedData.shouldBypassTagCache
         ? false
         : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
+
+      await reportTagCacheResult({
+        key: cacheKey,
+        hasBeenRevalidated: false,
+        isStaleFromTag: _isStale,
+        isStaleFromTime,
+      });
 
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
