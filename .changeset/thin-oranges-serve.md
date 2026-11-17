@@ -1,5 +1,5 @@
 ---
-"@opennextjs/aws": minor
+"@opennextjs/aws": patch
 ---
 
 Add an optional `onTagCacheResult` hook to the incremental cache
