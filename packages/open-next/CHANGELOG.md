@@ -1,5 +1,51 @@
 # open-next
 
+## 4.2.0
+
+### Minor Changes
+
+- [#1349](https://github.com/opennextjs/opennextjs-aws/pull/1349) [`c4f9162`](https://github.com/opennextjs/opennextjs-aws/commit/c4f91620ea78bb17a12d9db1a5ef8ee07e9e1b62) Thanks [@nicholas-c](https://github.com/nicholas-c)! - feat: add the `aws-web-function` wrapper for AWS Lambda Web Functions
+
+  A Web Function runs an HTTP server that Lambda routes requests to, so there is no event handler or API Gateway in front of it. The wrapper is the `node` wrapper (use it with the `node` converter) that binds the host and port in `AWS_LAMBDA_HTTP_ENDPOINT`, falling back to `PORT` outside a Web Function, and provides `waitUntil` so deferred work such as revalidation messages is awaited. A failing request is answered with a 500 instead of crashing the server, and on `SIGTERM` the wrapper waits up to 800ms for in-flight `waitUntil` work before exiting, within the 1 second Lambda allows.
+
+  ```ts
+  export default {
+    default: {
+      override: {
+        wrapper: "aws-web-function",
+        converter: "node",
+      },
+    },
+  };
+  ```
+
+### Patch Changes
+
+- [#1361](https://github.com/opennextjs/opennextjs-aws/pull/1361) [`0eeaf1b`](https://github.com/opennextjs/opennextjs-aws/commit/0eeaf1b5a5b1ed880048534947fce3a3758c19a1) Thanks [@vicb](https://github.com/vicb)! - fix: honor `dangerous.disableTagCache` when reading `"use cache"` entries
+
+  The composable cache handler checked the tag cache even when it was disabled, so a failing tag cache backend turned a cache hit into a miss. The tag cache is no longer checked when `dangerous.disableTagCache` is set.
+
+- [#1349](https://github.com/opennextjs/opennextjs-aws/pull/1349) [`c4f9162`](https://github.com/opennextjs/opennextjs-aws/commit/c4f91620ea78bb17a12d9db1a5ef8ee07e9e1b62) Thanks [@nicholas-c](https://github.com/nicholas-c)! - fix: answer a request that fails in the `node` wrapper with a 500
+
+  A failure while converting or handling a request was an unhandled rejection, which crashed the server and every concurrent request. The `node` and `aws-web-function` wrappers now share one server implementation that answers 500, or destroys the response once its headers were sent.
+
+- [#1350](https://github.com/opennextjs/opennextjs-aws/pull/1350) [`2929f42`](https://github.com/opennextjs/opennextjs-aws/commit/2929f42119ee9a4fc58ef3facf24fb75a939b73f) Thanks [@tbarisic](https://github.com/tbarisic)! - fix: queue one revalidation per stale cache entry
+
+  The deduplication id of a revalidation message included a hash of the response body, so a document request, an RSC request and each segment prefetch of the same stale entry all queued their own revalidation.
+
+- [#1193](https://github.com/opennextjs/opennextjs-aws/pull/1193) [`ef78454`](https://github.com/opennextjs/opennextjs-aws/commit/ef7845463de5af0323ebd1458dc80d52e99ab984) Thanks [@conico974](https://github.com/conico974)! - feat: add an experimental `onTagCacheResult` callback to the entries returned by the incremental cache
+
+  The callback and its `TagCacheResult` type are experimental: they may change in a minor or patch release.
+
+  An incremental cache can set `onTagCacheResult` on an entry returned by `get`. OpenNext calls it once the tag verdict is known, even when tag checks are skipped. The callback receives `hasBeenRevalidated`, `isStaleFromTag` and, from the cache interceptor, `isStaleFromTime`.
+  As the callback is attached to the entry, the verdict always applies to that read, even when a key is read several times concurrently.
+  It allows e.g. a regional cache to only be populated with entries that are neither revalidated nor stale.
+  Errors thrown by the callback are logged and do not affect how the entry is used.
+
+  The cache interceptor computes `isStaleFromTime` once before invoking the callback. The response headers and revalidation queue use that same timing snapshot, even if the callback changes the entry’s `revalidate` interval.
+
+  The `x-next-cache-tags` header is no longer removed from the cached value when its tags are read.
+
 ## 4.1.16
 
 ### Patch Changes
