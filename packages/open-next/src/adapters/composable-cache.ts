@@ -46,7 +46,7 @@ export default {
    * see `getComposableCacheStorageKey`.
    *
    * The tag cache verdict for an entry read from the incremental cache is reported to
-   * `incrementalCache.onTagCacheResult`.
+   * the `onTagCacheResult` callback of the entry.
    *
    * @param cacheKey The cache key provided by Next.js
    * @returns The cache entry, or `undefined` on a miss or when the entry has been revalidated.
@@ -79,9 +79,11 @@ export default {
 
       let hasBeenRevalidated = false;
       let isStaleFromTag = false;
-      // In next mode, entries without tags do not need to be checked
+      // The tag cache is not checked when the entry bypasses it or when it is disabled.
+      // In next mode, entries without tags do not need to be checked either.
       const shouldCheckTagCache =
         !result.shouldBypassTagCache &&
+        !globalThis.openNextConfig.dangerous?.disableTagCache &&
         (globalThis.tagCache.mode !== "nextMode" ||
           result.value.tags.length > 0);
       if (shouldCheckTagCache) {
@@ -101,8 +103,7 @@ export default {
           (await isStale(storageKey, result.value.tags, result.lastModified));
       }
 
-      await reportTagCacheResult({
-        key: storageKey,
+      await reportTagCacheResult(result, {
         hasBeenRevalidated,
         isStaleFromTag,
       });

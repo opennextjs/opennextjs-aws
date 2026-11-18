@@ -110,12 +110,13 @@ function createEvent(event: PartialEvent): MiddlewareEvent {
   };
 }
 
+const onTagCacheResult = vi.fn().mockResolvedValue(undefined);
+
 const incrementalCache = {
   name: "mock",
   get: vi.fn(),
   set: vi.fn(),
   delete: vi.fn(),
-  onTagCacheResult: vi.fn().mockResolvedValue(undefined),
 };
 
 const tagCache = {
@@ -1595,9 +1596,32 @@ describe("cacheInterceptor", () => {
   });
 
   describe("onTagCacheResult", () => {
+    it("uses the validated interval even if the callback changes the shared entry", async () => {
+      const value = { type: "app", html: "page", revalidate: 60 };
+      const callback = vi.fn(async () => {
+        value.revalidate = 0;
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value,
+        lastModified: Date.now(),
+        onTagCacheResult: callback,
+      });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(callback).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(result.headers["cache-control"]).toContain("s-maxage=60,");
+    });
+
     it("should call onTagCacheResult with isStaleFromTime: false on a fresh SSG cache hit", async () => {
       const event = createEvent({ url: "/albums" });
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "app",
           html: "Hello, world!",
@@ -1608,8 +1632,7 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/albums",
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: false,
         isStaleFromTag: false,
         isStaleFromTime: false,
@@ -1620,6 +1643,7 @@ describe("cacheInterceptor", () => {
       const event = createEvent({ url: "/revalidate" });
       // /revalidate has initialRevalidateSeconds: 60; lastModified is 2 minutes ago
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "app",
           html: "Hello, world!",
@@ -1630,8 +1654,32 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/revalidate",
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: true,
+      });
+    });
+
+    it("reports the time verdict used to serve an entry that expires during tag validation", async () => {
+      const now = Date.now();
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: { type: "app", html: "page", revalidate: 60 },
+        lastModified: now - 58_000,
+      });
+      tagCache.isStale.mockImplementationOnce(async () => {
+        vi.setSystemTime(now + 2_000);
+        return false;
+      });
+
+      const result = await cacheInterceptor(
+        createEvent({ url: "/revalidate" }),
+      );
+
+      expect(result.headers["x-opennext-cache"]).toBe("STALE");
+      expect(queue.send).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: false,
         isStaleFromTag: false,
         isStaleFromTime: true,
@@ -1641,6 +1689,7 @@ describe("cacheInterceptor", () => {
     it("should call onTagCacheResult with isStaleFromTag: true when tag cache reports stale", async () => {
       const event = createEvent({ url: "/albums" });
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "app",
           html: "Hello, world!",
@@ -1652,8 +1701,7 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/albums",
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: false,
         isStaleFromTag: true,
         isStaleFromTime: false,
@@ -1663,6 +1711,7 @@ describe("cacheInterceptor", () => {
     it("should call onTagCacheResult with hasBeenRevalidated: true when app cache has been revalidated", async () => {
       const event = createEvent({ url: "/albums" });
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "app",
           html: "Hello, world!",
@@ -1672,9 +1721,8 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/albums",
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: true,
         isStaleFromTag: false,
         isStaleFromTime: false,
@@ -1685,6 +1733,7 @@ describe("cacheInterceptor", () => {
       const event = createEvent({ url: "/revalidate" });
       // /revalidate has initialRevalidateSeconds: 60; lastModified is 2 minutes ago
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "page",
           html: "Hello, world!",
@@ -1695,8 +1744,7 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/revalidate",
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: false,
         isStaleFromTag: false,
         isStaleFromTime: true,
@@ -1706,6 +1754,7 @@ describe("cacheInterceptor", () => {
     it("should call onTagCacheResult once without checking the tag cache when shouldBypassTagCache is true", async () => {
       const event = createEvent({ url: "/albums" });
       incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
         value: {
           type: "app",
           html: "Hello, world!",
@@ -1717,9 +1766,8 @@ describe("cacheInterceptor", () => {
 
       expect(tagCache.getLastModified).not.toHaveBeenCalled();
       expect(tagCache.isStale).not.toHaveBeenCalled();
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledWith({
-        key: "/albums",
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
         hasBeenRevalidated: false,
         isStaleFromTag: false,
         isStaleFromTime: false,
@@ -1732,34 +1780,10 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).not.toHaveBeenCalled();
+      expect(onTagCacheResult).not.toHaveBeenCalled();
     });
 
     it("should serve the entry when onTagCacheResult is not defined", async () => {
-      const { onTagCacheResult } = incrementalCache;
-      // @ts-expect-error - the mock declares the hook as required
-      delete incrementalCache.onTagCacheResult;
-      try {
-        const event = createEvent({ url: "/albums" });
-        incrementalCache.get.mockResolvedValueOnce({
-          value: {
-            type: "app",
-            html: "Hello, world!",
-          },
-        });
-
-        const result = await cacheInterceptor(event);
-
-        expect(result.headers["x-opennext-cache"]).toBe("HIT");
-      } finally {
-        incrementalCache.onTagCacheResult = onTagCacheResult;
-      }
-    });
-
-    it("should serve the entry when onTagCacheResult throws", async () => {
-      incrementalCache.onTagCacheResult.mockRejectedValueOnce(
-        new Error("hook error"),
-      );
       const event = createEvent({ url: "/albums" });
       incrementalCache.get.mockResolvedValueOnce({
         value: {
@@ -1771,7 +1795,23 @@ describe("cacheInterceptor", () => {
       const result = await cacheInterceptor(event);
 
       expect(result.headers["x-opennext-cache"]).toBe("HIT");
-      expect(incrementalCache.onTagCacheResult).toHaveBeenCalledOnce();
+    });
+
+    it("should serve the entry when onTagCacheResult throws", async () => {
+      onTagCacheResult.mockRejectedValueOnce(new Error("hook error"));
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
     });
 
     it("should not call onTagCacheResult when request is bypassed by next-action header", async () => {
@@ -1781,7 +1821,7 @@ describe("cacheInterceptor", () => {
 
       await cacheInterceptor(event);
 
-      expect(incrementalCache.onTagCacheResult).not.toHaveBeenCalled();
+      expect(onTagCacheResult).not.toHaveBeenCalled();
     });
   });
 

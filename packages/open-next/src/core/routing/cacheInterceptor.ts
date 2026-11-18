@@ -72,25 +72,47 @@ function computeFinalRevalidate(
 }
 
 /**
- * Returns whether a cache entry is stale purely due to time (TTL expiry).
+ * The time-based freshness of a cache entry, see `getCacheTiming`.
+ */
+type CacheTiming = {
+  /** The interval used for this verdict, captured before invoking the entry callback. */
+  revalidate: number | false | undefined;
+  /** Whether the entry never expires from time (no `revalidate`) */
+  isSSG: boolean;
+  /** Time before the entry needs to be revalidated, in seconds. It is at least 1 */
+  remainingTtl: number;
+  /** Whether the `revalidate` time of the entry has elapsed, always `false` for SSG */
+  isStaleFromTime: boolean;
+};
+
+/**
+ * Computes the time-based freshness of a cache entry.
  *
- * This is independent of any tag-based revalidation.
+ * It depends on the current time: it should be called once per read so that everything
+ * derived from it is consistent.
  *
  * @param path The localized path of the request
  * @param revalidate The revalidate value stored in the cache entry
  * @param lastModified The last modified time of the cache entry, in ms
- * @returns Whether the entry is stale from time
+ * @returns The time-based freshness of the entry
  */
-function computeIsStaleFromTime(
+function getCacheTiming(
   path: string,
   revalidate: number | false | undefined,
   lastModified: number | undefined,
-): boolean {
+): CacheTiming {
   const finalRevalidate = computeFinalRevalidate(path, revalidate);
-  // SSG entries never expire, see `computeCacheControl`
-  if (finalRevalidate === CACHE_ONE_YEAR) return false;
+  // SSG uses one year cache
+  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
   const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
-  return finalRevalidate - age <= 1;
+  // The TTL is at least 1s. An entry with 1s or less to live is considered stale.
+  const remainingTtl = Math.max(finalRevalidate - age, 1);
+  return {
+    revalidate,
+    isSSG,
+    remainingTtl,
+    isStaleFromTime: !isSSG && remainingTtl === 1,
+  };
 }
 
 /*
@@ -143,19 +165,30 @@ function getCachedResponseHeaders(
   return result;
 }
 
+/**
+ * Computes the cache headers of a response served from a cache entry.
+ *
+ * A revalidation is queued when the entry is stale, either from time or from a tag.
+ *
+ * @param timing The time-based freshness of the entry
+ * @param body The response body, used to compute the ETag
+ * @param host The host of the request, used for the revalidation
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @param isStaleFromTag Whether the tag cache reported the entry as stale
+ * @param revalidationPath The path to revalidate, in its original encoding
+ * @param revalidationKey The cache key, used to deduplicate the revalidations
+ * @returns The `cache-control`, `x-opennext-cache` and `etag` headers
+ */
 async function computeCacheControl(
-  path: string,
+  timing: CacheTiming,
   body: string,
   host: string,
-  revalidate?: number | false,
-  lastModified?: number,
-  isStaleFromTagCache = false,
-  revalidationPath = path,
-  revalidationKey = path,
+  lastModified: number | undefined,
+  isStaleFromTag: boolean,
+  revalidationPath: string,
+  revalidationKey: string,
 ) {
-  const finalRevalidate = computeFinalRevalidate(path, revalidate);
-  // calculate age
-  const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
+  const { revalidate, isSSG, remainingTtl, isStaleFromTime } = timing;
   const hash = (str: string) => createHash("md5").update(str).digest("hex");
   // RFC 9110 entity-tag is a quoted opaque-tag. CloudFront drops unquoted ETags
   // when serving compressed objects.
@@ -169,21 +202,15 @@ async function computeCacheControl(
     };
   }
 
-  // SSG uses one year cache
-  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
-  const remainingTtl = Math.max(finalRevalidate - age, 1);
+  const isStale = isStaleFromTime || isStaleFromTag;
 
-  const isStaleFromTime = !isSSG && remainingTtl === 1;
-  const isStale = isStaleFromTime || isStaleFromTagCache;
-
-  if (!isSSG || isStaleFromTagCache) {
-    const sMaxAge = isStaleFromTagCache ? 1 : remainingTtl;
+  if (!isSSG || isStaleFromTag) {
+    const sMaxAge = isStaleFromTag ? 1 : remainingTtl;
     debug("sMaxAge", {
-      finalRevalidate,
-      age,
+      remainingTtl,
       lastModified,
       revalidate,
-      isStaleFromTagCache,
+      isStaleFromTag,
     });
     if (isStale) {
       let url =
@@ -276,22 +303,24 @@ function getBodyForAppRouter(
  * Generates the response to serve for a cached `app` or `page` entry.
  *
  * @param event The incoming event
- * @param localizedPath The localized path, used to compute the cache control
+ * @param timing The time-based freshness of the entry
  * @param cachedValue The cache entry, must be of type `app` or `page`
- * @param lastModified Time of the last update to the cache entry
- * @param isStaleFromTagCache Whether the tag cache reported the entry as stale
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @param isStaleFromTag Whether the tag cache reported the entry as stale
+ * @param revalidationPath The path to revalidate, in its original encoding
+ * @param revalidationKey The cache key, used to deduplicate the revalidations
  * @returns The result to serve, or `undefined` when the entry can not serve the
  * request - the caller should then fallback to the server.
  * @throws When `cachedValue` is neither of type `app` nor `page`
  */
 async function generateResult(
   event: MiddlewareEvent,
-  localizedPath: string,
+  timing: CacheTiming,
   cachedValue: CacheValue<"cache">,
-  lastModified?: number,
-  isStaleFromTagCache = false,
-  cacheKey = localizedPath,
-  revalidationPath = localizedPath,
+  lastModified: number | undefined,
+  isStaleFromTag: boolean,
+  revalidationPath: string,
+  revalidationKey: string,
 ): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
   let body: string | undefined;
@@ -324,14 +353,13 @@ async function generateResult(
     return undefined;
   }
   const cacheControl = await computeCacheControl(
-    localizedPath,
+    timing,
     body,
     event.headers.host,
-    cachedValue.revalidate,
     lastModified,
-    isStaleFromTagCache,
+    isStaleFromTag,
     revalidationPath,
-    cacheKey,
+    revalidationKey,
   );
   const statusCode = computeStatusCode(
     event.rewriteStatusCode,
@@ -526,43 +554,39 @@ export async function cacheInterceptor(
       if (!cachedData?.value) {
         return event;
       }
+      const { lastModified } = cachedData;
       const tags = getTagsFromValue(cachedData.value);
-      const isStaleFromTime = computeIsStaleFromTime(
-        localizedPath,
-        cachedData.value.revalidate,
-        cachedData.lastModified,
-      );
-      // We need to check the tag cache now
-      if (
-        cachedData.value?.type === "app" ||
-        cachedData.value?.type === "route"
-      ) {
-        const _hasBeenRevalidated = cachedData.shouldBypassTagCache
-          ? false
-          : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
-        if (_hasBeenRevalidated) {
-          await reportTagCacheResult({
-            key: cacheKey,
-            hasBeenRevalidated: true,
-            isStaleFromTag: false,
-            isStaleFromTime,
-          });
-          return event;
-        }
-      }
+      // Check if the cache entry has been revalidated: it must not be used
+      const isRevalidated =
+        !cachedData.shouldBypassTagCache &&
+        (cachedData.value.type === "app" ||
+          cachedData.value.type === "route") &&
+        (await hasBeenRevalidated(cacheKey, tags, cachedData));
 
       // Check if the cache entry is stale (valid but needs background revalidation)
-      const _isStale = cachedData.shouldBypassTagCache
-        ? false
-        : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
+      const isStaleFromTag =
+        !isRevalidated &&
+        !cachedData.shouldBypassTagCache &&
+        (await isStale(cacheKey, tags, lastModified ?? Date.now()));
 
-      await reportTagCacheResult({
-        key: cacheKey,
-        hasBeenRevalidated: false,
-        isStaleFromTag: _isStale,
-        isStaleFromTime,
+      // Computed once, after the tag cache has been checked, so that the reported verdict,
+      // the response headers and the revalidation queue all agree.
+      const timing = getCacheTiming(
+        localizedPath,
+        cachedData.value.revalidate,
+        lastModified,
+      );
+
+      await reportTagCacheResult(cachedData, {
+        hasBeenRevalidated: isRevalidated,
+        isStaleFromTag,
+        isStaleFromTime: timing.isStaleFromTime,
       });
+
+      if (isRevalidated) {
+        return event;
+      }
 
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
@@ -570,24 +594,23 @@ export async function cacheInterceptor(
         case "page": {
           const result = await generateResult(
             event,
-            localizedPath,
+            timing,
             cachedData.value,
-            cachedData.lastModified,
-            _isStale,
-            cacheKey,
+            lastModified,
+            isStaleFromTag,
             revalidationPath,
+            cacheKey,
           );
           // The cache entry can not serve this request, fallback to the server.
           return result ?? event;
         }
         case "redirect": {
           const cacheControl = await computeCacheControl(
-            localizedPath,
+            timing,
             "",
             host,
-            cachedData.value.revalidate,
-            cachedData.lastModified,
-            _isStale,
+            lastModified,
+            isStaleFromTag,
             revalidationPath,
             cacheKey,
           );
@@ -604,12 +627,11 @@ export async function cacheInterceptor(
         }
         case "route": {
           const cacheControl = await computeCacheControl(
-            localizedPath,
+            timing,
             cachedData.value.body,
             host,
-            cachedData.value.revalidate,
-            cachedData.lastModified,
-            _isStale,
+            lastModified,
+            isStaleFromTag,
             revalidationPath,
             cacheKey,
           );
