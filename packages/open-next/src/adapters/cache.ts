@@ -172,8 +172,7 @@ export default class Cache {
         : await hasBeenRevalidated(key, _tags, cachedEntry);
 
       if (_hasBeenRevalidated) {
-        await reportTagCacheResult({
-          key,
+        await reportTagCacheResult(cachedEntry, {
           hasBeenRevalidated: true,
           isStaleFromTag: false,
         });
@@ -200,8 +199,7 @@ export default class Cache {
               );
           if (hasPathBeenUpdated) {
             // In case the path has been revalidated, we don't want to use the fetch cache
-            await reportTagCacheResult({
-              key,
+            await reportTagCacheResult(cachedEntry, {
               hasBeenRevalidated: true,
               isStaleFromTag: false,
             });
@@ -214,8 +212,7 @@ export default class Cache {
         ? false
         : await isStale(key, _tags, _lastModified);
 
-      await reportTagCacheResult({
-        key,
+      await reportTagCacheResult(cachedEntry, {
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,
       });
@@ -248,8 +245,7 @@ export default class Cache {
         ? false
         : await hasBeenRevalidated(key, tags, cachedEntry);
       if (_hasBeenRevalidated) {
-        await reportTagCacheResult({
-          key,
+        await reportTagCacheResult(cachedEntry, {
           hasBeenRevalidated: true,
           isStaleFromTag: false,
         });
@@ -260,8 +256,7 @@ export default class Cache {
         ? false
         : await isStale(key, tags, _lastModified);
 
-      await reportTagCacheResult({
-        key,
+      await reportTagCacheResult(cachedEntry, {
         hasBeenRevalidated: false,
         isStaleFromTag: _isStale,
       });

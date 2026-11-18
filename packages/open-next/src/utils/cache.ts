@@ -130,18 +130,20 @@ export async function hasBeenRevalidated(
 }
 
 /**
- * Notifies the incremental cache of the tag cache verdict for an entry.
+ * Notifies an entry returned by the incremental cache of its tag cache verdict.
  *
- * Calls `incrementalCache.onTagCacheResult` when it is defined.
- * Errors thrown by the hook are logged and ignored so that they do not affect how the entry is used.
+ * Calls `entry.onTagCacheResult` when it is defined.
+ * Errors thrown by the callback are logged and ignored so that they do not affect how the entry is used.
  *
+ * @param entry The entry, as returned by `IncrementalCache.get`
  * @param result The tag cache verdict for the entry
  */
 export async function reportTagCacheResult(
+  entry: Pick<WithLastModified<unknown>, "onTagCacheResult">,
   result: TagCacheResult,
 ): Promise<void> {
   try {
-    await globalThis.incrementalCache.onTagCacheResult?.(result);
+    await entry.onTagCacheResult?.(result);
   } catch (e) {
     error("Failed to report the tag cache result", e);
   }
