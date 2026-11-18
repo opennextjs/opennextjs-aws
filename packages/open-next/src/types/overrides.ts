@@ -142,6 +142,8 @@ export type WithLastModified<T> = {
   /**
    * Optional callback notified of the tag cache verdict for this entry.
    *
+   * This API is experimental and may change in a minor or patch release.
+   *
    * An `IncrementalCache` can set it on an entry returned by `get`. OpenNext calls it once the
    * tag verdict is known, even when tag checks are skipped. As it is attached to the entry, the verdict always
    * applies to this read, even when the same key is read several times concurrently.
@@ -155,6 +157,7 @@ export type WithLastModified<T> = {
    * - Errors thrown by the callback are logged and ignored, they do not change how the entry
    *   is used.
    *
+   * @experimental
    * @param result The tag cache verdict for this entry
    * @returns A promise that resolves once the verdict has been handled
    */
@@ -199,6 +202,10 @@ export type IncrementalCache = {
  *
  * `hasBeenRevalidated` and `isStaleFromTag` are `false` when the tag cache is not checked
  * (i.e. `shouldBypassTagCache`, disabled tag cache, or entries that are not checked against it).
+ *
+ * This API is experimental and may change in a minor or patch release.
+ *
+ * @experimental
  */
 export type TagCacheResult = {
   /** Whether the entry has been revalidated (on demand) and must not be used */
