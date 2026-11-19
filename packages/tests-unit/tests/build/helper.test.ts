@@ -2,8 +2,10 @@ import fs from "node:fs";
 import {
   compareSemver,
   findNextConfig,
+  getBundlerRuntime,
   isNextVersionSupported,
 } from "@opennextjs/aws/build/helper.js";
+import type { BuildOptions } from "@opennextjs/aws/build/helper.js";
 import { afterEach, vi } from "vitest";
 
 vi.mock("node:fs");
@@ -104,11 +106,24 @@ describe("isNextVersionSupported", () => {
   });
 
   test("handles boundary case - exactly 2 years", () => {
-    mockDate("2026-10-21");
-    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    mockDate("2025-10-26");
+    expect(isNextVersionSupported("14.0.0")).toBe(true);
 
+    mockDate("2025-10-27");
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
+  });
+
+  test("keeps supporting a version older than 2 years until the second next major is released", () => {
     mockDate("2026-10-22");
-    expect(isNextVersionSupported("15.0.0")).toBe(false);
+    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    expect(isNextVersionSupported("15.5.28")).toBe(true);
+    expect(isNextVersionSupported("16.0.0")).toBe(true);
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
+
+    mockDate("2030-01-01");
+    expect(isNextVersionSupported("15.0.0")).toBe(true);
+    expect(isNextVersionSupported("16.0.0")).toBe(true);
+    expect(isNextVersionSupported("14.0.0")).toBe(false);
   });
 
   test("returns false for unknown major versions", () => {
@@ -195,5 +210,53 @@ describe("findNextConfig", () => {
       path: "/test/app/next.config.ts",
       isTypescript: true,
     });
+  });
+});
+
+describe("getBundlerRuntime", () => {
+  const options = {
+    appPath: "/test/app",
+    appBuildOutputPath: "/test/output",
+  } as BuildOptions;
+
+  beforeEach(() => {
+    vi.mocked(fs.existsSync).mockReset();
+  });
+
+  test("returns webpack when the webpack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/output/.next/server/webpack-runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("webpack");
+  });
+
+  test("returns turbopack when the turbopack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) =>
+        filePath === "/test/output/.next/server/chunks/[turbopack]_runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("turbopack");
+  });
+
+  test("returns turbopack when the ssr turbopack runtime exists", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) =>
+        filePath ===
+        "/test/output/.next/server/chunks/ssr/[turbopack]_runtime.js",
+    );
+
+    expect(getBundlerRuntime(options)).toBe("turbopack");
+  });
+
+  test("ignores the .next folder in appPath when buildOutputPath differs", () => {
+    vi.mocked(fs.existsSync).mockImplementation(
+      (filePath) => filePath === "/test/app/.next/server/webpack-runtime.js",
+    );
+
+    expect(() => getBundlerRuntime(options)).toThrow(
+      "Unable to determine Next.js runtime (webpack or turbopack)",
+    );
   });
 });

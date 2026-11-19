@@ -33,31 +33,45 @@ export class DetachedPromise<T = any> {
 }
 
 export class DetachedPromiseRunner {
-  private promises: DetachedPromise<any>[] = [];
+  private promises: Promise<void>[] = [];
 
+  /**
+   * Create a deferred promise tracked by this runner.
+   *
+   * @returns The tracked promise and its resolve/reject functions.
+   */
   public withResolvers<T>(): DetachedPromise<T> {
     const detachedPromise = new DetachedPromise<T>();
-    this.promises.push(detachedPromise);
+    this.add(detachedPromise.promise);
     return detachedPromise;
   }
 
+  /**
+   * Track background work and handle failures immediately.
+   *
+   * @param promise Work to await, including work registered during an active drain.
+   * @returns Nothing; failures are logged rather than propagated.
+   */
   public add<T>(promise: Promise<T>): void {
-    const detachedPromise = new DetachedPromise<T>();
-    this.promises.push(detachedPromise);
-    promise.then(detachedPromise.resolve, detachedPromise.reject);
+    // A late promise may reject before the current batch finishes. Attach its
+    // rejection handler now so it cannot become an unhandled rejection.
+    this.promises.push(promise.then(() => {}, error));
   }
 
+  /**
+   * Drain tracked work, including additions made while earlier work is pending.
+   *
+   * Work started after the drain has settled still needs a new runtime waitUntil.
+   * @returns Resolves when all work registered during this drain has settled.
+   */
   public async await(): Promise<void> {
     debug(`Awaiting ${this.promises.length} detached promises`);
-    const results = await Promise.allSettled(
-      this.promises.map((p) => p.promise),
-    );
-    const rejectedPromises = results.filter(
-      (r) => r.status === "rejected",
-    ) as PromiseRejectedResult[];
-    rejectedPromises.forEach((r) => {
-      error(r.reason);
-    });
+    let awaited = 0;
+    while (awaited < this.promises.length) {
+      const batch = this.promises.slice(awaited);
+      awaited = this.promises.length;
+      await Promise.all(batch);
+    }
   }
 }
 

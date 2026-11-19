@@ -10,6 +10,7 @@ import type {
   WarmerEvent,
   WarmerResponse,
 } from "../../adapters/warmer-function";
+import { getBrotliQuality } from "../../utils/compression";
 import { DetachedPromiseRunner } from "../../utils/promise";
 
 type AwsLambdaEvent = APIGatewayProxyEventV2 | WarmerEvent;
@@ -60,6 +61,9 @@ const handler: WrapperHandler = async (handler, converter) =>
         compressedStream = zlib.createBrotliCompress({
           flush: zlib.constants.BROTLI_OPERATION_FLUSH,
           finishFlush: zlib.constants.BROTLI_OPERATION_FINISH,
+          params: {
+            [zlib.constants.BROTLI_PARAM_QUALITY]: getBrotliQuality(),
+          },
         });
         compressedStream.pipe(responseStream);
       } else if (acceptEncoding.includes("gzip")) {

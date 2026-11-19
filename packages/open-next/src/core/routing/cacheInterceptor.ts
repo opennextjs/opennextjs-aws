@@ -1,29 +1,119 @@
 import { createHash } from "node:crypto";
 
-import { NextConfig, PrerenderManifest } from "config/index";
+import {
+  AppPathsManifest,
+  NextConfig,
+  PagesManifest,
+  PrerenderManifest,
+} from "config/index";
+import type { Meta } from "types/cache";
 import type {
   InternalEvent,
   InternalResult,
   MiddlewareEvent,
+  ResolvedRoute,
 } from "types/open-next";
 import type { CacheValue } from "types/overrides";
+import { decodePathParams } from "utils/normalize-path";
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { isBinaryContentType } from "utils/binary";
-import { getTagsFromValue, hasBeenRevalidated, isStale } from "utils/cache";
+import {
+  getTagsFromValue,
+  hasBeenRevalidated,
+  isStale,
+  reportTagCacheResult,
+} from "utils/cache";
 import {
   CACHE_CONTROL_HEADER,
+  CACHE_TAGS_HEADER,
   NO_STORE_CACHE_CONTROL,
   OPEN_NEXT_CACHE_HEADER,
   PRERENDER_REVALIDATE_HEADER,
   fixCacheControlForError,
 } from "utils/cacheHeaders";
+import {
+  type RouteCacheManifests,
+  getDynamicRouteCachePathname,
+  getPrerenderRouteCacheKey,
+  getRouteCacheKey,
+  getRouteCacheOwner,
+  useRouteCacheKeys,
+} from "utils/routeCacheKey";
 import { debug } from "../../adapters/logger";
 import { localizePath } from "./i18n";
 import { generateMessageGroupId } from "./queue";
+import { dynamicRouteMatcher } from "./routeMatcher";
 
 const CACHE_ONE_YEAR = 60 * 60 * 24 * 365;
 const CACHE_ONE_MONTH = 60 * 60 * 24 * 30;
+
+/**
+ * Determines the effective revalidate duration for a given path/value combination.
+ *
+ * The prerender manifest is consulted when `revalidate` is not explicitly set.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @returns The revalidate duration in seconds, `CACHE_ONE_YEAR` for SSG
+ */
+function computeFinalRevalidate(
+  path: string,
+  revalidate?: number | false,
+): number {
+  const routes = PrerenderManifest?.routes ?? {};
+  const effectiveRevalidate =
+    revalidate === undefined && Object.hasOwn(routes, path)
+      ? routes[path].initialRevalidateSeconds
+      : revalidate;
+  return effectiveRevalidate === undefined || effectiveRevalidate === false
+    ? CACHE_ONE_YEAR
+    : effectiveRevalidate;
+}
+
+/**
+ * The time-based freshness of a cache entry, see `getCacheTiming`.
+ */
+type CacheTiming = {
+  /** The interval used for this verdict, captured before invoking the entry callback. */
+  revalidate: number | false | undefined;
+  /** Whether the entry never expires from time (no `revalidate`) */
+  isSSG: boolean;
+  /** Time before the entry needs to be revalidated, in seconds. It is at least 1 */
+  remainingTtl: number;
+  /** Whether the `revalidate` time of the entry has elapsed, always `false` for SSG */
+  isStaleFromTime: boolean;
+};
+
+/**
+ * Computes the time-based freshness of a cache entry.
+ *
+ * It depends on the current time: it should be called once per read so that everything
+ * derived from it is consistent.
+ *
+ * @param path The localized path of the request
+ * @param revalidate The revalidate value stored in the cache entry
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @returns The time-based freshness of the entry
+ */
+function getCacheTiming(
+  path: string,
+  revalidate: number | false | undefined,
+  lastModified: number | undefined,
+): CacheTiming {
+  const finalRevalidate = computeFinalRevalidate(path, revalidate);
+  // SSG uses one year cache
+  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
+  const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
+  // The TTL is at least 1s. An entry with 1s or less to live is considered stale.
+  const remainingTtl = Math.max(finalRevalidate - age, 1);
+  return {
+    revalidate,
+    isSSG,
+    remainingTtl,
+    isStaleFromTime: !isSSG && remainingTtl === 1,
+  };
+}
 
 /*
  * We use this header to prevent Firefox (and possibly some CDNs) from incorrectly reusing the RSC responses during caching.
@@ -40,30 +130,65 @@ const NEXT_SEGMENT_PREFETCH_HEADER = "next-router-segment-prefetch";
 const NEXT_PRERENDER_HEADER = "x-nextjs-prerender";
 const NEXT_POSTPONED_HEADER = "x-nextjs-postponed";
 
+/**
+ * Internal header that can be stored in a cache entry but must not be sent to the client.
+ *
+ * It is set when a route handler calls `response.cookies` and contains the `HttpOnly` cookies.
+ * Next.js strips it in `sendResponse` when it serves a cached response.
+ */
+const MIDDLEWARE_SET_COOKIE_HEADER = "x-middleware-set-cookie";
+
+/**
+ * Returns the headers stored in a cache entry, without the internal headers.
+ *
+ * The internal headers are `x-middleware-set-cookie` and `x-next-cache-tags`.
+ * The cache entry is not mutated as it could be shared (i.e. by an in-memory cache).
+ *
+ * @param headers The headers stored in the cache entry meta
+ * @returns A copy of the headers without the internal headers
+ */
+function getCachedResponseHeaders(
+  headers: Meta["headers"],
+): Record<string, string | string[]> {
+  const result: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(headers ?? {})) {
+    const lowerKey = key.toLowerCase();
+    if (
+      value === undefined ||
+      lowerKey === MIDDLEWARE_SET_COOKIE_HEADER ||
+      lowerKey === CACHE_TAGS_HEADER
+    ) {
+      continue;
+    }
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
+ * Computes the cache headers of a response served from a cache entry.
+ *
+ * A revalidation is queued when the entry is stale, either from time or from a tag.
+ *
+ * @param timing The time-based freshness of the entry
+ * @param body The response body, used to compute the ETag
+ * @param host The host of the request, used for the revalidation
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @param isStaleFromTag Whether the tag cache reported the entry as stale
+ * @param revalidationPath The path to revalidate, in its original encoding
+ * @param revalidationKey The cache key, used to deduplicate the revalidations
+ * @returns The `cache-control`, `x-opennext-cache` and `etag` headers
+ */
 async function computeCacheControl(
-  path: string,
+  timing: CacheTiming,
   body: string,
   host: string,
-  revalidate?: number | false,
-  lastModified?: number,
-  isStaleFromTagCache = false,
+  lastModified: number | undefined,
+  isStaleFromTag: boolean,
+  revalidationPath: string,
+  revalidationKey: string,
 ) {
-  let finalRevalidate = CACHE_ONE_YEAR;
-
-  const existingRoute = Object.entries(PrerenderManifest?.routes ?? {}).find(
-    (p) => p[0] === path,
-  )?.[1];
-  if (revalidate === undefined && existingRoute) {
-    finalRevalidate =
-      existingRoute.initialRevalidateSeconds === false
-        ? CACHE_ONE_YEAR
-        : existingRoute.initialRevalidateSeconds;
-    // eslint-disable-next-line sonarjs/elseif-without-else
-  } else if (revalidate !== undefined) {
-    finalRevalidate = revalidate === false ? CACHE_ONE_YEAR : revalidate;
-  }
-  // calculate age
-  const age = Math.round((Date.now() - (lastModified ?? 0)) / 1000);
+  const { revalidate, isSSG, remainingTtl, isStaleFromTime } = timing;
   const hash = (str: string) => createHash("md5").update(str).digest("hex");
   // RFC 9110 entity-tag is a quoted opaque-tag. CloudFront drops unquoted ETags
   // when serving compressed objects.
@@ -77,24 +202,21 @@ async function computeCacheControl(
     };
   }
 
-  // SSG uses one year cache
-  const isSSG = finalRevalidate === CACHE_ONE_YEAR;
-  const remainingTtl = Math.max(finalRevalidate - age, 1);
+  const isStale = isStaleFromTime || isStaleFromTag;
 
-  const isStaleFromTime = !isSSG && remainingTtl === 1;
-  const isStale = isStaleFromTime || isStaleFromTagCache;
-
-  if (!isSSG || isStaleFromTagCache) {
-    const sMaxAge = isStaleFromTagCache ? 1 : remainingTtl;
+  if (!isSSG || isStaleFromTag) {
+    const sMaxAge = isStaleFromTag ? 1 : remainingTtl;
     debug("sMaxAge", {
-      finalRevalidate,
-      age,
+      remainingTtl,
       lastModified,
       revalidate,
-      isStaleFromTagCache,
+      isStaleFromTag,
     });
     if (isStale) {
-      let url = NextConfig.trailingSlash ? `${path}/` : path;
+      let url =
+        NextConfig.trailingSlash && revalidationPath !== "/"
+          ? `${revalidationPath}/`
+          : revalidationPath;
       if (NextConfig.basePath) {
         url = `${NextConfig.basePath}${url}`;
       }
@@ -105,8 +227,9 @@ async function computeCacheControl(
           eTag: etag,
           lastModified: lastModified ?? Date.now(),
         },
-        MessageDeduplicationId: hash(`${path}-${lastModified}-${etag}`),
-        MessageGroupId: generateMessageGroupId(path),
+        // The body differs per request type and per segment, so it must not be part of the id.
+        MessageDeduplicationId: hash(`${revalidationKey}-${lastModified}`),
+        MessageGroupId: generateMessageGroupId(revalidationKey),
       });
     }
     return {
@@ -180,20 +303,24 @@ function getBodyForAppRouter(
  * Generates the response to serve for a cached `app` or `page` entry.
  *
  * @param event The incoming event
- * @param localizedPath The localized path, used to compute the cache control
+ * @param timing The time-based freshness of the entry
  * @param cachedValue The cache entry, must be of type `app` or `page`
- * @param lastModified Time of the last update to the cache entry
- * @param isStaleFromTagCache Whether the tag cache reported the entry as stale
+ * @param lastModified The last modified time of the cache entry, in ms
+ * @param isStaleFromTag Whether the tag cache reported the entry as stale
+ * @param revalidationPath The path to revalidate, in its original encoding
+ * @param revalidationKey The cache key, used to deduplicate the revalidations
  * @returns The result to serve, or `undefined` when the entry can not serve the
  * request - the caller should then fallback to the server.
  * @throws When `cachedValue` is neither of type `app` nor `page`
  */
 async function generateResult(
   event: MiddlewareEvent,
-  localizedPath: string,
+  timing: CacheTiming,
   cachedValue: CacheValue<"cache">,
-  lastModified?: number,
-  isStaleFromTagCache = false,
+  lastModified: number | undefined,
+  isStaleFromTag: boolean,
+  revalidationPath: string,
+  revalidationKey: string,
 ): Promise<InternalResult | undefined> {
   debug("Returning result from experimental cache");
   let body: string | undefined;
@@ -226,12 +353,13 @@ async function generateResult(
     return undefined;
   }
   const cacheControl = await computeCacheControl(
-    localizedPath,
+    timing,
     body,
     event.headers.host,
-    cachedValue.revalidate,
     lastModified,
-    isStaleFromTagCache,
+    isStaleFromTag,
+    revalidationPath,
+    revalidationKey,
   );
   const statusCode = computeStatusCode(
     event.rewriteStatusCode,
@@ -240,7 +368,7 @@ async function generateResult(
   const headers: Record<string, string | string[]> = {
     ...cacheControl,
     "content-type": type,
-    ...cachedValue.meta?.headers,
+    ...getCachedResponseHeaders(cachedValue.meta?.headers),
     vary: VARY_HEADER,
     ...additionalHeaders,
   };
@@ -282,36 +410,91 @@ function computeStatusCode(
   return rewriteStatusCode ?? cachedStatusCode ?? 200;
 }
 
-/**
- *
- * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/shared/lib/router/utils/escape-path-delimiters.ts#L2-L10
- */
-function escapePathDelimiters(
-  segment: string,
-  escapeEncoded?: boolean,
-): string {
-  return segment.replace(
-    new RegExp(`([/#?]${escapeEncoded ? "|%(2f|23|3f|5c)" : ""})`, "gi"),
-    (char: string) => encodeURIComponent(char),
-  );
+let routeCacheManifests: RouteCacheManifests | undefined;
+
+function getRouteCacheManifests(): RouteCacheManifests {
+  routeCacheManifests ??= {
+    prerenderManifest: {
+      routes: PrerenderManifest?.routes ?? {},
+      dynamicRoutes: PrerenderManifest?.dynamicRoutes ?? {},
+    },
+    appPaths: Object.keys(AppPathsManifest ?? {}),
+    pagesManifest: PagesManifest ?? {},
+    locales: NextConfig.i18n?.locales,
+  };
+  return routeCacheManifests;
 }
 
 /**
+ * Computes the key of the cache entry serving the request.
  *
- * SSG cache key needs to be decoded, but some characters needs to be properly escaped
- * https://github.com/vercel/next.js/blob/34039551d2e5f611c0abde31a197d9985918adaf/packages/next/src/server/lib/router-utils/decode-path-params.ts#L11-L26
- * Decoding must be atomic, as in Next.js. Partially decoding a malformed path
- * could select a different cache route than the one evaluated by middleware.
+ * Next.js 15.5.27 and 16.3.8 scope the key by the route owning the entry. It is computed from:
+ * - the prerender manifest for prerendered routes,
+ * - the dynamic route Next.js would render for entries cached at runtime.
+ *
+ * @param event The incoming event
+ * @param localizedPath The localized and decoded path, without basePath nor trailing slash
+ * @param resolvedRoutes Ordered route matches for the final internal pathname
+ * @returns The cache key, or `undefined` when the path is not served by an ISR route
  */
-function decodePathParams(pathname: string): string {
-  return pathname
-    .split("/")
-    .map((segment) => escapePathDelimiters(decodeURIComponent(segment), true))
-    .join("/");
+function getCacheKey(
+  event: MiddlewareEvent,
+  localizedPath: string,
+  resolvedRoutes: ResolvedRoute[] | undefined,
+): string | undefined {
+  if (!useRouteCacheKeys(globalThis.nextVersion)) {
+    const isISR =
+      Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
+      Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
+        new RegExp(dr.routeRegex).test(localizedPath),
+      );
+    // The route is keyed as `/` in the prerender manifest, but the generated
+    // cache asset for the index route is uploaded as `/index`.
+    if (!isISR) return undefined;
+    return localizedPath === "/" ? "/index" : localizedPath;
+  }
+
+  const manifests = getRouteCacheManifests();
+  if (Object.hasOwn(manifests.prerenderManifest.routes, localizedPath)) {
+    const manifestKey = getPrerenderRouteCacheKey(localizedPath, manifests);
+    const selectedRoute = resolvedRoutes?.[0];
+    // The routing handler always supplies matches. An empty list there means
+    // ownership could not be proven and scoped interception must fail closed.
+    if (resolvedRoutes && !selectedRoute) return undefined;
+    if (!selectedRoute) return manifestKey;
+    const selectedOwner = getRouteCacheOwner(selectedRoute.route, manifests);
+    if (!selectedOwner) return undefined;
+    const selectedKey = getRouteCacheKey(localizedPath, selectedOwner);
+    return selectedKey === manifestKey ? manifestKey : undefined;
+  }
+
+  // Not prerendered, the entry might have been cached at runtime by a dynamic route.
+  // Dynamic routes are sorted by specificity, the first match is the one Next.js renders.
+  const dynamicRoute = resolvedRoutes
+    ? resolvedRoutes[0]
+    : dynamicRouteMatcher(event.rawPath)[0];
+  const dynamicPrerender = dynamicRoute
+    ? manifests.prerenderManifest.dynamicRoutes[dynamicRoute.route]
+    : undefined;
+  if (
+    !dynamicRoute ||
+    !dynamicPrerender ||
+    dynamicPrerender.fallback !== null
+  ) {
+    return undefined;
+  }
+  const owner = getRouteCacheOwner(dynamicRoute.route, manifests);
+  return owner
+    ? getRouteCacheKey(
+        getDynamicRouteCachePathname(localizedPath, manifests.locales),
+        owner,
+      )
+    : undefined;
 }
 
 export async function cacheInterceptor(
   event: MiddlewareEvent,
+  resolvedRoutes?: ResolvedRoute[],
 ): Promise<InternalEvent | InternalResult> {
   if (
     Boolean(event.headers["next-action"]) ||
@@ -333,14 +516,22 @@ export async function cacheInterceptor(
     debug("Preview mode detected, passing through to handler");
     return event;
   }
-  // We localize the path in case i18n is enabled
-  let localizedPath = localizePath(event);
-  // If using basePath we need to remove it from the path
-  if (NextConfig.basePath) {
-    localizedPath = localizedPath.replace(NextConfig.basePath, "");
-  }
+  const basePath = NextConfig.basePath;
+  const pathWithoutBasePath = !basePath
+    ? event.rawPath
+    : event.rawPath === basePath
+      ? "/"
+      : event.rawPath.startsWith(`${basePath}/`)
+        ? event.rawPath.slice(basePath.length)
+        : event.rawPath;
+  // Locale detection must inspect the first segment after basePath.
+  let localizedPath = localizePath({ ...event, rawPath: pathWithoutBasePath });
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
+
+  // Revalidation must request the original encoded spelling so route selection
+  // cannot switch from an encoded catch-all to a more specific canonical route.
+  const revalidationPath = localizedPath || "/";
 
   // Then we decode the path params
   try {
@@ -351,19 +542,11 @@ export async function cacheInterceptor(
     return event;
   }
 
-  // The route is keyed as `/` in the prerender manifest, but the generated
-  // cache asset for the app index route is uploaded as `/index`.
-  const cacheKey = localizedPath === "/" ? "/index" : localizedPath;
-
   debug("Checking cache for", localizedPath, PrerenderManifest);
 
-  const isISR =
-    Object.keys(PrerenderManifest?.routes ?? {}).includes(localizedPath) ||
-    Object.values(PrerenderManifest?.dynamicRoutes ?? {}).some((dr) =>
-      new RegExp(dr.routeRegex).test(localizedPath),
-    );
-  debug("isISR", isISR);
-  if (isISR) {
+  const cacheKey = getCacheKey(event, localizedPath, resolvedRoutes);
+  debug("cacheKey", cacheKey);
+  if (cacheKey) {
     try {
       const cachedData = await globalThis.incrementalCache.get(cacheKey);
       debug("cached data in interceptor", cachedData);
@@ -371,25 +554,39 @@ export async function cacheInterceptor(
       if (!cachedData?.value) {
         return event;
       }
+      const { lastModified } = cachedData;
       const tags = getTagsFromValue(cachedData.value);
-      // We need to check the tag cache now
-      if (
-        cachedData.value?.type === "app" ||
-        cachedData.value?.type === "route"
-      ) {
-        const _hasBeenRevalidated = cachedData.shouldBypassTagCache
-          ? false
-          : await hasBeenRevalidated(cacheKey, tags, cachedData);
 
-        if (_hasBeenRevalidated) {
-          return event;
-        }
-      }
+      // Check if the cache entry has been revalidated: it must not be used
+      const isRevalidated =
+        !cachedData.shouldBypassTagCache &&
+        (cachedData.value.type === "app" ||
+          cachedData.value.type === "route") &&
+        (await hasBeenRevalidated(cacheKey, tags, cachedData));
 
       // Check if the cache entry is stale (valid but needs background revalidation)
-      const _isStale = cachedData.shouldBypassTagCache
-        ? false
-        : await isStale(cacheKey, tags, cachedData.lastModified ?? Date.now());
+      const isStaleFromTag =
+        !isRevalidated &&
+        !cachedData.shouldBypassTagCache &&
+        (await isStale(cacheKey, tags, lastModified ?? Date.now()));
+
+      // Computed once, after the tag cache has been checked, so that the reported verdict,
+      // the response headers and the revalidation queue all agree.
+      const timing = getCacheTiming(
+        localizedPath,
+        cachedData.value.revalidate,
+        lastModified,
+      );
+
+      await reportTagCacheResult(cachedData, {
+        hasBeenRevalidated: isRevalidated,
+        isStaleFromTag,
+        isStaleFromTime: timing.isStaleFromTime,
+      });
+
+      if (isRevalidated) {
+        return event;
+      }
 
       const host = event.headers.host;
       switch (cachedData?.value?.type) {
@@ -397,30 +594,32 @@ export async function cacheInterceptor(
         case "page": {
           const result = await generateResult(
             event,
-            localizedPath,
+            timing,
             cachedData.value,
-            cachedData.lastModified,
-            _isStale,
+            lastModified,
+            isStaleFromTag,
+            revalidationPath,
+            cacheKey,
           );
           // The cache entry can not serve this request, fallback to the server.
           return result ?? event;
         }
         case "redirect": {
           const cacheControl = await computeCacheControl(
-            localizedPath,
+            timing,
             "",
             host,
-            cachedData.value.revalidate,
-            cachedData.lastModified,
-            _isStale,
+            lastModified,
+            isStaleFromTag,
+            revalidationPath,
+            cacheKey,
           );
           return {
             type: "core",
             statusCode: cachedData.value.meta?.status ?? 307,
             body: emptyReadableStream(),
             headers: {
-              ...((cachedData.value.meta?.headers as Record<string, string>) ??
-                {}),
+              ...getCachedResponseHeaders(cachedData.value.meta?.headers),
               ...cacheControl,
             },
             isBase64Encoded: false,
@@ -428,12 +627,13 @@ export async function cacheInterceptor(
         }
         case "route": {
           const cacheControl = await computeCacheControl(
-            localizedPath,
+            timing,
             cachedData.value.body,
             host,
-            cachedData.value.revalidate,
-            cachedData.lastModified,
-            _isStale,
+            lastModified,
+            isStaleFromTag,
+            revalidationPath,
+            cacheKey,
           );
 
           const isBinary = isBinaryContentType(
@@ -446,7 +646,7 @@ export async function cacheInterceptor(
           );
           const headers: Record<string, string | string[]> = {
             ...cacheControl,
-            ...cachedData.value.meta?.headers,
+            ...getCachedResponseHeaders(cachedData.value.meta?.headers),
             vary: VARY_HEADER,
           };
           // See the note in `generateResult`.

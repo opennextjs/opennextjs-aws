@@ -1,12 +1,36 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+
 import type {
   CacheValue,
   NextModeTagCacheWriteInput,
   OriginalTagCacheWriteInput,
+  TagCacheResult,
   WithLastModified,
 } from "types/overrides";
-import { debug } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { CACHE_TAGS_HEADER } from "./cacheHeaders";
 import { compareSemver } from "./semver";
+
+/**
+ * Computes the key used to store a composable (`"use cache"`) entry.
+ *
+ * The cache key provided by Next.js embeds the serialized arguments of the cached function and may
+ * contain any UTF-16 string. Storage backends transform keys (path normalization, URL parsing,
+ * UTF-8 encoding, ...) which could map distinct Next.js keys to the same stored entry.
+ *
+ * The storage key is the sha256 of the exact UTF-16 code units of the cache key, as a 64 characters
+ * lowercase hex string that every backend can store as is.
+ *
+ * @param cacheKey The cache key provided by Next.js
+ * @returns The key to use for the incremental cache and the tag cache
+ */
+export function getComposableCacheStorageKey(cacheKey: string): string {
+  return createHash("sha256")
+    .update(Buffer.from(cacheKey, "utf16le"))
+    .digest("hex");
+}
+
 /**
  *
  * @param key The key for that specific cache entry
@@ -56,7 +80,7 @@ export function getStaleLastModified(revalidate?: number | false): number {
     return 1;
   }
   if (typeof revalidate !== "number") {
-    // Without a revalidate value Next cannot derive an expire time either,
+    // The cache adapter then reports `{ revalidate: 1 }` without `expire` (see `getCacheControl`),
     // so the historical sentinel is still safe here.
     return 1;
   }
@@ -105,6 +129,26 @@ export async function hasBeenRevalidated(
   return _lastModified === -1;
 }
 
+/**
+ * Notifies an entry returned by the incremental cache of its tag cache verdict.
+ *
+ * Calls `entry.onTagCacheResult` when it is defined.
+ * Errors thrown by the callback are logged and ignored so that they do not affect how the entry is used.
+ *
+ * @param entry The entry, as returned by `IncrementalCache.get`
+ * @param result The tag cache verdict for the entry
+ */
+export async function reportTagCacheResult(
+  entry: Pick<WithLastModified<unknown>, "onTagCacheResult">,
+  result: TagCacheResult,
+): Promise<void> {
+  try {
+    await entry.onTagCacheResult?.(result);
+  } catch (e) {
+    error("Failed to report the tag cache result", e);
+  }
+}
+
 export function getTagsFromValue(value?: CacheValue<"cache">) {
   if (!value) {
     return [];
@@ -113,7 +157,6 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   try {
     const cacheTags =
       value.meta?.headers?.[CACHE_TAGS_HEADER]?.split(",") ?? [];
-    delete value.meta?.headers?.[CACHE_TAGS_HEADER];
     return cacheTags;
   } catch (e) {
     return [];

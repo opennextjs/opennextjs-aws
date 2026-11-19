@@ -26,7 +26,25 @@ export interface QueueMessage {
   MessageGroupId: string;
 }
 
+/**
+ * Triggers the revalidation of stale routes.
+ */
 export interface Queue {
+  /**
+   * Sends the revalidation request of a stale route.
+   *
+   * When the route is rendered by the Next server, it is called once the response is sent (in
+   * `waitUntil` when the wrapper provides one).
+   * With cache interception, it is awaited before the `STALE` response is returned.
+   *
+   * The returned promise should resolve once the message is accepted (or handed to `waitUntil`),
+   * not once the route is revalidated, so that the response is not delayed.
+   *
+   * @param message The route to revalidate.
+   * @returns A promise that resolves once the message is accepted.
+   * @throws When the message can not be sent. The error is logged, and with cache interception the
+   *   request falls back to the Next server.
+   */
   send(message: QueueMessage): Promise<void>;
   name: string;
 }
@@ -121,6 +139,29 @@ export type WithLastModified<T> = {
    * `revalidateTag` and `revalidatePath` may not work as expected.
    */
   shouldBypassTagCache?: boolean;
+  /**
+   * Optional callback notified of the tag cache verdict for this entry.
+   *
+   * This API is experimental and may change in a minor or patch release.
+   *
+   * An `IncrementalCache` can set it on an entry returned by `get`. OpenNext calls it once the
+   * tag verdict is known, even when tag checks are skipped. As it is attached to the entry, the verdict always
+   * applies to this read, even when the same key is read several times concurrently.
+   *
+   * - It is called at most once. It may not be called, i.e. when checking the tag cache fails
+   *   (the entry is then treated as a miss).
+   * - An entry that is neither revalidated nor stale may still not be used, i.e. when it does
+   *   not hold the data needed to serve the request.
+   * - It is awaited on the request path: long running work should be deferred
+   *   (i.e. with `waitUntil`).
+   * - Errors thrown by the callback are logged and ignored, they do not change how the entry
+   *   is used.
+   *
+   * @experimental
+   * @param result The tag cache verdict for this entry
+   * @returns A promise that resolves once the verdict has been handled
+   */
+  onTagCacheResult?: (result: TagCacheResult) => Promise<void>;
 };
 
 export type CacheEntryType = Extension;
@@ -135,6 +176,11 @@ export type CacheValue<CacheType extends CacheEntryType> =
      * This is available for page cache entry, but only at runtime.
      */
     revalidate?: number | false;
+    /**
+     * This is available for page cache entry, but only at runtime.
+     * The cache interceptor does not use it.
+     */
+    expire?: number;
   };
 
 export type IncrementalCache = {
@@ -149,6 +195,25 @@ export type IncrementalCache = {
   ): Promise<void>;
   delete(key: string): Promise<void>;
   name: string;
+};
+
+/**
+ * The tag cache verdict for an entry, see `WithLastModified.onTagCacheResult`.
+ *
+ * `hasBeenRevalidated` and `isStaleFromTag` are `false` when the tag cache is not checked
+ * (i.e. `shouldBypassTagCache`, disabled tag cache, or entries that are not checked against it).
+ *
+ * This API is experimental and may change in a minor or patch release.
+ *
+ * @experimental
+ */
+export type TagCacheResult = {
+  /** Whether the entry has been revalidated (on demand) and must not be used */
+  hasBeenRevalidated: boolean;
+  /** Whether a tag of the entry is stale: the entry can be used but must be revalidated */
+  isStaleFromTag: boolean;
+  /** Whether the `revalidate` time of the entry has elapsed, `undefined` when not known */
+  isStaleFromTime?: boolean;
 };
 
 // Tag cache
@@ -326,12 +391,54 @@ export type ProxyExternalRequest = BaseOverride & {
   proxy: (event: InternalEvent) => Promise<InternalResult>;
 };
 
+/**
+ * Describes a path whose CDN entries must be invalidated.
+ *
+ * Includes the path before and after routing as well as the routes that matched
+ * while resolving the request.
+ */
 type CDNPath = {
+  /** The original request pathname before route resolution. */
   initialPath: string;
+  /** The effective request pathname after route resolution. */
   rawPath: string;
+  /** The routes that matched while resolving the request. */
   resolvedRoutes: ResolvedRoute[];
 };
 
+/**
+ * Invalidates CDN entries after on-demand revalidation.
+ *
+ * Implementations must support path invalidation and may additionally support
+ * native cache-tag invalidation.
+ */
 export type CDNInvalidationHandler = BaseOverride & {
+  /**
+   * Invalidates CDN entries associated with resolved paths.
+   *
+   * @param paths Paths and routing metadata for the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
   invalidatePaths: (paths: CDNPath[]) => Promise<void>;
+  /**
+   * Invalidates CDN entries associated with cache tags.
+   *
+   * Called once per `revalidateTag` call, after the tag cache has been updated,
+   * with the tags passed to Next.js as is: hard tags from `revalidateTag()` and
+   * soft tags (prefixed with `_N_T_/`) from `revalidatePath()`. Tags are not
+   * expanded, i.e. the hard tags of the paths matching a soft tag are not added.
+   *
+   * When provided, `invalidatePaths` is no longer called for tag revalidation.
+   * It is still used for `res.revalidate()` in the Pages Router.
+   * When omitted, OpenNext resolves the tags to paths and calls `invalidatePaths`.
+   *
+   * The CDN integration must associate cached entries with the same tags, both
+   * hard and soft, for invalidation to have an effect. For response-based CDN
+   * caches, the wrapper or converter must propagate the request's cache tags to
+   * the provider's response metadata.
+   *
+   * @param tags Cache tags associated with the entries to invalidate.
+   * @returns A promise that resolves when invalidation is complete.
+   */
+  invalidateTags?: (tags: string[]) => Promise<void>;
 };

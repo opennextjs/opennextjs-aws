@@ -108,6 +108,27 @@ test.describe("Composable Cache", () => {
     expect(cacheHeader).toMatch(/^(MISS|HIT)$/);
   });
 
+  // Arguments that are equivalent once path-normalized must not share an entry
+  for (const [label, first, second] of [
+    ["dot segments", "x/../b", "b"],
+    ["empty segments", "a//b", "a/b"],
+  ]) {
+    test(`arguments differing by ${label} should use distinct entries`, async ({
+      page,
+    }) => {
+      const id = crypto.randomUUID();
+      const lookup = async (arg: string) => {
+        await page.goto(`/use-cache/key?arg=${encodeURIComponent(arg)}`);
+        const elt = page.getByTestId("lookup");
+        await expect(elt).toBeVisible();
+        return JSON.parse((await elt.textContent()) ?? "{}");
+      };
+
+      expect((await lookup(`${id}/${first}`)).arg).toEqual(`${id}/${first}`);
+      expect((await lookup(`${id}/${second}`)).arg).toEqual(`${id}/${second}`);
+    });
+  }
+
   test("cached component should work in isr", async ({ page }) => {
     await page.goto("/use-cache/isr");
 

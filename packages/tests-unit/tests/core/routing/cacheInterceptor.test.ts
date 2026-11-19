@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
+import { localizePath } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
@@ -11,6 +12,31 @@ import { vi } from "vitest";
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   NextConfig: {},
+  RoutesManifest: {
+    basePath: "",
+    locales: [],
+    routes: {
+      static: [],
+      dynamic: [
+        { page: "/admin/[slug]", regex: "^/admin/([^/]+?)(?:/)?$" },
+        { page: "/isr/[id]", regex: "^/isr/([^/]+?)(?:/)?$" },
+        { page: "/dynamic/[id]", regex: "^/dynamic/([^/]+?)(?:/)?$" },
+        { page: "/[...slug]", regex: "^/(.+?)(?:/)?$" },
+      ],
+    },
+  },
+  AppPathRoutesManifest: {},
+  AppPathsManifest: {
+    "/page": "app/page.js",
+    "/(group)/albums/page": "app/(group)/albums/page.js",
+    "/admin/[slug]/page": "app/admin/[slug]/page.js",
+    "/isr/[id]/page": "app/isr/[id]/page.js",
+    "/dynamic/[id]/page": "app/dynamic/[id]/page.js",
+  },
+  PagesManifest: {
+    "/revalidate": "pages/revalidate.js",
+    "/[...slug]": "pages/[...slug].js",
+  },
   PrerenderManifest: {
     routes: {
       "/": {
@@ -33,6 +59,11 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         srcRoute: "/admin/[slug]",
         dataRoute: "/admin/%ZZ.rsc",
       },
+      "/admin/safe": {
+        initialRevalidateSeconds: 60,
+        srcRoute: "/admin/[slug]",
+        dataRoute: "/admin/safe.rsc",
+      },
     },
     dynamicRoutes: {
       // A `dynamicParams: true` route. Entries for ids that `generateStaticParams` did
@@ -43,13 +74,21 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
         fallback: null,
         dataRouteRegex: null,
       },
+      "/[...slug]": {
+        routeRegex: "^/(.+?)(?:/)?$",
+        dataRoute: null,
+        fallback: null,
+        dataRouteRegex: null,
+      },
     },
   },
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: MiddlewareEvent) => event.rawPath,
+  localizePath: vi.fn((event: MiddlewareEvent) => event.rawPath),
 }));
+
+const localizePathMock = vi.mocked(localizePath);
 
 type PartialEvent = Partial<
   Omit<MiddlewareEvent, "body" | "rawPath" | "query">
@@ -70,6 +109,8 @@ function createEvent(event: PartialEvent): MiddlewareEvent {
     rewriteStatusCode: event.rewriteStatusCode,
   };
 }
+
+const onTagCacheResult = vi.fn().mockResolvedValue(undefined);
 
 const incrementalCache = {
   name: "mock",
@@ -299,6 +340,59 @@ describe("cacheInterceptor", () => {
     );
   });
 
+  it("should use one deduplication id for a stale entry whatever the request asks for", async () => {
+    const entry = {
+      value: {
+        type: "app",
+        html: "Index page",
+        rsc: "RSC content",
+        segmentData: { "/_tree": "Tree content", "/__PAGE__": "Page content" },
+      },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    };
+    const requests = [
+      {},
+      { rsc: "1" },
+      { rsc: "1", "next-router-segment-prefetch": "/_tree" },
+      { rsc: "1", "next-router-segment-prefetch": "/__PAGE__" },
+    ];
+
+    for (const headers of requests) {
+      incrementalCache.get.mockResolvedValueOnce(entry);
+      await cacheInterceptor(createEvent({ url: "/", headers }));
+    }
+
+    const ids = queue.send.mock.calls.map(
+      ([msg]) => msg.MessageDeduplicationId,
+    );
+    expect(ids).toHaveLength(4);
+    expect(new Set(ids).size).toBe(1);
+  });
+
+  it("should not duplicate the root slash during revalidation", async () => {
+    NextConfig.trailingSlash = true;
+    NextConfig.basePath = "/base";
+    incrementalCache.get.mockResolvedValueOnce({
+      value: { type: "app", html: "Index page", revalidate: 60 },
+      lastModified: new Date("2024-01-01T23:57:00Z").getTime(),
+    });
+
+    try {
+      await cacheInterceptor(
+        createEvent({ url: "/base/", headers: { host: "example.com" } }),
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({ url: "/base/" }),
+        }),
+      );
+    } finally {
+      NextConfig.trailingSlash = undefined;
+      NextConfig.basePath = undefined;
+    }
+  });
+
   it("should take no action when tagCache lasModified is -1 for app type", async () => {
     const event = createEvent({
       url: "/albums",
@@ -443,6 +537,105 @@ describe("cacheInterceptor", () => {
         }),
       }),
     );
+  });
+
+  describe("internal headers stored in the cache entry", () => {
+    const internalHeaders = {
+      "x-next-cache-tags": "_N_T_/layout,_N_T_/albums",
+      "x-middleware-set-cookie": "session=secret; Path=/; HttpOnly",
+    };
+
+    it.each([
+      [
+        "app",
+        {
+          type: "app",
+          html: "Hello, world!",
+          meta: { headers: { "x-custom": "value", ...internalHeaders } },
+        },
+      ],
+      [
+        "page",
+        {
+          type: "page",
+          html: "Hello, world!",
+          json: {},
+          meta: { headers: { "x-custom": "value", ...internalHeaders } },
+        },
+      ],
+      [
+        "route",
+        {
+          type: "route",
+          body: "{}",
+          meta: {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+              "set-cookie": "session=secret; Path=/; HttpOnly",
+              "x-custom": "value",
+              ...internalHeaders,
+            },
+          },
+        },
+      ],
+      [
+        "redirect",
+        {
+          type: "redirect",
+          meta: {
+            status: 302,
+            headers: { "x-custom": "value", ...internalHeaders },
+          },
+        },
+      ],
+    ])("should not expose them for a %s entry", async (_, value) => {
+      incrementalCache.get.mockResolvedValueOnce({ value });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(result.headers).toEqual(
+        expect.objectContaining({ "x-custom": "value" }),
+      );
+      expect(result.headers).not.toHaveProperty("x-next-cache-tags");
+      expect(result.headers).not.toHaveProperty("x-middleware-set-cookie");
+    });
+
+    // The entry could be shared, i.e. by an in-memory incremental cache
+    it("should not remove them from the cache entry", async () => {
+      const value = {
+        type: "app",
+        html: "Hello, world!",
+        meta: { headers: { ...internalHeaders } },
+      };
+      incrementalCache.get.mockResolvedValueOnce({ value });
+
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(value.meta.headers).toEqual(internalHeaders);
+    });
+
+    it("should keep the set-cookie header of a route entry", async () => {
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "route",
+          body: "{}",
+          meta: {
+            status: 200,
+            headers: {
+              "set-cookie": "session=secret; Path=/; HttpOnly",
+              ...internalHeaders,
+            },
+          },
+        },
+      });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(result.headers["set-cookie"]).toEqual(
+        "session=secret; Path=/; HttpOnly",
+      );
+    });
   });
 
   it("should take no action when cache returns unrecognized type", async () => {
@@ -1145,6 +1338,148 @@ describe("cacheInterceptor", () => {
     });
   });
 
+  describe("route cache keys (next >= 16.3.8)", () => {
+    const sha256 = (value: string) =>
+      createHash("sha256").update(value).digest("hex");
+
+    beforeEach(() => {
+      globalThis.nextVersion = "16.3.8";
+      incrementalCache.get.mockReset().mockResolvedValueOnce({});
+    });
+
+    it("should use the scoped key of a prerendered app page", async () => {
+      await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/(group)/albums/page")}/$/albums`,
+      );
+    });
+
+    it("should use the scoped key of the index route", async () => {
+      await cacheInterceptor(createEvent({ url: "/" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/page")}/$/index`,
+      );
+    });
+
+    it("should use the scoped key of a prerendered pages route", async () => {
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use scoped keys for the Next.js 15.5.27 backport", async () => {
+      globalThis.nextVersion = "15.5.27";
+
+      await cacheInterceptor(createEvent({ url: "/revalidate" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/PAGES/${sha256("/revalidate")}/$/revalidate`,
+      );
+    });
+
+    it("should use the scoped key of an entry cached at runtime", async () => {
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(incrementalCache.get).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+      );
+    });
+
+    it("should not check the cache for a dynamic route that is not ISR", async () => {
+      const event = createEvent({ url: "/dynamic/7" });
+      const result = await cacheInterceptor(event);
+
+      expect(result).toEqual(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should use the tag cache with the scoped key", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "app", html: "<html></html>", rsc: "rsc" },
+        lastModified: Date.now(),
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(Date.now());
+      await cacheInterceptor(createEvent({ url: "/isr/7" }));
+
+      expect(tagCache.getLastModified).toHaveBeenCalledWith(
+        `/route-cache/APP_PAGE/${sha256("/isr/[id]/page")}/$/isr/7`,
+        expect.any(Number),
+      );
+    });
+
+    it("should reject a concrete prerender owned by another route", async () => {
+      const event = createEvent({ url: "/%61dmin/safe" });
+
+      expect(
+        await cacheInterceptor(event, [{ route: "/[...slug]", type: "page" }]),
+      ).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should fail closed when routing cannot prove an owner", async () => {
+      const event = createEvent({ url: "/albums" });
+
+      expect(await cacheInterceptor(event, [])).toBe(event);
+      expect(incrementalCache.get).not.toHaveBeenCalled();
+    });
+
+    it("should remove basePath before locale detection", async () => {
+      NextConfig.basePath = "/base";
+      NextConfig.i18n = {
+        defaultLocale: "en",
+        locales: ["en", "fr"],
+      } as any;
+      localizePathMock.mockImplementationOnce((event) =>
+        event.rawPath.startsWith("/fr/")
+          ? event.rawPath
+          : `/en${event.rawPath}`,
+      );
+
+      try {
+        await cacheInterceptor(createEvent({ url: "/base/fr/entry" }), [
+          { route: "/[...slug]", type: "page" },
+        ]);
+
+        expect(localizePathMock).toHaveBeenCalledWith(
+          expect.objectContaining({ rawPath: "/fr/entry" }),
+        );
+        expect(incrementalCache.get).toHaveBeenCalledWith(
+          `/route-cache/PAGES/${sha256("/[...slug]")}/$/fr/entry`,
+        );
+      } finally {
+        NextConfig.basePath = undefined;
+        NextConfig.i18n = undefined;
+      }
+    });
+
+    it("should revalidate encoded aliases through their original spelling", async () => {
+      incrementalCache.get.mockReset().mockResolvedValueOnce({
+        value: { type: "page", html: "stale", revalidate: 60 },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(
+        createEvent({
+          url: "/%63ache-victim/stale",
+          headers: { host: "example.com" },
+        }),
+        [{ route: "/[...slug]", type: "page" }],
+      );
+
+      expect(queue.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          MessageBody: expect.objectContaining({
+            url: "/%63ache-victim/stale",
+          }),
+        }),
+      );
+    });
+  });
+
   describe("isStale", () => {
     it("should serve stale app content when isStale returns true", async () => {
       const event = createEvent({ url: "/albums" });
@@ -1257,6 +1592,236 @@ describe("cacheInterceptor", () => {
         }),
       );
       expect(queue.send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("onTagCacheResult", () => {
+    it("uses the validated interval even if the callback changes the shared entry", async () => {
+      const value = { type: "app", html: "page", revalidate: 60 };
+      const callback = vi.fn(async () => {
+        value.revalidate = 0;
+      });
+      incrementalCache.get.mockResolvedValueOnce({
+        value,
+        lastModified: Date.now(),
+        onTagCacheResult: callback,
+      });
+
+      const result = await cacheInterceptor(createEvent({ url: "/albums" }));
+
+      expect(callback).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(result.headers["cache-control"]).toContain("s-maxage=60,");
+    });
+
+    it("should call onTagCacheResult with isStaleFromTime: false on a fresh SSG cache hit", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+    });
+
+    it("should call onTagCacheResult with isStaleFromTime: true when entry is time-stale", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      // /revalidate has initialRevalidateSeconds: 60; lastModified is 2 minutes ago
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: 60,
+        },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: true,
+      });
+    });
+
+    it("reports the time verdict used to serve an entry that expires during tag validation", async () => {
+      const now = Date.now();
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: { type: "app", html: "page", revalidate: 60 },
+        lastModified: now - 58_000,
+      });
+      tagCache.isStale.mockImplementationOnce(async () => {
+        vi.setSystemTime(now + 2_000);
+        return false;
+      });
+
+      const result = await cacheInterceptor(
+        createEvent({ url: "/revalidate" }),
+      );
+
+      expect(result.headers["x-opennext-cache"]).toBe("STALE");
+      expect(queue.send).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: true,
+      });
+    });
+
+    it("should call onTagCacheResult with isStaleFromTag: true when tag cache reports stale", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          revalidate: false,
+        },
+        lastModified: new Date("2024-01-02T00:00:00Z").getTime(),
+      });
+      tagCache.isStale.mockResolvedValueOnce(true);
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: true,
+        isStaleFromTime: false,
+      });
+    });
+
+    it("should call onTagCacheResult with hasBeenRevalidated: true when app cache has been revalidated", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+      tagCache.getLastModified.mockResolvedValueOnce(-1);
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: true,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+    });
+
+    it("should use the prerender manifest revalidate for isStaleFromTime", async () => {
+      const event = createEvent({ url: "/revalidate" });
+      // /revalidate has initialRevalidateSeconds: 60; lastModified is 2 minutes ago
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "page",
+          html: "Hello, world!",
+          json: {},
+        },
+        lastModified: new Date("2024-01-01T23:58:00Z").getTime(),
+      });
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: true,
+      });
+    });
+
+    it("should call onTagCacheResult once without checking the tag cache when shouldBypassTagCache is true", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+        shouldBypassTagCache: true,
+      });
+
+      await cacheInterceptor(event);
+
+      expect(tagCache.getLastModified).not.toHaveBeenCalled();
+      expect(tagCache.isStale).not.toHaveBeenCalled();
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
+      expect(onTagCacheResult).toHaveBeenCalledWith({
+        hasBeenRevalidated: false,
+        isStaleFromTag: false,
+        isStaleFromTime: false,
+      });
+    });
+
+    it("should not call onTagCacheResult on a cache miss", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce(null);
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).not.toHaveBeenCalled();
+    });
+
+    it("should serve the entry when onTagCacheResult is not defined", async () => {
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+    });
+
+    it("should serve the entry when onTagCacheResult throws", async () => {
+      onTagCacheResult.mockRejectedValueOnce(new Error("hook error"));
+      const event = createEvent({ url: "/albums" });
+      incrementalCache.get.mockResolvedValueOnce({
+        onTagCacheResult,
+        value: {
+          type: "app",
+          html: "Hello, world!",
+        },
+      });
+
+      const result = await cacheInterceptor(event);
+
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(onTagCacheResult).toHaveBeenCalledOnce();
+    });
+
+    it("should not call onTagCacheResult when request is bypassed by next-action header", async () => {
+      const event = createEvent({
+        headers: { "next-action": "something" },
+      });
+
+      await cacheInterceptor(event);
+
+      expect(onTagCacheResult).not.toHaveBeenCalled();
     });
   });
 

@@ -65,6 +65,32 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  /**
+   * Defines rewrite fixtures exercised by the App Router E2E suite.
+   *
+   * @return The application rewrite definitions
+   */
+  rewrites: async () => {
+    return {
+      beforeFiles: [
+        {
+          source: "/@:org/:space/:path*",
+          destination: "/orgs/:org/s/:space/:path*",
+        },
+      ],
+      afterFiles: [
+        {
+          source: "/search-query-rewrite",
+          destination: "/search-query",
+        },
+        {
+          source: "/search-query-destination-rewrite",
+          destination:
+            "/search-query?destination=hello%252Fworld&destination=a%3Db&plus=%2B&bare",
+        },
+      ],
+    };
+  },
   async headers() {
     return [
       {
@@ -73,6 +99,16 @@ const nextConfig: NextConfig = {
           {
             key: "e2e-headers",
             value: "next.config.js",
+          },
+        ],
+      },
+      // For: headers.test.ts, it must not replace the nonce policy the proxy sets on the request.
+      {
+        source: "/headers/nonce",
+        headers: [
+          {
+            key: "content-security-policy",
+            value: "frame-ancestors 'none'",
           },
         ],
       },

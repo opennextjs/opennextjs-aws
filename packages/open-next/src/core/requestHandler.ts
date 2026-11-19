@@ -10,16 +10,17 @@ import type {
 } from "types/open-next";
 import { ISR_HEADER } from "utils/cacheHeaders";
 import { runWithOpenNextRequestContext } from "utils/promise";
+import { compareSemver } from "utils/semver";
 
 import { NextConfig } from "config/index";
 import type { OpenNextHandlerOptions } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { patchAsyncStorage } from "./patchAsyncStorage";
+import { getRouteMatchMetadata } from "./routeMatchMetadata";
 import {
   constructNextUrl,
   convertRes,
   convertToQuery,
-  convertToQueryString,
   createServerResponse,
 } from "./routing/util";
 import routingHandler, {
@@ -29,8 +30,12 @@ import routingHandler, {
   INTERNAL_HEADER_RESOLVED_ROUTES,
   MIDDLEWARE_HEADER_PREFIX,
   MIDDLEWARE_HEADER_PREFIX_LEN,
+  NEXT_CONFIG_HEADER_PREFIX,
+  NEXT_CONFIG_HEADER_PREFIX_LEN,
 } from "./routingHandler";
 import { requestHandler, setNextjsPrebundledReact } from "./util";
+
+type HeaderRecord = InternalEvent["headers"];
 
 // This is used to identify requests in the cache
 globalThis.__openNextAls = new AsyncLocalStorage();
@@ -38,6 +43,40 @@ globalThis.__openNextAls = new AsyncLocalStorage();
 //#override patchAsyncStorage
 patchAsyncStorage();
 //#endOverride
+
+/**
+ * Splits the headers of a routed event into the request and response headers.
+ *
+ * The routing adds the middleware and `next.config` response headers to the event with a prefix each (see
+ * `applyResponseHeaders`). As in Next.js, both go on the response but only the middleware headers go on the request:
+ * a `Content-Security-Policy` from `next.config` must not replace the one, holding the script nonce, that the
+ * middleware set on the request.
+ *
+ * @param eventHeaders The headers of the routed event, not modified
+ * @returns The headers to send to Next.js and the headers to set on the response
+ */
+export function splitRoutingHeaders(eventHeaders: HeaderRecord): {
+  requestHeaders: HeaderRecord;
+  responseHeaders: HeaderRecord;
+} {
+  const requestHeaders: HeaderRecord = {};
+  const middlewareHeaders: HeaderRecord = {};
+  const nextConfigHeaders: HeaderRecord = {};
+  for (const [key, value] of Object.entries(eventHeaders)) {
+    if (key.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
+      middlewareHeaders[key.slice(MIDDLEWARE_HEADER_PREFIX_LEN)] = value;
+    } else if (key.startsWith(NEXT_CONFIG_HEADER_PREFIX)) {
+      nextConfigHeaders[key.slice(NEXT_CONFIG_HEADER_PREFIX_LEN)] = value;
+    } else {
+      requestHeaders[key] = value;
+    }
+  }
+  return {
+    requestHeaders: { ...requestHeaders, ...middlewareHeaders },
+    // The routing already dropped the `next.config` headers that must not take precedence.
+    responseHeaders: { ...middlewareHeaders, ...nextConfigHeaders },
+  };
+}
 
 export async function openNextHandler(
   internalEvent: InternalEvent,
@@ -61,6 +100,11 @@ export async function openNextHandler(
       await globalThis.__next_route_preloader("waitUntil");
       if (initialHeaders["x-forwarded-host"]) {
         initialHeaders.host = initialHeaders["x-forwarded-host"];
+      }
+      const requestStore = globalThis.__openNextAls.getStore();
+      if (requestStore) {
+        // Used by `res.revalidate()`, see `core/revalidate.ts`
+        requestStore.host = initialHeaders.host;
       }
       debug("internalEvent", internalEvent);
 
@@ -91,25 +135,20 @@ export async function openNextHandler(
       });
       //#endOverride
 
-      const headers =
-        "type" in routingResult
-          ? routingResult.headers
-          : routingResult.internalEvent.headers;
-
-      const overwrittenResponseHeaders: Record<string, string | string[]> = {};
-
-      for (const [rawKey, value] of Object.entries(headers)) {
-        if (!rawKey.startsWith(MIDDLEWARE_HEADER_PREFIX)) {
-          continue;
-        }
-        const key = rawKey.slice(MIDDLEWARE_HEADER_PREFIX_LEN);
-        // We skip this header here since it is used by Next internally and we don't want it on the response headers.
-        // This header needs to be present in the request headers for processRequest, so cookies().get() from Next will work on initial render.
-        if (key !== "x-middleware-set-cookie") {
-          overwrittenResponseHeaders[key] = value;
-        }
-        headers[key] = value;
-        delete headers[rawKey];
+      // The headers of a result are not prefixed, they are the response headers.
+      let requestHeaders: HeaderRecord = {};
+      let overwrittenResponseHeaders: HeaderRecord = {};
+      if (!("type" in routingResult)) {
+        const split = splitRoutingHeaders(routingResult.internalEvent.headers);
+        requestHeaders = split.requestHeaders;
+        overwrittenResponseHeaders = split.responseHeaders;
+        routingResult = {
+          ...routingResult,
+          internalEvent: {
+            ...routingResult.internalEvent,
+            headers: requestHeaders,
+          },
+        };
       }
 
       if (
@@ -182,7 +221,7 @@ export async function openNextHandler(
         // 2. We could alter the lastModified time of our cache to make next believe that the cache is fresh, but this could cause issues with stale data since the cdn will cache the stale data as if it was fresh
         // 3. OUR CHOICE: We could pass a purpose prefetch header to the serverless function to make next believe that the request is a prefetch request and not trigger revalidation (This could potentially break in the future if next changes the behavior of prefetch requests)
         headers: {
-          ...headers,
+          ...requestHeaders,
           //#override appendPrefetch
           purpose: "prefetch",
           //#endOverride
@@ -231,6 +270,14 @@ export async function openNextHandler(
   );
 }
 
+/**
+ * Applies routing metadata and invokes the Next.js request handler.
+ *
+ * @param req The request passed to Next.js
+ * @param res The response populated by Next.js
+ * @param routingResult The resolved OpenNext route and request metadata
+ * @return A promise that resolves after Next.js handles the request
+ */
 async function processRequest(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
@@ -279,9 +326,9 @@ async function processRequest(
     // TODO: only enable this on Next 15.4+
     // We need to set the pathname to the data request path
     //#override setInitialURL
-    req.url =
-      initialURL.pathname +
-      convertToQueryString(routingResult.internalEvent.query);
+    // `invokeQuery` carries destination query values for server APIs, while
+    // `req.url` remains the browser-visible URL used by the App Router state.
+    req.url = initialURL.pathname + initialURL.search;
     //#endOverride
 
     await requestHandler(requestMetadata)(req, res);
@@ -296,14 +343,40 @@ async function processRequest(
   }
 }
 
-async function handleNoFallbackError(
+// Rendering attempts (including the initial one) when falling through `fallback: false` routes.
+// The Next.js router server allows `handleIndex` 0..5 (`if (handleIndex > 5)`) since 13.4.13.
+const MAX_RENDER_ATTEMPTS = 6;
+
+/**
+ * Renders the next resolved route after a `fallback: false` route threw a `NoFallbackError`.
+ *
+ * Mirrors the Next.js router server, which retries the next matching route:
+ * - Up to six attempts are made, including the initial render, before rendering a 500.
+ * - A 404 is rendered when no route candidate is left.
+ * - Another `NoFallbackError` retries the following candidate, any other error renders a 500.
+ *
+ * Next.js 16.4+ only renders the most specific route unless the route to render is passed as a
+ * `match` request meta (see `getRouteMatchMetadata`). A 400 is rendered when the params of that
+ * match can't be decoded, like Next.js does for a `DecodeError`. Older versions select the route
+ * from `invokeOutput` and receive exactly the same metadata as before.
+ *
+ * Errors are rendered as responses, this function does not throw.
+ *
+ * @param req The request reused for each rendering attempt
+ * @param res The response populated by Next.js
+ * @param routingResult The ordered route candidates and internal request
+ * @param metadata The request metadata of the initial attempt, mutated by Next.js (i.e. it contains the stale `match`)
+ * @param index The next candidate index, counting the initial render as index 0
+ * @return A promise that resolves after rendering a route or an error response
+ */
+export async function handleNoFallbackError(
   req: IncomingMessage,
   res: OpenNextNodeResponse,
   routingResult: RoutingResult,
   metadata: Record<string, unknown>,
   index = 1,
 ) {
-  if (index >= 5) {
+  if (index >= MAX_RENDER_ATTEMPTS) {
     await tryRenderError("500", res, routingResult.internalEvent);
     return;
   }
@@ -311,11 +384,31 @@ async function handleNoFallbackError(
     await tryRenderError("404", res, routingResult.internalEvent);
     return;
   }
+  const route = routingResult.resolvedRoutes[index].route;
   try {
+    // Skip the call itself on older versions: decoding here can change their error handling.
+    let routeMatchMetadata = {};
+    if (compareSemver(globalThis.nextVersion, ">=", "16.4.0")) {
+      try {
+        routeMatchMetadata = getRouteMatchMetadata(
+          route,
+          routingResult.internalEvent.rawPath,
+        );
+      } catch (e) {
+        // Only match decoding is a bad request; rendering errors still use the 500 path.
+        if (!(e instanceof URIError)) {
+          throw e;
+        }
+        await tryRenderError("400", res, routingResult.internalEvent);
+        return;
+      }
+    }
     await requestHandler({
       ...routingResult,
-      invokeOutput: routingResult.resolvedRoutes[index].route,
+      invokeOutput: route,
       ...metadata,
+      // Must come after `metadata` to override the stale `match` of the previous attempt.
+      ...routeMatchMetadata,
     })(req, res);
   } catch (e: any) {
     if (e.constructor.name === "NoFallbackError") {
@@ -327,8 +420,18 @@ async function handleNoFallbackError(
   }
 }
 
+/**
+ * Renders a Next.js error response with fresh request metadata.
+ *
+ * Falls back to a JSON 500 response if rendering the error page fails.
+ *
+ * @param type The HTTP error status to render
+ * @param res The response populated by Next.js
+ * @param internalEvent The request supplying headers, body, and remote address
+ * @return A promise that resolves after writing the error response
+ */
 async function tryRenderError(
-  type: "404" | "500",
+  type: "400" | "404" | "500",
   res: OpenNextNodeResponse,
   internalEvent: InternalEvent,
 ) {
@@ -340,11 +443,11 @@ async function tryRenderError(
       body: internalEvent.body,
       remoteAddress: internalEvent.remoteAddress,
     });
-    // By setting this it will allow us to bypass and directly render the 404 or 500 page
+    // Bypass route matching and directly render the requested error response.
     const requestMetadata = {
       // By setting invokePath and invokeQuery we can bypass some of the routing logic in Next.js
-      invokePath: type === "404" ? "/404" : "/500",
-      invokeStatus: type === "404" ? 404 : 500,
+      invokePath: `/${type}`,
+      invokeStatus: Number(type),
       middlewareInvoke: false,
     };
     await requestHandler(requestMetadata)(_req, res);

@@ -41,10 +41,12 @@ test("Incremental Static Regeneration", async ({ page }) => {
 });
 
 test("headers", async ({ page }) => {
+  const cacheKey = crypto.randomUUID();
+  let requestNumber = 0;
   let responsePromise = page.waitForResponse((response) => {
     return response.status() === 200;
   });
-  await page.goto("/isr");
+  await page.goto(`/isr?cache-bust=${cacheKey}-${requestNumber}`);
   let hasBeenStale = false;
   let hasBeenHit = false;
 
@@ -71,7 +73,8 @@ test("headers", async ({ page }) => {
     responsePromise = page.waitForResponse((response) => {
       return response.status() === 200;
     });
-    await page.reload();
+    requestNumber += 1;
+    await page.goto(`/isr?cache-bust=${cacheKey}-${requestNumber}`);
   }
 });
 

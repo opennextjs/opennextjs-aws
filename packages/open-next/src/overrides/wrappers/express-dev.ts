@@ -2,6 +2,7 @@ import path from "node:path";
 import express from "express";
 
 import { NextConfig } from "config/index";
+import { writeResponseHead } from "http/framing";
 import type { StreamCreator } from "types/open-next.js";
 import type { WrapperHandler } from "types/overrides.js";
 import { getMonorepoRelativePath } from "utils/normalize-path";
@@ -29,8 +30,12 @@ const wrapper: WrapperHandler = async (handler, converter) => {
     const internalEvent = await converter.convertFrom(req);
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
-        res.writeHead(prelude.statusCode, prelude.headers);
-        return res;
+        return writeResponseHead(
+          res,
+          req.method,
+          prelude.statusCode,
+          prelude.headers,
+        );
       },
     };
     await imageHandler(internalEvent, { streamCreator });
@@ -50,9 +55,12 @@ const wrapper: WrapperHandler = async (handler, converter) => {
     const streamCreator: StreamCreator = {
       writeHeaders: (prelude) => {
         res.setHeader("Set-Cookie", prelude.cookies);
-        res.writeHead(prelude.statusCode, prelude.headers);
-        res.flushHeaders();
-        return res;
+        return writeResponseHead(
+          res,
+          req.method,
+          prelude.statusCode,
+          prelude.headers,
+        );
       },
       onFinish: () => {},
       abortSignal: abortController.signal,

@@ -128,6 +128,7 @@ export type IncludedWrapper =
   | "aws-lambda-streaming"
   | "aws-apigw-streaming"
   | "aws-lambda-compressed"
+  | "aws-web-function"
   | "node"
   // @deprecated - use "cloudflare-edge" instead.
   | "cloudflare"
@@ -299,7 +300,10 @@ export interface InstallOptions {
   packages: string[];
   /** @default undefined */
   arch?: "x64" | "arm64";
-  /** @default undefined */
+  /**
+   * @default undefined
+   * @deprecated npm no longer supports the `--target` flag, so this option is ignored.
+   */
   nodeVersion?: string;
   /** @default undefined */
   libc?: "glibc" | "musl";
