@@ -1,4 +1,4 @@
-import { NextConfig } from "config/index";
+import { NextConfig, RoutesManifest } from "config/index";
 import type { MatchFunction } from "path-to-regexp";
 import { compile, match, parse } from "path-to-regexp";
 import type {
@@ -52,6 +52,22 @@ export function getCompiledRegExp(pattern: string, flags = ""): RegExp {
   regExp.lastIndex = 0;
 
   return regExp;
+}
+
+/**
+ * Returns the compiled regular expression of a `routes-manifest.json` entry
+ * (redirect, rewrite or header).
+ *
+ * Next.js serializes these regular expressions without their flags and matches
+ * them case-insensitively unless `experimental.caseSensitiveRoutes` is
+ * enabled, which the manifest records as `caseSensitive`.
+ *
+ * @param regex The regular expression source from the routes manifest
+ * @returns The compiled regular expression
+ * @throws {SyntaxError} When the pattern is invalid
+ */
+function getManifestRouteRegExp(regex: string): RegExp {
+  return getCompiledRegExp(regex, RoutesManifest.caseSensitive ? "" : "i");
 }
 
 /**
@@ -326,7 +342,7 @@ export function getNextConfigHeaders(
   } of configHeaders) {
     const path = locale === false ? event.rawPath : localizedRawPath;
     if (
-      getCompiledRegExp(regex).test(path) &&
+      getManifestRouteRegExp(regex).test(path) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
@@ -387,7 +403,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   const rewrite = rewrites.find((route) => {
     const path = route.locale === false ? rawPath : localizedRawPath;
     return (
-      getCompiledRegExp(route.regex).test(path) &&
+      getManifestRouteRegExp(route.regex).test(path) &&
       checkHas(matcher, route.has) &&
       checkHas(matcher, route.missing, true)
     );
