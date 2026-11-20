@@ -216,3 +216,129 @@ describe("isNonLinuxPlatformPackage", () => {
     ).toBe(false);
   });
 });
+
+describe("copyTracedFiles", () => {
+  let root: string;
+  let appDir: string;
+  let dotNextDir: string;
+  let standaloneNextDir: string;
+  let outputDir: string;
+
+  function writeFile(filePath: string, content: unknown) {
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    writeFileSync(
+      filePath,
+      typeof content === "string" ? content : JSON.stringify(content),
+    );
+  }
+
+  beforeEach(() => {
+    root = mkdtempSync(path.join(os.tmpdir(), "open-next-copy-traced-"));
+    appDir = path.join(root, "app");
+    dotNextDir = path.join(appDir, ".next");
+    standaloneNextDir = path.join(dotNextDir, "standalone/.next");
+    outputDir = path.join(appDir, ".open-next/server-functions/default");
+
+    writeFile(path.join(standaloneNextDir, "BUILD_ID"), "build-id");
+    writeFile(path.join(standaloneNextDir, "required-server-files.json"), {
+      config: { experimental: {} },
+    });
+    writeFile(path.join(standaloneNextDir, "server/pages-manifest.json"), {});
+    writeFile(
+      path.join(standaloneNextDir, "server/middleware-manifest.json"),
+      {},
+    );
+  });
+
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  function runCopyTracedFiles() {
+    return copyTracedFiles({
+      buildOutputPath: appDir,
+      packagePath: "",
+      outputDir,
+      routes: [],
+      bundledNextServer: false,
+    });
+  }
+
+  test("copies traced files that resolve inside the output directory", async () => {
+    writeFile(path.join(dotNextDir, "next-server.js.nft.json"), {
+      version: 1,
+      files: ["next-server.js", "../node_modules/some-pkg/index.js"],
+    });
+    writeFile(path.join(standaloneNextDir, "next-server.js"), "server");
+    writeFile(
+      path.join(dotNextDir, "standalone/node_modules/some-pkg/index.js"),
+      "pkg",
+    );
+
+    const { tracedFiles } = await runCopyTracedFiles();
+
+    const serverFile = path.join(outputDir, ".next/next-server.js");
+    const pkgFile = path.join(outputDir, "node_modules/some-pkg/index.js");
+    expect(tracedFiles).toContain(serverFile);
+    expect(tracedFiles).toContain(pkgFile);
+    expect(readFileSync(serverFile, "utf8")).toBe("server");
+    expect(readFileSync(pkgFile, "utf8")).toBe("pkg");
+  });
+
+  test.each<[string, string[]]>([
+    ["next-server.js", []],
+    ["next-minimal-server.js", []],
+    ["server/instrumentation.js", []],
+    ["server/middleware.js", []],
+    ["server/app/page.js", ["app/page"]],
+    ["server/app/_not-found.js", ["app/page"]],
+    ["server/app/_not-found/page.js", ["app/page"]],
+    ["server/pages/404.js", ["pages/index"]],
+    ["server/pages/500.js", ["pages/index"]],
+  ])("refuses an escaping trace in %s", async (file, routes) => {
+    const outsideSrc = path.join(
+      root,
+      "node_modules/next/dist/server/next-server.js",
+    );
+    writeFile(outsideSrc, "original next-server");
+    writeFile(path.join(dotNextDir, "next-server.js.nft.json"), {
+      version: 1,
+      files: [],
+    });
+    for (const route of [
+      ...routes,
+      "pages/_app",
+      "pages/_document",
+      "pages/_error",
+    ]) {
+      writeFile(path.join(dotNextDir, `server/${route}.js.nft.json`), {
+        files: [],
+      });
+      writeFile(path.join(standaloneNextDir, `server/${route}.js`), "route");
+    }
+    writeFile(path.join(standaloneNextDir, file), "route");
+    writeFile(path.join(dotNextDir, `${file}.nft.json`), {
+      version: 1,
+      files: [
+        path.relative(
+          path.dirname(path.join(standaloneNextDir, file)),
+          outsideSrc,
+        ),
+      ],
+    });
+
+    await expect(
+      copyTracedFiles({
+        buildOutputPath: appDir,
+        packagePath: "",
+        outputDir,
+        routes,
+        bundledNextServer: file === "next-minimal-server.js",
+        skipServerFiles: file === "server/middleware.js",
+      }),
+    ).rejects.toThrow(/resolves outside the output directory/);
+
+    expect(existsSync(path.join(appDir, "node_modules"))).toBe(false);
+    expect(readFileSync(outsideSrc, "utf8")).toBe("original next-server");
+  });
+});
