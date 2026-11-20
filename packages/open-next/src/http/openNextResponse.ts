@@ -18,12 +18,29 @@ const CANNOT_BE_USED = "This cannot be used in OpenNext";
 
 // We only need to implement the methods that are used by next.js
 export class OpenNextNodeResponse extends Transform implements ServerResponse {
-  statusCode!: number;
+  private _statusCode?: number;
   statusMessage = "";
   headers: OutgoingHttpHeaders = {};
   headersSent = false;
   _chunks: Buffer[] = [];
   headersAlreadyFixed = false;
+
+  /**
+   * Like on a native Node.js response, the status code is final once the headers have been sent.
+   *
+   * Next.js assigns `res.statusCode` again after `sendEtagResponse` ended a `304` response, which
+   * would otherwise reset the status of the buffered response.
+   */
+  get statusCode(): number {
+    return this._statusCode as number;
+  }
+
+  set statusCode(statusCode: number) {
+    if (this.headersSent) {
+      return;
+    }
+    this._statusCode = statusCode;
+  }
 
   private _cookies: string[] = [];
   private responseStream?: Writable;
