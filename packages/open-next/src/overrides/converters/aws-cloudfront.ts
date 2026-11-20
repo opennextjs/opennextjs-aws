@@ -1,4 +1,6 @@
-import type { OutgoingHttpHeader } from "node:http";
+import http, { type OutgoingHttpHeader } from "node:http";
+
+const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
 
 import type {
   CloudFrontCustomOrigin,
@@ -200,15 +202,22 @@ async function convertToCloudFrontRequestResult(
     return response;
   }
 
-  const body = await fromReadableStream(result.body, result.isBase64Encoded);
+  const isNullBody = NULL_BODY_STATUSES.has(result.statusCode);
+  const body = isNullBody
+    ? undefined
+    : await fromReadableStream(result.body, result.isBase64Encoded);
   const responseHeaders = result.headers;
 
   const response: CloudFrontRequestResult = {
     status: result.statusCode.toString(),
-    statusDescription: "OK",
+    statusDescription: http.STATUS_CODES[result.statusCode] ?? "OK",
     headers: convertToCloudfrontHeaders(responseHeaders, true),
-    bodyEncoding: result.isBase64Encoded ? "base64" : "text",
-    body,
+    ...(isNullBody
+      ? {}
+      : {
+          bodyEncoding: result.isBase64Encoded ? "base64" : "text",
+          body,
+        }),
   };
 
   debug(response);
