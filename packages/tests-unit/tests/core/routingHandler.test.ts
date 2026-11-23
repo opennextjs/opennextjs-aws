@@ -1,3 +1,4 @@
+import { RoutesManifest } from "@opennextjs/aws/adapters/config/index.js";
 import routingHandler from "@opennextjs/aws/core/routingHandler.js";
 import type {
   InternalEvent,
@@ -354,5 +355,52 @@ describe("routingHandler", () => {
         });
       },
     );
+  });
+
+  // See https://github.com/opennextjs/opennextjs-aws/issues/1299
+  it("applies every matching afterFiles rewrite, in order", async () => {
+    RoutesManifest.rewrites.afterFiles.push(
+      { source: "/a", destination: "/b", regex: "^/a(?:/)?$" },
+      {
+        source: "/b",
+        destination: "/catalog/new/alpha/a",
+        regex: "^/b(?:/)?$",
+      },
+    );
+
+    try {
+      const result = (await routingHandler(
+        createEvent("/a"),
+        {},
+      )) as RoutingResult;
+
+      expect(result.internalEvent.rawPath).toBe("/catalog/new/alpha/a");
+    } finally {
+      RoutesManifest.rewrites.afterFiles.length = 0;
+    }
+  });
+
+  // The dynamic catch-all route matches every path with at least one segment,
+  // so `/` is the only path that reaches the fallback phase.
+  it("applies every matching fallback rewrite, in order", async () => {
+    RoutesManifest.rewrites.fallback.push(
+      { source: "/", destination: "/d", regex: "^/(?:/)?$" },
+      {
+        source: "/d",
+        destination: "/catalog/new/alpha/a",
+        regex: "^/d(?:/)?$",
+      },
+    );
+
+    try {
+      const result = (await routingHandler(
+        createEvent("/"),
+        {},
+      )) as RoutingResult;
+
+      expect(result.internalEvent.rawPath).toBe("/catalog/new/alpha/a");
+    } finally {
+      RoutesManifest.rewrites.fallback.length = 0;
+    }
   });
 });

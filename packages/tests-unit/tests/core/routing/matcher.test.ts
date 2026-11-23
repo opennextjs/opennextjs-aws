@@ -3,7 +3,7 @@ import {
   fixDataPage,
   getCompiledRegExp,
   getNextConfigHeaders,
-  handleBeforeFilesRewrites,
+  handleAllRewrites,
   handleFallbackFalse,
   handleRedirects,
   handleRewrites,
@@ -1522,7 +1522,7 @@ describe("handleRewrites", () => {
   });
 });
 
-describe("handleBeforeFilesRewrites", () => {
+describe("handleAllRewrites", () => {
   const userRewrite = {
     source: "/@:org/:space/:path*",
     destination: "/orgs/:org/s/:space/:path*",
@@ -1538,7 +1538,7 @@ describe("handleBeforeFilesRewrites", () => {
   it("should not rewrite with empty rewrites", () => {
     const event = createEvent({ url: "https://on/foo?hello=world" });
 
-    const result = handleBeforeFilesRewrites(event, []);
+    const result = handleAllRewrites(event, []);
 
     expect(result).toEqual({
       internalEvent: event,
@@ -1553,10 +1553,7 @@ describe("handleBeforeFilesRewrites", () => {
       headers: { "next-url": "/orgs/acme" },
     });
 
-    const result = handleBeforeFilesRewrites(event, [
-      userRewrite,
-      interceptionRewrite,
-    ]);
+    const result = handleAllRewrites(event, [userRewrite, interceptionRewrite]);
 
     expect(result.internalEvent.rawPath).toBe("/(...)orgs/acme/s/demo/delete");
     expect(result.__rewrite).toBe(interceptionRewrite);
@@ -1566,10 +1563,7 @@ describe("handleBeforeFilesRewrites", () => {
   it("should keep the earlier rewrite when a later one does not match", () => {
     const event = createEvent({ url: "https://on/@acme/demo/delete" });
 
-    const result = handleBeforeFilesRewrites(event, [
-      userRewrite,
-      interceptionRewrite,
-    ]);
+    const result = handleAllRewrites(event, [userRewrite, interceptionRewrite]);
 
     expect(result.internalEvent.rawPath).toBe("/orgs/acme/s/demo/delete");
     expect(result.__rewrite).toBe(userRewrite);
@@ -1595,10 +1589,7 @@ describe("handleBeforeFilesRewrites", () => {
       ],
     };
 
-    const result = handleBeforeFilesRewrites(event, [
-      firstRewrite,
-      secondRewrite,
-    ]);
+    const result = handleAllRewrites(event, [firstRewrite, secondRewrite]);
 
     expect(result.internalEvent.rawPath).toBe("/target/42");
     expect(result.internalEvent.query).toEqual({ id: "42" });
@@ -1618,7 +1609,7 @@ describe("handleBeforeFilesRewrites", () => {
       regex: "^/proxied(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?(?:/)?$",
     };
 
-    const result = handleBeforeFilesRewrites(event, [
+    const result = handleAllRewrites(event, [
       externalRewrite,
       afterExternalRewrite,
     ]);
