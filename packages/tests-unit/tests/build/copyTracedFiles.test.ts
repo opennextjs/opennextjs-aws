@@ -47,6 +47,10 @@ describe("copyTracedFiles", () => {
       JSON.stringify({ config: { experimental: { optimizeCss: true } } }),
     );
     writeFileSync(
+      path.join(standaloneNextDir, "routes-manifest.json"),
+      JSON.stringify({ rewrites: [], dynamicRoutes: [], staticRoutes: [] }),
+    );
+    writeFileSync(
       path.join(standaloneNextDir, "server/pages-manifest.json"),
       "{}",
     );

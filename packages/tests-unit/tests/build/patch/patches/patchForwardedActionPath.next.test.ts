@@ -14,12 +14,15 @@ import {
   patchCode,
 } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
-  dynamicSegmentsReplacement,
+  createRule,
+  getForwardedPathExpression,
   patchForwardedActionPath,
-  rule,
 } from "@opennextjs/aws/build/patch/patches/patchForwardedActionPath.js";
 import { describe, expect, it } from "vitest";
 import { getInstalledNextPackages } from "./util.js";
+
+// The rule of an app where no route needs more than one placeholder
+const rule = createRule({});
 
 describe.each(getInstalledNextPackages())(
   "patchForwardedActionPath on next@$version",
@@ -54,9 +57,17 @@ describe.each(getInstalledNextPackages())(
       const { matches } = applyRule(rule, parseCode(code));
       expect(matches).toHaveLength(1);
       // Only the path is rewritten, the rest of the file is kept as it is.
+      const [match] = matches;
+      const pathname = match.getMatch("PATHNAME")?.text() ?? "";
       const patched = patchCode(code, rule);
-      const [start, end] = patched.split(dynamicSegmentsReplacement);
-      expect(`${start}${end}`).toBe(code);
+      expect(patched).toBe(
+        code.replace(match.text(), (url) =>
+          url.replace(
+            `\${${pathname}}\`)`,
+            () => `\${${getForwardedPathExpression(pathname, {})}}\`)`,
+          ),
+        ),
+      );
       // The patched code must not match again.
       expect(applyRule(rule, parseCode(patched)).matches).toHaveLength(0);
     });

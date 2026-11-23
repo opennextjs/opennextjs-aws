@@ -4,8 +4,9 @@ import { describe, expect, test, vi } from "vitest";
 
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
 import {
-  dynamicSegmentsReplacement,
-  rule,
+  createRule,
+  getForwardedPathExpression,
+  getForwardedPathOverrides,
 } from "@opennextjs/aws/build/patch/patches/patchForwardedActionPath.js";
 import { hasRouteParamPlaceholder } from "@opennextjs/aws/core/routing/routeParamPlaceholder.js";
 import { computePatchDiff } from "./util.js";
@@ -53,6 +54,103 @@ async function getForwardedUrl(
   return fetch.mock.calls[0][0];
 }
 
+// The rule of an app where no route needs more than one placeholder
+const rule = createRule({});
+
+// source: routes-manifest.json of next@16.4.5, in the order of the manifest
+const routes = {
+  id: { page: "/docs/[id]", regex: "^/docs/([^/]+?)(?:/)?$" },
+  idSub: {
+    page: "/docs/[id]/[sub]",
+    regex: "^/docs/([^/]+?)/([^/]+?)(?:/)?$",
+  },
+  idRest: {
+    page: "/docs/[id]/[...rest]",
+    regex: "^/docs/([^/]+?)/(.+?)(?:/)?$",
+  },
+  catchAll: { page: "/docs/[...slug]", regex: "^/docs/(.+?)(?:/)?$" },
+  optionalCatchAll: {
+    page: "/docs/[[...slug]]",
+    regex: "^/docs(?:/(.+?))?(?:/)?$",
+  },
+};
+
+describe("getForwardedPathOverrides", () => {
+  test.each([
+    {
+      name: "a catch-all without sibling",
+      dynamicRoutes: [routes.catchAll],
+      overrides: {},
+    },
+    {
+      name: "a catch-all with a [id] sibling",
+      dynamicRoutes: [routes.id, routes.catchAll],
+      overrides: {
+        "/docs/[...slug]": "/docs/_forwarded-action/_forwarded-action",
+      },
+    },
+    {
+      name: "an optional catch-all with a [id] sibling",
+      dynamicRoutes: [routes.id, routes.optionalCatchAll],
+      overrides: {
+        "/docs/[[...slug]]": "/docs/_forwarded-action/_forwarded-action",
+      },
+    },
+    {
+      name: "a catch-all with a [id]/[sub] sibling",
+      dynamicRoutes: [routes.idSub, routes.catchAll],
+      overrides: {},
+    },
+    {
+      name: "a catch-all with a [id]/[...rest] sibling",
+      dynamicRoutes: [routes.idRest, routes.catchAll],
+      overrides: {},
+    },
+    {
+      name: "a catch-all with [id] and [id]/[sub] siblings",
+      dynamicRoutes: [routes.id, routes.idSub, routes.catchAll],
+      overrides: {
+        "/docs/[...slug]":
+          "/docs/_forwarded-action/_forwarded-action/_forwarded-action",
+      },
+    },
+    {
+      name: "a catch-all that no path reaches",
+      dynamicRoutes: [routes.id, routes.idRest, routes.catchAll],
+      overrides: {},
+    },
+    {
+      name: "a catch-all after a dynamic segment",
+      dynamicRoutes: [
+        { page: "/[lang]/docs/[id]", regex: "^/([^/]+?)/docs/([^/]+?)(?:/)?$" },
+        {
+          page: "/[lang]/docs/[...slug]",
+          regex: "^/([^/]+?)/docs/(.+?)(?:/)?$",
+        },
+      ],
+      overrides: {
+        "/[lang]/docs/[...slug]":
+          "/_forwarded-action/docs/_forwarded-action/_forwarded-action",
+      },
+    },
+  ])("$name", ({ dynamicRoutes, overrides }) => {
+    expect(getForwardedPathOverrides(dynamicRoutes)).toEqual(overrides);
+  });
+
+  test("an override is routed to its page", () => {
+    const dynamicRoutes = [routes.id, routes.idSub, routes.catchAll];
+
+    for (const [page, path] of Object.entries(
+      getForwardedPathOverrides(dynamicRoutes),
+    )) {
+      const route = dynamicRoutes.find(({ regex }) =>
+        new RegExp(regex).test(path),
+      );
+      expect(route?.page).toBe(page);
+    }
+  });
+});
+
 describe("patchForwardedActionPath", () => {
   test("the unpatched runtime forwards to the route pattern, which the routing layer rejects", async () => {
     const url = await getForwardedUrl(minifiedForward, {
@@ -83,17 +181,12 @@ describe("patchForwardedActionPath", () => {
     {
       name: "a catch-all segment",
       workerPathname: "/docs/[...slug]",
-      path: "/docs/_forwarded-action/_forwarded-action",
+      path: "/docs/_forwarded-action",
     },
     {
       name: "an optional catch-all segment",
       workerPathname: "/docs/[[...slug]]",
-      path: "/docs/_forwarded-action/_forwarded-action",
-    },
-    {
-      name: "a catch-all segment after a dynamic segment",
-      workerPathname: "/[lang]/docs/[...slug]",
-      path: "/_forwarded-action/docs/_forwarded-action/_forwarded-action",
+      path: "/docs/_forwarded-action",
     },
     {
       name: "a static route",
@@ -112,11 +205,40 @@ describe("patchForwardedActionPath", () => {
     },
   );
 
+  test.each([
+    {
+      name: "a route with an override to the override",
+      workerPathname: "/docs/[...slug]",
+      path: "/docs/_forwarded-action/_forwarded-action",
+    },
+    {
+      name: "a route without override to one placeholder per segment",
+      workerPathname: "/docs/[id]",
+      path: "/docs/_forwarded-action",
+    },
+    {
+      name: "a route containing a `$` to its override",
+      workerPathname: "/$PATHNAME/[...slug]",
+      path: "/$PATHNAME/_forwarded-action/_forwarded-action",
+    },
+  ])("the patched runtime forwards $name", async ({ workerPathname, path }) => {
+    const overrides = {
+      "/docs/[...slug]": "/docs/_forwarded-action/_forwarded-action",
+      "/$PATHNAME/[...slug]": "/$PATHNAME/_forwarded-action/_forwarded-action",
+    };
+    const url = await getForwardedUrl(
+      patchCode(minifiedForward, createRule(overrides)),
+      { basePath: "/base", workerPathname },
+    );
+
+    expect(url.pathname).toBe(`/base${path}`);
+  });
+
   test("only the path is rewritten in minified code", () => {
     expect(patchCode(minifiedForward, rule)).toBe(
       minifiedForward.replace(
         "new URL(`${o}${a}${n}`)",
-        `new URL(\`\${o}\${a}\${n${dynamicSegmentsReplacement}}\`)`,
+        `new URL(\`\${o}\${a}\${${getForwardedPathExpression("n", {})}}\`)`,
       ),
     );
   });
@@ -146,7 +268,7 @@ describe("patchForwardedActionPath", () => {
            forwardedHeaders.set('x-action-forwarded', '1');
            let origin = process.env.__NEXT_PRIVATE_ORIGIN;
       -    const fetchUrl = new URL(\`\${origin}\${basePath}\${workerPathname}\`);
-      +    const fetchUrl = new URL(\`\${origin}\${basePath}\${workerPathname.replace(/\\[+\\.{3}[^\\]]+\\]+/g, "_forwarded-action/_forwarded-action").replace(/\\[[^\\]]+\\]/g, "_forwarded-action")}\`);
+      +    const fetchUrl = new URL(\`\${origin}\${basePath}\${({})[workerPathname] ?? workerPathname.replace(/\\[+[^\\]]+\\]+/g, "_forwarded-action")}\`);
            return fetch(fetchUrl, { method: 'POST', headers: forwardedHeaders });
        }
       "
