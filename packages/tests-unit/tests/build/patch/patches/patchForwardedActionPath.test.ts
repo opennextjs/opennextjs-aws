@@ -3,7 +3,10 @@ import { runInNewContext } from "node:vm";
 import { describe, expect, test, vi } from "vitest";
 
 import { patchCode } from "@opennextjs/aws/build/patch/astCodePatcher.js";
-import { rule } from "@opennextjs/aws/build/patch/patches/patchForwardedActionPath.js";
+import {
+  dynamicSegmentsReplacement,
+  rule,
+} from "@opennextjs/aws/build/patch/patches/patchForwardedActionPath.js";
 import { hasRouteParamPlaceholder } from "@opennextjs/aws/core/routing/routeParamPlaceholder.js";
 import { computePatchDiff } from "./util.js";
 
@@ -80,12 +83,17 @@ describe("patchForwardedActionPath", () => {
     {
       name: "a catch-all segment",
       workerPathname: "/docs/[...slug]",
-      path: "/docs/_forwarded-action",
+      path: "/docs/_forwarded-action/_forwarded-action",
     },
     {
       name: "an optional catch-all segment",
       workerPathname: "/docs/[[...slug]]",
-      path: "/docs/_forwarded-action",
+      path: "/docs/_forwarded-action/_forwarded-action",
+    },
+    {
+      name: "a catch-all segment after a dynamic segment",
+      workerPathname: "/[lang]/docs/[...slug]",
+      path: "/_forwarded-action/docs/_forwarded-action/_forwarded-action",
     },
     {
       name: "a static route",
@@ -108,7 +116,7 @@ describe("patchForwardedActionPath", () => {
     expect(patchCode(minifiedForward, rule)).toBe(
       minifiedForward.replace(
         "new URL(`${o}${a}${n}`)",
-        'new URL(`${o}${a}${n.replace(/\\[+[^\\]]+\\]+/g, "_forwarded-action")}`)',
+        `new URL(\`\${o}\${a}\${n${dynamicSegmentsReplacement}}\`)`,
       ),
     );
   });
@@ -138,7 +146,7 @@ describe("patchForwardedActionPath", () => {
            forwardedHeaders.set('x-action-forwarded', '1');
            let origin = process.env.__NEXT_PRIVATE_ORIGIN;
       -    const fetchUrl = new URL(\`\${origin}\${basePath}\${workerPathname}\`);
-      +    const fetchUrl = new URL(\`\${origin}\${basePath}\${workerPathname.replace(/\\[+[^\\]]+\\]+/g, "_forwarded-action")}\`);
+      +    const fetchUrl = new URL(\`\${origin}\${basePath}\${workerPathname.replace(/\\[+\\.{3}[^\\]]+\\]+/g, "_forwarded-action/_forwarded-action").replace(/\\[[^\\]]+\\]/g, "_forwarded-action")}\`);
            return fetch(fetchUrl, { method: 'POST', headers: forwardedHeaders });
        }
       "
