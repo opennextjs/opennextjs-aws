@@ -22,3 +22,9 @@ test("trailingSlash redirect on an API route", async ({ request }) => {
   expect(response.status()).toBe(308);
   expect(response.headers().location).toMatch(/\/api\/hello\/$/);
 });
+
+test("no trailingSlash redirect on a file-like path", async ({ request }) => {
+  const response = await request.get("/favicon.ico", { maxRedirects: 0 });
+
+  expect(response.status()).toBe(200);
+});

@@ -20,3 +20,10 @@ test("trailingSlash redirect to external domain", async ({ page, baseURL }) => {
   const response = await page.goto(`${baseURL}//sst.dev/`);
   expect(response?.status()).toBe(404);
 });
+
+test("trailingSlash redirect on a route handler", async ({ request }) => {
+  const response = await request.get("/api/host/", { maxRedirects: 0 });
+
+  expect(response.status()).toBe(308);
+  expect(response.headers().location).toMatch(/\/api\/host$/);
+});

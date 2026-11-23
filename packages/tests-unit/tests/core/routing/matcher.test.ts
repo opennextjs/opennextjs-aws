@@ -318,6 +318,29 @@ describe("handleRedirects", () => {
     expect(result.headers.Location).toEqual("https://on/api/item/x/?foo=bar");
   });
 
+  it("should not add a trailing slash to file-like paths when trailingSlash is true", () => {
+    const event = createEvent({
+      url: "https://on/api/data.json",
+    });
+
+    NextConfig.trailingSlash = true;
+    const result = handleRedirects(event, []);
+    NextConfig.trailingSlash = false;
+
+    expect(result).toBeUndefined();
+  });
+
+  it("should remove the trailing slash from file-like paths", () => {
+    const event = createEvent({
+      url: "https://on/api/data.json/",
+    });
+
+    const result = handleRedirects(event, []);
+
+    expect(result.statusCode).toEqual(308);
+    expect(result.headers.Location).toEqual("https://on/api/data.json");
+  });
+
   it("should not redirect trailing slash when skipTrailingSlashRedirect is true", () => {
     const event = createEvent({
       url: "https://on/api-route/",
