@@ -265,7 +265,6 @@ describe("wrappers/node", () => {
           async () => {},
           streamCreator,
         );
-        res.on("error", () => {});
         if (event.rawPath === "/destroy") {
           res.setHeader("set-cookie", ["session=secret"]);
           res.destroy(new Error("boom"));

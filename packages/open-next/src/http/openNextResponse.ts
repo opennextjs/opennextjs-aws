@@ -10,10 +10,7 @@ import { Transform } from "node:stream";
 
 import type { StreamCreator } from "types/open-next";
 import { debug, error as logError } from "../adapters/logger";
-import {
-  NO_STORE_CACHE_CONTROL,
-  fixCacheControlForError,
-} from "../utils/cacheHeaders";
+import { fixCacheControlForError } from "../utils/cacheHeaders";
 import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
@@ -113,6 +110,10 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   setHeader(name: string, value: string | string[]): this {
+    // The response destroyed with an error is final (see `_destroy`)
+    if (this.errored) {
+      return this;
+    }
     const key = name.toLowerCase();
     if (key === SET_COOKIE_HEADER) {
       if (Array.isArray(value)) {
@@ -129,6 +130,9 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   removeHeader(name: string): this {
+    if (this.errored) {
+      return this;
+    }
     const key = name.toLowerCase();
     if (key === SET_COOKIE_HEADER) {
       this._cookies = [];
@@ -235,6 +239,9 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
     statusMessage?: unknown,
     headers?: unknown,
   ): this {
+    if (this.errored) {
+      return this;
+    }
     let _headers = headers as
       | OutgoingHttpHeaders
       | OutgoingHttpHeader[]
@@ -357,37 +364,38 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
   }
 
   /**
-   * Sends an empty, non-cacheable 500 when destroyed before the headers are sent.
+   * Sends an empty 500 when destroyed with an error before the headers are sent.
    *
    * Next.js destroys the response when the body stream errors before its first chunk.
    * The headers and cookies set so far are dropped as they belong to a response that was never sent.
+   *
+   * The error is handled by the 500, it is not emitted: an unhandled "error" event is an uncaught
+   * exception which makes AWS Lambda exit before the response is sent.
    *
    * @param error The error passed to `destroy()`, if any
    * @param callback Called once the stream is destroyed
    */
   _destroy(error: Error | null, callback: (error?: Error | null) => void) {
-    if (!this.headersSent) {
-      this.headersSent = true;
-      this.headersAlreadyFixed = true;
-      this.statusCode = 500;
-      this.headers = { "cache-control": NO_STORE_CACHE_CONTROL };
-      this._cookies = [];
-      if (this.streamCreator && !this.streamCreator.abortSignal?.aborted) {
-        // A throw would turn `destroy()` into an "error" event
-        try {
-          this.streamCreator
-            .writeHeaders({
-              statusCode: 500,
-              cookies: [],
-              headers: { "cache-control": NO_STORE_CACHE_CONTROL },
-            })
-            .end();
-        } catch (e) {
-          logError("Failed to send the response", e);
-        }
-      }
+    if (this.headersSent || !error) {
+      super._destroy(error, callback);
+      return;
     }
-    super._destroy(error, callback);
+    this.statusCode = 500;
+    this.headers = {};
+    this._cookies = [];
+    this.initialHeaders = undefined;
+    try {
+      this.flushHeaders();
+      // See `_flush`
+      this.responseStream?.end(
+        process.env.OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE === "true"
+          ? "SOMETHING"
+          : undefined,
+      );
+    } catch (e) {
+      logError("Failed to send the response", e);
+    }
+    super._destroy(null, callback);
   }
 
   /**

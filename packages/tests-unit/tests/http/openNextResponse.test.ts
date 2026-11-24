@@ -1,13 +1,8 @@
 import { Writable } from "node:stream";
 
-import { convertRes } from "@opennextjs/aws/core/routing/util.js";
 import { OpenNextNodeResponse } from "@opennextjs/aws/http/openNextResponse.js";
 import type { StreamCreator } from "@opennextjs/aws/types/open-next.js";
-import { vi } from "vitest";
-
-vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
-  NextConfig: {},
-}));
+import { afterEach, vi } from "vitest";
 
 const NO_STORE = "private, no-cache, no-store, max-age=0, must-revalidate";
 
@@ -39,19 +34,23 @@ function setup(abortSignal?: AbortSignal) {
     abortSignal,
   };
   const res = new OpenNextNodeResponse(
-    () => {},
+    (headers) => {
+      headers["x-opennext"] = "1";
+    },
     async () => {},
     streamCreator,
-    { "set-cookie": "mw=1" },
+    { "set-cookie": "mw=1", "x-middleware": "1" },
   );
-  // `destroy(error)` emits an "error" event
-  res.on("error", () => {});
   const closed = new Promise((resolve) => res.on("close", resolve));
   return { res, preludes, body, closed };
 }
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 describe("OpenNextNodeResponse destroy", () => {
-  it("sends an empty non-cacheable 500 when destroyed before the headers", async () => {
+  it("sends an empty non-cacheable 500 when destroyed with an error before the headers", async () => {
     const { res, preludes, body, closed } = setup();
     const onError = vi.fn();
     res.on("error", onError);
@@ -61,31 +60,53 @@ describe("OpenNextNodeResponse destroy", () => {
 
     const error = new Error("boom");
     res.destroy(error);
-    // Like Next.js rendering the error page in the destroyed response
+    // Like Next.js rendering an error page in the destroyed response
+    res.statusCode = 500;
+    res.writeHead(404, { "x-late": "1" });
+    res.setHeader("set-cookie", ["late=1"]);
     res.end("error page");
     await closed;
 
     expect(preludes).toEqual([
-      { statusCode: 500, cookies: [], headers: { "cache-control": NO_STORE } },
+      {
+        statusCode: 500,
+        cookies: [],
+        headers: { "cache-control": NO_STORE, "x-opennext": "1" },
+      },
     ]);
     expect(body).toEqual({ text: "", ended: true });
-    expect(onError).toHaveBeenCalledWith(error);
+    // An unhandled "error" event would be an uncaught exception
+    expect(onError).not.toHaveBeenCalled();
+    expect(res.errored).toBe(error);
   });
 
-  it("returns a non-cacheable 500 to non-streaming wrappers", async () => {
-    const res = new OpenNextNodeResponse(
-      () => {},
-      async () => {},
-    );
-    res.on("error", () => {});
-    res.setHeader("cache-control", "s-maxage=31536000");
-    res.setHeader("set-cookie", ["session=secret"]);
+  it("writes a body when OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE is set", async () => {
+    vi.stubEnv("OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE", "true");
+    const { res, body, closed } = setup();
 
     res.destroy(new Error("boom"));
-    const { statusCode, headers } = convertRes(res);
+    await closed;
 
-    expect(statusCode).toBe(500);
-    expect(headers).toEqual({ "cache-control": NO_STORE, "set-cookie": "" });
+    expect(body).toEqual({ text: "SOMETHING", ended: true });
+  });
+
+  it("honors OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS", async () => {
+    vi.stubEnv("OPEN_NEXT_DANGEROUSLY_SET_ERROR_HEADERS", "true");
+    const { res, preludes, closed } = setup();
+
+    res.destroy(new Error("boom"));
+    await closed;
+
+    expect(preludes[0].headers).toEqual({ "x-opennext": "1" });
+  });
+
+  it("does not respond when destroyed without an error", async () => {
+    const { res, preludes, closed } = setup();
+
+    res.destroy();
+    await closed;
+
+    expect(preludes).toEqual([]);
   });
 
   it("does not respond when the client has disconnected", async () => {
@@ -100,14 +121,18 @@ describe("OpenNextNodeResponse destroy", () => {
 
   it("does not change a response whose headers were sent", async () => {
     const { res, preludes, body, closed } = setup();
+    const error = new Error("boom");
+    const onError = vi.fn();
+    res.on("error", onError);
 
     res.write("partial");
-    res.destroy(new Error("boom"));
+    res.destroy(error);
     await closed;
 
     expect(preludes).toHaveLength(1);
     expect(preludes[0].statusCode).toBe(200);
     expect(body.text).toBe("partial");
+    expect(onError).toHaveBeenCalledWith(error);
   });
 
   it("is a no-op after a normal response", async () => {
@@ -138,7 +163,7 @@ describe("OpenNextNodeResponse destroy", () => {
     const closed = new Promise((resolve) => res.on("close", resolve));
 
     // No "error" event, which would be unhandled
-    res.destroy();
+    res.destroy(new Error("boom"));
     await closed;
 
     expect(consoleError).toHaveBeenCalledWith(

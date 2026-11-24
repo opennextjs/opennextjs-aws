@@ -50,7 +50,6 @@ async function invoke(
         async () => {},
         options?.streamCreator,
       );
-      res.on("error", () => {});
       handler(res);
       return {} as never;
     },
