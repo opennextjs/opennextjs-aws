@@ -9,8 +9,11 @@ import type { TransformCallback, Writable } from "node:stream";
 import { Transform } from "node:stream";
 
 import type { StreamCreator } from "types/open-next";
-import { debug } from "../adapters/logger";
-import { fixCacheControlForError } from "../utils/cacheHeaders";
+import { debug, error as logError } from "../adapters/logger";
+import {
+  NO_STORE_CACHE_CONTROL,
+  fixCacheControlForError,
+} from "../utils/cacheHeaders";
 import { parseHeaders, parseSetCookieHeader } from "./util";
 
 const SET_COOKIE_HEADER = "set-cookie";
@@ -351,6 +354,40 @@ export class OpenNextNodeResponse extends Transform implements ServerResponse {
       this.push("SOMETHING");
     }
     callback();
+  }
+
+  /**
+   * Sends an empty, non-cacheable 500 when destroyed before the headers are sent.
+   *
+   * Next.js destroys the response when the body stream errors before its first chunk.
+   * The headers and cookies set so far are dropped as they belong to a response that was never sent.
+   *
+   * @param error The error passed to `destroy()`, if any
+   * @param callback Called once the stream is destroyed
+   */
+  _destroy(error: Error | null, callback: (error?: Error | null) => void) {
+    if (!this.headersSent) {
+      this.headersSent = true;
+      this.headersAlreadyFixed = true;
+      this.statusCode = 500;
+      this.headers = { "cache-control": NO_STORE_CACHE_CONTROL };
+      this._cookies = [];
+      if (this.streamCreator && !this.streamCreator.abortSignal?.aborted) {
+        // A throw would turn `destroy()` into an "error" event
+        try {
+          this.streamCreator
+            .writeHeaders({
+              statusCode: 500,
+              cookies: [],
+              headers: { "cache-control": NO_STORE_CACHE_CONTROL },
+            })
+            .end();
+        } catch (e) {
+          logError("Failed to send the response", e);
+        }
+      }
+    }
+    super._destroy(error, callback);
   }
 
   /**

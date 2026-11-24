@@ -254,6 +254,41 @@ describe("wrappers/node", () => {
     }
   });
 
+  it("answers 500 when the response is destroyed before the headers, and keeps serving", async () => {
+    handler.mockImplementation(
+      async (
+        event: { rawPath: string },
+        { streamCreator }: { streamCreator: StreamCreator },
+      ) => {
+        const res = new OpenNextNodeResponse(
+          () => {},
+          async () => {},
+          streamCreator,
+        );
+        res.on("error", () => {});
+        if (event.rawPath === "/destroy") {
+          res.setHeader("set-cookie", ["session=secret"]);
+          res.destroy(new Error("boom"));
+        } else {
+          res.end("second");
+        }
+      },
+    );
+
+    const raw = await sendRawRequests(
+      port,
+      "GET /destroy HTTP/1.1\r\nHost: localhost\r\n\r\n" +
+        "GET /next HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n",
+    );
+    const responses = parseRawResponses(raw);
+
+    expect(responses).toHaveLength(2);
+    expect(responses[0].statusLine).toBe("HTTP/1.1 500 Internal Server Error");
+    expect(responses[0].headers).not.toHaveProperty("set-cookie");
+    expect(responses[0].body).toBe("");
+    expect(responses[1].body).toBe("second");
+  });
+
   it("throws to the handler on an invalid header with a content-length", async () => {
     const uncaught: unknown[] = [];
     const onUncaught = (e: unknown) => uncaught.push(e);
