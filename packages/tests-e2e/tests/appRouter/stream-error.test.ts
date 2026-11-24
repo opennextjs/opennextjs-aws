@@ -10,5 +10,6 @@ test("responds with a 500 when the body stream errors before its first chunk", a
     "private, no-cache, no-store, max-age=0, must-revalidate",
   );
   expect(res.headers()["set-cookie"]).toBeUndefined();
-  expect(await res.text()).toBe("");
+  // The deployed stack sets `OPEN_NEXT_FORCE_NON_EMPTY_RESPONSE`
+  expect(["", "SOMETHING"]).toContain(await res.text());
 });
