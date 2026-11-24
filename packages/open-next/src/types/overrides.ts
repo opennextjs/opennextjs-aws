@@ -148,8 +148,12 @@ export type WithLastModified<T> = {
    * tag verdict is known, even when tag checks are skipped. As it is attached to the entry, the verdict always
    * applies to this read, even when the same key is read several times concurrently.
    *
-   * - It is called at most once. It may not be called, i.e. when checking the tag cache fails
+   * - It is called at most once per `get`. It may not be called, i.e. when checking the tag cache fails
    *   (the entry is then treated as a miss).
+   * - It is called before the entry is used: OpenNext has neither modified the entry nor handed
+   *   it to Next.js. The callback must not modify the entry either.
+   *   Note that an `IncrementalCache` returning the same object to concurrent reads shares it
+   *   with the other readers.
    * - An entry that is neither revalidated nor stale may still not be used, i.e. when it does
    *   not hold the data needed to serve the request.
    * - It is awaited on the request path: long running work should be deferred
