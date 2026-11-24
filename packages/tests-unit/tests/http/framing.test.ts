@@ -250,7 +250,7 @@ describe("writeResponseHead", () => {
     });
 
     /**
-     * Responds with `writeResponseHead()` and a 500 when it throws, like Next.js does.
+     * Responds with `writeResponseHead()`, catching what it throws like Next.js does.
      *
      * @param statusCode The response status code.
      * @param headers The response headers.
@@ -262,12 +262,11 @@ describe("writeResponseHead", () => {
     ): unknown[] {
       const thrown: unknown[] = [];
       listener = (req, res) => {
+        res.setHeader("set-cookie", "a=1");
         try {
           writeResponseHead(res, req.method, statusCode, headers).end("body");
         } catch (e) {
           thrown.push(e);
-          res.statusCode = 500;
-          res.end("error");
         }
       };
       return thrown;
@@ -306,7 +305,8 @@ describe("writeResponseHead", () => {
 
         expect(thrown).toEqual([expect.objectContaining({ code })]);
         expect(res.statusCode).toBe(500);
-        expect(res.body).toBe("error");
+        expect(res.headers["set-cookie"]).toEqual(["a=1"]);
+        expect(res.body).toBe("Internal Server Error");
       }
       expect(uncaught).toEqual([]);
     });
