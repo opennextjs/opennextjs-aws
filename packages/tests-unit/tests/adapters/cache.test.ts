@@ -342,6 +342,42 @@ describe("CacheHandler", () => {
           });
         });
 
+        it("Should call onTagCacheResult with the unmodified entry before returning it", async () => {
+          let returned = false;
+          const observed: unknown[] = [];
+          const entry = {
+            value: {
+              kind: "FETCH",
+              data: {
+                headers: { "x-next-cache-tags": "tag1" },
+                body: "{}",
+                url: "https://example.com",
+                status: 200,
+              },
+              tags: ["tag1"],
+            },
+            lastModified: Date.now(),
+            onTagCacheResult: vi.fn(async () => {
+              observed.push({
+                returned,
+                value: structuredClone(entry.value),
+                lastModified: entry.lastModified,
+              });
+            }),
+          };
+          const snapshot = {
+            value: structuredClone(entry.value),
+            lastModified: entry.lastModified,
+          };
+          incrementalCache.get.mockResolvedValueOnce(entry);
+
+          await cache.get("key", { kind: "FETCH", tags: ["tag1"] }).then(() => {
+            returned = true;
+          });
+
+          expect(observed).toEqual([{ returned: false, ...snapshot }]);
+        });
+
         it("Should return the entry when onTagCacheResult throws", async () => {
           onTagCacheResult.mockRejectedValueOnce(new Error("hook error"));
 
@@ -941,6 +977,39 @@ describe("CacheHandler", () => {
             hasBeenRevalidated: false,
             isStaleFromTag: false,
           });
+        });
+
+        it("Should call onTagCacheResult with the unmodified entry before returning it", async () => {
+          let returned = false;
+          const observed: unknown[] = [];
+          const entry = {
+            value: {
+              type: "app",
+              html: "<html></html>",
+              rsc: "rsc",
+              meta: { status: 200, headers: { "x-next-cache-tags": "tag1" } },
+              revalidate: 60,
+            },
+            lastModified: Date.now(),
+            onTagCacheResult: vi.fn(async () => {
+              observed.push({
+                returned,
+                value: structuredClone(entry.value),
+                lastModified: entry.lastModified,
+              });
+            }),
+          };
+          const snapshot = {
+            value: structuredClone(entry.value),
+            lastModified: entry.lastModified,
+          };
+          incrementalCache.get.mockResolvedValueOnce(entry);
+
+          await cache.get("key", { kindHint: "app" }).then(() => {
+            returned = true;
+          });
+
+          expect(observed).toEqual([{ returned: false, ...snapshot }]);
         });
 
         it("Should return the entry when onTagCacheResult throws", async () => {

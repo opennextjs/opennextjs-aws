@@ -455,6 +455,42 @@ describe("Composable cache handler", () => {
         expect(result).toBeDefined();
         expect(onTagCacheResult).toHaveBeenCalledOnce();
       });
+
+      it("should call onTagCacheResult with the unmodified entry before returning it", async () => {
+        tagCache.mode = "nextMode";
+        tagCache.hasBeenRevalidated.mockResolvedValueOnce(false);
+        let returned = false;
+        const observed: unknown[] = [];
+        const entry = {
+          value: {
+            tags: ["tag1"],
+            stale: 0,
+            timestamp: Date.now(),
+            expire: 1000,
+            revalidate: 3600,
+            value: "test-value",
+          },
+          lastModified: Date.now(),
+          onTagCacheResult: vi.fn(async () => {
+            observed.push({
+              returned,
+              value: structuredClone(entry.value),
+              lastModified: entry.lastModified,
+            });
+          }),
+        };
+        const snapshot = {
+          value: structuredClone(entry.value),
+          lastModified: entry.lastModified,
+        };
+        incrementalCache.get.mockResolvedValueOnce(entry);
+
+        await ComposableCache.get("test-key").then(() => {
+          returned = true;
+        });
+
+        expect(observed).toEqual([{ returned: false, ...snapshot }]);
+      });
     });
 
     it("should return pending write promise if available", async () => {

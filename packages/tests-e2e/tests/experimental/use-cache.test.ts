@@ -124,8 +124,13 @@ test.describe("Composable Cache", () => {
         return JSON.parse((await elt.textContent()) ?? "{}");
       };
 
-      expect((await lookup(`${id}/${first}`)).arg).toEqual(`${id}/${first}`);
+      const firstEntry = await lookup(`${id}/${first}`);
+      expect(firstEntry.arg).toEqual(`${id}/${first}`);
       expect((await lookup(`${id}/${second}`)).arg).toEqual(`${id}/${second}`);
+      // The entries are cached, otherwise the test would pass without checking the storage key
+      expect((await lookup(`${id}/${first}`)).filledAt).toEqual(
+        firstEntry.filledAt,
+      );
     });
   }
 
