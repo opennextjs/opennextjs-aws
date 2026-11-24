@@ -356,6 +356,8 @@ export function getNextConfigHeaders(
 
 /**
  * Applies the first matching rewrite to an internal request.
+ * Use `handleAllRewrites` for the phases where Next.js keeps evaluating
+ * rewrites after a match.
  *
  * Only successful `has` predicates supply destination parameters. Nonmatching
  * `missing` predicates must not manufacture captures from absent values. See
@@ -364,10 +366,6 @@ export function getNextConfigHeaders(
  * Destination queries use non-path compilation so repeated parameters retain
  * their separators. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
- *
- * TODO: This method currently only checks the first match. It should check all
- * matches for `beforeFiles` and `afterFiles` rewrites. See
- * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
  *
  * @param event The request to rewrite
  * @param rewrites The configured rewrites to evaluate
@@ -499,19 +497,20 @@ export function handleRewrites<T extends RewriteDefinition>(
 }
 
 /**
- * Applies every matching `beforeFiles` rewrite, in order.
+ * Applies every matching rewrite, in order.
  *
- * Next.js keeps evaluating `beforeFiles` rewrites after a match, each one
- * against the URL produced by the previous match. An external rewrite ends the
- * evaluation. See
+ * Next.js keeps evaluating the rewrites of a phase after a match, each one
+ * against the URL produced by the previous match. This applies to
+ * `beforeFiles`, `afterFiles` and `fallback` rewrites alike. An external
+ * rewrite ends the evaluation. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/resolve-routes.ts#L863-L932
  *
  * @param event The request to rewrite
- * @param rewrites The configured `beforeFiles` rewrites
+ * @param rewrites The configured rewrites for the phase
  * @returns The rewritten request and the last matched rewrite metadata
  * @throws {TypeError} When a matched destination cannot be compiled
  */
-export function handleBeforeFilesRewrites<T extends RewriteDefinition>(
+export function handleAllRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
 ): ReturnType<typeof handleRewrites<T>> {

@@ -20,10 +20,9 @@ import { detectLocale } from "./routing/i18n";
 import {
   fixDataPage,
   getNextConfigHeaders,
-  handleBeforeFilesRewrites,
+  handleAllRewrites,
   handleFallbackFalse,
   handleRedirects,
-  handleRewrites,
 } from "./routing/matcher";
 import { handleMiddleware } from "./routing/middleware";
 import {
@@ -188,7 +187,7 @@ export default async function routingHandler(
 
     if (!isExternalRewrite) {
       // First rewrite to be applied
-      const beforeRewrite = handleBeforeFilesRewrites(
+      const beforeRewrite = handleAllRewrites(
         eventOrResult,
         RoutesManifest.rewrites.beforeFiles,
       );
@@ -216,7 +215,7 @@ export default async function routingHandler(
 
     if (!(isStaticRoute || isExternalRewrite)) {
       // Second rewrite to be applied
-      const afterRewrite = handleRewrites(
+      const afterRewrite = handleAllRewrites(
         eventOrResult,
         RoutesManifest.rewrites.afterFiles,
       );
@@ -241,7 +240,7 @@ export default async function routingHandler(
 
     if (!(isDynamicRoute || isStaticRoute || isExternalRewrite)) {
       // Fallback rewrite to be applied
-      const fallbackRewrites = handleRewrites(
+      const fallbackRewrites = handleAllRewrites(
         eventOrResult,
         RoutesManifest.rewrites.fallback,
       );
