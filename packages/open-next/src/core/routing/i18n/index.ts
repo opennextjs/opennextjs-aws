@@ -7,9 +7,20 @@ import { debug } from "../../../adapters/logger.js";
 import { constructNextUrl, convertToQueryString } from "../util.js";
 import { acceptLanguage } from "./accept-header";
 
-function isLocalizedPath(path: string): boolean {
+type LocaleSource = "preferred" | "default";
+
+/**
+ * Checks the first segment against the configured locales, case-insensitively as in Next.js.
+ *
+ * @param path The path to check, without the basePath
+ * @returns Whether the path starts with a locale
+ */
+export function isLocalizedPath(path: string): boolean {
+  const segment = path.split("/", 2)[1]?.toLowerCase();
   return (
-    NextConfig.i18n?.locales.includes(path.split("/")[1].toLowerCase()) ?? false
+    NextConfig.i18n?.locales.some(
+      (locale) => locale.toLowerCase() === segment,
+    ) ?? false
   );
 }
 
@@ -22,8 +33,20 @@ function getLocaleFromCookie(cookies: Record<string, string>) {
     : undefined;
 }
 
+/**
+ * Returns the lowercase hostname without its port, as Next.js `getHostname` does.
+ *
+ * @param host The host, optionally with a port
+ * @returns The lowercase hostname
+ */
+function normalizeDomainHost(host: string): string {
+  return host.split(":", 1)[0].toLowerCase();
+}
+
 // Inspired by https://github.com/vercel/next.js/blob/6d93d652e0e7ba72d9a3b66e78746dce2069db03/packages/next/src/shared/lib/i18n/detect-domain-locale.ts#L3-L25
 /**
+ * Finds a locale domain by hostname (ignoring case and port) or locale.
+ *
  * @param arg an object containing the hostname and detectedLocale
  * @returns The `DomainLocale` object if a domain is detected, `undefined` otherwise
  */
@@ -40,11 +63,10 @@ export function detectDomainLocale({
     return;
   }
   const lowercasedLocale = detectedLocale?.toLowerCase();
+  const requestHostname = hostname && normalizeDomainHost(hostname);
   for (const domain of domains) {
-    // We remove the port if present
-    const domainHostname = domain.domain.split(":", 1)[0].toLowerCase();
     if (
-      hostname === domainHostname ||
+      requestHostname === normalizeDomainHost(domain.domain) ||
       lowercasedLocale === domain.defaultLocale.toLowerCase() ||
       domain.locales?.some(
         (locale) => lowercasedLocale === locale.toLowerCase(),
@@ -56,19 +78,22 @@ export function detectDomainLocale({
 }
 
 /**
+ * Selects the locale for a request without an explicit locale.
  *
- * @param internalEvent
- * @param i18n
- * @returns The detected locale, if `localeDetection` is set to `false` it will return the default locale **or** the domain default locale if a domain is detected.
+ * @param internalEvent The request supplying the host and visitor preferences
+ * @param i18n The locale configuration
+ * @param localeSource Whether to consider visitor preferences
+ * @returns The selected locale, falling back to the domain or configured default
  */
 export function detectLocale(
   internalEvent: InternalEvent,
   i18n: i18nConfig,
+  localeSource: LocaleSource = "preferred",
 ): string {
   const domainLocale = detectDomainLocale({
     hostname: internalEvent.headers.host,
   });
-  if (i18n.localeDetection === false) {
+  if (localeSource === "default" || i18n.localeDetection === false) {
     return domainLocale?.defaultLocale ?? i18n.defaultLocale;
   }
 
@@ -93,23 +118,49 @@ export function detectLocale(
 }
 
 /**
- * This function is used for OpenNext internal routing to localize the path for next config rewrite/redirects/headers and the middleware
- * @param internalEvent
- * @returns The localized path
+ * Localizes the routing path after any basePath, as Next.js matchers expect.
+ *
+ * @param internalEvent The request to localize
+ * @param localeSource Which locale to use when the path has none
+ * @returns The localized path, unchanged when i18n is not configured or the path is already localized
  */
-export function localizePath(internalEvent: InternalEvent): string {
+export function localizePath(
+  internalEvent: InternalEvent,
+  localeSource: LocaleSource = "preferred",
+): string {
+  const { rawPath } = internalEvent;
+  if (!NextConfig.i18n) return rawPath;
+  const basePath = NextConfig.basePath;
+  const prefix =
+    basePath && (rawPath === basePath || rawPath.startsWith(`${basePath}/`))
+      ? basePath
+      : "";
+  // Keep the empty suffix distinct from "/": /docs and /docs/ match differently.
+  return (
+    prefix +
+    localizePathname(internalEvent, rawPath.slice(prefix.length), localeSource)
+  );
+}
+
+/**
+ * Prepends a locale to a basePath-free pathname unless it already has one.
+ *
+ * @param internalEvent The request used to detect the locale
+ * @param pathname The pathname, without the basePath
+ * @param localeSource Which locale to use when the path has none
+ * @returns The localized pathname, unchanged when i18n is not configured or the pathname is already localized
+ */
+export function localizePathname(
+  internalEvent: InternalEvent,
+  pathname: string,
+  localeSource: LocaleSource = "preferred",
+): string {
   const i18n = NextConfig.i18n;
-  if (!i18n) {
-    return internalEvent.rawPath;
-  }
-  // When the path is already localized we don't need to do anything
-  if (isLocalizedPath(internalEvent.rawPath)) {
-    return internalEvent.rawPath;
+  if (!i18n || isLocalizedPath(pathname)) {
+    return pathname;
   }
 
-  const detectedLocale = detectLocale(internalEvent, i18n);
-
-  return `/${detectedLocale}${internalEvent.rawPath}`;
+  return `/${detectLocale(internalEvent, i18n, localeSource)}${pathname}`;
 }
 
 /**

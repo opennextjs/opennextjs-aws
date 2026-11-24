@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 import { NextConfig } from "@opennextjs/aws/adapters/config/index.js";
 import { cacheInterceptor } from "@opennextjs/aws/core/routing/cacheInterceptor.js";
-import { localizePath } from "@opennextjs/aws/core/routing/i18n/index.js";
+import { localizePathname } from "@opennextjs/aws/core/routing/i18n/index.js";
 import { convertFromQueryString } from "@opennextjs/aws/core/routing/util.js";
 import type { MiddlewareEvent } from "@opennextjs/aws/types/open-next.js";
 import type { Queue } from "@opennextjs/aws/types/overrides.js";
@@ -85,10 +85,12 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: vi.fn((event: MiddlewareEvent) => event.rawPath),
+  localizePathname: vi.fn(
+    (_event: MiddlewareEvent, pathname: string) => pathname,
+  ),
 }));
 
-const localizePathMock = vi.mocked(localizePath);
+const localizePathnameMock = vi.mocked(localizePathname);
 
 type PartialEvent = Partial<
   Omit<MiddlewareEvent, "body" | "rawPath" | "query">
@@ -1433,10 +1435,8 @@ describe("cacheInterceptor", () => {
         defaultLocale: "en",
         locales: ["en", "fr"],
       } as any;
-      localizePathMock.mockImplementationOnce((event) =>
-        event.rawPath.startsWith("/fr/")
-          ? event.rawPath
-          : `/en${event.rawPath}`,
+      localizePathnameMock.mockImplementationOnce((_event, pathname) =>
+        pathname.startsWith("/fr/") ? pathname : `/en${pathname}`,
       );
 
       try {
@@ -1444,8 +1444,9 @@ describe("cacheInterceptor", () => {
           { route: "/[...slug]", type: "page" },
         ]);
 
-        expect(localizePathMock).toHaveBeenCalledWith(
-          expect.objectContaining({ rawPath: "/fr/entry" }),
+        expect(localizePathnameMock).toHaveBeenCalledWith(
+          expect.objectContaining({ rawPath: "/base/fr/entry" }),
+          "/fr/entry",
         );
         expect(incrementalCache.get).toHaveBeenCalledWith(
           `/route-cache/PAGES/${sha256("/[...slug]")}/$/fr/entry`,

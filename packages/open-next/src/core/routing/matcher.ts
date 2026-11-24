@@ -16,7 +16,7 @@ import {
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { handleLocaleRedirect, localizePath } from "./i18n";
+import { handleLocaleRedirect, isLocalizedPath, localizePath } from "./i18n";
 import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 import {
   constructNextUrl,
@@ -365,6 +365,9 @@ export function getNextConfigHeaders(
  * their separators. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
  *
+ * With i18n, the locale is removed from a rewrite to a local API route (i.e.
+ * `/<basePath>/<locale>/api/...`), as API routes are not localized.
+ *
  * TODO: This method currently only checks the first match. It should check all
  * matches for `beforeFiles` and `afterFiles` rewrites. See
  * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
@@ -456,14 +459,19 @@ export function handleRewrites<T extends RewriteDefinition>(
       rewrittenHash = compileNonPath(hash, params);
     }
 
-    // We need to strip the locale from the path if it's a local api route
+    // Strip the locale from a rewrite to a local API route (`/<basePath>/<locale>/api/...`)
     if (NextConfig.i18n && !isExternalRewrite) {
-      const strippedPathLocale = rewrittenPath.replace(
-        getCompiledRegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
-        "",
-      );
-      if (strippedPathLocale.startsWith("/api/")) {
-        rewrittenPath = strippedPathLocale;
+      const basePath = NextConfig.basePath ?? "";
+      const pathPrefix =
+        basePath && rewrittenPath.startsWith(`${basePath}/`) ? basePath : "";
+      const pathname = rewrittenPath.slice(pathPrefix.length);
+      const localeEnd = pathname.indexOf("/", 1);
+      if (
+        localeEnd !== -1 &&
+        pathname.startsWith("/api/", localeEnd) &&
+        isLocalizedPath(pathname)
+      ) {
+        rewrittenPath = `${pathPrefix}${pathname.slice(localeEnd)}`;
       }
     }
 
