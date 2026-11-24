@@ -1814,6 +1814,43 @@ describe("cacheInterceptor", () => {
       expect(onTagCacheResult).toHaveBeenCalledOnce();
     });
 
+    it("should call onTagCacheResult with the unmodified entry before serving it", async () => {
+      let returned = false;
+      const observed: unknown[] = [];
+      const entry = {
+        value: {
+          type: "app",
+          html: "Hello, world!",
+          rsc: "rsc",
+          meta: { status: 200, headers: { "x-next-cache-tags": "tag1" } },
+          revalidate: 60,
+        },
+        lastModified: Date.now(),
+        onTagCacheResult: vi.fn(async () => {
+          observed.push({
+            returned,
+            value: structuredClone(entry.value),
+            lastModified: entry.lastModified,
+          });
+        }),
+      };
+      const snapshot = {
+        value: structuredClone(entry.value),
+        lastModified: entry.lastModified,
+      };
+      incrementalCache.get.mockResolvedValueOnce(entry);
+
+      const result = await cacheInterceptor(
+        createEvent({ url: "/albums" }),
+      ).then((result) => {
+        returned = true;
+        return result;
+      });
+
+      expect(result.headers["x-opennext-cache"]).toBe("HIT");
+      expect(observed).toEqual([{ returned: false, ...snapshot }]);
+    });
+
     it("should not call onTagCacheResult when request is bypassed by next-action header", async () => {
       const event = createEvent({
         headers: { "next-action": "something" },
