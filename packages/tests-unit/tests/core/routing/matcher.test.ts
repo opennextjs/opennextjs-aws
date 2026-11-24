@@ -612,6 +612,21 @@ describe("handleRedirects", () => {
       expect(result?.headers.Location).toEqual("https://on/api/admin?a=1");
     });
 
+    it("should keep a query with a question mark when removing the trailing slash", () => {
+      NextConfig.trailingSlash = false;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = createEvent({
+        url: "https://on/api/admin/?next=/a?b=1&c=2",
+      });
+
+      const result = handleRedirects(event, []);
+
+      expect(result?.statusCode).toEqual(308);
+      expect(result?.headers.Location).toEqual(
+        "https://on/api/admin?next=/a?b=1&c=2",
+      );
+    });
+
     it("should add the trailing slash with trailingSlash: true like Next.js", () => {
       NextConfig.trailingSlash = true;
       NextConfig.skipTrailingSlashRedirect = false;
@@ -647,6 +662,40 @@ describe("handleRedirects", () => {
 
       expect(event.rawPath).toEqual("/page");
       expect(handleRedirects(event, [])).toBeUndefined();
+    });
+
+    it.each([
+      ["https://on/_next/data/abc/page/.json", "https://on/page"],
+      ["https://on/_next/data/abc/page/.json?a=1", "https://on/page?a=1"],
+      [
+        "https://on/_next/data/abc/page/.json?a=1&__nextDataReq=1",
+        "https://on/page?a=1",
+      ],
+    ])(
+      "should redirect the data request %s to the page without __nextDataReq like Next.js",
+      (url, location) => {
+        NextConfig.trailingSlash = false;
+        NextConfig.skipTrailingSlashRedirect = false;
+        const event = fixDataPage(createEvent({ url }), "abc") as InternalEvent;
+
+        const result = handleRedirects(event, []);
+
+        expect(result?.statusCode).toEqual(308);
+        expect(result?.headers.Location).toEqual(location);
+      },
+    );
+
+    it("should keep a client supplied __nextDataReq when redirecting a page", () => {
+      NextConfig.trailingSlash = false;
+      NextConfig.skipTrailingSlashRedirect = false;
+      const event = createEvent({ url: "https://on/page/?__nextDataReq=1" });
+
+      const result = handleRedirects(event, []);
+
+      expect(result?.statusCode).toEqual(308);
+      expect(result?.headers.Location).toEqual(
+        "https://on/page?__nextDataReq=1",
+      );
     });
 
     it("should not redirect the canonical pathname", () => {
