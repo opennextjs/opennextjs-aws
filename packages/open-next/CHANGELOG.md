@@ -1,5 +1,54 @@
 # open-next
 
+## 4.2.1
+
+### Patch Changes
+
+- [#1371](https://github.com/opennextjs/opennextjs-aws/pull/1371) [`010cb95`](https://github.com/opennextjs/opennextjs-aws/commit/010cb95690d6cbc4594d7bbfa109dd78fd70cfe1) Thanks [@vicb](https://github.com/vicb)! - fix: run the middleware and apply the `next.config` routes for every request of an app using `i18n`
+
+  A middleware `matcher` and the `headers()`, `redirects()` and `rewrites()` of `next.config` were skipped for some requests of an app using `i18n`:
+
+  - with a `basePath`, for the requests under the basePath;
+  - with a locale that has uppercase letters (e.g. `en-US`), for the paths starting with that locale (e.g. `/en-US/page`);
+  - for a middleware `matcher` targeting the default locale only (e.g. `/en/page/:path*` with `locale: false`), when the `NEXT_LOCALE` cookie or the `Accept-Language` header selects another locale (the middleware only).
+
+  They now apply as they do with `next start`. Check that they behave as expected: they did not run on OpenNext before.
+
+  A middleware without a `matcher` might need to be updated. For the visitors whose `NEXT_LOCALE` cookie or `Accept-Language` header selects a locale other than the default one, `request.nextUrl.pathname` included the basePath or a locale. It is now the path without them (e.g. `/page`), as for the other visitors:
+
+  - With a `basePath` (e.g. `/docs`), `request.nextUrl.basePath` was `""` and `pathname` was `/docs/page`. A check on `/docs/page` no longer matches, compare with `/page`. A URL built from `request.nextUrl` (e.g. `clone()`) now keeps the basePath: `/docs/fr/other` instead of `/fr/other`.
+  - For a URL starting with a locale that has uppercase letters (e.g. `/en-US/page`), `pathname` was `/en-US/page` and `locale` the visitor's locale. They are now `/page` and `en-US`.
+
+  With a `basePath`, `request.nextUrl.locale` is now always the default locale for an API route, as it is without a basePath.
+
+  A rewrite to an API route now also works for a locale that starts with another locale (e.g. `en-US` and `en`), and the domains of `i18n.domains` are detected when the `Host` header has a port or uppercase letters.
+
+- [#1369](https://github.com/opennextjs/opennextjs-aws/pull/1369) [`96a920c`](https://github.com/opennextjs/opennextjs-aws/commit/96a920c12282d3807a3d1698ceb2db7d8286bd49) Thanks [@vicb](https://github.com/vicb)! - fix: require a path separator after the buildId in `/_next/data` requests
+
+  A request is handled as a data request only when its path starts with `<basePath>/_next/data/<buildId>/`. Any other path under `<basePath>/_next/data/` now gets a 404, including with a basePath.
+
+  The rewritten data request URL is also built from the original origin so that the path can never change it.
+
+- [#1364](https://github.com/opennextjs/opennextjs-aws/pull/1364) [`ebb88ab`](https://github.com/opennextjs/opennextjs-aws/commit/ebb88abb2c8f0edece6efb7d50a1a7d4ec8a5847) Thanks [@vicb](https://github.com/vicb)! - fix: respond with a 500 when the body stream errors before its first chunk
+
+  A route returning a stream that errored before its first chunk (e.g. an aborted or timed out `fetch` body) never got a response: streaming wrappers hung until a timeout and non-streaming wrappers returned an empty 200.
+
+  An empty, non-cacheable 500 is now returned.
+
+- [#1363](https://github.com/opennextjs/opennextjs-aws/pull/1363) [`7d7d05f`](https://github.com/opennextjs/opennextjs-aws/commit/7d7d05f0ef1963fc3e7f707f5b47fba689c897a4) Thanks [@vicb](https://github.com/vicb)! - fix: answer a 500 when the response head can not be written in the `node` and `express-dev` wrappers
+
+  A response with an invalid header, e.g. a Pages API route setting a header value containing a newline before `res.send()`, was never answered: `TypeError [ERR_INVALID_CHAR]: Invalid character in header content` was logged and the request stayed pending until the client gave up. It is now answered with a 500 that keeps the headers set before the invalid one, like `next start` does.
+
+- [#1370](https://github.com/opennextjs/opennextjs-aws/pull/1370) [`c1019d3`](https://github.com/opennextjs/opennextjs-aws/commit/c1019d37d8db300d7d4b67bef92f00eddc9b5eb4) Thanks [@vicb](https://github.com/vicb)! - fix: match the middleware against the normalized pathname
+
+  The request path is normalized with the URL parser before routing, as Next.js 16 does: dot segments (`..`, `%2e%2e`, ...) are resolved, a raw backslash is handled as a slash, and tabs, new lines and a raw `#fragment` are removed. The middleware, `headers()` and `redirects()` then apply to the path that is served.
+
+  - A path ending with a dot segment (e.g. `/page/.`) gets the trailing slash redirect.
+  - A data request whose page path is not normalized once `.json` is removed (e.g. `/_next/data/<buildId>/page/..json`) is answered with a 404.
+  - A data request redirected to its page because of a trailing slash no longer keeps the internal `__nextDataReq` query parameter in the location, and a query containing a second `?` is no longer cut.
+
+  No change is required in application code.
+
 ## 4.2.0
 
 ### Minor Changes
