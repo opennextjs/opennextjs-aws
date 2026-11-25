@@ -41,7 +41,7 @@ import {
   useRouteCacheKeys,
 } from "utils/routeCacheKey";
 import { debug } from "../../adapters/logger";
-import { localizePath } from "./i18n";
+import { localizePathname } from "./i18n";
 import { generateMessageGroupId } from "./queue";
 import { dynamicRouteMatcher } from "./routeMatcher";
 
@@ -525,7 +525,7 @@ export async function cacheInterceptor(
         ? event.rawPath.slice(basePath.length)
         : event.rawPath;
   // Locale detection must inspect the first segment after basePath.
-  let localizedPath = localizePath({ ...event, rawPath: pathWithoutBasePath });
+  let localizedPath = localizePathname(event, pathWithoutBasePath);
   // We also need to remove trailing slash
   localizedPath = localizedPath.replace(/\/$/, "");
 

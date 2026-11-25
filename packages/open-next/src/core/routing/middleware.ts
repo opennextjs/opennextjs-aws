@@ -48,6 +48,9 @@ function defaultMiddlewareLoader() {
 /**
  * Runs matching Next.js middleware and applies its routing result.
  *
+ * With i18n, a path without a locale is matched with both the default locale, as in Next.js,
+ * and the locale preferred by the visitor, which is the one of the URL passed to the middleware.
+ *
  * Middleware request-header overrides are normalized and filtered to Next.js's allowlist.
  *
  * Next.js internal headers are never exposed on the response.
@@ -77,21 +80,26 @@ export async function handleMiddleware(
   )
     return internalEvent;
 
-  // We only need the normalizedPath to check if the middleware should run
+  // Localized with the preferred locale and passed to the middleware.
   const normalizedPath = localizePath(internalEvent);
-  let decodedPath: string | undefined;
-  try {
-    decodedPath = decodeURIComponent(normalizedPath);
-  } catch {
-    // An invalid encoding cannot provide a decoded pathname to match.
-  }
-  // Next.js also tries the decoded pathname for matching, while preserving the
-  // encoded pathname in the request passed to middleware.
-  const hasMatch = middleMatch.some(
-    (r) =>
-      r.test(normalizedPath) ||
-      (decodedPath !== undefined && r.test(decodedPath)),
-  );
+  // Next.js matches with the default locale; the preferred one is also tried as later routing uses it.
+  const matchPaths = new Set([
+    normalizedPath,
+    localizePath(internalEvent, "default"),
+  ]);
+  const hasMatch = [...matchPaths].some((path) => {
+    let decodedPath: string | undefined;
+    try {
+      decodedPath = decodeURIComponent(path);
+    } catch {
+      // An invalid encoding cannot provide a decoded pathname to match.
+    }
+    // Next.js also tries the decoded pathname for matching, while preserving the
+    // encoded pathname in the request passed to middleware.
+    return middleMatch.some(
+      (r) => r.test(path) || (decodedPath !== undefined && r.test(decodedPath)),
+    );
+  });
   if (!hasMatch) return internalEvent;
 
   const initialUrl = new URL(normalizedPath, internalEvent.url);
