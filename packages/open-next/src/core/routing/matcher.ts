@@ -655,15 +655,32 @@ export function handleRedirects(
   }
 }
 
+/**
+ * Converts a Pages Router data request to a request for its page.
+ *
+ * A data request is `<basePath>/_next/data/<buildId>/<page>.json`. Its page path becomes the `rawPath` and the
+ * `url` pathname (the origin is kept), and it is flagged with `__nextDataReq` and the `x-nextjs-data` header.
+ *
+ * @param internalEvent The incoming request
+ * @param buildId The buildId of the app
+ * @returns A 404 for any other path under `/_next/data/` or `<basePath>/_next/data/`,
+ *   the request for the page for a data request, the unchanged request otherwise
+ * @throws {TypeError} When the URL of a data request is invalid
+ */
 export function fixDataPage(
   internalEvent: InternalEvent,
   buildId: string,
 ): InternalEvent | InternalResult {
   const { rawPath, query } = internalEvent;
   const basePath = NextConfig.basePath ?? "";
-  const dataPattern = `${basePath}/_next/data/${buildId}`;
-  // Return 404 for data requests that don't match the buildId
-  if (rawPath.startsWith("/_next/data") && !rawPath.startsWith(dataPattern)) {
+  const dataPrefix = `${basePath}/_next/data/`;
+  if (!rawPath.startsWith("/_next/data/") && !rawPath.startsWith(dataPrefix)) {
+    return internalEvent;
+  }
+  // The trailing `/` ensures the buildId is a full path segment
+  const dataPattern = `${dataPrefix}${buildId}/`;
+  // Return 404 for paths under `/_next/data/` that are not data requests for this build
+  if (!rawPath.startsWith(dataPattern)) {
     return {
       type: internalEvent.type,
       statusCode: 404,
@@ -675,9 +692,10 @@ export function fixDataPage(
     };
   }
 
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
+  if (rawPath.endsWith(".json")) {
     const newPath = `${basePath}${rawPath
-      .slice(dataPattern.length, -".json".length)
+      // Keep the leading `/` of the page path
+      .slice(dataPattern.length - 1, -".json".length)
       .replace(/^\/index$/, "/")}`;
     query.__nextDataReq = "1";
 
@@ -689,9 +707,10 @@ export function fixDataPage(
         ...internalEvent.headers,
         "x-nextjs-data": "1",
       },
+      // Concatenate with the origin rather than resolving `newPath` as a relative URL
+      // so that the path can never change the origin (e.g. `//evil.com/x`)
       url: new URL(
-        `${newPath}${convertToQueryString(query)}`,
-        internalEvent.url,
+        `${new URL(internalEvent.url).origin}${newPath}${convertToQueryString(query)}`,
       ).href,
     };
   }
