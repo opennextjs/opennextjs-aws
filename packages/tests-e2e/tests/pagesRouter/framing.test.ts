@@ -56,13 +56,14 @@ test.describe("Response framing", () => {
     expect(raw.slice(separator + 4)).toBe("the full body of the response");
   });
 
-  test("An invalid header with a content-length does not crash the server", async ({
+  test("An invalid header with a content-length is answered with a 500 and does not crash the server", async ({
     request,
   }) => {
     // `res.send()` sets a content-length, the invalid header must not throw outside of the request
-    await request
-      .get("/api/header/?invalid", { timeout: 2000 })
-      .catch(() => {});
+    const invalid = await request.get("/api/header/?invalid", {
+      timeout: 2000,
+    });
+    expect(invalid.status()).toBe(500);
 
     const res = await request.get("/api/header/");
     expect(res.status()).toBe(200);

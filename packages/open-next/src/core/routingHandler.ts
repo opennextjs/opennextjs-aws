@@ -15,6 +15,7 @@ import type {
 import type { AssetResolver } from "types/overrides";
 import { debug, error } from "../adapters/logger";
 import { NO_STORE_CACHE_CONTROL } from "../utils/cacheHeaders";
+import { emptyReadableStream } from "../utils/stream";
 import { cacheInterceptor } from "./routing/cacheInterceptor";
 import { detectLocale } from "./routing/i18n";
 import {
@@ -106,11 +107,35 @@ function applyResponseHeaders(
   addHeaders(nextConfigHeaders, isResult ? "" : NEXT_CONFIG_HEADER_PREFIX);
 }
 
+/**
+ * Applies routing rules and middleware to an incoming request.
+ *
+ * Routing errors fall back to the Next.js 500 page.
+ *
+ * @param initialEvent The incoming request to normalize and route
+ * @param options Optional asset resolver for public files
+ * @returns A response or the resolved request and routing metadata
+ * @throws {TypeError} If an invalid request URL prevents constructing the 500 page URL
+ */
 export default async function routingHandler(
-  event: InternalEvent,
+  initialEvent: InternalEvent,
   { assetResolver }: { assetResolver?: AssetResolver },
 ): Promise<InternalResult | RoutingResult> {
+  let event = initialEvent;
   try {
+    // Next.js routes on the normalized URL pathname (e.g. dot segments resolved).
+    // Use it as the rawPath so that the middleware is matched against the path that is served.
+    const { origin, pathname: normalizedPath } = new URL(event.url);
+    if (normalizedPath !== event.rawPath) {
+      // The converters append the query after the raw path, even when it contains a `#`
+      const queryIndex = event.url.indexOf("?");
+      event = {
+        ...event,
+        rawPath: normalizedPath,
+        url: `${origin}${normalizedPath}${queryIndex === -1 ? "" : event.url.slice(queryIndex)}`,
+      };
+    }
+
     // Add Next geo headers
     for (const [openNextGeoName, nextGeoName] of Object.entries(
       geoHeaderToNextHeader,
@@ -143,6 +168,21 @@ export default async function routingHandler(
 
     if (isInternalResult(eventOrResult)) {
       return eventOrResult;
+    }
+
+    // `fixDataPage` can leave a dot segment (e.g. `/_next/data/<buildId>/page/...json` is `/page/..`).
+    // The middleware and `redirects` match the rawPath while later steps use the URL pathname:
+    // refuse the request when they differ.
+    if (eventOrResult.rawPath !== new URL(eventOrResult.url).pathname) {
+      return {
+        type: eventOrResult.type,
+        statusCode: 404,
+        body: emptyReadableStream(),
+        headers: {
+          "cache-control": NO_STORE_CACHE_CONTROL,
+        },
+        isBase64Encoded: false,
+      };
     }
 
     const redirect = handleRedirects(eventOrResult, RoutesManifest.redirects);

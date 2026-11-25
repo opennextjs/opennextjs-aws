@@ -34,7 +34,7 @@ export const MAX_VERIFIED_CONTENT_LENGTH = 10_000_000;
  * @param headers The response headers, keys are matched case-insensitively.
  * @returns The stream to write the body to.
  * @throws When the status code or a header is invalid, or the headers were already sent (same errors as
- *   `res.writeHead()`).
+ *   `res.writeHead()`). When the headers were not sent, a 500 is answered first, like `next start` does.
  */
 export function writeResponseHead(
   res: ServerResponse,
@@ -42,17 +42,25 @@ export function writeResponseHead(
   statusCode: number,
   headers: Record<string, string>,
 ): Writable {
-  validateHead(res, statusCode);
-
   let contentLength: string | undefined;
-  for (const [key, value] of Object.entries(headers)) {
-    const lowerKey = key.toLowerCase();
-    if (lowerKey === "content-length") {
-      contentLength = value;
-    } else if (lowerKey !== "transfer-encoding") {
-      // `setHeader()` validates the header like `writeHead()` does
-      res.setHeader(key, value);
+  try {
+    validateHead(res, statusCode);
+    for (const [key, value] of Object.entries(headers)) {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === "content-length") {
+        contentLength = value;
+      } else if (lowerKey !== "transfer-encoding") {
+        // `setHeader()` validates the header like `writeHead()` does
+        res.setHeader(key, value);
+      }
     }
+  } catch (e) {
+    // Next.js catches the error but can not answer the request, it writes to the `OpenNextNodeResponse`.
+    // Like `next start`, the headers set before the invalid one are kept.
+    if (!res.headersSent) {
+      res.writeHead(500).end("Internal Server Error");
+    }
+    throw e;
   }
 
   const expectedLength = parseContentLength(contentLength);

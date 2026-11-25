@@ -128,6 +128,7 @@ export type IncludedWrapper =
   | "aws-lambda-streaming"
   | "aws-apigw-streaming"
   | "aws-lambda-compressed"
+  | "aws-web-function"
   | "node"
   // @deprecated - use "cloudflare-edge" instead.
   | "cloudflare"

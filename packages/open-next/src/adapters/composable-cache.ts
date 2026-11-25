@@ -1,6 +1,11 @@
 import type { ComposableCacheEntry, ComposableCacheHandler } from "types/cache";
 import type { CacheValue, OriginalTagCache } from "types/overrides";
-import { getComposableCacheStorageKey, isStale, writeTags } from "utils/cache";
+import {
+  getComposableCacheStorageKey,
+  isStale,
+  reportTagCacheResult,
+  writeTags,
+} from "utils/cache";
 import { fromReadableStream, toReadableStream } from "utils/stream";
 import { debug } from "./logger";
 
@@ -40,6 +45,9 @@ export default {
    * The incremental cache and the tag cache are accessed with a key derived from `cacheKey`,
    * see `getComposableCacheStorageKey`.
    *
+   * The tag cache verdict for an entry read from the incremental cache is reported to
+   * the `onTagCacheResult` callback of the entry.
+   *
    * @param cacheKey The cache key provided by Next.js
    * @returns The cache entry, or `undefined` on a miss or when the entry has been revalidated.
    * Errors are caught and reported as a miss.
@@ -69,47 +77,40 @@ export default {
 
       debug("composable cache result", result);
 
-      let revalidate = result.value.revalidate;
-      if (
-        globalThis.tagCache.mode === "nextMode" &&
-        result.value.tags.length > 0
-      ) {
-        // We need to check if the tags associated with this entry has been revalidated
-        const hasBeenRevalidated = result.shouldBypassTagCache
-          ? false
-          : await globalThis.tagCache.hasBeenRevalidated(
-              result.value.tags,
-              result.lastModified,
-            );
-        if (hasBeenRevalidated) return undefined;
-
+      let hasBeenRevalidated = false;
+      let isStaleFromTag = false;
+      // The tag cache is not checked when the entry bypasses it or when it is disabled.
+      // In next mode, entries without tags do not need to be checked either.
+      const shouldCheckTagCache =
+        !result.shouldBypassTagCache &&
+        !globalThis.openNextConfig.dangerous?.disableTagCache &&
+        (globalThis.tagCache.mode !== "nextMode" ||
+          result.value.tags.length > 0);
+      if (shouldCheckTagCache) {
+        hasBeenRevalidated =
+          globalThis.tagCache.mode === "nextMode"
+            ? await globalThis.tagCache.hasBeenRevalidated(
+                result.value.tags,
+                result.lastModified,
+              )
+            : (await globalThis.tagCache.getLastModified(
+                storageKey,
+                result.lastModified,
+              )) === -1;
         // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = result.shouldBypassTagCache
-          ? false
-          : await isStale(storageKey, result.value.tags, result.lastModified);
-        if (isCacheStale) {
-          revalidate = -1;
-        }
-      } else if (
-        globalThis.tagCache.mode === "original" ||
-        globalThis.tagCache.mode === undefined
-      ) {
-        const hasBeenRevalidated = result.shouldBypassTagCache
-          ? false
-          : (await globalThis.tagCache.getLastModified(
-              storageKey,
-              result.lastModified,
-            )) === -1;
-        if (hasBeenRevalidated) return undefined;
-
-        // Check if tags are stale – entry is valid but needs background revalidation
-        const isCacheStale = result.shouldBypassTagCache
-          ? false
-          : await isStale(storageKey, result.value.tags, result.lastModified);
-        if (isCacheStale) {
-          revalidate = -1;
-        }
+        isStaleFromTag =
+          !hasBeenRevalidated &&
+          (await isStale(storageKey, result.value.tags, result.lastModified));
       }
+
+      await reportTagCacheResult(result, {
+        hasBeenRevalidated,
+        isStaleFromTag,
+      });
+
+      if (hasBeenRevalidated) return undefined;
+
+      const revalidate = isStaleFromTag ? -1 : result.value.revalidate;
 
       return {
         ...result.value,
