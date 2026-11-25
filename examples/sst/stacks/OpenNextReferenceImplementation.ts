@@ -24,7 +24,7 @@ import {
   TableV2 as Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import type { IGrantable } from "aws-cdk-lib/aws-iam";
-import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { AnyPrincipal, Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
   Function as CdkFunction,
@@ -343,6 +343,17 @@ export class OpenNextCdkReferenceImplementation extends Construct {
         ? InvokeMode.RESPONSE_STREAM
         : InvokeMode.BUFFERED,
     });
+
+    fn.addPermission(`${key}FunctionUrlPermission`, {
+      principal: new AnyPrincipal(),
+      action: "lambda:InvokeFunctionUrl",
+      functionUrlAuthType: FunctionUrlAuthType.NONE,
+    });
+    fn.addPermission(`${key}FunctionInvokePermission`, {
+      principal: new AnyPrincipal(),
+      action: "lambda:InvokeFunction",
+    });
+
     this.grantPermissions(fn);
     return new HttpOrigin(Fn.parseDomainName(fnUrl.url));
   }
