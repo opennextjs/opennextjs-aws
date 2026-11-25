@@ -48,6 +48,22 @@ export function copyFileAndMakeOwnerWritable(src: string, dest: string): void {
   }
 }
 
+/**
+ * Logs a traced file that could not be copied.
+ *
+ * On Next 16+ some files listed in the .nft.json are not present in the
+ * standalone folder, so a missing source (`ENOENT`) is only logged at debug
+ * level. Any other error means a file that is needed was not copied, so it is
+ * logged as a warning.
+ */
+export function logCopyError(from: string, error: unknown): void {
+  if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+    logger.debug("Error copying file:", error);
+    return;
+  }
+  logger.warn(`Failed to copy traced file ${from}:`, error);
+}
+
 //TODO: we need to figure which packages we could safely remove
 const EXCLUDED_PACKAGES = [
   "caniuse-lite",
@@ -349,7 +365,7 @@ File ${serverPath} does not exist
       try {
         copyFileAndMakeOwnerWritable(from, to);
       } catch (e) {
-        logger.debug("Error copying file:", e);
+        logCopyError(from, e);
         erroredFiles.push(to);
       }
     }
