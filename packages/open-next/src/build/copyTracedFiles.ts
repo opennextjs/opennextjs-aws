@@ -349,11 +349,19 @@ File ${serverPath} does not exist
       try {
         copyFileAndMakeOwnerWritable(from, to);
       } catch (e) {
-        logger.debug("Error copying file:", e);
+        logger.debug("Error copying file:", from, e);
         erroredFiles.push(to);
       }
     }
   });
+
+  if (erroredFiles.length > 0) {
+    // These files were listed as traced but could not be copied, which is
+    // different from files that were never traced. Surface it without failing the build.
+    logger.warn(
+      `${erroredFiles.length} traced file(s) could not be copied and were left out of the bundle. Run with OPEN_NEXT_DEBUG=true for details.`,
+    );
+  }
 
   if (skippedPlatformPackages.size > 0) {
     logger.debug(
