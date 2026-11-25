@@ -557,7 +557,11 @@ function handleRepeatedSlashRedirect(
  *
  * Mirrors the internal redirects that Next.js generates from `trailingSlash`. They apply to every
  * path, including API routes, and run before the middleware so that it always sees the canonical
- * pathname. Data requests (`/_next/data/<buildId>/*.json`) are not redirected.
+ * pathname.
+ *
+ * With `trailingSlash`, data requests (`/_next/data/<buildId>/*.json`) are not redirected.
+ * Without it, a data request for a path with a trailing slash is redirected to the page, without the
+ * internal `__nextDataReq` query parameter.
  * See https://github.com/vercel/next.js/blob/324b297/packages/next/src/lib/load-custom-routes.ts#L791-L849
  *
  * @param event The incoming request
@@ -608,14 +612,24 @@ function handleTrailingSlashRedirect(
     event.rawPath.endsWith("/") &&
     event.rawPath !== "/"
   ) {
-    const headersLocation = event.url.split("?");
+    const queryIndex = event.url.indexOf("?");
+    const pathname =
+      queryIndex === -1 ? event.url : event.url.slice(0, queryIndex);
+    const search = queryIndex === -1 ? "" : event.url.slice(queryIndex + 1);
+    // A data request (e.g. `/_next/data/<buildId>/page/.json`) is redirected to the page.
+    // `__nextDataReq` is added by `fixDataPage`, Next.js does not keep it in the location.
+    let query = search;
+    if (event.headers["x-nextjs-data"] === "1") {
+      query = query
+        .split("&")
+        .filter((param) => param !== "__nextDataReq=1")
+        .join("&");
+    }
     return {
       type: event.type,
       statusCode: 308,
       headers: {
-        Location: `${headersLocation[0].replace(/\/$/, "")}${
-          headersLocation[1] ? `?${headersLocation[1]}` : ""
-        }`,
+        Location: `${pathname.replace(/\/$/, "")}${query ? `?${query}` : ""}`,
       },
       body: emptyBody,
       isBase64Encoded: false,
