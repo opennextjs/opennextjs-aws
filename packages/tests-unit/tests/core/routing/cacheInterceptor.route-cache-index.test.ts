@@ -51,7 +51,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
 }));
 
 vi.mock("@opennextjs/aws/core/routing/i18n/index.js", () => ({
-  localizePath: (event: MiddlewareEvent) => event.rawPath,
+  localizePathname: (_event: MiddlewareEvent, pathname: string) => pathname,
 }));
 
 function createEvent(rawPath: string): MiddlewareEvent {

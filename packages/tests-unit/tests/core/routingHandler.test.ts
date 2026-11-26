@@ -6,13 +6,13 @@ import type {
 } from "@opennextjs/aws/types/open-next.js";
 import { vi } from "vitest";
 
-const { handleMiddleware, cacheInterceptor, configHeaders } = vi.hoisted(
-  () => ({
+const { handleMiddleware, cacheInterceptor, configHeaders, redirects } =
+  vi.hoisted(() => ({
     handleMiddleware: vi.fn(),
     cacheInterceptor: vi.fn(),
     configHeaders: [] as unknown[],
-  }),
-);
+    redirects: [] as unknown[],
+  }));
 
 vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   BuildId: "build-id",
@@ -28,7 +28,7 @@ vi.mock("@opennextjs/aws/adapters/config/index.js", () => ({
   RoutesManifest: {
     basePath: "",
     locales: [],
-    redirects: [],
+    redirects,
     rewrites: { beforeFiles: [], afterFiles: [], fallback: [] },
     routes: {
       static: [],
@@ -120,15 +120,167 @@ describe("routingHandler", () => {
   );
 
   it("checks the normalized URL pathname", async () => {
-    // The rawPath only matches the catch-all route, Next.js receives `/catalog/new/missing/[item]/`
+    // The pathname is normalized to `/catalog/new/missing/[item]/`, which is redirected like Next.js does.
+    // The redirect target is routed to the 404 page (see above).
     const result = (await routingHandler(
       createEvent("/catalog/new/missing/[item]/%2e"),
       {},
-    )) as RoutingResult;
+    )) as InternalResult;
 
-    expect(result.internalEvent.rawPath).toBe("/404");
-    expect(result.resolvedRoutes).toEqual([]);
+    expect(result.statusCode).toBe(308);
+    expect(result.headers.Location).toBe("/catalog/new/missing/[item]");
   });
+
+  it.each([
+    ["/foo/../catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/foo/%2e%2e/catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/foo/%2E%2E/catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/foo/.%2e/catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/./catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/%2e/catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    // A prefix excluded by a negative lookahead matcher (i.e. `/((?!api|_next/static).*)`)
+    ["/api/%2e%2e/admin", "/admin"],
+    // The URL parser handles a backslash as a slash and removes tabs and new lines
+    ["/foo\\..\\catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/foo/.\t./catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    ["/foo/.\n./catalog/new/alpha/a", "/catalog/new/alpha/a"],
+    // A fragment is not part of the pathname
+    ["/catalog/new/alpha/a#fragment", "/catalog/new/alpha/a"],
+  ])(
+    "matches the middleware against the normalized pathname: %s",
+    async (rawPath, normalizedPath) => {
+      const result = (await routingHandler(
+        createEvent(`${rawPath}`, `https://on${rawPath}?q=1`),
+        {},
+      )) as RoutingResult;
+
+      expect(handleMiddleware.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          rawPath: normalizedPath,
+          url: `https://on${normalizedPath}?q=1`,
+        }),
+      );
+      expect(result.internalEvent.rawPath).toBe(normalizedPath);
+    },
+  );
+
+  it("uses the URL pathname when the rawPath is a different path", async () => {
+    await routingHandler(
+      createEvent("/public", "https://on/catalog/new/alpha/a?q=1"),
+      {},
+    );
+
+    expect(handleMiddleware.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        rawPath: "/catalog/new/alpha/a",
+        url: "https://on/catalog/new/alpha/a?q=1",
+      }),
+    );
+  });
+
+  it.each([
+    "/_next/data/build-id/catch/a/..json",
+    "/_next/data/build-id/catch/a/...json",
+    "/_next/data/build-id/catch/a/%2e%2e.json",
+    "/_next/data/build-id/catch/a/%2E%2E.json",
+    "/_next/data/build-id/catch/a/.%2e.json",
+    "/_next/data/build-id/catch/a/%2e.json",
+    "/_next/data/build-id/catch/...json",
+    "/_next/data/build-id/..json",
+  ])(
+    "returns a 404 without running the middleware when the rawPath and URL pathname differ: %s",
+    async (rawPath) => {
+      const result = (await routingHandler(
+        createEvent(rawPath),
+        {},
+      )) as InternalResult;
+
+      expect(result.statusCode).toBe(404);
+      expect(result.headers["cache-control"]).toBe(
+        "private, no-cache, no-store, max-age=0, must-revalidate",
+      );
+      expect(handleMiddleware).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["/_next/data/build-id/catch/a.json", "/catch/a"],
+    ["/_next/data/build-id/catch/a%20b.json", "/catch/a%20b"],
+    ["/_next/data/build-id/catch/a..json", "/catch/a."],
+    ["/_next/data/build-id/catch/.a.json", "/catch/.a"],
+  ])(
+    "routes data requests whose rawPath is the URL pathname: %s",
+    async (rawPath, pagePath) => {
+      await routingHandler(createEvent(rawPath), {});
+
+      expect(handleMiddleware.mock.calls[0][0].rawPath).toBe(pagePath);
+    },
+  );
+
+  it("redirects a data request with a trailing slash to the page like Next.js", async () => {
+    const result = (await routingHandler(
+      createEvent("/_next/data/build-id/catch/a/.json"),
+      {},
+    )) as InternalResult;
+
+    expect(result.statusCode).toBe(308);
+    expect(result.headers.Location).toBe("/catch/a");
+    expect(handleMiddleware).not.toHaveBeenCalled();
+  });
+
+  it("matches next.config headers against the normalized pathname", async () => {
+    configHeaders.push({
+      source: "/catalog/:path*",
+      regex: "^/catalog(?:/(.*))?$",
+      headers: [{ key: "x-frame-options", value: "DENY" }],
+    });
+
+    try {
+      const result = (await routingHandler(
+        createEvent("/foo/%2e%2e/catalog/new/alpha/a"),
+        {},
+      )) as RoutingResult;
+
+      expect(
+        result.internalEvent.headers[
+          "x-opennext-next-config-response-x-frame-options"
+        ],
+      ).toBe("DENY");
+    } finally {
+      configHeaders.length = 0;
+    }
+  });
+
+  it("matches next.config redirects against the normalized pathname", async () => {
+    redirects.push({
+      source: "/catalog/:path*",
+      destination: "/login",
+      regex: "^/catalog(?:/(.*))?$",
+      statusCode: 307,
+    });
+
+    try {
+      const result = (await routingHandler(
+        createEvent("/foo/%2e%2e/catalog/new/alpha/a"),
+        {},
+      )) as InternalResult;
+
+      expect(result.statusCode).toBe(307);
+      expect(result.headers.Location).toBe("/login");
+      expect(handleMiddleware).not.toHaveBeenCalled();
+    } finally {
+      redirects.length = 0;
+    }
+  });
+
+  it.each(["/foo/%252e%252e/catalog/new/alpha/a", "/foo/..%2fcatalog/x"])(
+    "keeps encoded paths that are not dot segments: %s",
+    async (rawPath) => {
+      await routingHandler(createEvent(rawPath), {});
+
+      expect(handleMiddleware.mock.calls[0][0].rawPath).toBe(rawPath);
+    },
+  );
 
   it("does not pass the dynamic route to the cache interceptor", async () => {
     vi.stubGlobal("openNextConfig", {
