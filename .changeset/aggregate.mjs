@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
@@ -33,10 +34,14 @@ for (const line of lines) {
   }
 }
 
-const notes = ["#### Changes", ...changes];
-console.log(notes.join("\n"));
-console.log(`::set-output name=notes::${notes.join("%0A")}`);
-console.log(`::set-output name=version::v${version}`);
+const notes = ["#### Changes", ...changes].join("\n");
+console.log(notes);
+
+const delimiter = randomUUID();
+await fs.appendFile(
+  process.env.GITHUB_OUTPUT,
+  `version=v${version}\nnotes<<${delimiter}\n${notes}\n${delimiter}\n`,
+);
 
 execSync(`git tag v${version}`);
 execSync("git push origin --tags");
