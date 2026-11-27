@@ -42,3 +42,26 @@ test.describe("Server Actions without JavaScript", () => {
     ).toBeVisible();
   });
 });
+
+// A Server Action posted to a page that does not bundle it is forwarded by Next to the page that does.
+// The forwarded request targets a dynamic route (`/server-actions/forwarded/[id]/edit`).
+test("Server Action forwarded to a dynamic route", async ({ page }) => {
+  await page.goto("/server-actions/forwarded/1/edit");
+  await page.getByRole("textbox", { name: "Draft" }).fill("hello");
+
+  // The editor saves the draft when it unmounts, the action is posted to the item page.
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      response.request().headers()["next-action"] !== undefined,
+  );
+  await page.getByRole("link", { name: "Back to item" }).click();
+  await page.waitForURL("/server-actions/forwarded/1");
+  await expect(page.getByRole("heading", { name: "Item 1" })).toBeVisible();
+
+  const response = await responsePromise;
+  expect(new URL(response.url()).pathname).toBe("/server-actions/forwarded/1");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toContain("text/x-component");
+  expect(await response.text()).toContain("Saved draft of item 1: hello");
+});

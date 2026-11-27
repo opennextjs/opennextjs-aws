@@ -44,7 +44,8 @@ const wrapper: WrapperHandler = async (handler, converter) => {
   app.all("*paths", async (req, res) => {
     if (req.protocol === "http" && req.hostname === "localhost") {
       // This is used internally by Next.js during redirects in server actions. We need to set it to the origin of the request.
-      process.env.__NEXT_PRIVATE_ORIGIN = `${req.protocol}://${req.hostname}`;
+      // `req.host` includes the port, unlike `req.hostname`.
+      process.env.__NEXT_PRIVATE_ORIGIN = `${req.protocol}://${req.host}`;
       // This is to make `next-auth` and other libraries that rely on this header to work locally out of the box.
       req.headers["x-forwarded-proto"] = req.protocol;
     }

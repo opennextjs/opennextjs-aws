@@ -23,6 +23,7 @@ import {
   loadMiddlewareManifest,
   loadPagesManifest,
   loadPrerenderManifest,
+  loadRoutesManifest,
 } from "config/util.js";
 import { getCrossPlatformPathRegex } from "utils/regex.js";
 import logger from "../logger.js";
@@ -109,6 +110,7 @@ export function getManifests(nextDir: string) {
     appPathsManifest: loadAppPathsManifest(nextDir),
     middlewareManifest: loadMiddlewareManifest(nextDir),
     functionsConfigManifest: loadFunctionsConfigManifest(nextDir),
+    routesManifest: loadRoutesManifest(nextDir),
   };
 }
 
