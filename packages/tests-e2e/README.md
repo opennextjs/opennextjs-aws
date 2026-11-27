@@ -49,19 +49,3 @@ pnpm run e2e:dev
 ## Gotchas
 
 `isr.test.ts` returns a timestamp, when running `next dev`, ISR does not cache so each reload is a new timestamp. You'll need to `next build` and `next start` for Next to not cache.
-
-## Run the Cache Components tests locally
-
-From the repository root, build and start the Cache Components example with OpenNext.
-
-```sh
-pnpm --filter @opennextjs/aws... run build
-pnpm --filter cache-components openbuild:local
-pnpm --filter cache-components openbuild:local:start
-```
-
-In a second terminal, run the Playwright project against the server on port 3005.
-
-```sh
-pnpm --filter tests-e2e exec playwright test --project=cacheComponents
-```
