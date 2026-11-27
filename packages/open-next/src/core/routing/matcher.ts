@@ -55,19 +55,15 @@ export function getCompiledRegExp(pattern: string, flags = ""): RegExp {
 }
 
 /**
- * Returns the compiled regular expression of a `routes-manifest.json` entry
- * (redirect, rewrite or header).
+ * Returns the flags used to match the sources of `headers()` and `redirects()`.
  *
- * Next.js serializes these regular expressions without their flags and matches
- * them case-insensitively unless `experimental.caseSensitiveRoutes` is
- * enabled, which the manifest records as `caseSensitive`.
+ * Next.js matches them case-insensitively unless `experimental.caseSensitiveRoutes` is enabled,
+ * which the routes manifest records as `caseSensitive`. The manifest regular expressions have no flags.
  *
- * @param regex The regular expression source from the routes manifest
- * @returns The compiled regular expression
- * @throws {SyntaxError} When the pattern is invalid
+ * @returns `"i"`, or `""` when routes are case-sensitive
  */
-function getManifestRouteRegExp(regex: string): RegExp {
-  return getCompiledRegExp(regex, RoutesManifest.caseSensitive ? "" : "i");
+function getCustomRouteFlags(): string {
+  return RoutesManifest.caseSensitive ? "" : "i";
 }
 
 /**
@@ -342,7 +338,7 @@ export function getNextConfigHeaders(
   } of configHeaders) {
     const path = locale === false ? event.rawPath : localizedRawPath;
     if (
-      getManifestRouteRegExp(regex).test(path) &&
+      getCompiledRegExp(regex, getCustomRouteFlags()).test(path) &&
       checkHas(matcher, has) &&
       checkHas(matcher, missing, true)
     ) {
@@ -388,9 +384,12 @@ export function getNextConfigHeaders(
  * matches for `beforeFiles` and `afterFiles` rewrites. See
  * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
  *
+ * Rewrites are matched case-sensitively, like the middleware matcher that runs before them.
+ *
  * @param event The request to rewrite
- * @param rewrites The configured rewrites to evaluate
+ * @param rewrites The configured rewrites or redirects to evaluate
  * @param appendParamsToQuery Whether unused match parameters are added to the query
+ * @param flags The flags used to match the sources (`getCustomRouteFlags()` for redirects)
  * @returns The rewritten request and matched rewrite metadata
  * @throws {TypeError} When a matched destination cannot be compiled
  */
@@ -398,6 +397,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   event: InternalEvent,
   rewrites: T[],
   appendParamsToQuery = true,
+  flags = "",
 ) {
   const { rawPath, headers, query, cookies, url } = event;
   const localizedRawPath = localizePath(event);
@@ -406,7 +406,7 @@ export function handleRewrites<T extends RewriteDefinition>(
   const rewrite = rewrites.find((route) => {
     const path = route.locale === false ? rawPath : localizedRawPath;
     return (
-      getManifestRouteRegExp(route.regex).test(path) &&
+      getCompiledRegExp(route.regex, flags).test(path) &&
       checkHas(matcher, route.has) &&
       checkHas(matcher, route.missing, true)
     );
@@ -679,6 +679,7 @@ export function handleRedirects(
     event,
     redirects.filter((r) => !r.internal),
     false,
+    getCustomRouteFlags(),
   );
   if (__rewrite && !__rewrite.internal) {
     return {

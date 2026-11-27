@@ -921,33 +921,17 @@ describe("case-insensitive route matching", () => {
     expect(result).toBeUndefined();
   });
 
-  it("should match rewrites regardless of casing by default", () => {
+  // Rewrites run after the middleware, which is matched case-sensitively.
+  it("should match rewrites case-sensitively", () => {
     const event = createEvent({ url: "https://on/MyPartner" });
-    const rewrites = [
+
+    const result = handleRewrites(event, [
       {
         source: "/mypartner",
         destination: "/learn/partners/mypartner",
         regex: "^/mypartner(?:/)?$",
       },
-    ];
-
-    const result = handleRewrites(event, rewrites);
-
-    expect(result.internalEvent.rawPath).toEqual("/learn/partners/mypartner");
-  });
-
-  it("should not match rewrites with different casing when case sensitive", () => {
-    RoutesManifest.caseSensitive = true;
-    const event = createEvent({ url: "https://on/MyPartner" });
-    const rewrites = [
-      {
-        source: "/mypartner",
-        destination: "/learn/partners/mypartner",
-        regex: "^/mypartner(?:/)?$",
-      },
-    ];
-
-    const result = handleRewrites(event, rewrites);
+    ]);
 
     expect(result.internalEvent.rawPath).toEqual("/MyPartner");
   });
