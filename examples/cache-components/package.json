@@ -1,0 +1,26 @@
+{
+  "name": "cache-components",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3005",
+    "build": "next build",
+    "start": "next start --port 3005",
+    "openbuild": "node ../../packages/open-next/dist/index.js build",
+    "openbuild:local": "node ../../packages/open-next/dist/index.js build --config-path open-next.config.local.ts",
+    "openbuild:local:start": "PORT=3005 node .open-next/server-functions/default/index.mjs",
+    "clean": "rm -rf .turbo node_modules .next .open-next"
+  },
+  "dependencies": {
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@opennextjs/aws": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
+  }
+}

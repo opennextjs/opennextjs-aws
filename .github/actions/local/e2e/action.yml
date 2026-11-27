@@ -14,8 +14,8 @@ runs:
     - name: Start the local OpenNext servers
       shell: bash
       run: |
-        pnpm -r openbuild:local:start &
-        for port in 3001 3002 3003 3004; do
+        pnpm -r --parallel openbuild:local:start &
+        for port in 3001 3002 3003 3004 3005; do
           echo "Checking port $port..."
           for attempt in {1..20}; do 
             sleep 0.5

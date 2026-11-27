@@ -2,6 +2,7 @@ import type { SSTConfig } from "sst";
 
 import { AppPagesRouter } from "./stacks/AppPagesRouter";
 import { AppRouter } from "./stacks/AppRouter";
+import { CacheComponents } from "./stacks/CacheComponents";
 import { Experimental } from "./stacks/Experimental";
 import { PagesRouter } from "./stacks/PagesRouter";
 
@@ -17,6 +18,7 @@ export default {
       .stack(AppRouter)
       .stack(PagesRouter)
       .stack(AppPagesRouter)
-      .stack(Experimental);
+      .stack(Experimental)
+      .stack(CacheComponents);
   },
 } satisfies SSTConfig;

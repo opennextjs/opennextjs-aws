@@ -4,7 +4,8 @@
     "APP_ROUTER_URL",
     "PAGES_ROUTER_URL",
     "APP_PAGES_ROUTER_URL",
-    "EXPERIMENTAL_APP_URL"
+    "EXPERIMENTAL_APP_URL",
+    "CACHE_COMPONENTS_APP_URL"
   ],
   "tasks": {
     "build": {

@@ -30,5 +30,13 @@ export default defineConfig({
         baseURL: process.env.EXPERIMENTAL_APP_URL || "http://localhost:3004",
       },
     },
+    {
+      name: "cacheComponents",
+      testMatch: ["tests/cacheComponents/*.test.ts"],
+      use: {
+        baseURL:
+          process.env.CACHE_COMPONENTS_APP_URL || "http://localhost:3005",
+      },
+    },
   ],
 });
