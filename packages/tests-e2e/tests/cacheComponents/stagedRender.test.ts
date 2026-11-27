@@ -10,6 +10,23 @@ async function runtimePrefetch(request: APIRequestContext, path: string) {
   return response.text();
 }
 
+test("the staged-render link triggers a runtime prefetch", async ({ page }) => {
+  const [prefetch] = await Promise.all([
+    page.waitForRequest((request) => {
+      const headers = request.headers();
+      // The same URL also receives route tree and segment prefetches.
+      return (
+        new URL(request.url()).pathname === "/staged-render/linked" &&
+        headers.rsc === "1" &&
+        headers["next-router-segment-prefetch"] === undefined
+      );
+    }),
+    page.goto("/"),
+  ]);
+
+  expect(prefetch.headers()["next-router-prefetch"]).toBe("2");
+});
+
 test("a runtime prefetch includes the deepest request-dependent content", async ({
   request,
 }) => {
