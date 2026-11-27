@@ -264,6 +264,39 @@ describe("convertFrom", () => {
     });
   });
 
+  it("Should parse a Cookie header with several cookies", async () => {
+    const event: APIGatewayProxyEvent = {
+      body: null,
+      headers: {
+        Cookie: "foo=bar; token=abc==; hello=hello%20world",
+      },
+      multiValueHeaders: {
+        Cookie: ["foo=bar; token=abc==; hello=hello%20world"],
+      },
+      httpMethod: "GET",
+      isBase64Encoded: false,
+      path: "/",
+      pathParameters: null,
+      queryStringParameters: null,
+      multiValueQueryStringParameters: null,
+      stageVariables: null,
+      requestContext: {
+        identity: {
+          sourceIp: "::1",
+        },
+      } as any,
+      resource: "",
+    };
+
+    const response = await converter.convertFrom(event);
+
+    expect(response.cookies).toEqual({
+      foo: "bar",
+      token: "abc==",
+      hello: "hello world",
+    });
+  });
+
   it("Should handle base64 encoded body", async () => {
     const event: APIGatewayProxyEvent = {
       body: Buffer.from("Hello, world!").toString("base64"),
