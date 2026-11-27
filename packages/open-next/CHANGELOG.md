@@ -1,5 +1,13 @@
 # open-next
 
+## 4.2.2
+
+### Patch Changes
+
+- [#1356](https://github.com/opennextjs/opennextjs-aws/pull/1356) [`6e32abd`](https://github.com/opennextjs/opennextjs-aws/commit/6e32abd6960f0b709542589f8d7701f8406827af) Thanks [@afgoulart](https://github.com/afgoulart)! - fix: match `redirects` and `headers` case-insensitively
+
+  As with Next.js, the `headers()` and `redirects()` of `next.config` now match paths case-insensitively (e.g. `/About` matches `/about`), unless `experimental.caseSensitiveRoutes` is enabled.
+
 ## 4.2.1
 
 ### Patch Changes
