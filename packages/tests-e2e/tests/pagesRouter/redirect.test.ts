@@ -45,3 +45,21 @@ test("[routing parity] redirects only an exact protocol match", async ({
   expect(fallthrough.status()).toBe(404);
   expect(fallthrough.headers().location).toBeUndefined();
 });
+
+// Next.js matches `redirects()` sources case-insensitively unless `caseSensitiveRoutes` is set.
+// https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/filesystem.ts#L137-L160
+test.describe("[routing parity] matches redirect sources case-insensitively", () => {
+  for (const [path, location] of [
+    ["/Redirect-With-Locale/", "/ssr/"],
+    ["/nl/REDIRECT-WITH-LOCALE/", "/nl/ssr/"],
+  ]) {
+    test(path, async ({ request }) => {
+      const response = await request.get(path, { maxRedirects: 0 });
+
+      expect(response.status()).toBe(307);
+      expect(
+        new URL(response.headers().location ?? "", "http://n").pathname,
+      ).toBe(location);
+    });
+  }
+});

@@ -42,3 +42,23 @@ test("[routing parity] interpolates condition parameters in headers", async ({
     "https://example.com/path?tenant=condition&next=(literal)+*",
   );
 });
+
+// Next.js matches `headers()` sources case-insensitively unless `caseSensitiveRoutes` is set.
+// https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/server/lib/router-utils/filesystem.ts#L137-L160
+test.describe("[routing parity] matches header sources case-insensitively", () => {
+  for (const path of [
+    "/Condition-Headers/From-Source/",
+    "/nl/CONDITION-HEADERS/from-source/",
+    "/NL/condition-headers/from-source/",
+  ]) {
+    test(path, async ({ request }) => {
+      const response = await request.get(
+        `${path}?tenant=condition&my-query=value-less&items=one&items=two`,
+      );
+      const headers = response.headers();
+
+      expect(headers["x-condition"]).toBe("value-less");
+      expect(headers["x-items"]).toBe("one/two");
+    });
+  }
+});
