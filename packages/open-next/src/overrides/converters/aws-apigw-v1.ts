@@ -1,4 +1,5 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import cookieParser from "cookie";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
 import { fromReadableStream } from "utils/stream";
@@ -71,6 +72,20 @@ function normalizeAPIGatewayProxyEventMultiValueQueryStringParameters(
   return params;
 }
 
+function normalizeAPIGatewayProxyEventCookies(
+  event: APIGatewayProxyEvent,
+): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  for (const [key, values] of Object.entries(event.multiValueHeaders || {})) {
+    if (key.toLowerCase() === "cookie" && values) {
+      for (const value of values) {
+        Object.assign(cookies, cookieParser.parse(value));
+      }
+    }
+  }
+  return cookies;
+}
+
 async function convertFromAPIGatewayProxyEvent(
   event: APIGatewayProxyEvent,
 ): Promise<InternalEvent> {
@@ -87,15 +102,7 @@ async function convertFromAPIGatewayProxyEvent(
     query: removeUndefinedFromQuery(
       normalizeAPIGatewayProxyEventMultiValueQueryStringParameters(event),
     ),
-    cookies:
-      event.multiValueHeaders?.cookie?.reduce(
-        (acc, cur) => {
-          const [key, value] = cur.split("=");
-          acc[key] = value;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ) ?? {},
+    cookies: normalizeAPIGatewayProxyEventCookies(event),
   };
 }
 
