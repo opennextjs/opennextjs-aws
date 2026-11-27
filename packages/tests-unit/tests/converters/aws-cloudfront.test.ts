@@ -326,4 +326,42 @@ describe("convertFrom", () => {
       cookies: {},
     });
   });
+
+  it("Should parse cookies", async () => {
+    const event = createEvent({
+      clientIp: "::1",
+      headers: {
+        cookie: [
+          {
+            key: "Cookie",
+            value: "foo=bar; token=abc==; hello=hello%20world",
+          },
+        ],
+      },
+      method: "GET",
+      querystring: "",
+      uri: "/",
+      origin: {} as any,
+    });
+
+    const response = await converter.convertFrom(event);
+
+    expect(response).toEqual({
+      type: "core",
+      method: "GET",
+      rawPath: "/",
+      url: "https://on/",
+      body: Buffer.from(""),
+      headers: {
+        cookie: "foo=bar; token=abc==; hello=hello%20world",
+      },
+      remoteAddress: "::1",
+      query: {},
+      cookies: {
+        foo: "bar",
+        token: "abc==",
+        hello: "hello world",
+      },
+    });
+  });
 });
