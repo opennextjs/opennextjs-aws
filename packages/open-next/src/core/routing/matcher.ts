@@ -16,7 +16,7 @@ import {
 import { emptyReadableStream, toReadableStream } from "utils/stream";
 
 import { debug } from "../../adapters/logger";
-import { handleLocaleRedirect, localizePath } from "./i18n";
+import { handleLocaleRedirect, isLocalizedPath, localizePath } from "./i18n";
 import { dynamicRouteMatcher, staticRouteMatcher } from "./routeMatcher";
 import {
   constructNextUrl,
@@ -381,6 +381,9 @@ export function getNextConfigHeaders(
  * their separators. See
  * https://github.com/vercel/next.js/blob/ae745ba/packages/next/src/shared/lib/router/utils/prepare-destination.ts#L292-L302
  *
+ * With i18n, the locale is removed from a rewrite to a local API route (i.e.
+ * `/<basePath>/<locale>/api/...`), as API routes are not localized.
+ *
  * TODO: This method currently only checks the first match. It should check all
  * matches for `beforeFiles` and `afterFiles` rewrites. See
  * https://nextjs.org/docs/app/api-reference/config/next-config-js/rewrites
@@ -472,14 +475,19 @@ export function handleRewrites<T extends RewriteDefinition>(
       rewrittenHash = compileNonPath(hash, params);
     }
 
-    // We need to strip the locale from the path if it's a local api route
+    // Strip the locale from a rewrite to a local API route (`/<basePath>/<locale>/api/...`)
     if (NextConfig.i18n && !isExternalRewrite) {
-      const strippedPathLocale = rewrittenPath.replace(
-        getCompiledRegExp(`^/(${NextConfig.i18n.locales.join("|")})`),
-        "",
-      );
-      if (strippedPathLocale.startsWith("/api/")) {
-        rewrittenPath = strippedPathLocale;
+      const basePath = NextConfig.basePath ?? "";
+      const pathPrefix =
+        basePath && rewrittenPath.startsWith(`${basePath}/`) ? basePath : "";
+      const pathname = rewrittenPath.slice(pathPrefix.length);
+      const localeEnd = pathname.indexOf("/", 1);
+      if (
+        localeEnd !== -1 &&
+        pathname.startsWith("/api/", localeEnd) &&
+        isLocalizedPath(pathname)
+      ) {
+        rewrittenPath = `${pathPrefix}${pathname.slice(localeEnd)}`;
       }
     }
 
@@ -573,7 +581,11 @@ function handleRepeatedSlashRedirect(
  *
  * Mirrors the internal redirects that Next.js generates from `trailingSlash`. They apply to every
  * path, including API routes, and run before the middleware so that it always sees the canonical
- * pathname. Data requests (`/_next/data/<buildId>/*.json`) are not redirected.
+ * pathname.
+ *
+ * With `trailingSlash`, data requests (`/_next/data/<buildId>/*.json`) are not redirected.
+ * Without it, a data request for a path with a trailing slash is redirected to the page, without the
+ * internal `__nextDataReq` query parameter.
  * See https://github.com/vercel/next.js/blob/324b297/packages/next/src/lib/load-custom-routes.ts#L791-L849
  *
  * @param event The incoming request
@@ -624,14 +636,24 @@ function handleTrailingSlashRedirect(
     event.rawPath.endsWith("/") &&
     event.rawPath !== "/"
   ) {
-    const headersLocation = event.url.split("?");
+    const queryIndex = event.url.indexOf("?");
+    const pathname =
+      queryIndex === -1 ? event.url : event.url.slice(0, queryIndex);
+    const search = queryIndex === -1 ? "" : event.url.slice(queryIndex + 1);
+    // A data request (e.g. `/_next/data/<buildId>/page/.json`) is redirected to the page.
+    // `__nextDataReq` is added by `fixDataPage`, Next.js does not keep it in the location.
+    let query = search;
+    if (event.headers["x-nextjs-data"] === "1") {
+      query = query
+        .split("&")
+        .filter((param) => param !== "__nextDataReq=1")
+        .join("&");
+    }
     return {
       type: event.type,
       statusCode: 308,
       headers: {
-        Location: `${headersLocation[0].replace(/\/$/, "")}${
-          headersLocation[1] ? `?${headersLocation[1]}` : ""
-        }`,
+        Location: `${pathname.replace(/\/$/, "")}${query ? `?${query}` : ""}`,
       },
       body: emptyBody,
       isBase64Encoded: false,
@@ -671,15 +693,32 @@ export function handleRedirects(
   }
 }
 
+/**
+ * Converts a Pages Router data request to a request for its page.
+ *
+ * A data request is `<basePath>/_next/data/<buildId>/<page>.json`. Its page path becomes the `rawPath` and the
+ * `url` pathname (the origin is kept), and it is flagged with `__nextDataReq` and the `x-nextjs-data` header.
+ *
+ * @param internalEvent The incoming request
+ * @param buildId The buildId of the app
+ * @returns A 404 for any other path under `/_next/data/` or `<basePath>/_next/data/`,
+ *   the request for the page for a data request, the unchanged request otherwise
+ * @throws {TypeError} When the URL of a data request is invalid
+ */
 export function fixDataPage(
   internalEvent: InternalEvent,
   buildId: string,
 ): InternalEvent | InternalResult {
   const { rawPath, query } = internalEvent;
   const basePath = NextConfig.basePath ?? "";
-  const dataPattern = `${basePath}/_next/data/${buildId}`;
-  // Return 404 for data requests that don't match the buildId
-  if (rawPath.startsWith("/_next/data") && !rawPath.startsWith(dataPattern)) {
+  const dataPrefix = `${basePath}/_next/data/`;
+  if (!rawPath.startsWith("/_next/data/") && !rawPath.startsWith(dataPrefix)) {
+    return internalEvent;
+  }
+  // The trailing `/` ensures the buildId is a full path segment
+  const dataPattern = `${dataPrefix}${buildId}/`;
+  // Return 404 for paths under `/_next/data/` that are not data requests for this build
+  if (!rawPath.startsWith(dataPattern)) {
     return {
       type: internalEvent.type,
       statusCode: 404,
@@ -691,9 +730,10 @@ export function fixDataPage(
     };
   }
 
-  if (rawPath.startsWith(dataPattern) && rawPath.endsWith(".json")) {
+  if (rawPath.endsWith(".json")) {
     const newPath = `${basePath}${rawPath
-      .slice(dataPattern.length, -".json".length)
+      // Keep the leading `/` of the page path
+      .slice(dataPattern.length - 1, -".json".length)
       .replace(/^\/index$/, "/")}`;
     query.__nextDataReq = "1";
 
@@ -705,9 +745,10 @@ export function fixDataPage(
         ...internalEvent.headers,
         "x-nextjs-data": "1",
       },
+      // Concatenate with the origin rather than resolving `newPath` as a relative URL
+      // so that the path can never change the origin (e.g. `//evil.com/x`)
       url: new URL(
-        `${newPath}${convertToQueryString(query)}`,
-        internalEvent.url,
+        `${new URL(internalEvent.url).origin}${newPath}${convertToQueryString(query)}`,
       ).href,
     };
   }

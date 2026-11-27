@@ -5,9 +5,10 @@ import type {
   CacheValue,
   NextModeTagCacheWriteInput,
   OriginalTagCacheWriteInput,
+  TagCacheResult,
   WithLastModified,
 } from "types/overrides";
-import { debug } from "../adapters/logger";
+import { debug, error } from "../adapters/logger";
 import { CACHE_TAGS_HEADER } from "./cacheHeaders";
 import { compareSemver } from "./semver";
 
@@ -128,6 +129,26 @@ export async function hasBeenRevalidated(
   return _lastModified === -1;
 }
 
+/**
+ * Notifies an entry returned by the incremental cache of its tag cache verdict.
+ *
+ * Calls `entry.onTagCacheResult` when it is defined.
+ * Errors thrown by the callback are logged and ignored so that they do not affect how the entry is used.
+ *
+ * @param entry The entry, as returned by `IncrementalCache.get`
+ * @param result The tag cache verdict for the entry
+ */
+export async function reportTagCacheResult(
+  entry: Pick<WithLastModified<unknown>, "onTagCacheResult">,
+  result: TagCacheResult,
+): Promise<void> {
+  try {
+    await entry.onTagCacheResult?.(result);
+  } catch (e) {
+    error("Failed to report the tag cache result", e);
+  }
+}
+
 export function getTagsFromValue(value?: CacheValue<"cache">) {
   if (!value) {
     return [];
@@ -136,7 +157,6 @@ export function getTagsFromValue(value?: CacheValue<"cache">) {
   try {
     const cacheTags =
       value.meta?.headers?.[CACHE_TAGS_HEADER]?.split(",") ?? [];
-    delete value.meta?.headers?.[CACHE_TAGS_HEADER];
     return cacheTags;
   } catch (e) {
     return [];
