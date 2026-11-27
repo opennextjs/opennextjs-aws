@@ -7,6 +7,7 @@ import type {
   CloudFrontRequestEvent,
   CloudFrontRequestResult,
 } from "aws-lambda";
+import cookieParser from "cookie";
 import { parseSetCookieHeader } from "http/util";
 import type {
   InternalEvent,
@@ -105,15 +106,9 @@ async function convertFromCloudFrontRequestEvent(
     headers,
     remoteAddress: clientIp,
     query: convertToQuery(querystring),
-    cookies:
-      cfHeaders.cookie?.reduce(
-        (acc, cur) => {
-          const { key = "", value } = cur;
-          acc[key] = value;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ) ?? {},
+    cookies: headers.cookie
+      ? (cookieParser.parse(headers.cookie) as Record<string, string>)
+      : {},
   };
 }
 
