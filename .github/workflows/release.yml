@@ -56,12 +56,8 @@ jobs:
 
       - name: Create Release
         if: steps.changesets.outputs.published == 'true'
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.aggregate.outputs.version }}
-          release_name: ${{ steps.aggregate.outputs.version }}
-          body: ${{ steps.aggregate.outputs.notes }}
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.aggregate.outputs.version }}
+          NOTES: ${{ steps.aggregate.outputs.notes }}
+        run: gh release create "$VERSION" --title "$VERSION" --notes "$NOTES"
