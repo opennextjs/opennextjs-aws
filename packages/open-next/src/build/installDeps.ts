@@ -15,7 +15,9 @@ export function installDependencies(
     if (!installOptions) {
       return;
     }
-    const name = outputDir.split("/").pop();
+    // `path.basename` also handles `\` separators on Windows, where `split("/")`
+    // returns the whole path and makes `mkdtempSync` fail with ENOENT.
+    const name = path.basename(outputDir);
     // First we create a tempDir
     const tempInstallDir = fs.mkdtempSync(
       path.join(os.tmpdir(), `open-next-install-${name}`),
