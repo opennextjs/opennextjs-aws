@@ -82,6 +82,23 @@ describe("installDependencies", () => {
     expect(command).not.toContain("--target");
   });
 
+  it("should create the temp install dir in os.tmpdir() named after the last segment of outputDir", () => {
+    installDependencies(outputDir, {
+      packages: ["sharp@0.35.5"],
+    });
+
+    expect(execSync).toHaveBeenCalledTimes(1);
+    const { cwd } = vi.mocked(execSync).mock.calls[0][1] as { cwd: string };
+    // On Windows, `outputDir.split("/")` used to keep the whole path (including the drive letter)
+    // in the temp dir name, so `mkdtempSync` failed and the dependencies were never installed.
+    expect(path.dirname(cwd)).toBe(os.tmpdir());
+    expect(
+      path
+        .basename(cwd)
+        .startsWith(`open-next-install-${path.basename(outputDir)}`),
+    ).toBe(true);
+  });
+
   it("should pass additionalArgs to the install command", () => {
     installDependencies(outputDir, {
       packages: ["sharp@0.35.5"],
