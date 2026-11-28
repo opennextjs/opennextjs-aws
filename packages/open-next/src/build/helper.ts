@@ -29,9 +29,10 @@ export function normalizeOptions(
   );
   const outputDir = path.join(buildOutputPath, ".open-next");
 
-  const { root: monorepoRoot, packager } = findPackagerAndRoot(
+  const { root: lockfileRoot, packager } = findPackagerAndRoot(
     path.join(process.cwd(), config.appPath || "."),
   );
+  const monorepoRoot = findTracingRoot(appPath, lockfileRoot);
 
   let appPackageJsonPath: string;
   if (config.packageJsonPath) {
@@ -100,6 +101,32 @@ export function findPackagerAndRoot(appPath: string): {
   //       We are going to assume that the app is not part of a monorepo.
   logger.warn("No lockfile found");
   return { root: appPath, packager: "npm" as const };
+}
+
+/**
+ * Next traces realpaths and skips files outside its tracing root.
+ * When the `node_modules` that holds `next` is a symlink to another checkout
+ * (e.g. a git worktree sharing an install), widen the root to include it.
+ */
+export function findTracingRoot(appPath: string, root: string): string {
+  for (let dir = appPath; ; dir = path.dirname(dir)) {
+    const nodeModules = path.join(dir, "node_modules");
+    if (fs.existsSync(path.join(nodeModules, "next"))) {
+      const installRoot = path.dirname(fs.realpathSync(nodeModules));
+      let tracingRoot = root;
+      while (path.relative(tracingRoot, installRoot).startsWith("..")) {
+        tracingRoot = path.dirname(tracingRoot);
+      }
+      if (tracingRoot !== root) {
+        logger.info(
+          "node_modules resolves outside the app, tracing from",
+          tracingRoot,
+        );
+      }
+      return tracingRoot;
+    }
+    if (dir === root || dir === path.dirname(dir)) return root;
+  }
 }
 
 function findNextPackageJsonPath(appPath: string, root: string) {
