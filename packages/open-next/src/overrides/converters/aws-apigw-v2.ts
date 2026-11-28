@@ -2,6 +2,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
+import cookieParser from "cookie";
 import { parseSetCookieHeader } from "http/util";
 import type { InternalEvent, InternalResult } from "types/open-next";
 import type { Converter } from "types/overrides";
@@ -87,15 +88,9 @@ async function convertFromAPIGatewayProxyEventV2(
     headers,
     remoteAddress: requestContext.http.sourceIp,
     query: removeUndefinedFromQuery(convertToQuery(rawQueryString)),
-    cookies:
-      event.cookies?.reduce(
-        (acc, cur) => {
-          const [key, value] = cur.split("=");
-          acc[key] = value;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ) ?? {},
+    cookies: headers.cookie
+      ? (cookieParser.parse(headers.cookie) as Record<string, string>)
+      : {},
   };
 }
 

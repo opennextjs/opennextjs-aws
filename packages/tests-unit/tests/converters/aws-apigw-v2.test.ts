@@ -178,6 +178,31 @@ describe("convertFrom", () => {
     });
   });
 
+  it("Should parse cookie values with = and encoded characters", async () => {
+    const event: APIGatewayProxyEventV2 = {
+      rawPath: "/",
+      rawQueryString: "",
+      cookies: ["token=abc==", "hello=hello%20world"],
+      headers: {},
+      version: "2.0",
+      routeKey: "",
+      isBase64Encoded: false,
+      requestContext: {
+        http: {
+          method: "GET",
+          sourceIp: "::1",
+        },
+      } as any,
+    };
+
+    const response = await converter.convertFrom(event);
+
+    expect(response.cookies).toEqual({
+      token: "abc==",
+      hello: "hello world",
+    });
+  });
+
   it("Should parse query string", async () => {
     const event: APIGatewayProxyEventV2 = {
       rawPath: "/",
